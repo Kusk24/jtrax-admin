@@ -163,6 +163,24 @@
     "notificationLogs": "ประวัติการแจ้งเตือน",
     "lowAttendance": "{name} - อัตราเข้าเรียนต่ำ"
   },
+  "settingsPage": {
+    "title": "ตั้งค่าระบบ",
+    "subtitle": "หน้านี้ใช้ตั้งค่าระบบทั้งหมด",
+    "creditRules": "กฎเครดิต",
+    "attendancePolicies": "นโยบายการเข้าเรียน",
+    "lowCreditThreshold": "เกณฑ์แจ้งเตือนเครดิตเหลือน้อย",
+    "expiryThreshold": "เกณฑ์แจ้งเตือนเครดิตใกล้หมดอายุ",
+    "consecutiveMissed": "แจ้งเตือนเมื่อขาดเรียนติดต่อกัน",
+    "credits": "เครดิต",
+    "days": "วัน",
+    "classes": "คลาส",
+    "save": "บันทึกการตั้งค่า",
+    "updatedAt": "อัปเดตเมื่อ {stamp}"
+  },
+  "reportsPage": {
+    "title": "รายงาน",
+    "comingSoon": "หน้ารายงานจะเพิ่มเมื่อได้รับแบบดีไซน์ชุดถัดไป"
+  },
   "paymentsPage": {
     "title": "การชำระเงิน",
     "subtitle": "หน้านี้ใช้บันทึกการชำระเงิน",
