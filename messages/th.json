@@ -325,6 +325,7 @@
   "dash": {
     "title": "แดชบอร์ด",
     "subtitle": "ภาพรวมของทุกสาขา",
+    "subtitleBranch": "ภาพรวมของสาขา {branch}",
     "totalRevenue": "รายได้รวม",
     "thisMonth": "เดือนนี้ ({pct})",
     "totalBranches": "จำนวนสาขา",
