@@ -175,7 +175,7 @@ export function GroupedBarsChart({
             dataKey={s.key}
             name={s.label}
             fill={s.color}
-            barSize={10}
+            barSize={series.length > 1 ? 10 : 28}
             radius={[3, 3, 0, 0]}
           />
         ))}
