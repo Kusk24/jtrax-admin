@@ -35,6 +35,8 @@
     "exportPdf": "Export as PDF",
     "allBranches": "All Branches",
     "search": "Search",
+    "cancel": "Cancel",
+    "options": "Options",
     "viewAll": "View All",
     "showLess": "Show Less",
     "edit": "Edit",
@@ -46,6 +48,51 @@
     "language": "Language",
     "superAdminBadge": "Super Admin",
     "branchAdminBadge": "Branch Admin"
+  },
+  "admins": {
+    "title": "Branch Admin Management",
+    "subtitle": "This page is for managing branches' admins.",
+    "add": "Add Branch Admin",
+    "remove": "Remove Admin",
+    "roleChip": "{branch} Branch Admin"
+  },
+  "branchesPage": {
+    "title": "Branch Management",
+    "subtitle": "This page is for managing branches.",
+    "add": "Add New Branch",
+    "totalBranches": "Total Branches ({count})",
+    "totalStudents": "Total Students",
+    "totalTeachers": "Total Teachers",
+    "creditSold": "Credit Sold",
+    "revenue": "Revenue",
+    "managedBy": "Managed by",
+    "manager": "{name} (Manager)",
+    "edit": "Edit Branch",
+    "remove": "Remove Branch",
+    "modalTitle": "Add New Branch",
+    "modalSubtitle": "Creating a new branch. Clone data from one branch for quick setup.",
+    "nameLabel": "New Branch Name",
+    "namePlaceholder": "e.g. Bearing Branch",
+    "managerLabel": "Branch Manager",
+    "managerPlaceholder": "Select branch manager",
+    "contactLabel": "Contact",
+    "addressLabel": "Address",
+    "cloneLabel": "Clone Data of",
+    "cloneClasses": "Classes",
+    "cloneTimetables": "Timetables",
+    "cloneTeachers": "Teachers",
+    "cloneBranch": "Clone Branch"
+  },
+  "tabs": {
+    "overview": "Overview",
+    "courses": "Courses",
+    "sections": "Sections",
+    "schedules": "Schedules",
+    "teachers": "Teachers",
+    "students": "Students"
+  },
+  "branchDetail": {
+    "sectionsCount": "{count} sections"
   },
   "dash": {
     "title": "Dashboard",

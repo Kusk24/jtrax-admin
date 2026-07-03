@@ -12,6 +12,14 @@ export interface Branch {
   revenue: string;
 }
 
+export interface BranchAdmin {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  branchId: BranchId;
+}
+
 export type StudentAlert = "expiring" | "lowCredit" | "healthy" | "expired";
 export type FollowUpStatus = "notContacted" | "contacted" | "renewed" | "none";
 

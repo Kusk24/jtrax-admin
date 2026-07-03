@@ -35,6 +35,8 @@
     "exportPdf": "ส่งออกเป็น PDF",
     "allBranches": "ทุกสาขา",
     "search": "ค้นหา",
+    "cancel": "ยกเลิก",
+    "options": "ตัวเลือก",
     "viewAll": "ดูทั้งหมด",
     "showLess": "ย่อ",
     "edit": "แก้ไข",
@@ -46,6 +48,51 @@
     "language": "ภาษา",
     "superAdminBadge": "ผู้ดูแลระบบส่วนกลาง",
     "branchAdminBadge": "ผู้ดูแลสาขา"
+  },
+  "admins": {
+    "title": "จัดการผู้ดูแลสาขา",
+    "subtitle": "หน้านี้ใช้จัดการผู้ดูแลของแต่ละสาขา",
+    "add": "เพิ่มผู้ดูแลสาขา",
+    "remove": "ลบผู้ดูแล",
+    "roleChip": "ผู้ดูแลสาขา {branch}"
+  },
+  "branchesPage": {
+    "title": "จัดการสาขา",
+    "subtitle": "หน้านี้ใช้จัดการสาขาทั้งหมด",
+    "add": "เพิ่มสาขาใหม่",
+    "totalBranches": "สาขาทั้งหมด ({count})",
+    "totalStudents": "นักเรียนทั้งหมด",
+    "totalTeachers": "คุณครูทั้งหมด",
+    "creditSold": "เครดิตที่ขายแล้ว",
+    "revenue": "รายได้",
+    "managedBy": "ดูแลโดย",
+    "manager": "{name} (ผู้จัดการ)",
+    "edit": "แก้ไขสาขา",
+    "remove": "ลบสาขา",
+    "modalTitle": "เพิ่มสาขาใหม่",
+    "modalSubtitle": "สร้างสาขาใหม่ โดยคัดลอกข้อมูลจากสาขาเดิมเพื่อตั้งค่าได้อย่างรวดเร็ว",
+    "nameLabel": "ชื่อสาขาใหม่",
+    "namePlaceholder": "เช่น สาขาแบริ่ง",
+    "managerLabel": "ผู้จัดการสาขา",
+    "managerPlaceholder": "เลือกผู้จัดการสาขา",
+    "contactLabel": "เบอร์ติดต่อ",
+    "addressLabel": "ที่อยู่",
+    "cloneLabel": "คัดลอกข้อมูลจาก",
+    "cloneClasses": "คลาสเรียน",
+    "cloneTimetables": "ตารางเวลา",
+    "cloneTeachers": "คุณครู",
+    "cloneBranch": "คัดลอกสาขา"
+  },
+  "tabs": {
+    "overview": "ภาพรวม",
+    "courses": "คอร์สเรียน",
+    "sections": "กลุ่มเรียน",
+    "schedules": "ตารางเวลา",
+    "teachers": "คุณครู",
+    "students": "นักเรียน"
+  },
+  "branchDetail": {
+    "sectionsCount": "{count} กลุ่มเรียน"
   },
   "dash": {
     "title": "แดชบอร์ด",
