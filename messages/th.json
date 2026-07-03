@@ -35,6 +35,8 @@
     "exportPdf": "ส่งออกเป็น PDF",
     "allBranches": "ทุกสาขา",
     "search": "ค้นหา",
+    "cancel": "ยกเลิก",
+    "options": "ตัวเลือก",
     "viewAll": "ดูทั้งหมด",
     "showLess": "ย่อ",
     "edit": "แก้ไข",
@@ -46,6 +48,13 @@
     "language": "ภาษา",
     "superAdminBadge": "ผู้ดูแลระบบส่วนกลาง",
     "branchAdminBadge": "ผู้ดูแลสาขา"
+  },
+  "admins": {
+    "title": "จัดการผู้ดูแลสาขา",
+    "subtitle": "หน้านี้ใช้จัดการผู้ดูแลของแต่ละสาขา",
+    "add": "เพิ่มผู้ดูแลสาขา",
+    "remove": "ลบผู้ดูแล",
+    "roleChip": "ผู้ดูแลสาขา {branch}"
   },
   "dash": {
     "title": "แดชบอร์ด",

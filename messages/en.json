@@ -35,6 +35,8 @@
     "exportPdf": "Export as PDF",
     "allBranches": "All Branches",
     "search": "Search",
+    "cancel": "Cancel",
+    "options": "Options",
     "viewAll": "View All",
     "showLess": "Show Less",
     "edit": "Edit",
@@ -46,6 +48,13 @@
     "language": "Language",
     "superAdminBadge": "Super Admin",
     "branchAdminBadge": "Branch Admin"
+  },
+  "admins": {
+    "title": "Branch Admin Management",
+    "subtitle": "This page is for managing branches' admins.",
+    "add": "Add Branch Admin",
+    "remove": "Remove Admin",
+    "roleChip": "{branch} Branch Admin"
   },
   "dash": {
     "title": "Dashboard",

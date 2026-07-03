@@ -1,5 +1,6 @@
 import type {
   Branch,
+  BranchAdmin,
   BranchId,
   DashboardKpis,
   FollowUpRow,
@@ -41,6 +42,30 @@ export const branches: Branch[] = [
     teachers: 8,
     creditsSold: "1.2k",
     revenue: "28k",
+  },
+];
+
+export const branchAdmins: BranchAdmin[] = [
+  {
+    id: "a1",
+    name: "Mr. Jay Park",
+    phone: "+66 1234 567",
+    email: "jaypark@gmail.com",
+    branchId: "onnut",
+  },
+  {
+    id: "a2",
+    name: "Mr. Seong Hyeon",
+    phone: "+66 1234 567",
+    email: "seohyeon@gmail.com",
+    branchId: "bangkok",
+  },
+  {
+    id: "a3",
+    name: "Mr. Martin",
+    phone: "+66 1234 567",
+    email: "martin@gmail.com",
+    branchId: "bangbo",
   },
 ];
 
