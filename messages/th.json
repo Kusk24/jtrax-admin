@@ -14,8 +14,27 @@
     "branchAdminPortal": "สำหรับผู้ดูแลสาขา",
     "switchRole": "เปลี่ยนบทบาท"
   },
+  "adminNav": {
+    "dashboard": "แดชบอร์ด",
+    "branchAdmins": "ผู้ดูแลสาขา",
+    "branches": "สาขา",
+    "courses": "คอร์สเรียน",
+    "teachers": "คุณครู",
+    "students": "นักเรียน",
+    "payments": "การชำระเงิน",
+    "attendance": "การเข้าเรียน",
+    "reports": "รายงาน",
+    "system": "ระบบ",
+    "logout": "ออกจากระบบ",
+    "adminPanel": "แผงควบคุมผู้ดูแล",
+    "openMenu": "เปิดเมนู",
+    "closeMenu": "ปิดเมนู"
+  },
   "common": {
     "hi": "สวัสดี คุณ{name} !",
+    "exportPdf": "ส่งออกเป็น PDF",
+    "allBranches": "ทุกสาขา",
+    "search": "ค้นหา",
     "viewAll": "ดูทั้งหมด",
     "showLess": "ย่อ",
     "edit": "แก้ไข",

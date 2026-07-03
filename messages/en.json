@@ -14,8 +14,27 @@
     "branchAdminPortal": "Branch admin portal",
     "switchRole": "Switch role"
   },
+  "adminNav": {
+    "dashboard": "Dashboard",
+    "branchAdmins": "Branch Admins",
+    "branches": "Branches",
+    "courses": "Courses",
+    "teachers": "Teachers",
+    "students": "Students",
+    "payments": "Payments",
+    "attendance": "Attendance",
+    "reports": "Reports",
+    "system": "System",
+    "logout": "Log out",
+    "adminPanel": "Admin Panel",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
+  },
   "common": {
     "hi": "Hi, {name} !",
+    "exportPdf": "Export as PDF",
+    "allBranches": "All Branches",
+    "search": "Search",
     "viewAll": "View All",
     "showLess": "Show Less",
     "edit": "Edit",
