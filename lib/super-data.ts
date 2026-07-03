@@ -194,6 +194,58 @@ export const paymentRows = [
   },
 ];
 
+export const dailyAttendance = [
+  { day: "SUN", onnut: 69.0, bangkok: 80.8, bangbo: 74.8 },
+  { day: "MON", onnut: 82.8, bangkok: 83.5, bangbo: 61.7 },
+  { day: "TUE", onnut: 74.1, bangkok: 87.7, bangbo: 84.7 },
+  { day: "WED", onnut: 67.7, bangkok: 51.4, bangbo: 61.4 },
+  { day: "THU", onnut: 80.6, bangkok: 78.0, bangbo: 83.2 },
+  { day: "FRI", onnut: 59.4, bangkok: 94.0, bangbo: 57.2 },
+  { day: "SAT", onnut: 84.7, bangkok: 61.3, bangbo: 58.4 },
+];
+
+export const attendanceHistory = [
+  {
+    id: "h1",
+    date: "22.3.26",
+    branchId: "bangkok" as BranchId,
+    className: "Beginner (Sec101)",
+    present: 19,
+    absent: 1,
+    rate: 95,
+  },
+  {
+    id: "h2",
+    date: "22.3.26",
+    branchId: "onnut" as BranchId,
+    className: "Beginner (Sec101)",
+    present: 9,
+    absent: 11,
+    rate: 45,
+  },
+];
+
+export const attendanceAlerts = [
+  {
+    id: "u6612127",
+    name: "Penny",
+    missed: 5,
+    meta: "Beginner | Bangbo",
+    guardian: "Kim Ji Won",
+  },
+  {
+    id: "u6612128",
+    name: "Uri",
+    missed: 4,
+    meta: "Beginner | Bangbo",
+    guardian: "Kim Ji Won",
+  },
+];
+
+export const notificationLogs = [
+  { name: "Penny", stamp: "12.5.26 | 8:10 AM" },
+];
+
 export const dashboardKpis: DashboardKpis = {
   revenue: "฿55,000",
   revenueDelta: "+10%",

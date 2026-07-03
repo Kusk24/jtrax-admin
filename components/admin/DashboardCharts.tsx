@@ -135,6 +135,49 @@ export function DistributionChart({
   );
 }
 
+export function GroupedBarsChart({
+  data,
+  series,
+}: {
+  data: Record<string, string | number>[];
+  series: { key: string; label: string; color: string }[];
+}) {
+  return (
+    <ResponsiveContainer width="100%" height={280}>
+      <BarChart
+        data={data}
+        margin={{ top: 8, right: 8, left: -16, bottom: 0 }}
+        barGap={2}
+      >
+        <CartesianGrid stroke={chart.grid} vertical={false} />
+        <XAxis dataKey="label" tick={tick} axisLine={false} tickLine={false} />
+        <YAxis
+          tick={tick}
+          axisLine={false}
+          tickLine={false}
+          width={34}
+          domain={[0, 100]}
+        />
+        <Tooltip
+          contentStyle={tooltipStyle}
+          cursor={{ fill: "rgba(228, 224, 216, 0.35)" }}
+        />
+        <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+        {series.map((s) => (
+          <Bar
+            key={s.key}
+            dataKey={s.key}
+            name={s.label}
+            fill={s.color}
+            barSize={10}
+            radius={[3, 3, 0, 0]}
+          />
+        ))}
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
 export function WeekAttendanceChart({
   data,
 }: {
