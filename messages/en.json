@@ -83,6 +83,17 @@
     "cloneTeachers": "Teachers",
     "cloneBranch": "Clone Branch"
   },
+  "tabs": {
+    "overview": "Overview",
+    "courses": "Courses",
+    "sections": "Sections",
+    "schedules": "Schedules",
+    "teachers": "Teachers",
+    "students": "Students"
+  },
+  "branchDetail": {
+    "sectionsCount": "{count} sections"
+  },
   "dash": {
     "title": "Dashboard",
     "subtitle": "This is the overview for all branches.",

@@ -83,6 +83,17 @@
     "cloneTeachers": "คุณครู",
     "cloneBranch": "คัดลอกสาขา"
   },
+  "tabs": {
+    "overview": "ภาพรวม",
+    "courses": "คอร์สเรียน",
+    "sections": "กลุ่มเรียน",
+    "schedules": "ตารางเวลา",
+    "teachers": "คุณครู",
+    "students": "นักเรียน"
+  },
+  "branchDetail": {
+    "sectionsCount": "{count} กลุ่มเรียน"
+  },
   "dash": {
     "title": "แดชบอร์ด",
     "subtitle": "ภาพรวมของทุกสาขา",
