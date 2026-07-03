@@ -129,6 +129,20 @@
     "mother": "Mother",
     "father": "Father"
   },
+  "paymentsPage": {
+    "title": "Payments",
+    "subtitle": "This page is for payment recording.",
+    "record": "Record new Payment",
+    "total": "Total Payments ({count})",
+    "methodFilter": "Payment Method",
+    "colCredits": "Credits",
+    "colAmount": "Amount",
+    "colDate": "Date",
+    "colMethod": "Method",
+    "onlineBanking": "Online Banking",
+    "cash": "Cash",
+    "card": "Credit Card"
+  },
   "addStudent": {
     "title": "Add New Student",
     "subtitle": "Create a student profile and add their parent or guardian details.",

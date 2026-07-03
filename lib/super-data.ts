@@ -169,6 +169,31 @@ export const teacherRows = [
   },
 ];
 
+export const paymentRows = [
+  {
+    id: "p1",
+    student: "Scarlet",
+    studentId: "u6612128",
+    branchId: "bangkok" as BranchId,
+    className: "Beginner (Sec101)",
+    credits: 20,
+    amount: "2,000",
+    date: "3.5.26",
+    method: "onlineBanking" as const,
+  },
+  {
+    id: "p2",
+    student: "Penny",
+    studentId: "u6612127",
+    branchId: "bangkok" as BranchId,
+    className: "Beginner (Sec101)",
+    credits: 20,
+    amount: "2,000",
+    date: "1.5.26",
+    method: "cash" as const,
+  },
+];
+
 export const dashboardKpis: DashboardKpis = {
   revenue: "฿55,000",
   revenueDelta: "+10%",
