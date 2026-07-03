@@ -2,6 +2,9 @@ import type {
   Branch,
   BranchAdmin,
   BranchId,
+  CalendarEvent,
+  Course,
+  CourseSection,
   DashboardKpis,
   FollowUpRow,
 } from "./admin-types";
@@ -72,6 +75,80 @@ export const branchAdmins: BranchAdmin[] = [
 export function branchName(id: BranchId) {
   return branches.find((b) => b.id === id)?.name.replace(" Branch", "") ?? id;
 }
+
+export const courses: Course[] = [
+  {
+    id: "beginner",
+    name: "Beginner",
+    level: "Beginner",
+    description:
+      "Introduction to basic rules, and tactics, mainly for whom gets started learning chess.",
+    activeSections: 6,
+    students: 100,
+    creditsSold: "1.2k",
+    capacity: 20,
+    fillPct: 30,
+  },
+  {
+    id: "intermediate",
+    name: "Intermediate",
+    level: "Intermediate",
+    description:
+      "Sharpen openings, middlegame plans and endgame technique for club-level play.",
+    activeSections: 6,
+    students: 100,
+    creditsSold: "1.2k",
+    capacity: 20,
+    fillPct: 65,
+  },
+  {
+    id: "advance",
+    name: "Advance",
+    level: "Advance",
+    description:
+      "Tournament preparation with deep strategy, calculation training and analysis.",
+    activeSections: 6,
+    students: 100,
+    creditsSold: "1.2k",
+    capacity: 20,
+    fillPct: 55,
+  },
+];
+
+export const courseSections: CourseSection[] = [
+  {
+    id: "sec101",
+    name: "Section 101",
+    branchId: "bangkok",
+    schedule: "Mon/Wed 9:00 AM",
+    teacher: "Serene",
+    students: 12,
+    capacity: 20,
+  },
+  {
+    id: "sec301",
+    name: "Section 301",
+    branchId: "onnut",
+    schedule: "Sun 9:00 AM",
+    teacher: "Serene",
+    students: 16,
+    capacity: 20,
+  },
+];
+
+export const calendarEvents: CalendarEvent[] = [
+  { title: "Section 101", day: 0, start: 9, end: 10.5, tone: "olive", branch: "Bangkok" },
+  { title: "Section 101", day: 2, start: 9, end: 10.5, tone: "olive", branch: "Bangkok" },
+  { title: "Section 101", day: 4, start: 9, end: 10.5, tone: "olive", branch: "Bangkok" },
+  { title: "Section 102", day: 1, start: 13, end: 14.5, tone: "navy", branch: "Bangkok" },
+  { title: "Section 102", day: 3, start: 13, end: 14.5, tone: "navy", branch: "Bangkok" },
+  { title: "Section 103", day: 5, start: 10, end: 11.5, tone: "peach", branch: "Onnut" },
+  { title: "Section 103", day: 6, start: 9, end: 10.5, tone: "peach", branch: "Onnut" },
+  { title: "Section 105", day: 0, start: 15, end: 16.5, tone: "brick", branch: "Bangkok" },
+  { title: "Section 105", day: 2, start: 15, end: 16.5, tone: "brick", branch: "Bangkok" },
+  { title: "Section 106", day: 5, start: 14, end: 15.5, tone: "navy", branch: "Bangkok" },
+  { title: "Section 106", day: 6, start: 16, end: 17.5, tone: "navy", branch: "Bangkok" },
+];
 
 export const dashboardKpis: DashboardKpis = {
   revenue: "฿55,000",
