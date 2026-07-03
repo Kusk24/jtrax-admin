@@ -1,0 +1,47 @@
+{
+  "landing": {
+    "tagline": "Choose how you want to sign in",
+    "superAdminLabel": "Super Admin",
+    "superAdminDesc": "Manage branches, branch admins and the whole school.",
+    "branchAdminLabel": "Branch Admin",
+    "branchAdminDesc": "Manage your branch's teachers, students and classes.",
+    "tempNote": "Temporary role selection — will be replaced by login once the backend is ready."
+  },
+  "nav": {
+    "home": "Home",
+    "profile": "Profile",
+    "superAdminPortal": "Super admin portal",
+    "branchAdminPortal": "Branch admin portal",
+    "switchRole": "Switch role"
+  },
+  "common": {
+    "hi": "Hi, {name} !",
+    "viewAll": "View All",
+    "showLess": "Show Less",
+    "edit": "Edit",
+    "done": "Done",
+    "back": "Back",
+    "notifications": "Notifications",
+    "myProfile": "My profile",
+    "idLabel": "ID: {id}",
+    "language": "Language",
+    "superAdminBadge": "Super Admin",
+    "branchAdminBadge": "Branch Admin"
+  },
+  "days": {
+    "MON": "MON",
+    "TUE": "TUE",
+    "WED": "WED",
+    "THU": "THU",
+    "FRI": "FRI",
+    "SAT": "SAT",
+    "SUN": "SUN",
+    "today": "Today"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "all": "All",
+    "unread": "Unread",
+    "empty": "No notifications."
+  }
+}
