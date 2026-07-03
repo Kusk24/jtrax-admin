@@ -30,7 +30,7 @@ function SelectInput({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function AddStudentForm() {
+export function AddStudentForm({ base = "/super" }: { base?: string }) {
   const router = useRouter();
   const [submitted, setSubmitted] = useState(false);
   const t = useTranslations("addStudent");
@@ -63,7 +63,7 @@ export function AddStudentForm() {
     <div className="mx-auto max-w-2xl">
       <div className="flex items-center gap-3">
         <Link
-          href="/super/students"
+          href={`${base}/students`}
           aria-label={tc("back")}
           className="grid size-9 place-items-center rounded-xl border-2 border-line text-navy transition-colors hover:border-navy/40"
         >
@@ -103,13 +103,13 @@ export function AddStudentForm() {
           <div className="mt-5 flex flex-wrap justify-center gap-2">
             <button
               type="button"
-              onClick={() => router.push("/super/students")}
+              onClick={() => router.push(`${base}/students`)}
               className="cursor-pointer rounded-full border-2 border-line bg-card px-5 py-2 text-xs font-bold text-ink transition-colors hover:border-navy/40"
             >
               {t("finish")}
             </button>
             <Link
-              href="/super/payments/new"
+              href={`${base}/payments/new`}
               className="rounded-full bg-navy px-5 py-2 text-xs font-bold text-white shadow-clay transition-colors hover:bg-navy-deep"
             >
               {t("recordPayment")}
@@ -170,7 +170,7 @@ export function AddStudentForm() {
 
           <div className="mt-6 flex flex-wrap justify-between gap-2">
             <Link
-              href="/super/students"
+              href={`${base}/students`}
               className="rounded-full border-2 border-line bg-card px-5 py-2 text-xs font-bold text-ink transition-colors hover:border-navy/40"
             >
               {tc("cancel")}

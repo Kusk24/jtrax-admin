@@ -165,7 +165,9 @@ export function GroupedBarsChart({
           contentStyle={tooltipStyle}
           cursor={{ fill: "rgba(228, 224, 216, 0.35)" }}
         />
-        <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+        {series.length > 1 && (
+          <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+        )}
         {series.map((s) => (
           <Bar
             isAnimationActive={false}
@@ -173,7 +175,7 @@ export function GroupedBarsChart({
             dataKey={s.key}
             name={s.label}
             fill={s.color}
-            barSize={10}
+            barSize={series.length > 1 ? 10 : 28}
             radius={[3, 3, 0, 0]}
           />
         ))}

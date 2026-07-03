@@ -55,7 +55,7 @@ function SelectInput({
   );
 }
 
-export function AddPaymentForm() {
+export function AddPaymentForm({ base = "/super" }: { base?: string }) {
   const router = useRouter();
   const t = useTranslations("addPayment");
   const tp = useTranslations("paymentsPage");
@@ -82,7 +82,7 @@ export function AddPaymentForm() {
     <div className="mx-auto max-w-2xl">
       <div className="flex items-center gap-3">
         <Link
-          href="/super/payments"
+          href={`${base}/payments`}
           aria-label={tc("back")}
           className="grid size-9 place-items-center rounded-xl border-2 border-line text-navy transition-colors hover:border-navy/40"
         >
@@ -100,7 +100,7 @@ export function AddPaymentForm() {
         className="mt-5 rounded-card border-2 border-line bg-card p-5 shadow-clay sm:p-6"
         onSubmit={(e) => {
           e.preventDefault();
-          router.push("/super/payments");
+          router.push(`${base}/payments`);
         }}
       >
         <h2 className={sectionTitle}>{t("fromTitle")}</h2>
@@ -282,7 +282,7 @@ export function AddPaymentForm() {
 
         <div className="mt-4 flex flex-wrap justify-between gap-2">
           <Link
-            href="/super/payments"
+            href={`${base}/payments`}
             className="rounded-full border-2 border-line bg-card px-5 py-2 text-xs font-bold text-ink transition-colors hover:border-navy/40"
           >
             {tc("cancel")}

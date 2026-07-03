@@ -32,7 +32,10 @@ function fmt(v: number) {
 const chipCls =
   "inline-flex cursor-pointer items-center gap-1.5 rounded-full border-2 border-line bg-card px-3 py-1.5 text-[11px] font-bold text-ink transition-colors hover:border-navy/40";
 
-export function WeekCalendar() {
+export function WeekCalendar({ branch }: { branch?: string }) {
+  const events = branch
+    ? calendarEvents.filter((e) => e.branch === branch)
+    : calendarEvents;
   const t = useTranslations("courseDetail");
   const td = useTranslations("days");
   const rows = (endHour - startHour) * 2;
@@ -116,7 +119,7 @@ export function WeekCalendar() {
                 />
               )),
             )}
-            {calendarEvents.map((event, i) => (
+            {events.map((event, i) => (
               <div
                 key={`${event.title}-${i}`}
                 className={`z-10 m-0.5 overflow-hidden rounded-lg border-l-4 px-1.5 py-1 text-[9px] leading-tight text-ink ${toneCls[event.tone]}`}

@@ -4,9 +4,16 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Bell, TriangleAlert } from "lucide-react";
 import { attendanceAlerts, notificationLogs } from "@/lib/super-data";
+import type { BranchId } from "@/lib/admin-types";
 
-export function AlertsPanel() {
+export function AlertsPanel({ branch }: { branch?: BranchId }) {
   const [openId, setOpenId] = useState<string | null>(null);
+  const alerts = branch
+    ? attendanceAlerts.filter((a) => a.branchId === branch)
+    : attendanceAlerts;
+  const logs = branch
+    ? notificationLogs.filter((l) => l.branchId === branch)
+    : notificationLogs;
   const t = useTranslations("attendancePage");
   const tc = useTranslations("common");
 
@@ -18,7 +25,7 @@ export function AlertsPanel() {
           {t("alerts")}
         </h2>
         <div className="mt-3 grid gap-2.5 lg:grid-cols-2">
-          {attendanceAlerts.map((alert) => (
+          {alerts.map((alert) => (
             <div key={alert.id}>
               <div className="flex items-center gap-2.5 rounded-xl border-2 border-brick-soft bg-brick-soft/40 p-3">
                 <span className="grid size-9 shrink-0 place-items-center rounded-full bg-brick-soft text-xs font-bold text-maroon ring-2 ring-card">
@@ -89,7 +96,7 @@ export function AlertsPanel() {
           {t("notificationLogs")}
         </h2>
         <div className="mt-3 grid gap-2.5">
-          {notificationLogs.map((log) => (
+          {logs.map((log) => (
             <div key={log.name} className="flex items-center gap-2.5">
               <span className="grid size-9 shrink-0 place-items-center rounded-full bg-navy-soft text-xs font-bold text-navy ring-2 ring-card">
                 {log.name[0]}

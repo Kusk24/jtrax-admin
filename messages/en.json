@@ -325,6 +325,7 @@
   "dash": {
     "title": "Dashboard",
     "subtitle": "This is the overview for all branches.",
+    "subtitleBranch": "This is the overview for {branch} Branch.",
     "totalRevenue": "Total Revenue",
     "thisMonth": "This month ({pct})",
     "totalBranches": "Total Branches",

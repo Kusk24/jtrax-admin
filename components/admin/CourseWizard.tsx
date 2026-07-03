@@ -39,10 +39,19 @@ interface SectionDraft {
   label: string;
 }
 
-export function CourseWizard() {
+export function CourseWizard({
+  base = "/super",
+  branchScope,
+}: {
+  base?: string;
+  branchScope?: BranchId;
+}) {
   const router = useRouter();
   const t = useTranslations("wizard");
   const tc = useTranslations("common");
+  const branchOptions = branchScope
+    ? branches.filter((b) => b.id === branchScope)
+    : branches;
 
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
@@ -176,7 +185,7 @@ export function CourseWizard() {
         <div className="mt-5">
           <p className="text-xs font-bold text-ink">{t("selectBranches")}</p>
           <div className="mt-3 grid gap-2.5">
-            {branches.map((branch) => {
+            {branchOptions.map((branch) => {
               const count = counts[branch.id];
               return (
                 <div
@@ -323,7 +332,7 @@ export function CourseWizard() {
         <button
           type="button"
           onClick={() =>
-            step === 0 ? router.push("/super/courses") : setStep(step - 1)
+            step === 0 ? router.push(`${base}/courses`) : setStep(step - 1)
           }
           className="cursor-pointer rounded-full border-2 border-line bg-card px-5 py-2 text-xs font-bold text-ink transition-colors hover:border-navy/40"
         >
@@ -332,7 +341,7 @@ export function CourseWizard() {
         <button
           type="button"
           onClick={() =>
-            step === 3 ? router.push("/super/courses") : setStep(step + 1)
+            step === 3 ? router.push(`${base}/courses`) : setStep(step + 1)
           }
           className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-navy px-5 py-2 text-xs font-bold text-white shadow-clay transition-colors hover:bg-navy-deep"
         >

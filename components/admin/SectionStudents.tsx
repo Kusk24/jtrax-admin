@@ -13,6 +13,7 @@ import {
 import { PawnIcon } from "./PawnIcon";
 import { StatusChip } from "./StatusChip";
 import { branchName, courseSections, followUps } from "@/lib/super-data";
+import type { BranchId } from "@/lib/admin-types";
 
 /* Which mock students sit in which section. */
 const sectionStudentIds: Record<string, string[]> = {
@@ -25,13 +26,16 @@ const sectionTone: Record<string, string> = {
   sec301: "bg-olive-soft text-olive",
 };
 
-export function SectionStudents() {
-  const [active, setActive] = useState(courseSections[0].id);
+export function SectionStudents({ branch }: { branch?: BranchId }) {
+  const sections = branch
+    ? courseSections.filter((s) => s.branchId === branch)
+    : courseSections;
+  const [active, setActive] = useState(sections[0].id);
   const t = useTranslations("courseDetail");
   const tdash = useTranslations("dash");
   const tc = useTranslations("common");
 
-  const section = courseSections.find((s) => s.id === active) ?? courseSections[0];
+  const section = sections.find((s) => s.id === active) ?? sections[0];
   const students = followUps.filter((f) =>
     (sectionStudentIds[section.id] ?? []).includes(f.id),
   );
@@ -40,7 +44,7 @@ export function SectionStudents() {
     <div>
       <p className="text-xs font-bold text-ink">{t("selectSection")}</p>
       <div className="mt-2 flex flex-wrap gap-2.5">
-        {courseSections.map((s) => (
+        {sections.map((s) => (
           <button
             key={s.id}
             type="button"
