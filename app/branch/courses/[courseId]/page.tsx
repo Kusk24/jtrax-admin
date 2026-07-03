@@ -1,0 +1,10 @@
+import { CourseDetailPage } from "@/components/admin/pages/CourseDetailPage";
+
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ courseId: string }>;
+}) {
+  const { courseId } = await params;
+  return <CourseDetailPage courseId={courseId} branch="bangkok" />;
+}
