@@ -35,7 +35,7 @@ export function CreditTrendChart({
 }) {
   return (
     <ResponsiveContainer width="100%" height={230}>
-      <AreaChart data={data} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
+      <AreaChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id="creditFill" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={chart.navy} stopOpacity={0.28} />
@@ -50,6 +50,7 @@ export function CreditTrendChart({
           cursor={{ stroke: chart.grid, strokeWidth: 2 }}
         />
         <Area
+          isAnimationActive={false}
           type="monotone"
           dataKey="credits"
           name={label}
@@ -90,6 +91,7 @@ export function HorizontalBarsChart({
           cursor={{ fill: "rgba(228, 224, 216, 0.35)" }}
         />
         <Bar
+          isAnimationActive={false}
           dataKey="value"
           barSize={16}
           radius={[0, 4, 4, 0]}
@@ -124,6 +126,7 @@ export function DistributionChart({
         endAngle={-270}
       >
         <RadialBar
+          isAnimationActive={false}
           dataKey="value"
           cornerRadius={8}
           background={{ fill: chart.track }}
@@ -146,7 +149,7 @@ export function GroupedBarsChart({
     <ResponsiveContainer width="100%" height={280}>
       <BarChart
         data={data}
-        margin={{ top: 8, right: 8, left: -16, bottom: 0 }}
+        margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
         barGap={2}
       >
         <CartesianGrid stroke={chart.grid} vertical={false} />
@@ -165,6 +168,7 @@ export function GroupedBarsChart({
         <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
         {series.map((s) => (
           <Bar
+            isAnimationActive={false}
             key={s.key}
             dataKey={s.key}
             name={s.label}
@@ -185,7 +189,7 @@ export function WeekAttendanceChart({
 }) {
   return (
     <ResponsiveContainer width="100%" height={230}>
-      <BarChart data={data} margin={{ top: 16, right: 8, left: -16, bottom: 0 }}>
+      <BarChart data={data} margin={{ top: 16, right: 8, left: 0, bottom: 0 }}>
         <CartesianGrid stroke={chart.grid} vertical={false} />
         <XAxis dataKey="label" tick={tick} axisLine={false} tickLine={false} />
         <YAxis
@@ -199,7 +203,13 @@ export function WeekAttendanceChart({
           contentStyle={tooltipStyle}
           cursor={{ fill: "rgba(228, 224, 216, 0.35)" }}
         />
-        <Bar dataKey="rate" fill={chart.navy} barSize={28} radius={[4, 4, 0, 0]}>
+        <Bar
+          isAnimationActive={false}
+          dataKey="rate"
+          fill={chart.navy}
+          barSize={28}
+          radius={[4, 4, 0, 0]}
+        >
           <LabelList
             dataKey="rate"
             position="top"
