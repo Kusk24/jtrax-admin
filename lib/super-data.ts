@@ -150,6 +150,25 @@ export const calendarEvents: CalendarEvent[] = [
   { title: "Section 106", day: 6, start: 16, end: 17.5, tone: "navy", branch: "Bangkok" },
 ];
 
+export const teacherRows = [
+  {
+    id: "t1",
+    name: "Serene",
+    branches: "Bangkok, Onnut",
+    classes: "Beginner (Sec101), Beginner (Sec301)",
+    weeklyHours: "9h",
+    creditsConsumed: 900,
+  },
+  {
+    id: "t2",
+    name: "Matalada",
+    branches: "Bangkok",
+    classes: "Intermediate (Sec102)",
+    weeklyHours: "6h",
+    creditsConsumed: 600,
+  },
+];
+
 export const dashboardKpis: DashboardKpis = {
   revenue: "฿55,000",
   revenueDelta: "+10%",
