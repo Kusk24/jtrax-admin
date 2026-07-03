@@ -108,6 +108,27 @@
     "colWeeklyHours": "Weekly Hours",
     "colCredits": "Credits Consumed (this month)"
   },
+  "studentsPage": {
+    "title": "Student Management",
+    "subtitle": "This page is for managing students.",
+    "add": "Add Student",
+    "total": "Total Students ({count})",
+    "statusFilter": "Status"
+  },
+  "studentProfile": {
+    "title": "Student Profile",
+    "levelAge": "{level} | {age} years old",
+    "remainingCredits": "Remaining Credits",
+    "validUntil": "Valid until {date}",
+    "creditsOf": "{left}/{total} credits",
+    "parentsContact": "Parents Contact",
+    "enrolledClasses": "Enrolled Classes",
+    "classesOf": "{attended}/{total} classes",
+    "callTo": "Call {name}",
+    "emailTo": "Email {name}",
+    "mother": "Mother",
+    "father": "Father"
+  },
   "wizard": {
     "title": "Add New Course",
     "stepBasic": "Basic Info",

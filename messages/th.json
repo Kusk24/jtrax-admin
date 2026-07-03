@@ -108,6 +108,27 @@
     "colWeeklyHours": "ชั่วโมงสอนต่อสัปดาห์",
     "colCredits": "เครดิตที่ใช้ไป (เดือนนี้)"
   },
+  "studentsPage": {
+    "title": "จัดการนักเรียน",
+    "subtitle": "หน้านี้ใช้จัดการนักเรียนทั้งหมด",
+    "add": "เพิ่มนักเรียน",
+    "total": "นักเรียนทั้งหมด ({count})",
+    "statusFilter": "สถานะ"
+  },
+  "studentProfile": {
+    "title": "โปรไฟล์นักเรียน",
+    "levelAge": "ระดับ {level} | อายุ {age} ปี",
+    "remainingCredits": "เครดิตคงเหลือ",
+    "validUntil": "ใช้ได้ถึง {date}",
+    "creditsOf": "{left}/{total} เครดิต",
+    "parentsContact": "ข้อมูลติดต่อผู้ปกครอง",
+    "enrolledClasses": "คลาสที่ลงทะเบียน",
+    "classesOf": "{attended}/{total} คลาส",
+    "callTo": "โทรหา {name}",
+    "emailTo": "ส่งอีเมลถึง {name}",
+    "mother": "แม่",
+    "father": "พ่อ"
+  },
   "wizard": {
     "title": "เพิ่มคอร์สใหม่",
     "stepBasic": "ข้อมูลพื้นฐาน",
