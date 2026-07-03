@@ -97,6 +97,17 @@
     "edit": "Edit Course",
     "remove": "Remove Course"
   },
+  "teachersPage": {
+    "title": "Teacher Management",
+    "subtitle": "This page is for managing teachers.",
+    "add": "Add Teacher",
+    "total": "Total Teachers ({count})",
+    "colTeacher": "Teacher",
+    "colBranch": "Branch",
+    "colClass": "Class",
+    "colWeeklyHours": "Weekly Hours",
+    "colCredits": "Credits Consumed (this month)"
+  },
   "wizard": {
     "title": "Add New Course",
     "stepBasic": "Basic Info",
