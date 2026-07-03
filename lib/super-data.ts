@@ -154,6 +154,7 @@ export const teacherRows = [
   {
     id: "t1",
     name: "Serene",
+    branchIds: ["bangkok", "onnut"] as BranchId[],
     branches: "Bangkok, Onnut",
     classes: "Beginner (Sec101), Beginner (Sec301)",
     weeklyHours: "9h",
@@ -162,6 +163,7 @@ export const teacherRows = [
   {
     id: "t2",
     name: "Matalada",
+    branchIds: ["bangkok"] as BranchId[],
     branches: "Bangkok",
     classes: "Intermediate (Sec102)",
     weeklyHours: "6h",
@@ -230,21 +232,35 @@ export const attendanceAlerts = [
     id: "u6612127",
     name: "Penny",
     missed: 5,
-    meta: "Beginner | Bangbo",
+    branchId: "bangkok" as BranchId,
+    meta: "Beginner | Bangkok",
     guardian: "Kim Ji Won",
   },
   {
     id: "u6612128",
     name: "Uri",
     missed: 4,
+    branchId: "bangbo" as BranchId,
     meta: "Beginner | Bangbo",
     guardian: "Kim Ji Won",
   },
 ];
 
 export const notificationLogs = [
-  { name: "Penny", stamp: "12.5.26 | 8:10 AM" },
+  { name: "Penny", branchId: "bangkok" as BranchId, stamp: "12.5.26 | 8:10 AM" },
 ];
+
+/* KPI set for a single-branch dashboard (branch admin view). */
+export const branchDashboardKpis = {
+  revenue: "฿28,000",
+  revenueDelta: "+10%",
+  teachers: 8,
+  students: 142,
+  studentsDelta: "+6%",
+  attendanceRate: "88%",
+  attendanceDelta: "-2%",
+  criticalStudents: 12,
+};
 
 export const dashboardKpis: DashboardKpis = {
   revenue: "฿55,000",
