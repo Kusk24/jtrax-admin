@@ -83,6 +83,20 @@
     "cloneTeachers": "คุณครู",
     "cloneBranch": "คัดลอกสาขา"
   },
+  "coursesPage": {
+    "title": "จัดการคอร์สเรียน",
+    "subtitle": "หน้านี้ใช้จัดการคอร์สเรียนทั้งหมด",
+    "add": "เพิ่มคอร์สใหม่",
+    "totalClasses": "คลาสทั้งหมด ({count})",
+    "description": "คำอธิบาย",
+    "activeSections": "กลุ่มเรียนที่เปิดสอน",
+    "totalStudents": "นักเรียนทั้งหมด",
+    "creditsSold": "เครดิตที่ขายแล้ว",
+    "capacity": "จำนวนที่รับ",
+    "fillRate": "อัตราการเต็ม",
+    "edit": "แก้ไขคอร์ส",
+    "remove": "ลบคอร์ส"
+  },
   "tabs": {
     "overview": "ภาพรวม",
     "courses": "คอร์สเรียน",

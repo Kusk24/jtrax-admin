@@ -35,6 +35,30 @@ export interface FollowUpRow {
   followUp: FollowUpStatus;
 }
 
+export type CourseLevel = "Beginner" | "Intermediate" | "Advance";
+
+export interface Course {
+  id: string;
+  name: string;
+  level: CourseLevel;
+  description: string;
+  activeSections: number;
+  students: number;
+  creditsSold: string;
+  capacity: number;
+  fillPct: number;
+}
+
+export interface CourseSection {
+  id: string;
+  name: string;
+  branchId: BranchId;
+  schedule: string;
+  teacher: string;
+  students: number;
+  capacity: number;
+}
+
 export interface DashboardKpis {
   revenue: string;
   revenueDelta: string;

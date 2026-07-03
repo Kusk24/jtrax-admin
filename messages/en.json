@@ -83,6 +83,20 @@
     "cloneTeachers": "Teachers",
     "cloneBranch": "Clone Branch"
   },
+  "coursesPage": {
+    "title": "Course Management",
+    "subtitle": "This page is for managing courses.",
+    "add": "Add New Course",
+    "totalClasses": "Total Classes ({count})",
+    "description": "Description",
+    "activeSections": "Total Active Sections",
+    "totalStudents": "Total Students",
+    "creditsSold": "Credits Sold",
+    "capacity": "Capacity",
+    "fillRate": "Fill Rate",
+    "edit": "Edit Course",
+    "remove": "Remove Course"
+  },
   "tabs": {
     "overview": "Overview",
     "courses": "Courses",

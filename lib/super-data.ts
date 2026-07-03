@@ -2,6 +2,8 @@ import type {
   Branch,
   BranchAdmin,
   BranchId,
+  Course,
+  CourseSection,
   DashboardKpis,
   FollowUpRow,
 } from "./admin-types";
@@ -72,6 +74,66 @@ export const branchAdmins: BranchAdmin[] = [
 export function branchName(id: BranchId) {
   return branches.find((b) => b.id === id)?.name.replace(" Branch", "") ?? id;
 }
+
+export const courses: Course[] = [
+  {
+    id: "beginner",
+    name: "Beginner",
+    level: "Beginner",
+    description:
+      "Introduction to basic rules, and tactics, mainly for whom gets started learning chess.",
+    activeSections: 6,
+    students: 100,
+    creditsSold: "1.2k",
+    capacity: 20,
+    fillPct: 30,
+  },
+  {
+    id: "intermediate",
+    name: "Intermediate",
+    level: "Intermediate",
+    description:
+      "Sharpen openings, middlegame plans and endgame technique for club-level play.",
+    activeSections: 6,
+    students: 100,
+    creditsSold: "1.2k",
+    capacity: 20,
+    fillPct: 65,
+  },
+  {
+    id: "advance",
+    name: "Advance",
+    level: "Advance",
+    description:
+      "Tournament preparation with deep strategy, calculation training and analysis.",
+    activeSections: 6,
+    students: 100,
+    creditsSold: "1.2k",
+    capacity: 20,
+    fillPct: 55,
+  },
+];
+
+export const courseSections: CourseSection[] = [
+  {
+    id: "sec101",
+    name: "Section 101",
+    branchId: "bangkok",
+    schedule: "Mon/Wed 9:00 AM",
+    teacher: "Serene",
+    students: 12,
+    capacity: 20,
+  },
+  {
+    id: "sec301",
+    name: "Section 301",
+    branchId: "onnut",
+    schedule: "Sun 9:00 AM",
+    teacher: "Serene",
+    students: 16,
+    capacity: 20,
+  },
+];
 
 export const dashboardKpis: DashboardKpis = {
   revenue: "฿55,000",
