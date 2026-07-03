@@ -1,0 +1,41 @@
+export type BranchId = "bangkok" | "onnut" | "bangbo";
+
+export interface Branch {
+  id: BranchId;
+  name: string;
+  managerName: string;
+  phone: string;
+  email: string;
+  students: number;
+  teachers: number;
+  creditsSold: string;
+  revenue: string;
+}
+
+export type StudentAlert = "expiring" | "lowCredit" | "healthy" | "expired";
+export type FollowUpStatus = "notContacted" | "contacted" | "renewed" | "none";
+
+export interface FollowUpRow {
+  id: string;
+  name: string;
+  branchId: BranchId;
+  className: string;
+  creditsLeft: number;
+  creditsTotal: number;
+  expireDate: string;
+  alert: StudentAlert;
+  followUp: FollowUpStatus;
+}
+
+export interface DashboardKpis {
+  revenue: string;
+  revenueDelta: string;
+  branches: number;
+  cities: number;
+  teachers: number;
+  students: number;
+  studentsDelta: string;
+  attendanceRate: string;
+  attendanceDelta: string;
+  criticalStudents: number;
+}
