@@ -2,6 +2,7 @@ import type {
   Branch,
   BranchAdmin,
   BranchId,
+  CalendarEvent,
   Course,
   CourseSection,
   DashboardKpis,
@@ -133,6 +134,20 @@ export const courseSections: CourseSection[] = [
     students: 16,
     capacity: 20,
   },
+];
+
+export const calendarEvents: CalendarEvent[] = [
+  { title: "Section 101", day: 0, start: 9, end: 10.5, tone: "olive", branch: "Bangkok" },
+  { title: "Section 101", day: 2, start: 9, end: 10.5, tone: "olive", branch: "Bangkok" },
+  { title: "Section 101", day: 4, start: 9, end: 10.5, tone: "olive", branch: "Bangkok" },
+  { title: "Section 102", day: 1, start: 13, end: 14.5, tone: "navy", branch: "Bangkok" },
+  { title: "Section 102", day: 3, start: 13, end: 14.5, tone: "navy", branch: "Bangkok" },
+  { title: "Section 103", day: 5, start: 10, end: 11.5, tone: "peach", branch: "Onnut" },
+  { title: "Section 103", day: 6, start: 9, end: 10.5, tone: "peach", branch: "Onnut" },
+  { title: "Section 105", day: 0, start: 15, end: 16.5, tone: "brick", branch: "Bangkok" },
+  { title: "Section 105", day: 2, start: 15, end: 16.5, tone: "brick", branch: "Bangkok" },
+  { title: "Section 106", day: 5, start: 14, end: 15.5, tone: "navy", branch: "Bangkok" },
+  { title: "Section 106", day: 6, start: 16, end: 17.5, tone: "navy", branch: "Bangkok" },
 ];
 
 export const dashboardKpis: DashboardKpis = {

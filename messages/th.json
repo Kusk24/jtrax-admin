@@ -132,6 +132,29 @@
   "branchDetail": {
     "sectionsCount": "{count} กลุ่มเรียน"
   },
+  "courseDetail": {
+    "addSection": "เพิ่มกลุ่มเรียนใหม่",
+    "totalSections": "กลุ่มเรียนทั้งหมด ({count})",
+    "colSection": "กลุ่มเรียน",
+    "colBranch": "สาขา",
+    "colSchedule": "ตารางเวลา",
+    "colTeacher": "คุณครู",
+    "colStudents": "นักเรียน",
+    "colStatus": "สถานะ",
+    "branchFilter": "สาขา",
+    "schedulesTitle": "ตารางเวลา",
+    "addSchedule": "เพิ่มตารางเวลาใหม่",
+    "selectSection": "เลือกกลุ่มเรียน",
+    "studentsOf": "นักเรียน {count}/{capacity} คน",
+    "avgAttendance": "เข้าเรียนเฉลี่ย {pct}%",
+    "highRisk": "นักเรียนกลุ่มเสี่ยง {count} คน",
+    "highRiskDetail": "ใกล้หมดอายุ {expiring} คน · เครดิตน้อย {lowCredits} คน",
+    "week": "สัปดาห์",
+    "filter": "ตัวกรอง",
+    "export": "ส่งออก",
+    "prevWeek": "สัปดาห์ก่อนหน้า",
+    "nextWeek": "สัปดาห์ถัดไป"
+  },
   "dash": {
     "title": "แดชบอร์ด",
     "subtitle": "ภาพรวมของทุกสาขา",

@@ -132,6 +132,29 @@
   "branchDetail": {
     "sectionsCount": "{count} sections"
   },
+  "courseDetail": {
+    "addSection": "Add New Section",
+    "totalSections": "Total sections ({count})",
+    "colSection": "Section",
+    "colBranch": "Branch",
+    "colSchedule": "Schedule",
+    "colTeacher": "Teacher",
+    "colStudents": "Students",
+    "colStatus": "Status",
+    "branchFilter": "Branch",
+    "schedulesTitle": "Schedules",
+    "addSchedule": "Add New Schedule",
+    "selectSection": "Select Section",
+    "studentsOf": "{count}/{capacity} Students",
+    "avgAttendance": "{pct}% Avg Attendance",
+    "highRisk": "{count} high risk students",
+    "highRiskDetail": "{expiring} expiring · {lowCredits} low credits",
+    "week": "Week",
+    "filter": "Filter",
+    "export": "Export",
+    "prevWeek": "Previous week",
+    "nextWeek": "Next week"
+  },
   "dash": {
     "title": "Dashboard",
     "subtitle": "This is the overview for all branches.",

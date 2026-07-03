@@ -59,6 +59,15 @@ export interface CourseSection {
   capacity: number;
 }
 
+export interface CalendarEvent {
+  title: string;
+  day: number;
+  start: number;
+  end: number;
+  tone: "olive" | "navy" | "brick" | "peach";
+  branch: string;
+}
+
 export interface DashboardKpis {
   revenue: string;
   revenueDelta: string;
