@@ -54,7 +54,34 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Graphite grain over everything — flat digital fills read as pencil strokes. */
+/* Pencil shading, three layers over everything:
+   1. directional hatching strokes (two angles, like resting a pencil sideways)
+   2. soft graphite smudges drifting around the canvas edges
+   3. paper-tooth grain (SVG turbulence — URI fully encoded, spaces break it) */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  background-image:
+    repeating-linear-gradient(
+      112deg,
+      rgb(70 62 52 / 0.055) 0 1px,
+      transparent 1px 6px
+    ),
+    repeating-linear-gradient(
+      64deg,
+      rgb(70 62 52 / 0.04) 0 1px,
+      transparent 1px 10px
+    ),
+    radial-gradient(240px 150px at 6% 10%, rgb(88 78 64 / 0.07), transparent 70%),
+    radial-gradient(200px 130px at 94% 22%, rgb(88 78 64 / 0.06), transparent 70%),
+    radial-gradient(260px 170px at 18% 92%, rgb(88 78 64 / 0.06), transparent 70%),
+    radial-gradient(180px 120px at 78% 80%, rgb(88 78 64 / 0.05), transparent 70%);
+}
+
 body::after {
   content: "";
   position: fixed;
@@ -62,8 +89,7 @@ body::after {
   z-index: 9999;
   pointer-events: none;
   mix-blend-mode: multiply;
-  opacity: 0.9;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.44 0 0 0 0 0.41 0 0 0 0 0.35 0 0 0 0.16 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='260'%20height='260'%3E%3Cfilter%20id='p'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.8'%20numOctaves='3'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20values='0%200%200%200%200.42%200%200%200%200%200.39%200%200%200%200%200.33%200%200%200%200.22%200'/%3E%3C/filter%3E%3Crect%20width='100%25'%20height='100%25'%20filter='url(%23p)'/%3E%3C/svg%3E");
 }
 
 h1,
