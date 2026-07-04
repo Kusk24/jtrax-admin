@@ -47,7 +47,9 @@
     "idLabel": "ID: {id}",
     "language": "Language",
     "superAdminBadge": "Super Admin",
-    "branchAdminBadge": "Branch Admin"
+    "branchAdminBadge": "Branch Admin",
+    "remove": "Remove",
+    "viewDetails": "View details"
   },
   "admins": {
     "title": "Branch Admin Management",

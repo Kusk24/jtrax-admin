@@ -47,7 +47,9 @@
     "idLabel": "รหัส: {id}",
     "language": "ภาษา",
     "superAdminBadge": "ผู้ดูแลระบบส่วนกลาง",
-    "branchAdminBadge": "ผู้ดูแลสาขา"
+    "branchAdminBadge": "ผู้ดูแลสาขา",
+    "remove": "ลบ",
+    "viewDetails": "ดูรายละเอียด"
   },
   "admins": {
     "title": "จัดการผู้ดูแลสาขา",

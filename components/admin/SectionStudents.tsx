@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   CalendarDays,
-  ChevronRight,
   ClipboardList,
   Presentation,
   TriangleAlert,
@@ -12,6 +11,7 @@ import {
 } from "lucide-react";
 import { PawnIcon } from "./PawnIcon";
 import { StatusChip } from "./StatusChip";
+import { RowDetails } from "./RowDetails";
 import { branchName, courseSections, followUps } from "@/lib/super-data";
 import type { BranchId } from "@/lib/admin-types";
 
@@ -34,6 +34,7 @@ export function SectionStudents({ branch }: { branch?: BranchId }) {
   const t = useTranslations("courseDetail");
   const tdash = useTranslations("dash");
   const tc = useTranslations("common");
+  const ts = useTranslations("status");
 
   const section = sections.find((s) => s.id === active) ?? sections[0];
   const students = followUps.filter((f) =>
@@ -168,8 +169,18 @@ export function SectionStudents({ branch }: { branch?: BranchId }) {
                 <td className="px-4 py-3">
                   <StatusChip status={row.alert} />
                 </td>
-                <td className="px-2 py-3 text-muted">
-                  <ChevronRight className="size-4" />
+                <td className="px-2 py-3">
+                  <RowDetails
+                    title={row.name}
+                    subtitle={tc("idLabel", { id: row.id })}
+                    fields={[
+                      { label: tdash("colBranch"), value: branchName(row.branchId) },
+                      { label: tdash("colClass"), value: row.className },
+                      { label: tdash("colCredit"), value: `${row.creditsLeft}/${row.creditsTotal}` },
+                      { label: tdash("colExpired"), value: row.expireDate },
+                      { label: t("colStatus"), value: ts(row.alert) },
+                    ]}
+                  />
                 </td>
               </tr>
             ))}
