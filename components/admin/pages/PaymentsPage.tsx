@@ -1,13 +1,8 @@
 import Link from "next/link";
-import {
-  ChevronDown,
-  ChevronRight,
-  ChevronsUpDown,
-  Plus,
-  Search,
-} from "lucide-react";
+import { ChevronDown, ChevronsUpDown, Plus, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { RowDetails } from "@/components/admin/RowDetails";
 import { branchName, branches, paymentRows } from "@/lib/super-data";
 import type { BranchId } from "@/lib/admin-types";
 
@@ -123,8 +118,19 @@ export function PaymentsPage({
                 <td className="px-4 py-3 font-bold text-ink">฿{row.amount}</td>
                 <td className="px-4 py-3 text-muted">{row.date}</td>
                 <td className="px-4 py-3 text-muted">{t(row.method)}</td>
-                <td className="px-2 py-3 text-muted">
-                  <ChevronRight className="size-4" />
+                <td className="px-2 py-3">
+                  <RowDetails
+                    title={row.student}
+                    subtitle={tc("idLabel", { id: row.studentId })}
+                    fields={[
+                      { label: td("colBranch"), value: branchName(row.branchId) },
+                      { label: td("colClass"), value: row.className },
+                      { label: t("colCredits"), value: String(row.credits) },
+                      { label: t("colAmount"), value: `฿${row.amount}` },
+                      { label: t("colDate"), value: row.date },
+                      { label: t("colMethod"), value: t(row.method) },
+                    ]}
+                  />
                 </td>
               </tr>
             ))}

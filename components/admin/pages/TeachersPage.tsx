@@ -1,12 +1,7 @@
-import {
-  ChevronDown,
-  ChevronRight,
-  ChevronsUpDown,
-  Plus,
-  Search,
-} from "lucide-react";
+import { ChevronDown, ChevronsUpDown, Plus, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { RowDetails } from "@/components/admin/RowDetails";
 import { branchName, branches, teacherRows } from "@/lib/super-data";
 import type { BranchId } from "@/lib/admin-types";
 
@@ -92,8 +87,16 @@ export function TeachersPage({ branch }: { branch?: BranchId }) {
                 <td className="px-4 py-3 font-bold text-ink">
                   {row.creditsConsumed}
                 </td>
-                <td className="px-2 py-3 text-muted">
-                  <ChevronRight className="size-4" />
+                <td className="px-2 py-3">
+                  <RowDetails
+                    title={row.name}
+                    fields={[
+                      { label: t("colBranch"), value: row.branches },
+                      { label: t("colClass"), value: row.classes },
+                      { label: t("colWeeklyHours"), value: row.weeklyHours },
+                      { label: t("colCredits"), value: String(row.creditsConsumed) },
+                    ]}
+                  />
                 </td>
               </tr>
             ))}

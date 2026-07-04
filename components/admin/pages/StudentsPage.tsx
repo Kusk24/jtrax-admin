@@ -1,14 +1,9 @@
 import Link from "next/link";
-import {
-  ChevronDown,
-  ChevronRight,
-  ChevronsUpDown,
-  Plus,
-  Search,
-} from "lucide-react";
+import { ChevronDown, ChevronsUpDown, Plus, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { StatusChip } from "@/components/admin/StatusChip";
+import { RowDetails } from "@/components/admin/RowDetails";
 import { branchName, branches, followUps } from "@/lib/super-data";
 import type { BranchId } from "@/lib/admin-types";
 
@@ -149,8 +144,19 @@ export function StudentsPage({
                 <td className="px-4 py-3">
                   <StatusChip status={row.followUp} />
                 </td>
-                <td className="px-2 py-3 text-muted">
-                  <ChevronRight className="size-4" />
+                <td className="px-2 py-3">
+                  <RowDetails
+                    title={row.name}
+                    subtitle={tc("idLabel", { id: row.id })}
+                    fields={[
+                      { label: td("colBranch"), value: branchName(row.branchId) },
+                      { label: td("colClass"), value: row.className },
+                      { label: td("colCredit"), value: `${row.creditsLeft}/${row.creditsTotal}` },
+                      { label: td("colExpired"), value: row.expireDate },
+                      { label: td("colAlerts"), value: ts(row.alert) },
+                      { label: td("colFollowUp"), value: row.followUp === "none" ? "–" : ts(row.followUp) },
+                    ]}
+                  />
                 </td>
               </tr>
             ))}

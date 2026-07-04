@@ -47,7 +47,9 @@
     "idLabel": "ID: {id}",
     "language": "Language",
     "superAdminBadge": "Super Admin",
-    "branchAdminBadge": "Branch Admin"
+    "branchAdminBadge": "Branch Admin",
+    "remove": "Remove",
+    "viewDetails": "View details"
   },
   "admins": {
     "title": "Branch Admin Management",
@@ -225,7 +227,9 @@
     "summaryTitle": "Payment Summary",
     "summaryLine": "{children, plural, one {# child} other {# children}} · {courses, plural, one {# course} other {# courses}} · {credits} total credits",
     "totalAmount": "Total Amount",
-    "submit": "Record Combined Payment"
+    "submit": "Record Combined Payment",
+    "discountLabel": "Discount (฿)",
+    "discountLine": "Discount −฿{amount}"
   },
   "addStudent": {
     "title": "Add New Student",
@@ -350,7 +354,11 @@
     "colCredit": "Credit",
     "colExpired": "Expired Date",
     "colAlerts": "Alerts",
-    "colFollowUp": "Follow-up"
+    "colFollowUp": "Follow-up",
+    "quickActions": "Quick Actions",
+    "registerStudent": "Register New Student",
+    "addPayment": "Add Payment",
+    "viewCritical": "View Critical Students"
   },
   "status": {
     "expiring": "Expiring",

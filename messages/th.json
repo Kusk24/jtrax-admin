@@ -47,7 +47,9 @@
     "idLabel": "รหัส: {id}",
     "language": "ภาษา",
     "superAdminBadge": "ผู้ดูแลระบบส่วนกลาง",
-    "branchAdminBadge": "ผู้ดูแลสาขา"
+    "branchAdminBadge": "ผู้ดูแลสาขา",
+    "remove": "ลบ",
+    "viewDetails": "ดูรายละเอียด"
   },
   "admins": {
     "title": "จัดการผู้ดูแลสาขา",
@@ -225,7 +227,9 @@
     "summaryTitle": "สรุปการชำระเงิน",
     "summaryLine": "บุตรหลาน {children} คน · {courses} คอร์ส · รวม {credits} เครดิต",
     "totalAmount": "ยอดรวม",
-    "submit": "บันทึกการชำระรวม"
+    "submit": "บันทึกการชำระรวม",
+    "discountLabel": "ส่วนลด (฿)",
+    "discountLine": "ส่วนลด −฿{amount}"
   },
   "addStudent": {
     "title": "เพิ่มนักเรียนใหม่",
@@ -350,7 +354,11 @@
     "colCredit": "เครดิต",
     "colExpired": "วันหมดอายุ",
     "colAlerts": "สถานะเครดิต",
-    "colFollowUp": "การติดตาม"
+    "colFollowUp": "การติดตาม",
+    "quickActions": "ทางลัด",
+    "registerStudent": "ลงทะเบียนนักเรียนใหม่",
+    "addPayment": "บันทึกการชำระเงิน",
+    "viewCritical": "ดูนักเรียนกลุ่มเสี่ยง"
   },
   "status": {
     "expiring": "ใกล้หมดอายุ",
