@@ -1,33 +1,32 @@
 @import "tailwindcss";
 
 @theme {
-  --color-cream: #f7f4ee;
-  --color-card: #fffdfa;
-  --color-navy: #2b4380;
-  --color-navy-deep: #1f3567;
-  --color-navy-soft: #d9e0ef;
-  --color-ink: #2b2b2b;
-  --color-muted: #8a8a86;
-  --color-line: #e4e0d8;
+  /* Sketch theme: same hues as the digital palette, softened to colored-pencil
+     values on off-white sketchbook paper. */
+  --color-cream: #f1ede1;
+  --color-card: #faf7ee;
+  --color-navy: #3a5088;
+  --color-navy-deep: #2c3f6e;
+  --color-navy-soft: #d5dcea;
+  --color-ink: #3d3831;
+  --color-muted: #837b6c;
+  --color-line: #978e7c;
 
-  --color-brick: #c0392b;
-  --color-brick-soft: #f6d7ce;
-  --color-maroon: #7d3c3c;
+  --color-brick: #b5462f;
+  --color-brick-soft: #eed4c9;
+  --color-maroon: #7d4341;
 
-  --color-olive: #8fa653;
-  --color-olive-soft: #dde3c4;
+  --color-olive: #85994f;
+  --color-olive-soft: #dbdfc0;
 
-  --color-peach: #f8e3c9;
-  --color-peach-ink: #8c3a1e;
+  --color-peach: #f2dfc3;
+  --color-peach-ink: #8c4526;
 
-  /* Cute restyle: chunky clay-style rounding + soft double shadow, same palette. */
   --radius-card: 1.25rem;
 
-  --font-sans: var(--font-nunito), var(--font-mitr), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-fredoka), var(--font-mitr), ui-sans-serif, sans-serif;
-
-  --shadow-clay: 0 4px 12px rgb(43 67 128 / 0.08), 0 1px 2px rgb(43 67 128 / 0.06);
-  --shadow-clay-lg: 0 8px 20px rgb(43 67 128 / 0.12), 0 2px 4px rgb(43 67 128 / 0.06);
+  /* Pencil shading: a hard graphite offset plus a soft smudge. */
+  --shadow-clay: 2px 3px 0 rgb(74 66 54 / 0.14), 4px 6px 7px rgb(74 66 54 / 0.1);
+  --shadow-clay-lg: 3px 4px 0 rgb(74 66 54 / 0.16), 6px 9px 12px rgb(74 66 54 / 0.12);
 
   --animate-pop: pop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 
@@ -41,17 +40,36 @@
   }
 }
 
+/* Font tokens reference next/font runtime vars, so they must be inline —
+   otherwise Tailwind prunes them from :root. */
+@theme inline {
+  --font-sans: var(--font-hand-thai), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-hand-display), var(--font-hand-thai), ui-sans-serif, sans-serif;
+}
+
 body {
   background-color: var(--color-cream);
   color: var(--color-ink);
-  font-family: var(--font-sans);
+  font-family: var(--font-hand-thai), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Graphite grain over everything — flat digital fills read as pencil strokes. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  opacity: 0.9;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.44 0 0 0 0 0.41 0 0 0 0 0.35 0 0 0 0.16 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E");
 }
 
 h1,
 h2,
 h3 {
-  font-family: var(--font-display);
+  font-family: var(--font-hand-display), var(--font-hand-thai), ui-sans-serif, sans-serif;
   letter-spacing: 0.01em;
 }
 
@@ -66,7 +84,7 @@ html[lang="th"] body {
   line-height: 1.65;
 }
 
-/* Squishy press feedback on anything tappable — the "cute" interaction. */
+/* Squishy press feedback on anything tappable. */
 a,
 button {
   transition:
@@ -90,4 +108,29 @@ button:active {
   button:active {
     transform: none;
   }
+}
+
+/* Hand-drawn wobble: corner radii are deliberately uneven so every box looks
+   penciled rather than machine-rounded. Unlayered so it wins over utilities. */
+.rounded-card,
+.rounded-2xl {
+  border-radius: 1.35rem 0.95rem 1.45rem 0.9rem / 0.95rem 1.4rem 0.9rem 1.35rem;
+}
+
+.rounded-3xl {
+  border-radius: 1.7rem 1.25rem 1.8rem 1.15rem / 1.25rem 1.75rem 1.15rem 1.65rem;
+}
+
+.rounded-xl {
+  border-radius: 0.9rem 0.65rem 0.95rem 0.6rem / 0.65rem 0.95rem 0.6rem 0.9rem;
+}
+
+.rounded-lg {
+  border-radius: 0.6rem 0.45rem 0.65rem 0.4rem / 0.45rem 0.65rem 0.4rem 0.6rem;
+}
+
+/* Large uneven radii: the browser scales them down proportionally, so circles
+   and pills keep their shape but wobble slightly. */
+.rounded-full {
+  border-radius: 3rem 2.7rem 2.95rem 2.75rem / 2.75rem 2.95rem 2.7rem 3rem;
 }

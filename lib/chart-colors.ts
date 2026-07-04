@@ -8,11 +8,11 @@ export const chart = {
   brick: "#c0392b",
   olive: "#7e9440",
   rust: "#8c3a1e",
-  grid: "#e4e0d8",
-  tick: "#8a8a86",
-  ink: "#2b2b2b",
-  surface: "#fffdfa",
-  track: "#f2eee6",
+  grid: "#b9b09e",
+  tick: "#837b6c",
+  ink: "#3d3831",
+  surface: "#faf7ee",
+  track: "#e9e3d3",
 } as const;
 
 export const branchChartColor: Record<BranchId, string> = {
