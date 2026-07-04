@@ -227,7 +227,9 @@
     "summaryTitle": "Payment Summary",
     "summaryLine": "{children, plural, one {# child} other {# children}} · {courses, plural, one {# course} other {# courses}} · {credits} total credits",
     "totalAmount": "Total Amount",
-    "submit": "Record Combined Payment"
+    "submit": "Record Combined Payment",
+    "discountLabel": "Discount (฿)",
+    "discountLine": "Discount −฿{amount}"
   },
   "addStudent": {
     "title": "Add New Student",

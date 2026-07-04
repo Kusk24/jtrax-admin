@@ -227,7 +227,9 @@
     "summaryTitle": "สรุปการชำระเงิน",
     "summaryLine": "บุตรหลาน {children} คน · {courses} คอร์ส · รวม {credits} เครดิต",
     "totalAmount": "ยอดรวม",
-    "submit": "บันทึกการชำระรวม"
+    "submit": "บันทึกการชำระรวม",
+    "discountLabel": "ส่วนลด (฿)",
+    "discountLine": "ส่วนลด −฿{amount}"
   },
   "addStudent": {
     "title": "เพิ่มนักเรียนใหม่",

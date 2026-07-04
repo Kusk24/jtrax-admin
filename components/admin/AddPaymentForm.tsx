@@ -71,8 +71,11 @@ export function AddPaymentForm({ base = "/super" }: { base?: string }) {
       list.map((a) => (a.key === key ? { ...a, ...patch } : a)),
     );
 
+  const [discount, setDiscount] = useState(0);
+
   const totalCredits = allocations.reduce((sum, a) => sum + (a.credits || 0), 0);
-  const totalAmount = allocations.reduce((sum, a) => sum + (a.amount || 0), 0);
+  const subtotal = allocations.reduce((sum, a) => sum + (a.amount || 0), 0);
+  const totalAmount = Math.max(0, subtotal - (discount || 0));
   const childCount = new Set(allocations.map((a) => a.student)).size;
 
   const sectionTitle = "text-sm font-semibold text-ink";
@@ -249,6 +252,15 @@ export function AddPaymentForm({ base = "/super" }: { base?: string }) {
               <option>Ms. Matalada</option>
             </SelectInput>
           </Field>
+          <Field label={t("discountLabel")}>
+            <input
+              className={inputCls}
+              type="number"
+              min={0}
+              value={discount}
+              onChange={(e) => setDiscount(Number(e.target.value))}
+            />
+          </Field>
           <div className="sm:col-span-2">
             <Field label={t("reference")}>
               <input className={inputCls} placeholder="TXN-20260823-001" />
@@ -269,6 +281,11 @@ export function AddPaymentForm({ base = "/super" }: { base?: string }) {
                 credits: totalCredits,
               })}
             </p>
+            {discount > 0 && (
+              <p className="text-[11px] font-bold text-brick">
+                {t("discountLine", { amount: discount.toLocaleString() })}
+              </p>
+            )}
           </div>
           <div className="text-right">
             <p className="text-[10px] font-bold text-navy/70">
