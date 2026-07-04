@@ -352,7 +352,11 @@
     "colCredit": "เครดิต",
     "colExpired": "วันหมดอายุ",
     "colAlerts": "สถานะเครดิต",
-    "colFollowUp": "การติดตาม"
+    "colFollowUp": "การติดตาม",
+    "quickActions": "ทางลัด",
+    "registerStudent": "ลงทะเบียนนักเรียนใหม่",
+    "addPayment": "บันทึกการชำระเงิน",
+    "viewCritical": "ดูนักเรียนกลุ่มเสี่ยง"
   },
   "status": {
     "expiring": "ใกล้หมดอายุ",

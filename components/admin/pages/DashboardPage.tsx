@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { ChevronRight, TriangleAlert } from "lucide-react";
+import { ChevronRight, CreditCard, TriangleAlert, UserPlus } from "lucide-react";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { StatusChip } from "@/components/admin/StatusChip";
 import {
@@ -19,7 +19,6 @@ import {
   dashboardKpis,
   followUps,
   levelDistribution,
-  topClassFillRates,
   weekAttendanceRates,
 } from "@/lib/super-data";
 
@@ -75,11 +74,6 @@ export function DashboardPage({
     { label: t("criticalStudents"), value: String(k.criticalStudents), sub: t("needAttention") },
       ];
 
-  const fillRates = topClassFillRates.map((c) => ({
-    name: c.name,
-    value: c.rate,
-    fill: levelChartColor[c.level],
-  }));
   const branchCredits = branchCreditsSold.map((b) => ({
     name: branchName(b.branchId),
     value: b.credits,
@@ -125,9 +119,41 @@ export function DashboardPage({
         <ChartCard title={t("creditTrend")} className="lg:col-span-2">
           <CreditTrendChart data={creditTrend} label={t("creditTrend")} />
         </ChartCard>
-        <ChartCard title={t("topClasses")}>
-          <HorizontalBarsChart data={fillRates} />
-        </ChartCard>
+        <section className="rounded-card border-2 border-line bg-card p-4 shadow-clay">
+          <h2 className="text-sm font-semibold text-ink">{t("quickActions")}</h2>
+          <div className="mt-3 grid gap-2.5">
+            <Link
+              href={`${base}/students/new`}
+              className="flex items-center gap-3 rounded-xl border-2 border-line px-3.5 py-3 text-sm font-bold text-ink transition-colors hover:border-navy/40 hover:text-navy"
+            >
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-navy-soft text-navy">
+                <UserPlus className="size-4" />
+              </span>
+              {t("registerStudent")}
+              <ChevronRight className="ml-auto size-4 text-muted" />
+            </Link>
+            <Link
+              href={`${base}/payments/new`}
+              className="flex items-center gap-3 rounded-xl border-2 border-line px-3.5 py-3 text-sm font-bold text-ink transition-colors hover:border-navy/40 hover:text-navy"
+            >
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-olive-soft text-olive">
+                <CreditCard className="size-4" />
+              </span>
+              {t("addPayment")}
+              <ChevronRight className="ml-auto size-4 text-muted" />
+            </Link>
+            <Link
+              href={`${base}/students`}
+              className="flex items-center gap-3 rounded-xl border-2 border-line px-3.5 py-3 text-sm font-bold text-ink transition-colors hover:border-navy/40 hover:text-navy"
+            >
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brick-soft text-brick">
+                <TriangleAlert className="size-4" />
+              </span>
+              {t("viewCritical")}
+              <ChevronRight className="ml-auto size-4 text-muted" />
+            </Link>
+          </div>
+        </section>
       </div>
 
       <div className={`mt-4 grid gap-4 md:grid-cols-2 ${branch ? "" : "lg:grid-cols-3"}`}>

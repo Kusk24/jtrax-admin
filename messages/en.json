@@ -352,7 +352,11 @@
     "colCredit": "Credit",
     "colExpired": "Expired Date",
     "colAlerts": "Alerts",
-    "colFollowUp": "Follow-up"
+    "colFollowUp": "Follow-up",
+    "quickActions": "Quick Actions",
+    "registerStudent": "Register New Student",
+    "addPayment": "Add Payment",
+    "viewCritical": "View Critical Students"
   },
   "status": {
     "expiring": "Expiring",
