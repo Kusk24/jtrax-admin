@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import {
   Building2,
   ChevronDown,
@@ -148,6 +149,7 @@ export function AdminNav({
                 {branchLabel}
               </span>
             )}
+            <LanguageToggle compact className="hidden sm:flex" />
             <span
               aria-label={tc("myProfile")}
               className="grid size-10 place-items-center rounded-full bg-peach font-display font-semibold text-peach-ink ring-2 ring-card"
@@ -186,6 +188,12 @@ export function AdminNav({
               </button>
             </div>
             <NavList base={base} role={role} onNavigate={() => setOpen(false)} />
+            <div className="mt-2 flex items-center justify-between gap-2 border-t-2 border-line px-3 pt-3">
+              <span className="text-sm font-bold text-muted">
+                {tc("language")}
+              </span>
+              <LanguageToggle compact />
+            </div>
             <div className="mt-2 border-t-2 border-line pt-2">{logout}</div>
           </div>
         </div>

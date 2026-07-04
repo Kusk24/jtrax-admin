@@ -1,6 +1,7 @@
-import { ClipboardList, CreditCard } from "lucide-react";
+import { ClipboardList, CreditCard, Languages } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { LanguageToggle } from "@/components/LanguageToggle";
 
 const inputCls =
   "w-20 rounded-xl border-2 border-line bg-card px-3 py-2 text-center text-sm font-bold text-ink outline-none transition-colors focus:border-navy/50";
@@ -33,6 +34,7 @@ function RuleRow({
 
 export default function SettingsPage() {
   const t = useTranslations("settingsPage");
+  const tc = useTranslations("common");
   const stamp = t("updatedAt", { stamp: "12.5.26 | 9:10 AM" });
 
   return (
@@ -40,6 +42,16 @@ export default function SettingsPage() {
       <PageHeader title={t("title")} subtitle={t("subtitle")} />
 
       <section className="mt-5 rounded-card border-2 border-line bg-card p-4 shadow-clay sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-ink">
+            <Languages className="size-4 text-navy" />
+            {tc("language")}
+          </h2>
+          <LanguageToggle />
+        </div>
+      </section>
+
+      <section className="mt-4 rounded-card border-2 border-line bg-card p-4 shadow-clay sm:p-5">
         <h2 className="flex items-center gap-2 text-sm font-semibold text-ink">
           <CreditCard className="size-4 text-navy" />
           {t("creditRules")}
