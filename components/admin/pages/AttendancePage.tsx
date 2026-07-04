@@ -1,6 +1,5 @@
 import {
   CalendarDays,
-  ChevronRight,
   ChevronsUpDown,
   Clock,
   RefreshCw,
@@ -8,6 +7,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { RowDetails } from "@/components/admin/RowDetails";
 import { DetailTabs } from "@/components/admin/DetailTabs";
 import { AlertsPanel } from "@/components/admin/AlertsPanel";
 import { GroupedBarsChart } from "@/components/admin/DashboardCharts";
@@ -84,7 +84,7 @@ export function AttendancePage({ branch }: { branch?: BranchId }) {
               key: "history",
               label: t("tabHistory"),
               content: (
-                <div className="grid gap-4 xl:grid-cols-[1fr_300px]">
+                <div>
                   <div>
                     <label className="relative block sm:max-w-56">
                       <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
@@ -147,8 +147,65 @@ export function AttendancePage({ branch }: { branch?: BranchId }) {
                                   {row.rate}%
                                 </span>
                               </td>
-                              <td className="px-2 py-3 text-muted">
-                                <ChevronRight className="size-4" />
+                              <td className="px-2 py-3">
+                                <RowDetails
+                                  title={`${row.className}`}
+                                  subtitle={`${branchName(row.branchId)} · ${row.date}`}
+                                  fields={[
+                                    { label: t("colPresent"), value: String(row.present) },
+                                    { label: t("colAbsent"), value: String(row.absent) },
+                                    { label: t("colRate"), value: `${row.rate}%` },
+                                  ]}
+                                >
+                                  <div className="rounded-xl border-2 border-line p-3.5">
+                                    <p className="flex items-center gap-2 text-xs font-bold text-ink">
+                                      <span className="grid size-8 place-items-center rounded-lg bg-brick-soft text-brick">
+                                        <PawnIcon className="size-4" />
+                                      </span>
+                                      Ms. Serene
+                                      <span className="rounded-full bg-navy-soft px-1.5 py-0.5 text-[10px] font-bold text-navy">
+                                        {t("teacherChip")}
+                                      </span>
+                                    </p>
+                                    <p className="mt-2 flex items-center gap-1.5 text-[11px] text-muted">
+                                      <CalendarDays className="size-3" />
+                                      Mon 22 Mar 2026
+                                    </p>
+                                    <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted">
+                                      <Clock className="size-3" />
+                                      9:00 AM - 10:00 AM
+                                    </p>
+                                    <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted">
+                                      <RefreshCw className="size-3" />
+                                      {t("updatedAt", { time: "9:15 AM" })}
+                                    </p>
+                                    <p className="mt-3 text-xs font-bold text-olive">
+                                      {t("presentCount", { count: row.present })}
+                                    </p>
+                                    <div className="mt-1.5 rounded-xl border-2 border-olive-soft p-2.5">
+                                      <p className="flex items-center gap-2 text-xs font-bold text-ink">
+                                        <span className="grid size-7 place-items-center rounded-full bg-navy-soft text-[10px] font-bold text-navy ring-2 ring-card">
+                                          S
+                                        </span>
+                                        Scarlet
+                                      </p>
+                                      <p className="mt-1.5 text-right text-[11px] font-bold text-navy">
+                                        {tc("viewAll")}
+                                      </p>
+                                    </div>
+                                    <p className="mt-3 text-xs font-bold text-brick">
+                                      {t("absentCount", { count: row.absent })}
+                                    </p>
+                                    <div className="mt-1.5 rounded-xl border-2 border-brick-soft p-2.5">
+                                      <p className="flex items-center gap-2 text-xs font-bold text-ink">
+                                        <span className="grid size-7 place-items-center rounded-full bg-brick-soft text-[10px] font-bold text-maroon ring-2 ring-card">
+                                          P
+                                        </span>
+                                        Penny
+                                      </p>
+                                    </div>
+                                  </div>
+                                </RowDetails>
                               </td>
                             </tr>
                           ))}
@@ -156,80 +213,6 @@ export function AttendancePage({ branch }: { branch?: BranchId }) {
                       </table>
                     </div>
                   </div>
-
-                  <aside className="rounded-card border-2 border-line bg-card p-4 shadow-clay">
-                    <div className="flex items-start gap-2.5">
-                      <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-brick-soft text-brick">
-                        <PawnIcon className="size-5" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <h2 className="text-sm font-bold text-navy">
-                          Beginner Class
-                        </h2>
-                        <p className="text-[11px] text-muted">
-                          Section 101 | Bangkok
-                        </p>
-                        <p className="mt-0.5 text-[11px] text-muted">
-                          Ms. Serene{" "}
-                          <span className="rounded-full bg-navy-soft px-1.5 py-0.5 text-[10px] font-bold text-navy">
-                            {t("teacherChip")}
-                          </span>
-                        </p>
-                      </div>
-                      <div className="grid gap-1 text-center">
-                        <span className="rounded-full bg-olive-soft px-2 py-1 text-[10px] font-bold text-ink">
-                          {t("presentPct", { pct: 95 })}
-                        </span>
-                        <span className="rounded-full bg-brick-soft px-2 py-1 text-[10px] font-bold text-maroon">
-                          {t("absentPct", { pct: 5 })}
-                        </span>
-                      </div>
-                    </div>
-                    <p className="mt-2 flex items-center gap-1.5 text-[11px] text-muted">
-                      <CalendarDays className="size-3" />
-                      Mon 22 Mar 2026
-                    </p>
-                    <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted">
-                      <Clock className="size-3" />
-                      9:00 AM - 10:00 AM
-                    </p>
-                    <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted">
-                      <RefreshCw className="size-3" />
-                      {t("updatedAt", { time: "9:15 AM" })}
-                    </p>
-                    <label className="relative mt-3 block">
-                      <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted" />
-                      <input
-                        className="w-full rounded-full border-2 border-line bg-card py-1.5 pl-8 pr-3 text-xs text-ink outline-none transition-colors placeholder:text-muted focus:border-navy/50"
-                        placeholder={tc("search")}
-                      />
-                    </label>
-                    <p className="mt-3 text-xs font-bold text-olive">
-                      {t("presentCount", { count: 19 })}
-                    </p>
-                    <div className="mt-1.5 rounded-xl border-2 border-olive-soft p-2.5">
-                      <p className="flex items-center gap-2 text-xs font-bold text-ink">
-                        <span className="grid size-7 place-items-center rounded-full bg-navy-soft text-[10px] font-bold text-navy ring-2 ring-card">
-                          S
-                        </span>
-                        Scarlet
-                      </p>
-                      <p className="mt-1.5 text-right text-[11px] font-bold text-navy">
-                        {tc("viewAll")}
-                      </p>
-                    </div>
-                    <p className="mt-3 text-xs font-bold text-brick">
-                      {t("absentCount", { count: 1 })}
-                    </p>
-                    <div className="mt-1.5 rounded-xl border-2 border-brick-soft p-2.5">
-                      <p className="flex items-center gap-2 text-xs font-bold text-ink">
-                        <span className="grid size-7 place-items-center rounded-full bg-brick-soft text-[10px] font-bold text-maroon ring-2 ring-card">
-                          P
-                        </span>
-                        Penny
-                      </p>
-                    </div>
-                  </aside>
                 </div>
               ),
             },
