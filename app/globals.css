@@ -3,14 +3,14 @@
 @theme {
   /* Sketch theme: same hues as the digital palette, softened to colored-pencil
      values on off-white sketchbook paper. */
-  --color-cream: #f1ede1;
-  --color-card: #faf7ee;
+  --color-cream: #f6f5f0;
+  --color-card: #fcfbf7;
   --color-navy: #3a5088;
   --color-navy-deep: #2c3f6e;
   --color-navy-soft: #d5dcea;
   --color-ink: #3d3831;
-  --color-muted: #837b6c;
-  --color-line: #978e7c;
+  --color-muted: #7d7970;
+  --color-line: #5f5b52;
 
   --color-brick: #b5462f;
   --color-brick-soft: #eed4c9;
@@ -25,8 +25,8 @@
   --radius-card: 1.25rem;
 
   /* Pencil shading: a hard graphite offset plus a soft smudge. */
-  --shadow-clay: 2px 3px 0 rgb(74 66 54 / 0.14), 4px 6px 7px rgb(74 66 54 / 0.1);
-  --shadow-clay-lg: 3px 4px 0 rgb(74 66 54 / 0.16), 6px 9px 12px rgb(74 66 54 / 0.12);
+  --shadow-clay: 2px 3px 0 rgb(60 58 50 / 0.16);
+  --shadow-clay-lg: 3px 4px 0 rgb(60 58 50 / 0.18);
 
   --animate-pop: pop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 
@@ -66,16 +66,6 @@ body::before {
   pointer-events: none;
   mix-blend-mode: multiply;
   background-image:
-    repeating-linear-gradient(
-      112deg,
-      rgb(70 62 52 / 0.055) 0 1px,
-      transparent 1px 6px
-    ),
-    repeating-linear-gradient(
-      64deg,
-      rgb(70 62 52 / 0.04) 0 1px,
-      transparent 1px 10px
-    ),
     radial-gradient(240px 150px at 6% 10%, rgb(88 78 64 / 0.07), transparent 70%),
     radial-gradient(200px 130px at 94% 22%, rgb(88 78 64 / 0.06), transparent 70%),
     radial-gradient(260px 170px at 18% 92%, rgb(88 78 64 / 0.06), transparent 70%),
@@ -89,7 +79,7 @@ body::after {
   z-index: 9999;
   pointer-events: none;
   mix-blend-mode: multiply;
-  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='260'%20height='260'%3E%3Cfilter%20id='p'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.8'%20numOctaves='3'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20values='0%200%200%200%200.42%200%200%200%200%200.39%200%200%200%200%200.33%200%200%200%200.22%200'/%3E%3C/filter%3E%3Crect%20width='100%25'%20height='100%25'%20filter='url(%23p)'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='260'%20height='260'%3E%3Cfilter%20id='p'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.8'%20numOctaves='3'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20values='0%200%200%200%200.45%200%200%200%200%200.43%200%200%200%200.38%200%200%200%200.1%200'/%3E%3C/filter%3E%3Crect%20width='100%25'%20height='100%25'%20filter='url(%23p)'/%3E%3C/svg%3E");
 }
 
 h1,
@@ -159,4 +149,51 @@ button:active {
    and pills keep their shape but wobble slightly. */
 .rounded-full {
   border-radius: 3rem 2.7rem 2.95rem 2.75rem / 2.75rem 2.95rem 2.7rem 3rem;
+}
+
+/* Progress tracks must stay light even though pencil borders are dark. */
+.bg-line {
+  background-color: #e9e6dd;
+}
+
+/* Colored-pencil hatch shading inside soft fills (matches any opacity
+   variant of the class, e.g. bg-brick-soft/70). */
+[class*="bg-brick-soft"],
+[class*="bg-peach"]:not([class*="text-"]) {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgb(150 55 40 / 0.1) 0 2px,
+    transparent 2px 7px
+  );
+}
+
+[class*="bg-olive-soft"] {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgb(95 115 45 / 0.12) 0 2px,
+    transparent 2px 7px
+  );
+}
+
+[class*="bg-navy-soft"] {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgb(50 70 125 / 0.08) 0 2px,
+    transparent 2px 7px
+  );
+}
+
+/* Slight per-box variation so no two sketch boxes look identical. */
+.rounded-card:nth-child(2n),
+.rounded-2xl:nth-child(2n) {
+  border-radius: 1rem 1.4rem 0.9rem 1.35rem / 1.35rem 0.9rem 1.4rem 0.95rem;
+}
+
+.rounded-card:nth-child(3n),
+.rounded-2xl:nth-child(3n) {
+  border-radius: 1.45rem 1.05rem 1.3rem 1rem / 1.05rem 1.3rem 1rem 1.45rem;
+}
+
+.rounded-xl:nth-child(2n) {
+  border-radius: 0.65rem 0.95rem 0.6rem 0.9rem / 0.9rem 0.6rem 0.95rem 0.65rem;
 }
