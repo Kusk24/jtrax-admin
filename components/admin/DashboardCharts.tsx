@@ -120,8 +120,9 @@ export function DistributionChart({
     <ResponsiveContainer width="100%" height={230}>
       <RadialBarChart
         data={data}
-        innerRadius="32%"
-        outerRadius="100%"
+        cy="45%"
+        innerRadius="28%"
+        outerRadius="82%"
         startAngle={90}
         endAngle={-270}
       >
