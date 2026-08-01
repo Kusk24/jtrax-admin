@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { DEFAULT_CREDIT_RULES, type CreditRules } from "@/lib/derive";
 import { Icon, type IconName } from "@/lib/icons";
 import { COLORS, FONT } from "@/lib/theme";
@@ -10,32 +11,15 @@ import { Card } from "../ui";
 
 type RuleKey = keyof CreditRules;
 
-const RULES: Array<{ key: RuleKey; icon: IconName; title: string; desc: string; suffix: string }> = [
-  {
-    key: "lowCredit",
-    icon: "wallet",
-    title: "Low Credit Warning",
-    desc: 'Students will appear in "Needs Follow-up" when their remaining credits are below this value.',
-    suffix: "credits",
-  },
-  {
-    key: "expiringDays",
-    icon: "calendar",
-    title: "Expiring Soon",
-    desc: 'Students will appear in "Needs Follow-up" when their credits expire within this many days.',
-    suffix: "days",
-  },
-  {
-    key: "inactiveDays",
-    icon: "userX",
-    title: "Inactive Student",
-    desc: 'Students will appear in "Needs Follow-up" if they have not attended any class within this many days.',
-    suffix: "days",
-  },
+const RULES: Array<{ key: RuleKey; icon: IconName; titleKey: string; descKey: string; unitKey: string }> = [
+  { key: "lowCredit", icon: "wallet", titleKey: "lowCreditTitle", descKey: "lowCreditDesc", unitKey: "unitCredits" },
+  { key: "expiringDays", icon: "calendar", titleKey: "expiringTitle", descKey: "expiringDesc", unitKey: "unitDays" },
+  { key: "inactiveDays", icon: "userX", titleKey: "inactiveTitle", descKey: "inactiveDesc", unitKey: "unitDays" },
 ];
 
 export function SettingsPage() {
   const { creditRules, setCreditRules } = useJtrax();
+  const t = useTranslations("settings");
   const [draft, setDraft] = useState<CreditRules>(creditRules);
   const [saved, setSaved] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -50,7 +34,7 @@ export function SettingsPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 820 }}>
-      <PageHeader title="Credit Rules" sub="These thresholds drive the dashboard's Needs Follow-up card." />
+      <PageHeader title={t("title")} sub={t("sub")} />
 
       <Card style={{ padding: 0 }}>
         {RULES.map((rule, i) => (
@@ -84,10 +68,10 @@ export function SettingsPage() {
                 htmlFor={`jtrax-rule-${rule.key}`}
                 style={{ display: "block", fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text }}
               >
-                {rule.title}
+                {t(rule.titleKey)}
               </label>
               <p style={{ margin: "3px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-                {rule.desc}
+                {t(rule.descKey)}
               </p>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
@@ -114,7 +98,7 @@ export function SettingsPage() {
                 }}
               />
               <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-                {rule.suffix}
+                {t(rule.unitKey)}
               </span>
             </div>
           </div>
@@ -148,7 +132,7 @@ export function SettingsPage() {
             aria-live="polite"
           >
             <Icon name="check" size={15} color={COLORS.success} />
-            {saved ? "Changes saved" : ""}
+            {saved ? t("saved") : ""}
           </span>
           <div style={{ display: "flex", gap: 10 }}>
             <button
@@ -161,7 +145,7 @@ export function SettingsPage() {
                 flash();
               }}
             >
-              Reset to Default
+              {t("reset")}
             </button>
             <button
               type="button"
@@ -172,7 +156,7 @@ export function SettingsPage() {
                 flash();
               }}
             >
-              Save Changes
+              {t("save")}
             </button>
           </div>
         </div>

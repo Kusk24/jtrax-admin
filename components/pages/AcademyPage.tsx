@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Icon, type IconName } from "@/lib/icons";
 import { COLORS, FONT, initialsOf } from "@/lib/theme";
 import {
@@ -90,6 +91,9 @@ function IconPicker({ value, onChange }: { value: IconName; onChange: (i: IconNa
 }
 
 export function AcademyPage() {
+  const t = useTranslations("academy");
+  const tCommon = useTranslations("common");
+  const tStatus = useTranslations("status");
   const [courses, setCourses] = useState<Course[]>(COURSES_SEED);
   const [teachers, setTeachers] = useState<Teacher[]>(TEACHERS_SEED);
   const [courseModal, setCourseModal] = useState<Course | "new" | null>(null);
@@ -130,11 +134,11 @@ export function AcademyPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
       <PageHeader
-        title="Courses"
-        sub="What the academy teaches"
+        title={t("coursesTitle")}
+        sub={t("coursesSub")}
         action={
           <button type="button" className="jt-btn-primary" style={primaryButtonStyle} onClick={() => openCourseModal("new")}>
-            <Icon name="plus" size={15} color="#fff" /> Add Course
+            <Icon name="plus" size={15} color="#fff" /> {t("addCourse")}
           </button>
         }
       />
@@ -176,29 +180,29 @@ export function AcademyPage() {
               style={{ ...secondaryButtonStyle, alignSelf: "flex-start" }}
               onClick={() => openCourseModal(c)}
             >
-              <Icon name="edit" size={13} /> Edit
+              <Icon name="edit" size={13} /> {tCommon("edit")}
             </button>
           </Card>
         ))}
       </div>
 
       <PageHeader
-        title="Teachers"
-        sub="Who teaches at the academy"
+        title={t("teachersTitle")}
+        sub={t("teachersSub")}
         action={
           <button type="button" className="jt-btn-primary" style={primaryButtonStyle} onClick={() => openTeacherModal("new")}>
-            <Icon name="plus" size={15} color="#fff" /> Add Teacher
+            <Icon name="plus" size={15} color="#fff" /> {t("addTeacher")}
           </button>
         }
       />
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
-        {teachers.map((t) => (
-          <Card key={t.id} className="jt-adm-card" style={{ display: "flex", flexDirection: "column", gap: 13, cursor: "pointer" }}>
-            <div onClick={() => setTeacherDetail(t)} style={{ display: "flex", alignItems: "center", gap: 11 }}>
-              <Avatar initials={initialsOf(t.name)} size={44} />
+        {teachers.map((teacher) => (
+          <Card key={teacher.id} className="jt-adm-card" style={{ display: "flex", flexDirection: "column", gap: 13, cursor: "pointer" }}>
+            <div onClick={() => setTeacherDetail(teacher)} style={{ display: "flex", alignItems: "center", gap: 11 }}>
+              <Avatar initials={initialsOf(teacher.name)} size={44} />
               <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontFamily: FONT, fontSize: 14.5, fontWeight: 700, color: COLORS.text }}>{t.name}</div>
+                <div style={{ fontFamily: FONT, fontSize: 14.5, fontWeight: 700, color: COLORS.text }}>{teacher.name}</div>
                 <div style={{ marginTop: 3, display: "flex", alignItems: "center", gap: 6 }}>
                   <span
                     style={{
@@ -206,18 +210,18 @@ export function AcademyPage() {
                       width: 7,
                       height: 7,
                       borderRadius: "50%",
-                      background: t.status === "Active" ? COLORS.success : COLORS.textSecondary,
+                      background: teacher.status === "Active" ? COLORS.success : COLORS.textSecondary,
                     }}
                   />
-                  <span style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textSecondary }}>{t.status}</span>
+                  <span style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textSecondary }}>{tStatus(teacher.status)}</span>
                 </div>
               </div>
             </div>
             <div style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary, lineHeight: 1.6 }}>
-              <div style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{t.email}</div>
-              <div>{t.phone}</div>
+              <div style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{teacher.email}</div>
+              <div>{teacher.phone}</div>
             </div>
-            <ContactActions phone={t.phone} lineId={t.lineId} email={t.email} />
+            <ContactActions phone={teacher.phone} lineId={teacher.lineId} email={teacher.email} />
           </Card>
         ))}
       </div>
@@ -236,7 +240,7 @@ export function AcademyPage() {
                 setCourseDetail(null);
               }}
             >
-              Edit Course
+              {t("editCourse")}
             </button>
           }
         >
@@ -257,7 +261,7 @@ export function AcademyPage() {
             <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, lineHeight: 1.6, color: COLORS.textSecondary }}>
               {courseDetail.desc}
             </p>
-            <InfoGrid rows={[{ label: "Badge", value: courseDetail.badge }, { label: "Category", value: courseDetail.category }]} />
+            <InfoGrid rows={[{ label: t("badge"), value: courseDetail.badge }, { label: t("category"), value: courseDetail.category }]} />
           </div>
         </Modal>
       )}
@@ -275,15 +279,15 @@ export function AcademyPage() {
                   color={teacherDetail.status === "Active" ? COLORS.success : COLORS.textSecondary}
                   bg={teacherDetail.status === "Active" ? COLORS.successBg : COLORS.neutralBg}
                 >
-                  {teacherDetail.status}
+                  {tStatus(teacherDetail.status)}
                 </Badge>
               </div>
             </div>
             <InfoGrid
               rows={[
-                { label: "Email", value: teacherDetail.email },
-                { label: "Phone", value: teacherDetail.phone },
-                { label: "LINE ID", value: teacherDetail.lineId },
+                { label: tCommon("email"), value: teacherDetail.email },
+                { label: tCommon("phone"), value: teacherDetail.phone },
+                { label: tCommon("lineId"), value: teacherDetail.lineId },
               ]}
             />
             <ContactActions phone={teacherDetail.phone} lineId={teacherDetail.lineId} email={teacherDetail.email} />
@@ -293,12 +297,12 @@ export function AcademyPage() {
 
       {courseModal && (
         <Modal
-          title={courseModal === "new" ? "Add Course" : "Edit Course"}
+          title={courseModal === "new" ? t("addCourse") : t("editCourse")}
           onClose={() => setCourseModal(null)}
           footer={
             <>
               <button type="button" className="jt-btn-ghost" style={secondaryButtonStyle} onClick={() => setCourseModal(null)}>
-                Cancel
+                {tCommon("cancel")}
               </button>
               <button
                 type="button"
@@ -318,18 +322,18 @@ export function AcademyPage() {
                   setCourseModal(null);
                 }}
               >
-                Save Course
+                {t("saveCourse")}
               </button>
             </>
           }
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
             <div>
-              <label style={labelStyle} htmlFor="co-name">Course Name</label>
+              <label style={labelStyle} htmlFor="co-name">{t("courseName")}</label>
               <input id="co-name" value={courseDraft.name} onChange={(e) => setCourseDraft({ ...courseDraft, name: e.target.value })} style={fieldStyle} />
             </div>
             <div>
-              <label style={labelStyle} htmlFor="co-desc">Description</label>
+              <label style={labelStyle} htmlFor="co-desc">{t("description")}</label>
               <textarea
                 id="co-desc"
                 rows={3}
@@ -339,11 +343,11 @@ export function AcademyPage() {
               />
             </div>
             <div>
-              <label style={labelStyle} htmlFor="co-badge">Badge</label>
+              <label style={labelStyle} htmlFor="co-badge">{t("badge")}</label>
               <input id="co-badge" value={courseDraft.badge} onChange={(e) => setCourseDraft({ ...courseDraft, badge: e.target.value })} style={fieldStyle} />
             </div>
             <div>
-              <span style={labelStyle}>Icon</span>
+              <span style={labelStyle}>{t("icon")}</span>
               <IconPicker value={courseDraft.icon} onChange={(icon) => setCourseDraft({ ...courseDraft, icon })} />
             </div>
           </div>
@@ -352,12 +356,12 @@ export function AcademyPage() {
 
       {teacherModal && (
         <Modal
-          title={teacherModal === "new" ? "Add Teacher" : "Edit Teacher"}
+          title={teacherModal === "new" ? t("addTeacher") : t("editTeacher")}
           onClose={() => setTeacherModal(null)}
           footer={
             <>
               <button type="button" className="jt-btn-ghost" style={secondaryButtonStyle} onClick={() => setTeacherModal(null)}>
-                Cancel
+                {tCommon("cancel")}
               </button>
               <button
                 type="button"
@@ -373,32 +377,34 @@ export function AcademyPage() {
                     setTeachers([...teachers, { ...teacherDraft, id: `teacher-${Date.now()}`, status: "Active" }]);
                   } else {
                     setTeachers(
-                      teachers.map((t) => (t.id === teacherModal.id ? { ...t, ...teacherDraft } : t)),
+                      teachers.map((teacher) =>
+                        teacher.id === teacherModal.id ? { ...teacher, ...teacherDraft } : teacher,
+                      ),
                     );
                   }
                   setTeacherModal(null);
                 }}
               >
-                Save Teacher
+                {t("saveTeacher")}
               </button>
             </>
           }
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
             <div>
-              <label style={labelStyle} htmlFor="te-name">Full Name</label>
+              <label style={labelStyle} htmlFor="te-name">{tCommon("name")}</label>
               <input id="te-name" value={teacherDraft.name} onChange={(e) => setTeacherDraft({ ...teacherDraft, name: e.target.value })} style={fieldStyle} />
             </div>
             <div>
-              <label style={labelStyle} htmlFor="te-email">Email</label>
+              <label style={labelStyle} htmlFor="te-email">{tCommon("email")}</label>
               <input id="te-email" type="email" value={teacherDraft.email} onChange={(e) => setTeacherDraft({ ...teacherDraft, email: e.target.value })} style={fieldStyle} />
             </div>
             <div>
-              <label style={labelStyle} htmlFor="te-phone">Phone</label>
+              <label style={labelStyle} htmlFor="te-phone">{tCommon("phone")}</label>
               <input id="te-phone" value={teacherDraft.phone} onChange={(e) => setTeacherDraft({ ...teacherDraft, phone: e.target.value })} style={fieldStyle} />
             </div>
             <div>
-              <label style={labelStyle} htmlFor="te-line">LINE ID</label>
+              <label style={labelStyle} htmlFor="te-line">{tCommon("lineId")}</label>
               <input id="te-line" value={teacherDraft.lineId} onChange={(e) => setTeacherDraft({ ...teacherDraft, lineId: e.target.value })} style={fieldStyle} />
             </div>
           </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { IconName } from "@/lib/icons";
 import { Icon } from "@/lib/icons";
 import { CLASSES_DEFS_REF, type ClassDef } from "@/lib/data";
@@ -15,6 +16,7 @@ const CATEGORY_ICON: Record<string, IconName> = {
 };
 
 function ClassCard({ def, onView }: { def: ClassDef; onView: (def: ClassDef) => void }) {
+  const tStatus = useTranslations("status");
   const accent = CLASS_CATEGORY_COLORS[def.category] ?? COLORS.blue;
   const status = statusChipColors(def.status);
 
@@ -63,7 +65,7 @@ function ClassCard({ def, onView }: { def: ClassDef; onView: (def: ClassDef) => 
               fontWeight: 600,
             }}
           >
-            {def.status}
+            {tStatus(def.status)}
           </span>
         </span>
         <span
@@ -146,9 +148,10 @@ export function TodaysClasses({
   onCreateSession: () => void;
   onViewClass: (def: ClassDef) => void;
 }) {
+  const t = useTranslations("dashboard");
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <SectionTitle>Today&apos;s Classes</SectionTitle>
+      <SectionTitle>{t("todaysClasses")}</SectionTitle>
       <div
         style={{
           display: "grid",
@@ -189,10 +192,10 @@ export function TodaysClasses({
             <Icon name="plus" size={19} color={COLORS.blue} />
           </span>
           <span style={{ marginTop: 6, fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.blue }}>
-            Create Session
+            {t("createSession")}
           </span>
           <span style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textSecondary }}>
-            Create a new class session
+            {t("createSessionSub")}
           </span>
         </button>
 

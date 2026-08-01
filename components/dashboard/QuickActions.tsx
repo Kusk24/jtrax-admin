@@ -1,12 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Icon, type IconName } from "@/lib/icons";
 import { COLORS, FONT } from "@/lib/theme";
 
 export type QuickAction = {
   key: string;
-  label: string;
+  /** Message key under the `dashboard` namespace. */
+  labelKey: string;
   icon: IconName;
   color: string;
   bg: string;
@@ -16,19 +18,20 @@ export type QuickAction = {
 /* The four hero pills, in the accent order the .qa-pill-N classes expect:
    0 green, 1 red, 2 gold, 3 purple. */
 export const ADMIN_QUICK_ACTIONS: QuickAction[] = [
-  { key: "register", label: "Register Student", icon: "usersPlus", color: "#1A7F37", bg: "#EAF6EE", href: "/students" },
-  { key: "payment", label: "Record Payment", icon: "wallet", color: "#C0392B", bg: "#FBEAEA", href: "/payment" },
-  { key: "announce", label: "New Announcement", icon: "announcement", color: "#B7791F", bg: "#FDF3E0", href: "/announcement" },
-  { key: "tournament", label: "Create Tournament", icon: "trophy", color: "#6B46C1", bg: "#F1EAFA", href: "/tournament" },
+  { key: "register", labelKey: "registerStudent", icon: "usersPlus", color: "#1A7F37", bg: "#EAF6EE", href: "/students" },
+  { key: "payment", labelKey: "recordPayment", icon: "wallet", color: "#C0392B", bg: "#FBEAEA", href: "/payment" },
+  { key: "announce", labelKey: "newAnnouncement", icon: "announcement", color: "#B7791F", bg: "#FDF3E0", href: "/announcement" },
+  { key: "tournament", labelKey: "createTournament", icon: "trophy", color: "#6B46C1", bg: "#F1EAFA", href: "/tournament" },
 ];
 
 export const RECEPTIONIST_QUICK_ACTIONS: QuickAction[] = [
-  { key: "register", label: "Register Student", icon: "usersPlus", color: "#1A7F37", bg: "#EAF6EE", href: "/students" },
-  { key: "payment", label: "Record Payment", icon: "wallet", color: "#C0392B", bg: "#FBEAEA", href: "/payment" },
+  { key: "register", labelKey: "registerStudent", icon: "usersPlus", color: "#1A7F37", bg: "#EAF6EE", href: "/students" },
+  { key: "payment", labelKey: "recordPayment", icon: "wallet", color: "#C0392B", bg: "#FBEAEA", href: "/payment" },
 ];
 
 export function QuickActionPill({ action, index }: { action: QuickAction; index: number }) {
   const router = useRouter();
+  const t = useTranslations("dashboard");
   return (
     <button
       type="button"
@@ -72,7 +75,7 @@ export function QuickActionPill({ action, index }: { action: QuickAction; index:
           textOverflow: "ellipsis",
         }}
       >
-        {action.label}
+        {t(action.labelKey)}
       </span>
     </button>
   );

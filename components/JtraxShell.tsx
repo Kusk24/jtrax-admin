@@ -4,8 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
+import { useTranslations } from "next-intl";
+import { LanguageToggle } from "./LanguageToggle";
 import { Icon } from "@/lib/icons";
-import { navItemsForRole, SECTION_META } from "@/lib/nav";
+import { navItemsForRole } from "@/lib/nav";
 import { COLORS, FONT, ROLE_COLORS } from "@/lib/theme";
 import { useJtrax } from "./JtraxContext";
 
@@ -19,6 +21,7 @@ function sectionFromPath(pathname: string): string {
 
 function Sidebar({ section }: { section: string }) {
   const { role } = useJtrax();
+  const t = useTranslations("nav");
   const items = navItemsForRole(role);
 
   return (
@@ -70,7 +73,7 @@ function Sidebar({ section }: { section: string }) {
               color: COLORS.textSecondary,
             }}
           >
-            Chess School
+            {t("brandSub")}
           </span>
         </span>
       </Link>
@@ -106,7 +109,7 @@ function Sidebar({ section }: { section: string }) {
                   color: active ? COLORS.blue : COLORS.text,
                 }}
               >
-                {item.label}
+                {t(item.id)}
               </span>
             </Link>
           );
@@ -133,7 +136,7 @@ function Sidebar({ section }: { section: string }) {
           <Icon name="logout" size={18} color={COLORS.textSecondary} />
         </span>
         <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 500, color: COLORS.textSecondary }}>
-          Logout
+          {t("logout")}
         </span>
       </button>
     </aside>
@@ -157,6 +160,7 @@ function useToday(): string {
 
 function RoleSwitcher({ section }: { section: string }) {
   const { person, people, setPerson } = useJtrax();
+  const tRole = useTranslations("roles");
   const [open, setOpen] = useState(false);
   const today = useToday();
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -249,7 +253,7 @@ function RoleSwitcher({ section }: { section: string }) {
               fontWeight: 600,
             }}
           >
-            {person.role}
+            {tRole(person.role)}
           </span>
           <span style={{ display: "flex", color: COLORS.textSecondary }}>
             <Icon name="chevronDown" size={15} />
@@ -322,7 +326,7 @@ function RoleSwitcher({ section }: { section: string }) {
                     {option.name}
                   </span>
                   <span style={{ fontSize: 11, fontWeight: 600, color: optionColor.color }}>
-                    {option.role}
+                    {tRole(option.role)}
                   </span>
                 </button>
               );
@@ -338,21 +342,24 @@ export function JtraxShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const section = sectionFromPath(pathname);
   const { person, role } = useJtrax();
+  const t = useTranslations("shell");
+  const tNav = useTranslations("nav");
 
   const isHome = section === "home";
-  const meta = SECTION_META[section];
   const firstName = person.name.split(" ").filter((p) => !p.includes("."))[0] ?? "there";
 
   const title = isHome
     ? role === "Receptionist"
-      ? `Good morning, ${firstName}!`
-      : "Dashboard"
-    : (meta?.label ?? "JTRAX");
+      ? t("greeting", { name: firstName })
+      : t("dashboard")
+    : tNav(section);
+  /* Only the dashboard carries a subtitle in the header; every other section
+     renders its own PageHeader with the copy that belongs to it. */
   const sub = isHome
     ? role === "Receptionist"
-      ? "What are we doing today?"
-      : "Overview of your academy today."
-    : (meta?.sub ?? "");
+      ? t("receptionistSub")
+      : t("dashboardSub")
+    : "";
 
   return (
     <>
@@ -395,7 +402,10 @@ export function JtraxShell({ children }: { children: React.ReactNode }) {
               </p>
             )}
           </div>
-          <RoleSwitcher section={section} />
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <LanguageToggle />
+            <RoleSwitcher section={section} />
+          </div>
         </header>
 
         {children}

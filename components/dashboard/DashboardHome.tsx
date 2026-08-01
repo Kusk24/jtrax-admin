@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import type { ClassDef } from "@/lib/data";
 import { COLORS, FONT } from "@/lib/theme";
 import { useJtrax } from "../JtraxContext";
@@ -18,14 +19,16 @@ import { SessionPanel, type PanelState } from "./SessionPanel";
 import { TodaysClasses } from "./TodaysClasses";
 
 function AdminHero({ firstName }: { firstName: string }) {
+  const t = useTranslations("dashboard");
+  const tShell = useTranslations("shell");
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div>
         <div style={{ fontFamily: FONT, fontSize: 19, fontWeight: 700, color: COLORS.text }}>
-          Good morning, {firstName}!
+          {tShell("greeting", { name: firstName })}
         </div>
         <div style={{ marginTop: 3, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
-          Here&apos;s what needs your attention today.
+          {t("heroSub")}
         </div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 10 }}>
@@ -39,6 +42,7 @@ function AdminHero({ firstName }: { firstName: string }) {
 
 export function DashboardHome() {
   const { person, role } = useJtrax();
+  const t = useTranslations("dashboard");
   const [panel, setPanel] = useState<PanelState>(null);
 
   const isReceptionist = role === "Receptionist";
@@ -50,7 +54,7 @@ export function DashboardHome() {
         <div className="jt-split">
           <FindStudent />
           <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <SectionTitle>Quick Actions</SectionTitle>
+            <SectionTitle>{t("quickActions")}</SectionTitle>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {RECEPTIONIST_QUICK_ACTIONS.map((action, i) => (
                 <QuickActionPill key={action.key} action={action} index={i} />

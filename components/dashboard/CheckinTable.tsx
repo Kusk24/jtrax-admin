@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { buildCheckins } from "@/lib/derive";
 import { classDotColor, COLORS, FONT, statusChipColors } from "@/lib/theme";
 import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
@@ -15,6 +16,9 @@ function creditColors(credit: number) {
 }
 
 export function CheckinTable() {
+  const t = useTranslations("dashboard");
+  const tCommon = useTranslations("common");
+  const tStatus = useTranslations("status");
   const [dismissed, setDismissed] = useState<Record<number, string>>({});
   const [expanded, setExpanded] = useState(false);
 
@@ -39,9 +43,9 @@ export function CheckinTable() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-          <SectionTitle>Today&apos;s Check-in</SectionTitle>
+          <SectionTitle>{t("todaysCheckin")}</SectionTitle>
           <Badge color={COLORS.blue} bg={COLORS.light}>
-            {rows.length} students
+            {t("studentCount", { count: rows.length })}
           </Badge>
         </div>
         {rows.length > COLLAPSED_ROWS && (
@@ -58,7 +62,7 @@ export function CheckinTable() {
               color: COLORS.blue,
             }}
           >
-            {expanded ? "Show less" : "View all"}
+            {expanded ? tCommon("showLess") : tCommon("viewAll")}
           </button>
         )}
       </div>
@@ -76,7 +80,15 @@ export function CheckinTable() {
               background: COLORS.bg,
             }}
           >
-            {["Student", "Credit", "Class", "Arrival", "Dismissal", "Status", "Action"].map((h) => (
+            {[
+              tCommon("student"),
+              t("colCredit"),
+              tCommon("class"),
+              t("colArrival"),
+              t("colDismissal"),
+              tCommon("status"),
+              tCommon("action"),
+            ].map((h) => (
               <span
                 key={h}
                 style={{
@@ -151,7 +163,7 @@ export function CheckinTable() {
                 </span>
 
                 <Badge color={status.color} bg={status.bg} style={{ justifySelf: "start" }}>
-                  {row.displayStatus}
+                  {tStatus(row.displayStatus)}
                 </Badge>
 
                 <span>
@@ -173,7 +185,7 @@ export function CheckinTable() {
                         transition: "all 160ms ease",
                       }}
                     >
-                      Dismiss
+                      {t("dismiss")}
                     </button>
                   )}
                 </span>

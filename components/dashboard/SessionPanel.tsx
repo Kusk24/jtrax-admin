@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { CLASSES_DEFS_REF, STUDENTS_SEED, type ClassDef } from "@/lib/data";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
@@ -33,6 +34,8 @@ function PanelFrame({
   children: React.ReactNode;
   footer: React.ReactNode;
 }) {
+  const tCommon = useTranslations("common");
+
   /* Escape closes; body scroll is locked while the panel owns the screen. */
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -102,7 +105,7 @@ function PanelFrame({
             }}
           >
             <Icon name="chevronLeft" size={17} color={COLORS.textSecondary} />
-            Back
+            {tCommon("back")}
           </button>
           <h2 style={{ margin: 0, fontFamily: FONT, fontSize: 16, fontWeight: 700, color: COLORS.text }}>
             {title}
@@ -175,6 +178,8 @@ const ghostBtn: React.CSSProperties = {
 };
 
 function CreateSession({ onClose }: { onClose: () => void }) {
+  const t = useTranslations("session");
+  const tCommon = useTranslations("common");
   const [className, setClassName] = useState(CLASSES_DEFS_REF[1]?.name ?? "Master Class");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
@@ -192,21 +197,21 @@ function CreateSession({ onClose }: { onClose: () => void }) {
 
   return (
     <PanelFrame
-      title="Create Session"
+      title={t("createTitle")}
       onClose={onClose}
       footer={
         <>
           <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
-            {selected.length} student{selected.length === 1 ? "" : "s"} selected
+            {t("selectedCount", { count: selected.length })}
           </span>
           <span style={{ display: "flex", gap: 10 }}>
             <button type="button" style={ghostBtn} onClick={onClose}>
-              Cancel
+              {tCommon("cancel")}
             </button>
             {/* Mockup parity: there is no persistence layer yet, so this closes
                 the panel exactly as the design's own handler did. */}
             <button type="button" className="jt-btn-primary" style={primaryBtn} onClick={onClose}>
-              Create Session
+              {t("createTitle")}
             </button>
           </span>
         </>
@@ -215,12 +220,12 @@ function CreateSession({ onClose }: { onClose: () => void }) {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 24 }}>
         <div>
           <h3 style={{ margin: "0 0 14px", fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text }}>
-            Session Details
+            {t("sessionDetails")}
           </h3>
 
           <div style={{ marginBottom: 14 }}>
             <label style={labelStyle} htmlFor="jtrax-class-name">
-              Class Name
+              {t("className")}
             </label>
             <select
               id="jtrax-class-name"
@@ -243,7 +248,7 @@ function CreateSession({ onClose }: { onClose: () => void }) {
           <div style={{ display: "flex", gap: 12, marginBottom: 18 }}>
             <div style={{ flex: 1 }}>
               <label style={labelStyle} htmlFor="jtrax-start">
-                Start Time
+                {t("startTime")}
               </label>
               <input
                 id="jtrax-start"
@@ -255,7 +260,7 @@ function CreateSession({ onClose }: { onClose: () => void }) {
             </div>
             <div style={{ flex: 1 }}>
               <label style={labelStyle} htmlFor="jtrax-end">
-                End Time
+                {t("endTime")}
               </label>
               <input
                 id="jtrax-end"
@@ -270,12 +275,12 @@ function CreateSession({ onClose }: { onClose: () => void }) {
           <div style={{ height: 1, background: COLORS.border, margin: "4px 0 16px" }} />
 
           <h3 style={{ margin: "0 0 10px", fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text }}>
-            Selected Students ({selected.length})
+            {t("selectedStudents", { count: selected.length })}
           </h3>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
             {selected.length === 0 && (
               <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-                No students selected yet.
+                {t("noneSelected")}
               </span>
             )}
             {selected.map((name) => (
@@ -298,7 +303,7 @@ function CreateSession({ onClose }: { onClose: () => void }) {
                 <button
                   type="button"
                   onClick={() => toggle(name)}
-                  aria-label={`Remove ${name}`}
+                  aria-label={t("removeStudent", { name })}
                   style={{
                     display: "inline-flex",
                     border: "none",
@@ -317,14 +322,14 @@ function CreateSession({ onClose }: { onClose: () => void }) {
 
         <div>
           <h3 style={{ margin: "0 0 14px", fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text }}>
-            Add Students
+            {t("addStudents")}
           </h3>
           <div style={{ marginBottom: 12 }}>
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search students"
-              aria-label="Search students to add"
+              placeholder={t("searchStudents")}
+              aria-label={t("searchStudentsLabel")}
               style={fieldStyle}
             />
           </div>
@@ -363,6 +368,9 @@ function CreateSession({ onClose }: { onClose: () => void }) {
 }
 
 function ViewClass({ def, onClose }: { def: ClassDef; onClose: () => void }) {
+  const t = useTranslations("session");
+  const tCommon = useTranslations("common");
+  const tStatus = useTranslations("status");
   const editable = def.status === "Ongoing";
   const [roster, setRoster] = useState<string[]>(def.roster);
   const status = statusChipColors(def.status);
@@ -377,7 +385,7 @@ function ViewClass({ def, onClose }: { def: ClassDef; onClose: () => void }) {
             {def.time} · {def.teacher} · {def.room}
           </span>
           <button type="button" style={editable ? primaryBtn : ghostBtn} onClick={onClose}>
-            {editable ? "Save Changes" : "Close"}
+            {editable ? t("saveChanges") : tCommon("close")}
           </button>
         </>
       }
@@ -394,17 +402,17 @@ function ViewClass({ def, onClose }: { def: ClassDef; onClose: () => void }) {
             fontWeight: 600,
           }}
         >
-          {def.status}
+          {tStatus(def.status)}
         </span>
         {!editable && (
           <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-            This session has finished — the roster is read-only.
+            {t("readOnly")}
           </span>
         )}
       </div>
 
       <h3 style={{ margin: "0 0 12px", fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text }}>
-        Checked In ({roster.length})
+        {t("checkedInCount", { count: roster.length })}
       </h3>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 9 }}>
         {roster.map((name) => (
@@ -425,7 +433,7 @@ function ViewClass({ def, onClose }: { def: ClassDef; onClose: () => void }) {
               <button
                 type="button"
                 onClick={() => setRoster((prev) => prev.filter((n) => n !== name))}
-                aria-label={`Remove ${name} from roster`}
+                aria-label={t("removeFromRoster", { name })}
                 style={{
                   display: "inline-flex",
                   border: "none",

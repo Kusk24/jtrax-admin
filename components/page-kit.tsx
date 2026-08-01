@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, type CSSProperties, type ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { Icon, type IconName } from "@/lib/icons";
 import { COLORS, FONT } from "@/lib/theme";
 
@@ -165,6 +166,10 @@ export function SearchInput({
   );
 }
 
+export type FilterOption = { value: string; label: string };
+
+/** Options carry an explicit value so the localised label never becomes the
+    thing we filter on — "all" is always the empty string. */
 export function SelectFilter({
   value,
   onChange,
@@ -173,7 +178,7 @@ export function SelectFilter({
 }: {
   value: string;
   onChange: (v: string) => void;
-  options: string[];
+  options: FilterOption[];
   label: string;
 }) {
   return (
@@ -184,8 +189,8 @@ export function SelectFilter({
       style={{ ...fieldStyle, width: "auto", borderRadius: 999, padding: "9px 14px" }}
     >
       {options.map((o) => (
-        <option key={o} value={o}>
-          {o}
+        <option key={o.value} value={o.value}>
+          {o.label}
         </option>
       ))}
     </select>
@@ -295,6 +300,7 @@ export function Pagination({
   totalPages: number;
   onChange: (p: number) => void;
 }) {
+  const t = useTranslations("common");
   if (totalPages <= 1) return null;
   const arrow = (disabled: boolean): CSSProperties => ({
     display: "inline-flex",
@@ -321,11 +327,11 @@ export function Pagination({
       }}
     >
       <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-        Page {page + 1} of {totalPages}
+        {t("page", { page: page + 1, total: totalPages })}
       </span>
       <button
         type="button"
-        aria-label="Previous page"
+        aria-label={t("previousPage")}
         disabled={page === 0}
         onClick={() => onChange(page - 1)}
         style={arrow(page === 0)}
@@ -334,7 +340,7 @@ export function Pagination({
       </button>
       <button
         type="button"
-        aria-label="Next page"
+        aria-label={t("nextPage")}
         disabled={page >= totalPages - 1}
         onClick={() => onChange(page + 1)}
         style={arrow(page >= totalPages - 1)}
@@ -360,6 +366,7 @@ export function Modal({
   footer?: ReactNode;
   width?: number;
 }) {
+  const t = useTranslations("common");
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -415,7 +422,7 @@ export function Modal({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t("close")}
             style={{ display: "inline-flex", border: "none", background: "transparent", cursor: "pointer", color: COLORS.textSecondary, padding: 0 }}
           >
             <Icon name="x" size={17} />
@@ -456,6 +463,7 @@ export function Drawer({
   footer?: ReactNode;
   width?: number;
 }) {
+  const t = useTranslations("common");
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -507,7 +515,7 @@ export function Drawer({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t("close")}
             style={{ display: "inline-flex", border: "none", background: "transparent", cursor: "pointer", color: COLORS.textSecondary, padding: 0 }}
           >
             <Icon name="x" size={17} />
@@ -535,6 +543,7 @@ export function Drawer({
 
 /** Call / LINE / Email trio used on admin and teacher cards. */
 export function ContactActions({ phone, lineId, email }: { phone: string; lineId: string; email: string }) {
+  const t = useTranslations("common");
   const base: CSSProperties = {
     display: "inline-flex",
     alignItems: "center",
@@ -558,7 +567,7 @@ export function ContactActions({ phone, lineId, email }: { phone: string; lineId
   return (
     <div style={{ display: "flex", gap: 7 }}>
       <a href={`tel:${phone.replace(/\s/g, "")}`} onClick={stop} className="jt-qa-call" style={base}>
-        <Icon name="phone" size={13} /> Call
+        <Icon name="phone" size={13} /> {t("call")}
       </a>
       <a
         href={`https://line.me/ti/p/~${lineId}`}
@@ -568,10 +577,10 @@ export function ContactActions({ phone, lineId, email }: { phone: string; lineId
         className="jt-qa-line"
         style={base}
       >
-        <Icon name="chat" size={13} /> LINE
+        <Icon name="chat" size={13} /> {t("line")}
       </a>
       <a href={`mailto:${email}`} onClick={stop} className="jt-qa-email" style={base}>
-        <Icon name="mail" size={13} /> Email
+        <Icon name="mail" size={13} /> {t("email")}
       </a>
     </div>
   );

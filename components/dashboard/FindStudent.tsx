@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { searchStudents } from "@/lib/derive";
 import { CLASSES_DEFS_REF } from "@/lib/data";
 import { Icon } from "@/lib/icons";
@@ -21,6 +22,7 @@ type PopoverKind = "class" | "credit" | null;
 
 export function FindStudent() {
   const router = useRouter();
+  const t = useTranslations("find");
   const [query, setQuery] = useState("");
   const [desk, setDesk] = useState<Record<string, DeskState>>({});
   const [popover, setPopover] = useState<{ id: string; kind: PopoverKind }>({ id: "", kind: null });
@@ -44,7 +46,7 @@ export function FindStudent() {
     <div style={{ position: "relative" }}>
       <Card style={{ display: "flex", alignItems: "center", gap: 18, overflow: "hidden" }}>
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 10 }}>
-          <SectionTitle>Find a Student</SectionTitle>
+          <SectionTitle>{t("title")}</SectionTitle>
           <div
             style={{
               display: "flex",
@@ -60,8 +62,8 @@ export function FindStudent() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by name or phone number"
-              aria-label="Search students by name or phone number"
+              placeholder={t("placeholder")}
+              aria-label={t("label")}
               style={{
                 flex: 1,
                 border: "none",
@@ -96,7 +98,7 @@ export function FindStudent() {
               }}
             >
               <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
-                No student found
+                {t("noStudent")}
               </p>
               <button
                 type="button"
@@ -118,7 +120,7 @@ export function FindStudent() {
                 }}
               >
                 <Icon name="usersPlus" size={16} color="#fff" />
-                Register Student
+                {t("registerStudent")}
               </button>
             </div>
           ) : (
@@ -130,12 +132,12 @@ export function FindStudent() {
 
               const checkinLabel =
                 state.status === "in_class"
-                  ? `In class · ${state.className}`
+                  ? t("inClass", { className: state.className ?? "" })
                   : state.status === "checked_in"
-                    ? "Checked in"
+                    ? t("checkedIn")
                     : state.status === "dismissed"
-                      ? "Dismissed"
-                      : "Not checked in";
+                      ? t("dismissed")
+                      : t("notCheckedIn");
 
               return (
                 <div key={student.id}>
@@ -159,7 +161,7 @@ export function FindStudent() {
                           {checkinLabel}
                         </Badge>
                         <Badge color={chip.color} bg={chip.bg}>
-                          {credit} credits
+                          {t("creditCount", { count: credit })}
                         </Badge>
                       </div>
                     </div>
@@ -171,7 +173,7 @@ export function FindStudent() {
                         onClick={() => update(student.id, { status: "checked_in" })}
                         style={primaryBtn}
                       >
-                        Check In
+                        {t("checkIn")}
                       </button>
                     )}
                     {state.status === "checked_in" && (
@@ -181,7 +183,7 @@ export function FindStudent() {
                         onClick={() => togglePopover(student.id, "class")}
                         style={primaryBtn}
                       >
-                        Assign Class
+                        {t("assignClass")}
                       </button>
                     )}
                     {state.status === "in_class" && (
@@ -191,7 +193,7 @@ export function FindStudent() {
                         onClick={() => update(student.id, { status: "dismissed" })}
                         style={ghostBtn}
                       >
-                        Dismiss
+                        {t("dismiss")}
                       </button>
                     )}
 
@@ -201,7 +203,7 @@ export function FindStudent() {
                       onClick={() => togglePopover(student.id, "credit")}
                       style={ghostBtn}
                     >
-                      Add Credits
+                      {t("addCredits")}
                     </button>
                   </div>
 

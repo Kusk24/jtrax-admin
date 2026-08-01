@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Icon } from "@/lib/icons";
-import { SECTION_META } from "@/lib/nav";
+import { NAV_STRUCTURE } from "@/lib/nav";
 import { COLORS, FONT } from "@/lib/theme";
 import { useJtrax } from "./JtraxContext";
 import { Card } from "./ui";
@@ -10,7 +11,11 @@ import { Card } from "./ui";
 /** The design's `isPlaceholder` branch, plus the role-guard refusal. */
 export function SectionPlaceholder({ section, noAccess }: { section: string; noAccess?: boolean }) {
   const { role } = useJtrax();
-  const meta = SECTION_META[section];
+  const t = useTranslations("common");
+  const tNav = useTranslations("nav");
+  const tRole = useTranslations("roles");
+  const icon = NAV_STRUCTURE.find((item) => item.id === section)?.icon ?? "layers";
+  const label = tNav(section);
 
   return (
     <Card
@@ -35,21 +40,15 @@ export function SectionPlaceholder({ section, noAccess }: { section: string; noA
           background: COLORS.light,
         }}
       >
-        <Icon name={noAccess ? "lock" : (meta?.icon ?? "layers")} size={28} color={COLORS.blue} />
+        <Icon name={noAccess ? "lock" : icon} size={28} color={COLORS.blue} />
       </span>
       <h2 style={{ margin: 0, fontFamily: FONT, fontSize: 18, fontWeight: 700, color: COLORS.text }}>
-        {noAccess ? "No access" : (meta?.label ?? "Section")}
+        {noAccess ? t("noAccessTitle") : label}
       </h2>
       <p style={{ margin: 0, maxWidth: 420, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
-        {noAccess ? (
-          <>
-            The <strong>{role}</strong> role can&apos;t open {meta?.label ?? "this section"}.
-          </>
-        ) : (
-          <>
-            This section is coming soon. You&apos;re viewing as <strong>{role}</strong>.
-          </>
-        )}
+        {noAccess
+          ? t("noAccessBody", { role: tRole(role), section: label })
+          : t("comingSoon", { role: tRole(role) })}
       </p>
       <Link
         href="/"
@@ -66,7 +65,7 @@ export function SectionPlaceholder({ section, noAccess }: { section: string; noA
           textDecoration: "none",
         }}
       >
-        Back to Dashboard
+        {t("backToDashboard")}
       </Link>
     </Card>
   );

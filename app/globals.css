@@ -19,7 +19,20 @@ body {
 }
 
 body {
-  font-family: var(--font-jtrax-inter), "Inter", system-ui, sans-serif;
+  font-family: var(--font-jtrax-inter), var(--font-jtrax-thai), "Inter", system-ui, sans-serif;
+}
+
+/* Thai stacks vowel and tone marks above and below the baseline, so it needs
+   roomier lines and no letter-spacing to stay legible at UI sizes. */
+html[lang="th"] body {
+  line-height: 1.65;
+  letter-spacing: 0;
+}
+
+html[lang="th"] h1,
+html[lang="th"] h2,
+html[lang="th"] h3 {
+  letter-spacing: 0;
 }
 
 img,

@@ -38,14 +38,3 @@ export function canRoleAccess(role: JtraxRole, sectionId: string): boolean {
   return navItemsForRole(role).some((item) => item.id === sectionId);
 }
 
-export const SECTION_META: Record<string, { label: string; sub: string; icon: IconName }> = {
-  admins: { label: "Admins", sub: "Manage admin and super admin accounts", icon: "userCheck" },
-  academy: { label: "Academy", sub: "Courses and Teachers", icon: "book" },
-  classhistory: { label: "Class History", sub: "Past sessions and attendance", icon: "history" },
-  students: { label: "Students", sub: "Enrolled students and profiles", icon: "students" },
-  payment: { label: "Payment", sub: "Payments and credit packages", icon: "payment" },
-  tournament: { label: "Tournament", sub: "Upcoming and past tournaments", icon: "tournament" },
-  announcement: { label: "Announcement", sub: "Broadcast to students and parents", icon: "announcement" },
-  chat: { label: "Messaging Center", sub: "Reply to parents through LINE Official Account", icon: "chat" },
-  settings: { label: "Settings", sub: "Manage system-wide credit warning rules.", icon: "settings" },
-};

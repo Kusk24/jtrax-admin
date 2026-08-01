@@ -1,25 +1,30 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { buildKpiCards, buildRevenueTrend, trendPointStrings } from "@/lib/derive";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT } from "@/lib/theme";
 import { Card, SectionTitle } from "../ui";
 
 function RevenueTrend() {
+  const t = useTranslations("dashboard");
   const points = buildRevenueTrend();
   const { line, area } = trendPointStrings(points);
 
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <SectionTitle>Revenue Trend</SectionTitle>
+      <SectionTitle>{t("revenueTrend")}</SectionTitle>
       <p style={{ margin: 0, fontFamily: FONT, fontSize: 12, color: COLORS.textSecondary }}>
-        Last 6 months
+        {t("lastSixMonths")}
       </p>
       <svg
         viewBox="0 0 100 100"
         preserveAspectRatio="none"
         role="img"
-        aria-label={`Revenue over the last 6 months, from ${points[0].value.toLocaleString()} to ${points[points.length - 1].value.toLocaleString()} THB`}
+        aria-label={t("revenueChartLabel", {
+          from: points[0].value.toLocaleString(),
+          to: points[points.length - 1].value.toLocaleString(),
+        })}
         style={{ width: "100%", height: 150, marginTop: 10, display: "block", overflow: "visible" }}
       >
         <polygon points={area} fill={COLORS.light} />
@@ -43,10 +48,11 @@ function RevenueTrend() {
 }
 
 function KpiCards() {
+  const t = useTranslations("dashboard");
   const kpis = buildKpiCards();
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <SectionTitle>Overview</SectionTitle>
+      <SectionTitle>{t("overview")}</SectionTitle>
       {kpis.map((kpi) => (
         <div
           key={kpi.key}
@@ -74,11 +80,15 @@ function KpiCards() {
             <Icon name={kpi.icon} size={19} color={kpi.color} />
           </span>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textSecondary }}>{kpi.label}</div>
+            <div style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textSecondary }}>
+              {kpi.key === "revenue" ? t("revenueThisMonth") : t("totalStudents")}
+            </div>
             <div style={{ fontFamily: FONT, fontSize: 19, fontWeight: 700, color: COLORS.text }}>
               {kpi.value}
             </div>
-            <div style={{ fontFamily: FONT, fontSize: 11.5, color: COLORS.textSecondary }}>{kpi.sub}</div>
+            <div style={{ fontFamily: FONT, fontSize: 11.5, color: COLORS.textSecondary }}>
+              {kpi.key === "revenue" ? t("fromPayments", { count: kpi.count }) : t("enrolledAcross")}
+            </div>
           </div>
         </div>
       ))}

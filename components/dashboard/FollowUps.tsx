@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { buildFollowUps, type FollowUpBucket } from "@/lib/derive";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT } from "@/lib/theme";
@@ -13,14 +14,28 @@ const ROW_CLASS: Record<FollowUpBucket, string> = {
   inactive: "jt-follow-inactive",
 };
 
+const LABEL_KEY: Record<FollowUpBucket, string> = {
+  low: "lowCredit",
+  expiring: "expiringSoon",
+  inactive: "inactiveStudents",
+};
+
 export function FollowUps({ style }: { style?: React.CSSProperties }) {
   const router = useRouter();
   const { creditRules } = useJtrax();
+  const t = useTranslations("dashboard");
   const followUps = buildFollowUps(creditRules);
+
+  const description = (key: FollowUpBucket) =>
+    key === "low"
+      ? t("lowCreditDesc", { count: creditRules.lowCredit })
+      : key === "expiring"
+        ? t("expiringSoonDesc", { days: creditRules.expiringDays })
+        : t("inactiveStudentsDesc", { days: creditRules.inactiveDays });
 
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 12, ...style }}>
-      <SectionTitle>Needs Follow-up</SectionTitle>
+      <SectionTitle>{t("needsFollowUp")}</SectionTitle>
       <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
         {followUps.map((fu) => (
           <button
@@ -58,7 +73,7 @@ export function FollowUps({ style }: { style?: React.CSSProperties }) {
             <span style={{ flex: 1, minWidth: 0 }}>
               <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontFamily: FONT, fontSize: 13.5, fontWeight: 600, color: COLORS.text }}>
-                  {fu.label}
+                  {t(LABEL_KEY[fu.key])}
                 </span>
                 <span
                   style={{
@@ -83,7 +98,7 @@ export function FollowUps({ style }: { style?: React.CSSProperties }) {
                   color: COLORS.textSecondary,
                 }}
               >
-                {fu.desc}
+                {description(fu.key)}
               </span>
             </span>
           </button>

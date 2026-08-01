@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { ANNOUNCEMENTS_SEED, type Announcement } from "@/lib/data";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT, TODAY_REF } from "@/lib/theme";
@@ -10,6 +11,8 @@ import { Card } from "../ui";
 const AUDIENCES = ["Students", "Parents", "Teachers"] as const;
 
 export function AnnouncementPage() {
+  const t = useTranslations("announcement");
+  const tCommon = useTranslations("common");
   const [rows, setRows] = useState<Announcement[]>(ANNOUNCEMENTS_SEED);
   const [composeOpen, setComposeOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -42,8 +45,8 @@ export function AnnouncementPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <PageHeader
-        title="Announcement"
-        sub="Broadcasts to students and parents"
+        title={t("title")}
+        sub={t("sub")}
         action={
           <button
             type="button"
@@ -51,7 +54,7 @@ export function AnnouncementPage() {
             style={primaryButtonStyle}
             onClick={() => setComposeOpen((v) => !v)}
           >
-            {composeOpen ? "Cancel" : "New Announcement"}
+            {composeOpen ? tCommon("cancel") : t("new")}
           </button>
         }
       />
@@ -60,7 +63,7 @@ export function AnnouncementPage() {
         <Card className="jtrax-fade-in-up" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div>
             <label style={labelStyle} htmlFor="jtrax-ann-title">
-              Title
+              {t("titleField")}
             </label>
             <input
               id="jtrax-ann-title"
@@ -71,7 +74,7 @@ export function AnnouncementPage() {
           </div>
           <div>
             <label style={labelStyle} htmlFor="jtrax-ann-body">
-              Message
+              {t("message")}
             </label>
             <textarea
               id="jtrax-ann-body"
@@ -82,7 +85,7 @@ export function AnnouncementPage() {
             />
           </div>
           <div>
-            <span style={labelStyle}>Audience</span>
+            <span style={labelStyle}>{t("audience")}</span>
             <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
               {AUDIENCES.map((a) => (
                 <label
@@ -103,7 +106,7 @@ export function AnnouncementPage() {
                     onChange={() => setAudience({ ...audience, [a]: !audience[a] })}
                     style={{ accentColor: COLORS.blue, width: 15, height: 15 }}
                   />
-                  {a}
+                  {t(`audience${a}`)}
                 </label>
               ))}
             </div>
@@ -117,7 +120,7 @@ export function AnnouncementPage() {
               onClick={send}
             >
               <Icon name="send" size={15} color="#fff" />
-              Send Announcement
+              {t("send")}
             </button>
           </div>
         </Card>
@@ -126,7 +129,7 @@ export function AnnouncementPage() {
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {rows.length === 0 && (
           <Card>
-            <EmptyRow>No announcements yet.</EmptyRow>
+            <EmptyRow>{t("empty")}</EmptyRow>
           </Card>
         )}
         {rows.map((a, i) => (
@@ -158,7 +161,7 @@ export function AnnouncementPage() {
               </div>
               <button
                 type="button"
-                aria-label={`Delete ${a.title}`}
+                aria-label={t("deleteItem", { title: a.title })}
                 onClick={() => setRows(rows.filter((_, idx) => idx !== i))}
                 style={{
                   display: "inline-flex",

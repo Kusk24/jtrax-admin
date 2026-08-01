@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { TOURNAMENTS_SEED, type Participant, type Tournament } from "@/lib/data";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
@@ -49,10 +50,10 @@ function buildQrCells(seedStr: string, size = 11): boolean[] {
   return cells;
 }
 
-function rankBadge(rank: number): { color: string; bg: string; label: string } | null {
-  if (rank === 1) return { color: "#8A6D00", bg: "#FCEFC2", label: "Champion" };
-  if (rank === 2) return { color: "#5B6472", bg: "#E6E9EE", label: "Runner-up" };
-  if (rank === 3) return { color: "#8A4B26", bg: "#F3DCC6", label: "2nd Runner-up" };
+function rankBadge(rank: number): { color: string; bg: string; labelKey: string } | null {
+  if (rank === 1) return { color: "#8A6D00", bg: "#FCEFC2", labelKey: "champion" };
+  if (rank === 2) return { color: "#5B6472", bg: "#E6E9EE", labelKey: "runnerUp" };
+  if (rank === 3) return { color: "#8A4B26", bg: "#F3DCC6", labelKey: "secondRunnerUp" };
   return null;
 }
 
@@ -104,9 +105,11 @@ function QrCode({ seed }: { seed: string }) {
 
 /* ---------------------------------------------------------------- wizard --- */
 
-const WIZARD_STEPS = ["Upload", "Review", "Publish"];
+const WIZARD_STEP_KEYS = ["stepUpload", "stepReview", "stepPublish"];
 
 function CreateWizard({ onCancel, onPublish }: { onCancel: () => void; onPublish: (t: Tournament) => void }) {
+  const t = useTranslations("tournament");
+  const tCommon = useTranslations("common");
   const [step, setStep] = useState(1);
   const [extracting, setExtracting] = useState(false);
   const [fileName, setFileName] = useState("");
@@ -139,14 +142,14 @@ function CreateWizard({ onCancel, onPublish }: { onCancel: () => void; onPublish
     }, 1800);
   }
 
-  const fields: Array<{ key: keyof typeof draft; label: string }> = [
-    { key: "name", label: "Tournament Name" },
-    { key: "date", label: "Date" },
-    { key: "venue", label: "Venue" },
-    { key: "format", label: "Format" },
-    { key: "timeControl", label: "Time Control" },
-    { key: "chiefArbiter", label: "Chief Arbiter" },
-    { key: "maxParticipants", label: "Max Participants" },
+  const fields: Array<{ key: keyof typeof draft; labelKey: string }> = [
+    { key: "name", labelKey: "fieldName" },
+    { key: "date", labelKey: "fieldDate" },
+    { key: "venue", labelKey: "fieldVenue" },
+    { key: "format", labelKey: "fieldFormat" },
+    { key: "timeControl", labelKey: "fieldTimeControl" },
+    { key: "chiefArbiter", labelKey: "fieldChiefArbiter" },
+    { key: "maxParticipants", labelKey: "fieldMaxParticipants" },
   ];
 
   return (
@@ -169,18 +172,18 @@ function CreateWizard({ onCancel, onPublish }: { onCancel: () => void; onPublish
           padding: 0,
         }}
       >
-        <Icon name="chevronLeft" size={16} color={COLORS.textSecondary} /> Back to Tournaments
+        <Icon name="chevronLeft" size={16} color={COLORS.textSecondary} /> {t("backToTournaments")}
       </button>
 
-      <PageHeader title="Create Tournament" sub="Upload the regulation and we'll pre-fill the details." />
+      <PageHeader title={t("create")} sub={t("wizardSub")} />
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        {WIZARD_STEPS.map((label, i) => {
+        {WIZARD_STEP_KEYS.map((labelKey, i) => {
           const n = i + 1;
           const done = step > n;
           const current = step === n;
           return (
-            <div key={label} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div key={labelKey} style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <span
                 style={{
                   display: "inline-flex",
@@ -206,9 +209,9 @@ function CreateWizard({ onCancel, onPublish }: { onCancel: () => void; onPublish
                   color: current ? COLORS.text : COLORS.textSecondary,
                 }}
               >
-                {label}
+                {t(labelKey)}
               </span>
-              {i < WIZARD_STEPS.length - 1 && (
+              {i < WIZARD_STEP_KEYS.length - 1 && (
                 <span style={{ width: 28, height: 1, background: COLORS.border }} />
               )}
             </div>
@@ -231,20 +234,20 @@ function CreateWizard({ onCancel, onPublish }: { onCancel: () => void; onPublish
                 }}
               />
               <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
-                Extracting details from {fileName}…
+                {t("extracting", { file: fileName })}
               </span>
             </>
           ) : (
             <>
               <Icon name="fileText" size={30} color={COLORS.blue} />
               <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text }}>
-                Upload the tournament regulation
+                {t("uploadPrompt")}
               </span>
               <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-                PDF or image. We&apos;ll read the name, dates, venue and fees.
+                {t("uploadHint")}
               </span>
               <label style={{ ...primaryButtonStyle, cursor: "pointer" }}>
-                Choose file
+                {t("chooseFile")}
                 <input
                   type="file"
                   accept=".pdf,.png,.jpg,.jpeg"
@@ -260,7 +263,7 @@ function CreateWizard({ onCancel, onPublish }: { onCancel: () => void; onPublish
                 onClick={() => setStep(2)}
                 style={{ border: "none", background: "transparent", cursor: "pointer", fontFamily: FONT, fontSize: 12.5, color: COLORS.blue }}
               >
-                Skip and enter manually
+                {t("skipManual")}
               </button>
             </>
           )}
@@ -270,10 +273,10 @@ function CreateWizard({ onCancel, onPublish }: { onCancel: () => void; onPublish
       {step === 2 && (
         <>
           <Card style={{ display: "flex", flexDirection: "column", gap: 13 }}>
-            <SectionTitle>Review extracted details</SectionTitle>
+            <SectionTitle>{t("reviewTitle")}</SectionTitle>
             {fields.map((f) => (
               <div key={f.key}>
-                <label style={labelStyle} htmlFor={`tw-${f.key}`}>{f.label}</label>
+                <label style={labelStyle} htmlFor={`tw-${f.key}`}>{t(f.labelKey)}</label>
                 <input
                   id={`tw-${f.key}`}
                   value={draft[f.key]}
@@ -285,7 +288,7 @@ function CreateWizard({ onCancel, onPublish }: { onCancel: () => void; onPublish
           </Card>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
             <button type="button" className="jt-btn-ghost" style={secondaryButtonStyle} onClick={() => setStep(1)}>
-              Back
+              {tCommon("back")}
             </button>
             <button
               type="button"
@@ -298,7 +301,7 @@ function CreateWizard({ onCancel, onPublish }: { onCancel: () => void; onPublish
               disabled={!draft.name}
               onClick={() => setStep(3)}
             >
-              Publish Tournament
+              {t("publishAction")}
             </button>
           </div>
         </>
@@ -319,9 +322,9 @@ function CreateWizard({ onCancel, onPublish }: { onCancel: () => void; onPublish
           >
             <Icon name="check" size={25} color={COLORS.success} />
           </span>
-          <SectionTitle>{draft.name} is live</SectionTitle>
+          <SectionTitle>{t("liveTitle", { name: draft.name })}</SectionTitle>
           <p style={{ margin: 0, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
-            Share the registration link or QR code with parents.
+            {t("liveSub")}
           </p>
           <QrCode seed={draft.name} />
           <code style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: COLORS.blue, wordBreak: "break-all" }}>
@@ -357,7 +360,7 @@ function CreateWizard({ onCancel, onPublish }: { onCancel: () => void; onPublish
               })
             }
           >
-            View Tournament
+            {t("viewTournament")}
           </button>
         </Card>
       )}
@@ -368,6 +371,8 @@ function CreateWizard({ onCancel, onPublish }: { onCancel: () => void; onPublish
 /* ---------------------------------------------------------------- detail --- */
 
 function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBack: () => void }) {
+  const t = useTranslations("tournament");
+  const tStatus = useTranslations("status");
   const [tab, setTab] = useState<"overview" | "participants">("overview");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
@@ -409,7 +414,7 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
           padding: 0,
         }}
       >
-        <Icon name="chevronLeft" size={16} color={COLORS.textSecondary} /> Back to Tournaments
+        <Icon name="chevronLeft" size={16} color={COLORS.textSecondary} /> {t("backToTournaments")}
       </button>
 
       <Card style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
@@ -422,7 +427,7 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
               {tournament.name}
             </h2>
             <Badge color={status.color} bg={status.bg}>
-              {tournament.status}
+              {tStatus(tournament.status)}
             </Badge>
           </div>
           <p style={{ margin: "5px 0 0", fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
@@ -435,7 +440,7 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
         <Card style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
           <QrCode seed={tournament.name + tournament.id} />
           <div style={{ flex: "1 1 240px", minWidth: 0 }}>
-            <SectionTitle>Registration Website</SectionTitle>
+            <SectionTitle>{t("registrationWebsite")}</SectionTitle>
             <p style={{ margin: "5px 0 10px", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary, wordBreak: "break-all" }}>
               {REGISTRATION_LINK}
             </p>
@@ -452,7 +457,7 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
                 }}
               >
                 <Icon name={copied ? "check" : "copy"} size={14} />
-                {copied ? "Copied" : "Copy link"}
+                {copied ? t("copied") : t("copyLink")}
               </button>
               <a
                 href={REGISTRATION_LINK}
@@ -461,7 +466,7 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
                 className="jt-btn-ghost"
                 style={{ ...secondaryButtonStyle, textDecoration: "none" }}
               >
-                <Icon name="globe" size={14} /> Open site
+                <Icon name="globe" size={14} /> {t("openSite")}
               </a>
             </div>
           </div>
@@ -469,11 +474,11 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
       )}
 
       <div style={{ display: "flex", gap: 18, borderBottom: `1px solid ${COLORS.border}` }}>
-        {(["overview", "participants"] as const).map((t) => (
+        {(["overview", "participants"] as const).map((tab_) => (
           <button
-            key={t}
+            key={tab_}
             type="button"
-            onClick={() => setTab(t)}
+            onClick={() => setTab(tab_)}
             style={{
               border: "none",
               background: "transparent",
@@ -482,12 +487,11 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
               fontFamily: FONT,
               fontSize: 13.5,
               fontWeight: 600,
-              color: tab === t ? COLORS.blue : COLORS.textSecondary,
-              borderBottom: `2px solid ${tab === t ? COLORS.blue : "transparent"}`,
-              textTransform: "capitalize",
+              color: tab === tab_ ? COLORS.blue : COLORS.textSecondary,
+              borderBottom: `2px solid ${tab === tab_ ? COLORS.blue : "transparent"}`,
             }}
           >
-            {t}
+            {tab_ === "overview" ? t("tabOverview") : t("tabParticipants")}
           </button>
         ))}
       </div>
@@ -496,9 +500,9 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
         <>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
             {[
-              { label: "Total Revenue", value: tournament.revenue, icon: "wallet" as const, color: COLORS.success, bg: COLORS.successBg },
-              { label: "Participants", value: `${tournament.currentParticipants}`, icon: "usersPlus" as const, color: COLORS.blue, bg: COLORS.light },
-              { label: "Registration Filled", value: `${filled}%`, icon: "layers" as const, color: COLORS.warning, bg: COLORS.warningBg },
+              { label: t("totalRevenue"), value: tournament.revenue, icon: "wallet" as const, color: COLORS.success, bg: COLORS.successBg },
+              { label: t("participants"), value: `${tournament.currentParticipants}`, icon: "usersPlus" as const, color: COLORS.blue, bg: COLORS.light },
+              { label: t("registrationFilled"), value: `${filled}%`, icon: "layers" as const, color: COLORS.warning, bg: COLORS.warningBg },
             ].map((stat) => (
               <Card key={stat.label} style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <span
@@ -524,18 +528,24 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
           </div>
 
           <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <SectionTitle>Tournament Summary</SectionTitle>
+            <SectionTitle>{t("summary")}</SectionTitle>
             <InfoGrid
               rows={[
-                { label: "Organizer", value: tournament.organizer },
-                { label: "Chief Arbiter", value: tournament.chiefArbiter },
-                { label: "Format", value: tournament.format },
-                { label: "Time Control", value: tournament.timeControl },
-                { label: "Categories", value: tournament.categories.join(", ") || "—" },
-                { label: "Registration closes", value: tournament.registrationDeadline },
-                { label: "Entry fee", value: `${tournament.entryFeeMember} member / ${tournament.entryFeeNonMember} non-member` },
-                { label: "Rounds", value: tournament.rounds || "—" },
-                { label: "Address", value: tournament.address },
+                { label: t("organizer"), value: tournament.organizer },
+                { label: t("chiefArbiter"), value: tournament.chiefArbiter },
+                { label: t("format"), value: tournament.format },
+                { label: t("timeControl"), value: tournament.timeControl },
+                { label: t("categories"), value: tournament.categories.join(", ") || "—" },
+                { label: t("registrationCloses"), value: tournament.registrationDeadline },
+                {
+                  label: t("entryFee"),
+                  value: t("entryFeeValue", {
+                    member: tournament.entryFeeMember,
+                    nonMember: tournament.entryFeeNonMember,
+                  }),
+                },
+                { label: t("rounds"), value: tournament.rounds || "—" },
+                { label: t("address"), value: tournament.address },
               ]}
             />
           </Card>
@@ -546,17 +556,17 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
             <SearchInput
               value={search}
               onChange={(v) => { setSearch(v); setPage(0); }}
-              placeholder="Search participants"
-              label="Search participants"
+              placeholder={t("searchParticipants")}
+              label={t("searchParticipants")}
               style={{ maxWidth: 340 }}
             />
           </div>
           <Table
-            columns={["Rank", "Player", "Rating", "Category", "Score", "Payment"]}
+            columns={[t("rank"), t("player"), t("rating"), t("category"), t("score"), t("payment")]}
             template={PARTICIPANT_TEMPLATE}
             minWidth={760}
           >
-            {pageRows.length === 0 && <EmptyRow>No participants yet.</EmptyRow>}
+            {pageRows.length === 0 && <EmptyRow>{t("noParticipants")}</EmptyRow>}
             {pageRows.map((p) => {
               const badge = rankBadge(p.rank);
               const pay = statusChipColors(p.paymentStatus);
@@ -571,7 +581,7 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
                       </span>
                       {badge && (
                         <span style={{ fontFamily: FONT, fontSize: 10.5, fontWeight: 700, color: badge.color }}>
-                          {badge.label}
+                          {t(badge.labelKey)}
                         </span>
                       )}
                     </span>
@@ -580,7 +590,7 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
                   <span style={{ color: COLORS.textSecondary }}>{p.category}</span>
                   <span style={{ fontWeight: 600 }}>{p.score}</span>
                   <Badge color={pay.color} bg={pay.bg} style={{ justifySelf: "start" }}>
-                    {p.paymentStatus}
+                    {tStatus(p.paymentStatus)}
                   </Badge>
                 </TableRow>
               );
@@ -598,16 +608,16 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
               <div>
                 <div style={{ fontFamily: FONT, fontSize: 16, fontWeight: 700, color: COLORS.text }}>{drawer.name}</div>
                 <div style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-                  {drawer.age} yrs · rating {drawer.rating} · {drawer.category}
+{t("ratingLine", { age: drawer.age, rating: drawer.rating, category: drawer.category })}
                 </div>
               </div>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
               {[
-                { label: "Wins", value: drawer.wins, color: COLORS.success },
-                { label: "Draws", value: drawer.draws, color: COLORS.warning },
-                { label: "Losses", value: drawer.losses, color: COLORS.danger },
+                { label: t("wins"), value: drawer.wins, color: COLORS.success },
+                { label: t("draws"), value: drawer.draws, color: COLORS.warning },
+                { label: t("losses"), value: drawer.losses, color: COLORS.danger },
               ].map((s) => (
                 <div
                   key={s.label}
@@ -626,12 +636,12 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
 
             <InfoGrid
               rows={[
-                { label: "Score", value: drawer.score },
-                { label: "Prize", value: drawer.prize },
-                { label: "Attendance", value: drawer.attendance },
-                { label: "Payment", value: drawer.paymentStatus },
-                { label: "Guardian", value: drawer.guardian },
-                { label: "Contact", value: drawer.contact },
+                { label: t("score"), value: drawer.score },
+                { label: t("prize"), value: drawer.prize },
+                { label: t("attendance"), value: drawer.attendance },
+                { label: t("payment"), value: tStatus(drawer.paymentStatus) },
+                { label: t("guardian"), value: drawer.guardian },
+                { label: t("contact"), value: drawer.contact },
               ]}
             />
 
@@ -660,6 +670,8 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
 /* ------------------------------------------------------------------ page --- */
 
 export function TournamentPage() {
+  const t = useTranslations("tournament");
+  const tStatus = useTranslations("status");
   const [tournaments, setTournaments] = useState<Tournament[]>(TOURNAMENTS_SEED);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
@@ -699,32 +711,32 @@ export function TournamentPage() {
         <SectionTitle>{title}</SectionTitle>
         {list.length === 0 ? (
           <Card>
-            <EmptyRow>No tournaments here.</EmptyRow>
+            <EmptyRow>{t("empty")}</EmptyRow>
           </Card>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
-            {list.map((t) => {
-              const status = statusChipColors(t.status);
+            {list.map((item) => {
+              const status = statusChipColors(item.status);
               return (
                 <Card
-                  key={t.id}
+                  key={item.id}
                   className="jt-course-card"
                   style={{ display: "flex", flexDirection: "column", gap: 11, cursor: "pointer" }}
-                  onClick={() => setSelectedId(t.id)}
+                  onClick={() => setSelectedId(item.id)}
                 >
-                  <TournamentArt name={t.name} />
+                  <TournamentArt name={item.name} />
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 9 }}>
                     <span style={{ fontFamily: FONT, fontSize: 14.5, fontWeight: 700, color: COLORS.text }}>
-                      {t.name}
+                      {item.name}
                     </span>
                     <Badge color={status.color} bg={status.bg}>
-                      {t.status}
+                      {tStatus(item.status)}
                     </Badge>
                   </div>
                   <div style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary, lineHeight: 1.6 }}>
-                    <div>{t.date}</div>
-                    <div>{t.venue}</div>
-                    <div>{t.currentParticipants} participants</div>
+                    <div>{item.date}</div>
+                    <div>{item.venue}</div>
+                    <div>{t("participantCount", { count: item.currentParticipants })}</div>
                   </div>
                 </Card>
               );
@@ -738,11 +750,11 @@ export function TournamentPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <PageHeader
-        title="Tournament"
-        sub="Upcoming and past tournaments"
+        title={t("title")}
+        sub={t("sub")}
         action={
           <button type="button" className="jt-btn-primary" style={primaryButtonStyle} onClick={() => setWizardOpen(true)}>
-            <Icon name="plus" size={15} color="#fff" /> Create Tournament
+            <Icon name="plus" size={15} color="#fff" /> {t("create")}
           </button>
         }
       />
@@ -750,13 +762,13 @@ export function TournamentPage() {
       <SearchInput
         value={search}
         onChange={setSearch}
-        placeholder="Search tournaments"
-        label="Search tournaments"
+        placeholder={t("searchPlaceholder")}
+        label={t("searchLabel")}
         style={{ maxWidth: 340 }}
       />
 
-      {section("Ongoing", ongoing)}
-      {section("Past Tournaments", past)}
+      {section(t("ongoing"), ongoing)}
+      {section(t("past"), past)}
     </div>
   );
 }

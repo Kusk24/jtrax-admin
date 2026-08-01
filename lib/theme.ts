@@ -26,7 +26,9 @@ export const COLORS = {
   line: "#06C755",
 } as const;
 
-export const FONT = "var(--font-jtrax-inter), 'Inter', system-ui, sans-serif";
+/* Thai falls through to Noto Sans Thai — Inter carries no Thai glyphs. */
+export const FONT =
+  "var(--font-jtrax-inter), var(--font-jtrax-thai), 'Inter', system-ui, sans-serif";
 
 export type JtraxRole = "Super Admin" | "Admin" | "Receptionist";
 

@@ -27,10 +27,10 @@ export const DEFAULT_CREDIT_RULES: CreditRules = {
 
 export type FollowUpBucket = "low" | "expiring" | "inactive";
 
+/* Copy lives in the message catalogues, keyed off `key` — this layer only
+   decides who lands in which bucket. */
 export type FollowUp = {
   key: FollowUpBucket;
-  label: string;
-  desc: string;
   count: number;
   icon: IconName;
   color: string;
@@ -77,8 +77,6 @@ export function buildFollowUps(
   return [
     {
       key: "low",
-      label: "Low Credit",
-      desc: `${rules.lowCredit} or fewer credits remaining`,
       count: low.length,
       icon: "alertTriangle",
       color: COLORS.danger,
@@ -87,8 +85,6 @@ export function buildFollowUps(
     },
     {
       key: "expiring",
-      label: "Expiring Soon",
-      desc: `Credits expire within ${rules.expiringDays} days`,
       count: expiring.length,
       icon: "clockSmall",
       color: COLORS.warning,
@@ -97,8 +93,6 @@ export function buildFollowUps(
     },
     {
       key: "inactive",
-      label: "Inactive Students",
-      desc: `No class attended in ${rules.inactiveDays} days`,
       count: inactive.length,
       icon: "userX",
       color: COLORS.textSecondary,
@@ -109,11 +103,11 @@ export function buildFollowUps(
 }
 
 export type Kpi = {
-  key: string;
+  key: "revenue" | "students";
   icon: IconName;
-  label: string;
   value: string;
-  sub: string;
+  /** Interpolated into the localised `sub` string. */
+  count: number;
   color: string;
   bg: string;
 };
@@ -132,18 +126,16 @@ export function buildKpiCards(): Kpi[] {
     {
       key: "revenue",
       icon: "wallet",
-      label: "Revenue This Month",
       value: `${revenue.toLocaleString()} THB`,
-      sub: `From ${PAYMENTS_SEED.length} payments`,
+      count: PAYMENTS_SEED.length,
       color: COLORS.success,
       bg: COLORS.successBg,
     },
     {
       key: "students",
       icon: "usersPlus",
-      label: "Total Students",
       value: "33",
-      sub: "Enrolled across all classes",
+      count: 33,
       color: COLORS.blue,
       bg: COLORS.light,
     },

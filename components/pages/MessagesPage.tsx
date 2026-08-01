@@ -1,27 +1,35 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { CONVERSATIONS_SEED, type ChatMessage, type Conversation } from "@/lib/data";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
 import { InfoGrid, SearchInput } from "../page-kit";
 import { Avatar, Badge, Card, SectionTitle } from "../ui";
 
-const FILTERS = ["All", "Unread", "Starred"] as const;
-type Filter = (typeof FILTERS)[number];
+const FILTERS = [
+  { key: "all", labelKey: "filterAll" },
+  { key: "unread", labelKey: "filterUnread" },
+  { key: "starred", labelKey: "filterStarred" },
+] as const;
+type Filter = (typeof FILTERS)[number]["key"];
 
 export function MessagesPage() {
+  const t = useTranslations("messages");
+  const tCommon = useTranslations("common");
+  const tStatus = useTranslations("status");
   const [conversations, setConversations] = useState<Conversation[]>(CONVERSATIONS_SEED);
   const [selectedId, setSelectedId] = useState(CONVERSATIONS_SEED[0]?.id ?? "");
-  const [filter, setFilter] = useState<Filter>("All");
+  const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
   const [draft, setDraft] = useState("");
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return conversations.filter((c) => {
-      if (filter === "Unread" && c.unread === 0) return false;
-      if (filter === "Starred" && !c.starred) return false;
+      if (filter === "unread" && c.unread === 0) return false;
+      if (filter === "starred" && !c.starred) return false;
       if (q && !c.name.toLowerCase().includes(q) && !(c.student ?? "").toLowerCase().includes(q)) return false;
       return true;
     });
@@ -55,20 +63,25 @@ export function MessagesPage() {
       <Card style={{ padding: 0, display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
         <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 11, borderBottom: `1px solid ${COLORS.border}` }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-            <SectionTitle>Conversations</SectionTitle>
+            <SectionTitle>{t("conversations")}</SectionTitle>
             <Badge color={COLORS.line} bg="#E8F9EE">
-              Synced with LINE
+              {t("syncedWithLine")}
             </Badge>
           </div>
-          <SearchInput value={search} onChange={setSearch} placeholder="Search parents" label="Search conversations" />
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder={t("searchPlaceholder")}
+            label={t("searchLabel")}
+          />
           <div style={{ display: "flex", gap: 7 }}>
             {FILTERS.map((f) => {
-              const activeTab = f === filter;
+              const activeTab = f.key === filter;
               return (
                 <button
-                  key={f}
+                  key={f.key}
                   type="button"
-                  onClick={() => setFilter(f)}
+                  onClick={() => setFilter(f.key)}
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
@@ -84,8 +97,8 @@ export function MessagesPage() {
                     cursor: "pointer",
                   }}
                 >
-                  {f}
-                  {f === "Unread" && unreadTotal > 0 && (
+                  {t(f.labelKey)}
+                  {f.key === "unread" && unreadTotal > 0 && (
                     <span
                       style={{
                         padding: "0 6px",
@@ -108,7 +121,7 @@ export function MessagesPage() {
         <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
           {filtered.length === 0 && (
             <p style={{ padding: 20, margin: 0, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary, textAlign: "center" }}>
-              No conversations match.
+              {t("noConversations")}
             </p>
           )}
           {filtered.map((c) => {
@@ -203,14 +216,14 @@ export function MessagesPage() {
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text }}>{active.name}</div>
                 <div style={{ fontFamily: FONT, fontSize: 11.5, color: COLORS.textSecondary }}>
-                  {active.student ? `Parent of ${active.student}` : "No linked student"}
+                  {active.student ? t("parentOf", { student: active.student }) : t("noLinkedStudent")}
                 </div>
               </div>
             </div>
 
             <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 10, minHeight: 0 }}>
               <div style={{ textAlign: "center", fontFamily: FONT, fontSize: 11.5, color: COLORS.textSecondary }}>
-                Today
+                {t("today")}
               </div>
               {active.messages.map((m, i) => {
                 const mine = m.from === "me";
@@ -269,8 +282,8 @@ export function MessagesPage() {
                     send();
                   }
                 }}
-                placeholder="Write a reply…"
-                aria-label="Message"
+                placeholder={t("replyPlaceholder")}
+                aria-label={t("messageLabel")}
                 style={{
                   flex: 1,
                   minWidth: 0,
@@ -286,7 +299,7 @@ export function MessagesPage() {
               <button
                 type="button"
                 onClick={send}
-                aria-label="Send message"
+                aria-label={t("send")}
                 disabled={!draft.trim()}
                 style={{
                   display: "inline-flex",
@@ -307,7 +320,7 @@ export function MessagesPage() {
           </>
         ) : (
           <p style={{ padding: 28, margin: 0, textAlign: "center", fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
-            Select a conversation.
+            {t("selectConversation")}
           </p>
         )}
       </Card>
@@ -317,46 +330,48 @@ export function MessagesPage() {
         {active && (
           <>
             <div>
-              <SectionTitle style={{ marginBottom: 11 }}>Parent Information</SectionTitle>
+              <SectionTitle style={{ marginBottom: 11 }}>{t("parentInformation")}</SectionTitle>
               <InfoGrid
                 rows={[
-                  { label: "Name", value: active.name },
-                  { label: "Phone", value: active.phone },
-                  { label: "Email", value: active.email },
-                  ...(active.memberType ? [{ label: "Member", value: active.memberType }] : []),
+                  { label: tCommon("name"), value: active.name },
+                  { label: tCommon("phone"), value: active.phone },
+                  { label: tCommon("email"), value: active.email },
+                  ...(active.memberType ? [{ label: t("member"), value: active.memberType }] : []),
                 ]}
               />
             </div>
 
             {active.student ? (
               <div>
-                <SectionTitle style={{ marginBottom: 11 }}>Student Information</SectionTitle>
+                <SectionTitle style={{ marginBottom: 11 }}>{t("studentInformation")}</SectionTitle>
                 <InfoGrid
                   rows={[
-                    { label: "Student", value: active.student },
-                    ...(active.level ? [{ label: "Level", value: active.level }] : []),
-                    ...(active.enrolledClass ? [{ label: "Class", value: active.enrolledClass }] : []),
-                    ...(active.credits != null ? [{ label: "Credits", value: active.credits }] : []),
-                    ...(active.streakDays != null ? [{ label: "Streak", value: `${active.streakDays} days` }] : []),
-                    ...(active.lastClassDate ? [{ label: "Last class", value: active.lastClassDate }] : []),
+                    { label: tCommon("student"), value: active.student },
+                    ...(active.level ? [{ label: t("level"), value: active.level }] : []),
+                    ...(active.enrolledClass ? [{ label: tCommon("class"), value: active.enrolledClass }] : []),
+                    ...(active.credits != null ? [{ label: tCommon("credits"), value: active.credits }] : []),
+                    ...(active.streakDays != null
+                      ? [{ label: t("streak"), value: t("streakDays", { days: active.streakDays }) }]
+                      : []),
+                    ...(active.lastClassDate ? [{ label: t("lastClass"), value: active.lastClassDate }] : []),
                   ]}
                 />
               </div>
             ) : (
               <p style={{ margin: 0, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-                This conversation isn&apos;t linked to a student yet.
+                {t("notLinked")}
               </p>
             )}
 
             {active.tournament && (
               <div>
-                <SectionTitle style={{ marginBottom: 11 }}>Tournament</SectionTitle>
+                <SectionTitle style={{ marginBottom: 11 }}>{t("tournament")}</SectionTitle>
                 <InfoGrid
                   rows={[
-                    { label: "Event", value: active.tournament.name },
-                    { label: "Category", value: active.tournament.category },
-                    { label: "Status", value: active.tournament.status },
-                    { label: "Payment", value: active.tournament.paymentStatus },
+                    { label: t("event"), value: active.tournament.name },
+                    { label: t("category"), value: active.tournament.category },
+                    { label: tCommon("status"), value: tStatus(active.tournament.status) },
+                    { label: t("payment"), value: tStatus(active.tournament.paymentStatus) },
                   ]}
                 />
               </div>
@@ -364,20 +379,20 @@ export function MessagesPage() {
 
             {active.lastPayment && (
               <div>
-                <SectionTitle style={{ marginBottom: 11 }}>Recent Payment</SectionTitle>
+                <SectionTitle style={{ marginBottom: 11 }}>{t("recentPayment")}</SectionTitle>
                 <InfoGrid
                   rows={[
-                    { label: "For", value: active.lastPayment.name },
-                    { label: "Amount", value: active.lastPayment.amount },
-                    { label: "Date", value: active.lastPayment.date },
+                    { label: t("for"), value: active.lastPayment.name },
+                    { label: tCommon("amount"), value: active.lastPayment.amount },
+                    { label: tCommon("date"), value: active.lastPayment.date },
                     {
-                      label: "Status",
+                      label: tCommon("status"),
                       value: (
                         <Badge
                           color={statusChipColors(active.lastPayment.status).color}
                           bg={statusChipColors(active.lastPayment.status).bg}
                         >
-                          {active.lastPayment.status}
+                          {tStatus(active.lastPayment.status)}
                         </Badge>
                       ),
                     },

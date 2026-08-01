@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { ADMIN_SEED, type AdminPerson } from "@/lib/data";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT, ROLE_COLORS, type JtraxRole } from "@/lib/theme";
@@ -34,6 +35,9 @@ function generateTempPassword(): string {
 const EMPTY_FORM = { fullName: "", phone: "", email: "", lineId: "", role: "Admin" as JtraxRole };
 
 export function AdminsPage() {
+  const t = useTranslations("admins");
+  const tCommon = useTranslations("common");
+  const tRole = useTranslations("roles");
   const [admins, setAdmins] = useState<AdminPerson[]>(ADMIN_SEED);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
@@ -58,8 +62,8 @@ export function AdminsPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <PageHeader
-        title="Admins"
-        sub="Manage admin and super admin accounts"
+        title={t("title")}
+        sub={t("sub")}
         action={
           <button
             type="button"
@@ -71,7 +75,7 @@ export function AdminsPage() {
             }}
           >
             <Icon name="plus" size={15} color="#fff" />
-            Create Admin
+            {t("create")}
           </button>
         }
       />
@@ -96,7 +100,7 @@ export function AdminsPage() {
                   </div>
                   <div style={{ marginTop: 3, display: "flex", alignItems: "center", gap: 7 }}>
                     <Badge color={roleColor.color} bg={roleColor.bg}>
-                      {a.role}
+                      {tRole(a.role)}
                     </Badge>
                     <span
                       style={{
@@ -115,7 +119,7 @@ export function AdminsPage() {
               <div style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary, lineHeight: 1.6 }}>
                 <div style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{a.email}</div>
                 <div>{a.phone}</div>
-                <div>Last login: {a.lastLogin}</div>
+                <div>{t("lastLogin", { value: a.lastLogin })}</div>
               </div>
 
               <ContactActions phone={a.phone} lineId={a.lineId} email={a.email} />
@@ -139,7 +143,7 @@ export function AdminsPage() {
                   setEditDraft(detail);
                 }}
               >
-                {editMode ? "Cancel" : "Edit"}
+                {editMode ? tCommon("cancel") : tCommon("edit")}
               </button>
               <button
                 type="button"
@@ -147,7 +151,7 @@ export function AdminsPage() {
                 style={{ ...secondaryButtonStyle, transition: "all 160ms ease" }}
                 onClick={() => setResetShown(true)}
               >
-                Reset Password
+                {t("resetPassword")}
               </button>
               <button
                 type="button"
@@ -155,7 +159,7 @@ export function AdminsPage() {
                 style={{ ...secondaryButtonStyle, marginLeft: "auto", transition: "all 160ms ease" }}
                 onClick={() => setDeleteConfirm(true)}
               >
-                Delete
+                {tCommon("delete")}
               </button>
             </>
           }
@@ -173,7 +177,7 @@ export function AdminsPage() {
                   {detail.name}
                 </div>
                 <Badge color={ROLE_COLORS[detail.role].color} bg={ROLE_COLORS[detail.role].bg}>
-                  {detail.role}
+                  {tRole(detail.role)}
                 </Badge>
               </div>
             </div>
@@ -181,7 +185,7 @@ export function AdminsPage() {
             {editMode && editDraft ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <div>
-                  <label style={labelStyle} htmlFor="ad-name">Full Name</label>
+                  <label style={labelStyle} htmlFor="ad-name">{tCommon("name")}</label>
                   <input
                     id="ad-name"
                     value={editDraft.name}
@@ -190,7 +194,7 @@ export function AdminsPage() {
                   />
                 </div>
                 <div>
-                  <label style={labelStyle} htmlFor="ad-phone">Phone</label>
+                  <label style={labelStyle} htmlFor="ad-phone">{tCommon("phone")}</label>
                   <input
                     id="ad-phone"
                     value={editDraft.phone}
@@ -199,7 +203,7 @@ export function AdminsPage() {
                   />
                 </div>
                 <div>
-                  <label style={labelStyle} htmlFor="ad-email">Email</label>
+                  <label style={labelStyle} htmlFor="ad-email">{tCommon("email")}</label>
                   <input
                     id="ad-email"
                     value={editDraft.email}
@@ -208,7 +212,7 @@ export function AdminsPage() {
                   />
                 </div>
                 <div>
-                  <label style={labelStyle} htmlFor="ad-role">Role</label>
+                  <label style={labelStyle} htmlFor="ad-role">{t("role")}</label>
                   <select
                     id="ad-role"
                     value={editDraft.role}
@@ -216,7 +220,7 @@ export function AdminsPage() {
                     style={fieldStyle}
                   >
                     {ROLES.map((r) => (
-                      <option key={r} value={r}>{r}</option>
+                      <option key={r} value={r}>{tRole(r)}</option>
                     ))}
                   </select>
                 </div>
@@ -229,19 +233,19 @@ export function AdminsPage() {
                     setEditMode(false);
                   }}
                 >
-                  Save Changes
+                  {tCommon("save")}
                 </button>
               </div>
             ) : (
               <InfoGrid
                 rows={[
-                  { label: "Email", value: detail.email },
-                  { label: "Phone", value: detail.phone },
-                  { label: "LINE ID", value: detail.lineId },
-                  { label: "Branch", value: detail.branch },
-                  { label: "Status", value: detail.status },
-                  { label: "Last login", value: detail.lastLogin },
-                  { label: "Created", value: `${detail.createdDate} by ${detail.createdBy}` },
+                  { label: tCommon("email"), value: detail.email },
+                  { label: tCommon("phone"), value: detail.phone },
+                  { label: tCommon("lineId"), value: detail.lineId },
+                  { label: tCommon("branch"), value: detail.branch },
+                  { label: tCommon("status"), value: detail.status },
+                  { label: t("lastLoginLabel"), value: detail.lastLogin },
+                  { label: t("created"), value: t("createdValue", { date: detail.createdDate, by: detail.createdBy }) },
                 ]}
               />
             )}
@@ -263,7 +267,7 @@ export function AdminsPage() {
                 }}
               >
                 <Icon name="check" size={15} color={COLORS.warning} />
-                A password reset link has been sent to {detail.email}.
+                {t("resetSent", { email: detail.email })}
               </div>
             )}
 
@@ -279,14 +283,14 @@ export function AdminsPage() {
                 }}
               >
                 <div style={{ fontFamily: FONT, fontSize: 13.5, fontWeight: 700 }}>
-                  Delete {detail.name}?
+                  {t("deleteTitle", { name: detail.name })}
                 </div>
                 <p style={{ margin: "5px 0 12px", fontFamily: FONT, fontSize: 12.5 }}>
-                  This removes their admin access immediately. This cannot be undone.
+                  {t("deleteBody")}
                 </p>
                 <div style={{ display: "flex", gap: 9 }}>
                   <button type="button" style={secondaryButtonStyle} onClick={() => setDeleteConfirm(false)}>
-                    Cancel
+                    {tCommon("cancel")}
                   </button>
                   <button
                     type="button"
@@ -296,7 +300,7 @@ export function AdminsPage() {
                       closeDrawer();
                     }}
                   >
-                    Delete Admin
+                    {t("deleteConfirm")}
                   </button>
                 </div>
               </div>
@@ -307,12 +311,12 @@ export function AdminsPage() {
 
       {createOpen && (
         <Modal
-          title="Create Admin"
+          title={t("create")}
           onClose={() => setCreateOpen(false)}
           footer={
             <>
               <button type="button" className="jt-btn-ghost" style={secondaryButtonStyle} onClick={() => setCreateOpen(false)}>
-                Cancel
+                {tCommon("cancel")}
               </button>
               <button
                 type="button"
@@ -353,33 +357,33 @@ export function AdminsPage() {
                   setCreated({ email: form.email, password });
                 }}
               >
-                Create Admin
+                {t("create")}
               </button>
             </>
           }
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div>
-              <label style={labelStyle} htmlFor="ca-name">Full Name</label>
+              <label style={labelStyle} htmlFor="ca-name">{tCommon("name")}</label>
               <input id="ca-name" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} style={fieldStyle} />
             </div>
             <div>
-              <label style={labelStyle} htmlFor="ca-email">Email</label>
+              <label style={labelStyle} htmlFor="ca-email">{tCommon("email")}</label>
               <input id="ca-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} style={fieldStyle} />
             </div>
             <div>
-              <label style={labelStyle} htmlFor="ca-phone">Phone</label>
+              <label style={labelStyle} htmlFor="ca-phone">{tCommon("phone")}</label>
               <input id="ca-phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} style={fieldStyle} />
             </div>
             <div>
-              <label style={labelStyle} htmlFor="ca-line">LINE ID</label>
+              <label style={labelStyle} htmlFor="ca-line">{tCommon("lineId")}</label>
               <input id="ca-line" value={form.lineId} onChange={(e) => setForm({ ...form, lineId: e.target.value })} style={fieldStyle} />
             </div>
             <div>
-              <label style={labelStyle} htmlFor="ca-role">Role</label>
+              <label style={labelStyle} htmlFor="ca-role">{t("role")}</label>
               <select id="ca-role" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as JtraxRole })} style={fieldStyle}>
                 {ROLES.map((r) => (
-                  <option key={r} value={r}>{r}</option>
+                  <option key={r} value={r}>{tRole(r)}</option>
                 ))}
               </select>
             </div>
@@ -389,19 +393,19 @@ export function AdminsPage() {
 
       {created && (
         <Modal
-          title="Admin Created"
+          title={t("createdTitle")}
           onClose={() => setCreated(null)}
           width={460}
           footer={
             <button type="button" className="jt-btn-primary" style={primaryButtonStyle} onClick={() => setCreated(null)}>
-              Done
+              {tCommon("done")}
             </button>
           }
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <SectionTitle>One-time credentials</SectionTitle>
+            <SectionTitle>{t("credentials")}</SectionTitle>
             <p style={{ margin: 0, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-              Share these with the new admin now — the temporary password is not shown again.
+              {t("credentialsHint")}
             </p>
             <div
               style={{
@@ -431,7 +435,7 @@ export function AdminsPage() {
               }}
             >
               <Icon name={copied ? "check" : "copy"} size={14} />
-              {copied ? "Copied" : "Copy credentials"}
+              {copied ? t("copied") : t("copyCredentials")}
             </button>
           </div>
         </Modal>

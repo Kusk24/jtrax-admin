@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { PAYMENTS_SEED, STUDENTS_SEED, type Payment } from "@/lib/data";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors, TODAY_REF } from "@/lib/theme";
@@ -33,6 +34,9 @@ const PACKAGES: Record<string, number> = {
 };
 
 function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave: (p: Payment) => void }) {
+  const t = useTranslations("payment");
+  const tCommon = useTranslations("common");
+  const tStatus = useTranslations("status");
   const [studentName, setStudentName] = useState("");
   const [studentQuery, setStudentQuery] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -73,16 +77,16 @@ function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave:
           padding: 0,
         }}
       >
-        <Icon name="chevronLeft" size={16} color={COLORS.textSecondary} /> Back to Payments
+        <Icon name="chevronLeft" size={16} color={COLORS.textSecondary} /> {t("backToPayments")}
       </button>
 
-      <PageHeader title="Record Payment" sub="Log a credit purchase against a student." />
+      <PageHeader title={t("recordTitle")} sub={t("recordSub")} />
 
       <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <SectionTitle>Payment Details</SectionTitle>
+        <SectionTitle>{t("details")}</SectionTitle>
 
         <div style={{ position: "relative" }}>
-          <label style={labelStyle} htmlFor="pay-student">Student</label>
+          <label style={labelStyle} htmlFor="pay-student">{tCommon("student")}</label>
           <input
             id="pay-student"
             value={studentName || studentQuery}
@@ -92,7 +96,7 @@ function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave:
               setDropdownOpen(true);
             }}
             onFocus={() => setDropdownOpen(true)}
-            placeholder="Search by student name"
+            placeholder={t("studentPlaceholder")}
             style={fieldStyle}
             autoComplete="off"
           />
@@ -147,14 +151,14 @@ function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave:
           )}
           {studentQuery.trim() !== "" && matches.length === 0 && !studentName && (
             <p style={{ margin: "6px 0 0", fontFamily: FONT, fontSize: 12, color: COLORS.textSecondary }}>
-              No student matches “{studentQuery}”.
+              {t("noMatch", { query: studentQuery })}
             </p>
           )}
         </div>
 
         <div className="jt-duo">
           <div>
-            <label style={labelStyle} htmlFor="pay-package">Credit Package</label>
+            <label style={labelStyle} htmlFor="pay-package">{t("creditPackage")}</label>
             <select
               id="pay-package"
               value={creditPackage}
@@ -170,7 +174,7 @@ function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave:
             </select>
           </div>
           <div>
-            <label style={labelStyle} htmlFor="pay-amount">Amount (THB)</label>
+            <label style={labelStyle} htmlFor="pay-amount">{t("amountThb")}</label>
             <input
               id="pay-amount"
               type="number"
@@ -181,7 +185,7 @@ function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave:
             />
           </div>
           <div>
-            <label style={labelStyle} htmlFor="pay-discount">Discount (THB)</label>
+            <label style={labelStyle} htmlFor="pay-discount">{t("discountThb")}</label>
             <input
               id="pay-discount"
               type="number"
@@ -192,7 +196,7 @@ function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave:
             />
           </div>
           <div>
-            <label style={labelStyle} htmlFor="pay-method">Payment Method</label>
+            <label style={labelStyle} htmlFor="pay-method">{t("paymentMethod")}</label>
             <select id="pay-method" value={method} onChange={(e) => setMethod(e.target.value)} style={fieldStyle}>
               {METHODS.map((m) => (
                 <option key={m} value={m}>{m}</option>
@@ -200,7 +204,7 @@ function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave:
             </select>
           </div>
           <div>
-            <label style={labelStyle} htmlFor="pay-status">Status</label>
+            <label style={labelStyle} htmlFor="pay-status">{tCommon("status")}</label>
             <select
               id="pay-status"
               value={status}
@@ -208,12 +212,12 @@ function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave:
               style={fieldStyle}
             >
               {(["Paid", "Pending", "Refunded"] as const).map((s) => (
-                <option key={s} value={s}>{s}</option>
+                <option key={s} value={s}>{tStatus(s)}</option>
               ))}
             </select>
           </div>
           <div>
-            <label style={labelStyle} htmlFor="pay-ref">Reference Number (optional)</label>
+            <label style={labelStyle} htmlFor="pay-ref">{t("refNumber")}</label>
             <input id="pay-ref" value={ref} onChange={(e) => setRef(e.target.value)} style={fieldStyle} />
           </div>
         </div>
@@ -229,14 +233,14 @@ function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave:
         }}
       >
         <div>
-          <div style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>Final Amount</div>
+          <div style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>{t("finalAmount")}</div>
           <div style={{ fontFamily: FONT, fontSize: 22, fontWeight: 700, color: COLORS.text }}>
             {finalAmount.toLocaleString()} THB
           </div>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           <button type="button" className="jt-btn-ghost" style={secondaryButtonStyle} onClick={onCancel}>
-            Cancel
+            {tCommon("cancel")}
           </button>
           <button
             type="button"
@@ -255,7 +259,7 @@ function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave:
               })
             }
           >
-            Save Payment
+            {t("savePayment")}
           </button>
         </div>
       </Card>
@@ -264,16 +268,19 @@ function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave:
 }
 
 export function PaymentPage() {
+  const t = useTranslations("payment");
+  const tCommon = useTranslations("common");
+  const tStatus = useTranslations("status");
   const [payments, setPayments] = useState<Payment[]>(PAYMENTS_SEED);
   const [formOpen, setFormOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [method, setMethod] = useState("All Methods");
+  const [method, setMethod] = useState("");
   const [page, setPage] = useState(0);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return payments.filter((p) => {
-      if (method !== "All Methods" && p.method !== method) return false;
+      if (method && p.method !== method) return false;
       if (q && !p.name.toLowerCase().includes(q) && !p.className.toLowerCase().includes(q)) return false;
       return true;
     });
@@ -300,12 +307,12 @@ export function PaymentPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <PageHeader
-        title="Payment"
-        sub={`${filtered.length} records · ${totalPaid.toLocaleString()} THB collected`}
+        title={t("title")}
+        sub={t("sub", { count: filtered.length, total: totalPaid.toLocaleString() })}
         action={
           <button type="button" className="jt-btn-primary" style={primaryButtonStyle} onClick={() => setFormOpen(true)}>
             <Icon name="wallet" size={15} color="#fff" />
-            Record Payment
+            {t("recordTitle")}
           </button>
         }
       />
@@ -315,24 +322,24 @@ export function PaymentPage() {
           style={{ flex: "1 1 220px" }}
           value={search}
           onChange={(v) => { setSearch(v); setPage(0); }}
-          placeholder="Search by student or class"
-          label="Search payments"
+          placeholder={t("searchPlaceholder")}
+          label={t("searchLabel")}
         />
         <SelectFilter
           value={method}
           onChange={(v) => { setMethod(v); setPage(0); }}
-          options={["All Methods", ...METHODS]}
-          label="Filter by payment method"
+          options={[{ value: "", label: tCommon("allMethods") }, ...METHODS.map((m) => ({ value: m, label: m }))]}
+          label={t("paymentMethod")}
         />
       </FilterBar>
 
       <Card style={{ padding: 0, overflow: "hidden" }}>
         <Table
-          columns={["Student", "Class", "Credits", "Amount", "Date", "Method", "Status"]}
+          columns={[tCommon("student"), tCommon("class"), t("credits"), tCommon("amount"), tCommon("date"), tCommon("method"), tCommon("status")]}
           template={TEMPLATE}
           minWidth={900}
         >
-          {pageRows.length === 0 && <EmptyRow>No payments match these filters.</EmptyRow>}
+          {pageRows.length === 0 && <EmptyRow>{t("empty")}</EmptyRow>}
           {pageRows.map((p, i) => {
             const chip = statusChipColors(p.status);
             return (
@@ -352,7 +359,7 @@ export function PaymentPage() {
                 <span style={{ color: COLORS.textSecondary }}>{p.date}</span>
                 <span style={{ color: COLORS.textSecondary }}>{p.method}</span>
                 <Badge color={chip.color} bg={chip.bg} style={{ justifySelf: "start" }}>
-                  {p.status}
+                  {tStatus(p.status)}
                 </Badge>
               </TableRow>
             );

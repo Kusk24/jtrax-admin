@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { CLASSES_DEFS_REF } from "@/lib/data";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf, TODAY_REF } from "@/lib/theme";
@@ -53,22 +54,27 @@ function buildHistory(): HistoryRow[] {
 }
 
 export function ClassHistoryPage() {
+  const t = useTranslations("classHistory");
+  const tCommon = useTranslations("common");
   const all = useMemo(() => buildHistory(), []);
   const [search, setSearch] = useState("");
-  const [classFilter, setClassFilter] = useState("All Classes");
+  const [classFilter, setClassFilter] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [page, setPage] = useState(0);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
-  const classOptions = ["All Classes", ...CLASSES_DEFS_REF.map((c) => c.name)];
+  const classOptions = [
+    { value: "", label: tCommon("allClasses") },
+    ...CLASSES_DEFS_REF.map((c) => ({ value: c.name, label: c.name })),
+  ];
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     const fromTime = from ? new Date(from).getTime() : null;
     const toTime = to ? new Date(to).getTime() : null;
     return all.filter((row) => {
-      if (classFilter !== "All Classes" && row.className !== classFilter) return false;
+      if (classFilter && row.className !== classFilter) return false;
       if (q && !row.className.toLowerCase().includes(q) && !row.attendees.some((a) => a.toLowerCase().includes(q)))
         return false;
       const t = row.dateObj.getTime();
@@ -82,7 +88,7 @@ export function ClassHistoryPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <PageHeader title="Class History" sub="Past sessions and who attended them" />
+      <PageHeader title={t("title")} sub={t("sub")} />
 
       <FilterBar>
         <SearchInput
@@ -92,8 +98,8 @@ export function ClassHistoryPage() {
             setSearch(v);
             setPage(0);
           }}
-          placeholder="Search class or student"
-          label="Search class history"
+          placeholder={t("searchPlaceholder")}
+          label={t("searchLabel")}
         />
         <SelectFilter
           value={classFilter}
@@ -102,7 +108,7 @@ export function ClassHistoryPage() {
             setPage(0);
           }}
           options={classOptions}
-          label="Filter by class"
+          label={t("filterByClass")}
         />
         <input
           type="date"
@@ -111,7 +117,7 @@ export function ClassHistoryPage() {
             setFrom(e.target.value);
             setPage(0);
           }}
-          aria-label="From date"
+          aria-label={tCommon("fromDate")}
           style={{ ...fieldStyle, width: "auto", borderRadius: 999, padding: "9px 14px" }}
         />
         <input
@@ -121,14 +127,14 @@ export function ClassHistoryPage() {
             setTo(e.target.value);
             setPage(0);
           }}
-          aria-label="To date"
+          aria-label={tCommon("toDate")}
           style={{ ...fieldStyle, width: "auto", borderRadius: 999, padding: "9px 14px" }}
         />
       </FilterBar>
 
       <Card style={{ padding: 0, overflow: "hidden" }}>
-        <Table columns={["Date", "Class", "Time", "Attendance", ""]} template={TEMPLATE} minWidth={720}>
-          {pageRows.length === 0 && <EmptyRow>No sessions match these filters.</EmptyRow>}
+        <Table columns={[tCommon("date"), tCommon("class"), t("time"), t("attendance"), ""]} template={TEMPLATE} minWidth={720}>
+          {pageRows.length === 0 && <EmptyRow>{t("empty")}</EmptyRow>}
           {pageRows.map((row) => {
             const open = expanded[row.key] ?? false;
             return (
@@ -143,7 +149,9 @@ export function ClassHistoryPage() {
                     {row.className}
                   </span>
                   <span style={{ color: COLORS.textSecondary }}>{row.time}</span>
-                  <span style={{ color: COLORS.textSecondary }}>{row.attendees.length} present</span>
+                  <span style={{ color: COLORS.textSecondary }}>
+                    {t("presentCount", { count: row.attendees.length })}
+                  </span>
                   <span
                     style={{
                       display: "inline-flex",
