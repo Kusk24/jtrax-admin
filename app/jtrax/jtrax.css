@@ -1,0 +1,258 @@
+/*
+ * Hover/interaction styles ported from the <helmet> blocks in
+ * `JTRAX Dashboard.dc.html`. Everything here is scoped under .jtrax-root so the
+ * JTRAX tree can't leak into the cream/navy admin app in globals.css.
+ *
+ * These live in CSS rather than inline styles because they are :hover states —
+ * the design used a stylesheet for exactly the same reason.
+ */
+
+.jtrax-root {
+  --jtrax-blue: #284c8f;
+  --jtrax-bg: #f7faff;
+  --jtrax-border: #d9e6f7;
+  --jtrax-text: #243b63;
+
+  min-height: 100vh;
+  background: var(--jtrax-bg);
+  color: var(--jtrax-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+.jtrax-root *,
+.jtrax-root *::before,
+.jtrax-root *::after {
+  box-sizing: border-box;
+}
+
+.jtrax-root ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.jtrax-root ::-webkit-scrollbar-thumb {
+  background: var(--jtrax-border);
+  border-radius: 8px;
+}
+
+.jtrax-root a {
+  color: var(--jtrax-blue);
+  text-decoration: none;
+}
+
+.jtrax-root a:hover {
+  color: #1c3868;
+  text-decoration: underline;
+}
+
+/* The global "squishy press" transform from globals.css fights the design's
+   own lift-on-hover treatment, so it's cancelled inside this tree. */
+.jtrax-root a:active,
+.jtrax-root button:active {
+  transform: none;
+}
+
+/* Two-column dashboard rows (hero + follow-ups, find + quick actions). They
+   collapse to a single column before the columns get too narrow to read. */
+.jt-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (width >= 1040px) {
+  .jt-split {
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  }
+}
+
+.jt-duo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (width >= 880px) {
+  .jt-duo {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@keyframes jtrax-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.jtrax-fade-in-up {
+  animation: jtrax-fade-in-up 0.22s ease both;
+}
+
+/* --- Quick-action pills: each of the four has its own accent --- */
+.qa-pill {
+  border-radius: 999px;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+}
+
+.qa-pill-0 {
+  border: 1.5px solid #7fc79a;
+}
+.qa-pill-0:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgb(26 127 55 / 0.22);
+  background: #dcefe2;
+}
+.qa-pill-0:hover .qa-label {
+  color: #1a7f37;
+}
+
+.qa-pill-1 {
+  border: 1.5px solid #e29891;
+}
+.qa-pill-1:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgb(192 57 43 / 0.22);
+  background: #f7dcda;
+}
+.qa-pill-1:hover .qa-label {
+  color: #c0392b;
+}
+
+.qa-pill-2 {
+  border: 1.5px solid #ddb874;
+}
+.qa-pill-2:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgb(183 121 31 / 0.22);
+  background: #fbebd0;
+}
+.qa-pill-2:hover .qa-label {
+  color: #b7791f;
+}
+
+.qa-pill-3 {
+  border: 1.5px solid #b4a0de;
+}
+.qa-pill-3:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgb(107 70 193 / 0.22);
+  background: #ece2f8;
+}
+.qa-pill-3:hover .qa-label {
+  color: #6b46c1;
+}
+
+/* --- Needs Follow-up rows --- */
+.jt-follow {
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.jt-follow-low:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgb(192 57 43 / 0.18);
+  border-color: #e29891 !important;
+}
+
+.jt-follow-exp:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgb(183 121 31 / 0.18);
+  border-color: #ddb874 !important;
+}
+
+.jt-follow-inactive:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgb(96 110 130 / 0.16);
+  border-color: #c7cdd6 !important;
+}
+
+/* --- Cards and row actions --- */
+.jt-adm-card,
+.jt-course-card,
+.jt-class-card {
+  transition: all 200ms ease;
+}
+
+.jt-adm-card:hover,
+.jt-class-card:hover {
+  border-color: #284c8f !important;
+  background: #eef5ff !important;
+  box-shadow: 0 8px 24px rgb(36 59 99 / 0.14);
+  transform: translateY(-2px);
+}
+
+.jt-course-card:hover {
+  box-shadow: 0 8px 24px rgb(36 59 99 / 0.14);
+  transform: translateY(-2px);
+}
+
+.jt-create-card {
+  transition: all 200ms ease;
+}
+
+.jt-create-card:hover {
+  border-color: #284c8f !important;
+  background: #eef5ff !important;
+  transform: translateY(-2px);
+}
+
+.jt-nav-row {
+  transition: background 160ms ease;
+}
+
+.jt-nav-row:hover {
+  background: #eef5ff !important;
+}
+
+.jt-find-row {
+  transition: background 160ms ease;
+}
+
+.jt-find-row:hover {
+  background: #f7faff !important;
+}
+
+.jt-table-row {
+  transition: background 160ms ease;
+}
+
+.jt-table-row:hover {
+  background: #f7faff !important;
+}
+
+.jt-btn-primary:hover {
+  background: #1f3d73 !important;
+}
+
+.jt-btn-ghost:hover {
+  background: #eef5ff !important;
+  border-color: #284c8f !important;
+}
+
+.jt-chip:hover {
+  background: #284c8f !important;
+  color: #fff !important;
+  border-color: #284c8f !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jtrax-root * {
+    animation: none !important;
+    transition: none !important;
+  }
+  .jtrax-root *:hover {
+    transform: none !important;
+  }
+}
