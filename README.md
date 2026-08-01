@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# JTRAX Admin — JCA Chess School
 
-## Getting Started
+Admin dashboard for JCA Chess School, built from the `JTRAX Dashboard` design mockup.
 
-First, run the development server:
+Live: https://jtrax-admin.vercel.app
+
+## Stack
+
+Next.js 16 (App Router) · React 19 · TypeScript. No CSS framework — components style
+themselves inline from the tokens in `lib/theme.ts`, with `app/globals.css` carrying the
+base reset, hover/focus states, keyframes and responsive breakpoints.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+pnpm dev        # http://localhost:3000
+pnpm build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Screens
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+`/` is the dashboard; every other nav item is `/<section>`, served by `app/[section]/page.tsx`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Route | Screen |
+|---|---|
+| `/` | Dashboard — role-dependent (see below) |
+| `/admins` | Admin accounts, detail drawer, create-admin flow *(Super Admin only)* |
+| `/academy` | Courses and teachers |
+| `/classhistory` | Past sessions with attendee lists |
+| `/students` | Student list, profile tabs, registration wizard |
+| `/payment` | Payment records and the record-payment form |
+| `/tournament` | Tournament list, detail, participants, create wizard |
+| `/announcement` | Broadcasts to students and parents |
+| `/chat` | LINE-style messaging with parents |
+| `/settings` | Credit warning rules *(Super Admin only)* |
 
-## Learn More
+## Roles
 
-To learn more about Next.js, take a look at the following resources:
+Three roles — **Super Admin**, **Admin**, **Receptionist** — switched from the chip in the
+top bar. The role changes both the nav (Admins and Settings are Super Admin only; Academy
+is additionally hidden from Receptionists) and the dashboard itself: Receptionists get the
+front-desk view (Find a Student, check in, assign class, add credits), everyone else gets
+the management view (quick actions, Needs Follow-up, revenue trend, KPIs).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Switching to a role that can't see the current page redirects home; deep-linking to a
+blocked page shows a no-access notice.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Layout
 
-## Deploy on Vercel
+```
+app/            routes + global stylesheet
+components/     JtraxShell (sidebar/topbar/role switcher), page-kit (table,
+                modal, drawer, pagination), dashboard/*, pages/*
+lib/            theme tokens, icon set, seed data, nav config, view-model helpers
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Data
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Everything is mock data in `lib/data.ts`, seeded from the design. There is no backend yet,
+so edits live in React state and reset on reload. `lib/theme.ts` pins `TODAY_REF` to
+23 Jul 2026 so relative dates stay deterministic.
+
+Some helpers in `lib/derive.ts` are marked `RECONSTRUCTED` — the design export was
+truncated, so those were rebuilt from the seed data rather than ported verbatim.
+
+## Not yet done
+
+- **Thai localisation.** An earlier version of this app used next-intl; the design is
+  English-only so it was dropped. Re-adding it means reinstating `next-intl`, `i18n/` and
+  `messages/`.
+- **Auth.** The signed-in person is picked from the role switcher, not authenticated.
+- **Tournament photos** use generated gradient art rather than real images.

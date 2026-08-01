@@ -1,93 +1,327 @@
-@import "tailwindcss";
+/*
+ * Global styles, ported from the <helmet> blocks in `JTRAX Dashboard.dc.html`.
+ *
+ * Components style themselves inline from the tokens in `lib/theme.ts`; this
+ * file carries what inline styles can't express — the base reset, :hover and
+ * focus states, keyframes, and the responsive grid breakpoints.
+ */
 
-@theme {
-  --color-cream: #f7f4ee;
-  --color-card: #fffdfa;
-  --color-navy: #2b4380;
-  --color-navy-deep: #1f3567;
-  --color-navy-soft: #d9e0ef;
-  --color-ink: #2b2b2b;
-  --color-muted: #8a8a86;
-  --color-line: #e4e0d8;
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
 
-  --color-brick: #c0392b;
-  --color-brick-soft: #f6d7ce;
-  --color-maroon: #7d3c3c;
-
-  --color-olive: #8fa653;
-  --color-olive-soft: #dde3c4;
-
-  --color-peach: #f8e3c9;
-  --color-peach-ink: #8c3a1e;
-
-  /* Cute restyle: chunky clay-style rounding + soft double shadow, same palette. */
-  --radius-card: 1.25rem;
-
-  --font-sans: var(--font-nunito), var(--font-mitr), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-fredoka), var(--font-mitr), ui-sans-serif, sans-serif;
-
-  --shadow-clay: 0 4px 12px rgb(43 67 128 / 0.08), 0 1px 2px rgb(43 67 128 / 0.06);
-  --shadow-clay-lg: 0 8px 20px rgb(43 67 128 / 0.12), 0 2px 4px rgb(43 67 128 / 0.06);
-
-  --animate-pop: pop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-
-  @keyframes pop {
-    0% {
-      transform: scale(0.9);
-    }
-    100% {
-      transform: scale(1);
-    }
-  }
+html,
+body {
+  margin: 0;
+  padding: 0;
 }
 
 body {
-  background-color: var(--color-cream);
-  color: var(--color-ink);
-  font-family: var(--font-sans);
+  font-family: var(--font-jtrax-inter), "Inter", system-ui, sans-serif;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* Visible keyboard focus — nothing else in the design provides one. */
+.jtrax-root :focus-visible {
+  outline: 2px solid #284c8f;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.jtrax-root {
+  --jtrax-blue: #284c8f;
+  --jtrax-bg: #f7faff;
+  --jtrax-border: #d9e6f7;
+  --jtrax-text: #243b63;
+
+  min-height: 100vh;
+  background: var(--jtrax-bg);
+  color: var(--jtrax-text);
   -webkit-font-smoothing: antialiased;
 }
 
-h1,
-h2,
-h3 {
-  font-family: var(--font-display);
-  letter-spacing: 0.01em;
+.jtrax-root *,
+.jtrax-root *::before,
+.jtrax-root *::after {
+  box-sizing: border-box;
 }
 
-/* Thai script: no tracking, roomier lines for above/below vowel marks. */
-html[lang="th"] h1,
-html[lang="th"] h2,
-html[lang="th"] h3 {
-  letter-spacing: 0;
+.jtrax-root ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-html[lang="th"] body {
-  line-height: 1.65;
+.jtrax-root ::-webkit-scrollbar-thumb {
+  background: var(--jtrax-border);
+  border-radius: 8px;
 }
 
-/* Squishy press feedback on anything tappable — the "cute" interaction. */
-a,
-button {
+.jtrax-root a {
+  color: var(--jtrax-blue);
+  text-decoration: none;
+}
+
+.jtrax-root a:hover {
+  color: #1c3868;
+  text-decoration: underline;
+}
+
+/* Two-column dashboard rows (hero + follow-ups, find + quick actions). They
+   collapse to a single column before the columns get too narrow to read. */
+.jt-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (width >= 1040px) {
+  .jt-split {
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  }
+}
+
+.jt-duo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (width >= 880px) {
+  .jt-duo {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Messaging: single column on narrow screens, list+thread at md, and the full
+   three-pane layout once there's room for the info panel. */
+.jt-chat-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  height: calc(100vh - 150px);
+  min-height: 520px;
+}
+
+@media (width >= 900px) {
+  .jt-chat-grid {
+    grid-template-columns: minmax(240px, 0.9fr) minmax(0, 1.6fr);
+  }
+}
+
+@media (width >= 1280px) {
+  .jt-chat-grid {
+    grid-template-columns: minmax(240px, 0.9fr) minmax(0, 1.6fr) minmax(240px, 1fr);
+  }
+}
+
+@keyframes jtrax-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes jtrax-slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes jtrax-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.jtrax-fade-in-up {
+  animation: jtrax-fade-in-up 0.22s ease both;
+}
+
+/* --- Quick-action pills: each of the four has its own accent --- */
+.qa-pill {
+  border-radius: 999px;
   transition:
-    transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1),
-    background-color 0.2s ease,
-    color 0.2s ease,
-    box-shadow 0.2s ease;
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
 }
 
-a:active,
-button:active {
-  transform: scale(0.96);
+.qa-pill-0 {
+  border: 1.5px solid #7fc79a;
+}
+.qa-pill-0:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgb(26 127 55 / 0.22);
+  background: #dcefe2;
+}
+.qa-pill-0:hover .qa-label {
+  color: #1a7f37;
+}
+
+.qa-pill-1 {
+  border: 1.5px solid #e29891;
+}
+.qa-pill-1:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgb(192 57 43 / 0.22);
+  background: #f7dcda;
+}
+.qa-pill-1:hover .qa-label {
+  color: #c0392b;
+}
+
+.qa-pill-2 {
+  border: 1.5px solid #ddb874;
+}
+.qa-pill-2:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgb(183 121 31 / 0.22);
+  background: #fbebd0;
+}
+.qa-pill-2:hover .qa-label {
+  color: #b7791f;
+}
+
+.qa-pill-3 {
+  border: 1.5px solid #b4a0de;
+}
+.qa-pill-3:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgb(107 70 193 / 0.22);
+  background: #ece2f8;
+}
+.qa-pill-3:hover .qa-label {
+  color: #6b46c1;
+}
+
+/* --- Needs Follow-up rows --- */
+.jt-follow {
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.jt-follow-low:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgb(192 57 43 / 0.18);
+  border-color: #e29891 !important;
+}
+
+.jt-follow-exp:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgb(183 121 31 / 0.18);
+  border-color: #ddb874 !important;
+}
+
+.jt-follow-inactive:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgb(96 110 130 / 0.16);
+  border-color: #c7cdd6 !important;
+}
+
+/* --- Cards and row actions --- */
+.jt-adm-card,
+.jt-course-card,
+.jt-class-card {
+  transition: all 200ms ease;
+}
+
+.jt-adm-card:hover,
+.jt-class-card:hover {
+  border-color: #284c8f !important;
+  background: #eef5ff !important;
+  box-shadow: 0 8px 24px rgb(36 59 99 / 0.14);
+  transform: translateY(-2px);
+}
+
+.jt-course-card:hover {
+  box-shadow: 0 8px 24px rgb(36 59 99 / 0.14);
+  transform: translateY(-2px);
+}
+
+.jt-create-card {
+  transition: all 200ms ease;
+}
+
+.jt-create-card:hover {
+  border-color: #284c8f !important;
+  background: #eef5ff !important;
+  transform: translateY(-2px);
+}
+
+.jt-nav-row {
+  transition: background 160ms ease;
+}
+
+.jt-nav-row:hover {
+  background: #eef5ff !important;
+}
+
+.jt-find-row {
+  transition: background 160ms ease;
+}
+
+.jt-find-row:hover {
+  background: #f7faff !important;
+}
+
+.jt-table-row {
+  transition: background 160ms ease;
+}
+
+.jt-table-row:hover {
+  background: #f7faff !important;
+}
+
+.jt-btn-primary:hover {
+  background: #1f3d73 !important;
+}
+
+.jt-btn-ghost:hover {
+  background: #eef5ff !important;
+  border-color: #284c8f !important;
+}
+
+.jt-chip:hover {
+  background: #284c8f !important;
+  color: #fff !important;
+  border-color: #284c8f !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  a,
-  button {
-    transition: none;
+  .jtrax-root * {
+    animation: none !important;
+    transition: none !important;
   }
-  a:active,
-  button:active {
-    transform: none;
+  .jtrax-root *:hover {
+    transform: none !important;
   }
 }
