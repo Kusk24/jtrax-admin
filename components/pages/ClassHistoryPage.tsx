@@ -86,6 +86,7 @@ export function ClassHistoryPage() {
 
       <FilterBar>
         <SearchInput
+          style={{ flex: "1 1 220px" }}
           value={search}
           onChange={(v) => {
             setSearch(v);

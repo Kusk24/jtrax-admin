@@ -312,6 +312,7 @@ export function PaymentPage() {
 
       <FilterBar>
         <SearchInput
+          style={{ flex: "1 1 220px" }}
           value={search}
           onChange={(v) => { setSearch(v); setPage(0); }}
           placeholder="Search by student or class"

@@ -118,11 +118,16 @@ export function SearchInput({
   onChange,
   placeholder,
   label,
+  style,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder: string;
   label: string;
+  /* Sizing is left to the caller. The field must NOT set `flex` itself: in a
+     column-direction parent a flex-basis applies to the height and stretches
+     the bar into a tall box. */
+  style?: CSSProperties;
 }) {
   return (
     <div
@@ -134,8 +139,9 @@ export function SearchInput({
         borderRadius: 999,
         border: `1px solid ${COLORS.border}`,
         background: COLORS.surface,
-        flex: "1 1 220px",
+        width: "100%",
         minWidth: 0,
+        ...style,
       }}
     >
       <Icon name="search" size={16} color={COLORS.textSecondary} />

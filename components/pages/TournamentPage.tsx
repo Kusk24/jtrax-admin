@@ -548,6 +548,7 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
               onChange={(v) => { setSearch(v); setPage(0); }}
               placeholder="Search participants"
               label="Search participants"
+              style={{ maxWidth: 340 }}
             />
           </div>
           <Table
@@ -746,7 +747,13 @@ export function TournamentPage() {
         }
       />
 
-      <SearchInput value={search} onChange={setSearch} placeholder="Search tournaments" label="Search tournaments" />
+      <SearchInput
+        value={search}
+        onChange={setSearch}
+        placeholder="Search tournaments"
+        label="Search tournaments"
+        style={{ maxWidth: 340 }}
+      />
 
       {section("Ongoing", ongoing)}
       {section("Past Tournaments", past)}
