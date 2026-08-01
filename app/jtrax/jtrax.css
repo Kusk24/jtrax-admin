@@ -80,6 +80,46 @@
   }
 }
 
+/* Messaging: single column on narrow screens, list+thread at md, and the full
+   three-pane layout once there's room for the info panel. */
+.jt-chat-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  height: calc(100vh - 150px);
+  min-height: 520px;
+}
+
+@media (width >= 900px) {
+  .jt-chat-grid {
+    grid-template-columns: minmax(240px, 0.9fr) minmax(0, 1.6fr);
+  }
+}
+
+@media (width >= 1280px) {
+  .jt-chat-grid {
+    grid-template-columns: minmax(240px, 0.9fr) minmax(0, 1.6fr) minmax(240px, 1fr);
+  }
+}
+
+@keyframes jtrax-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes jtrax-slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
 @keyframes jtrax-fade-in-up {
   from {
     opacity: 0;

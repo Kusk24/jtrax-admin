@@ -8,14 +8,17 @@ export function Card({
   children,
   style,
   className,
+  onClick,
 }: {
   children: ReactNode;
   style?: CSSProperties;
   className?: string;
+  onClick?: () => void;
 }) {
   return (
     <section
       className={className}
+      onClick={onClick}
       style={{
         background: COLORS.surface,
         border: `1px solid ${COLORS.border}`,

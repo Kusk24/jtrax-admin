@@ -553,3 +553,680 @@ export const ADMIN_SEED: AdminPerson[] = [
       "initials": "JJ"
     }
   ];
+
+
+export type Announcement = {
+  title: string;
+  audience: string;
+  date: string;
+  body: string;
+};
+
+export type ChatMessage = { from: 'me' | 'them'; text: string; time: string };
+
+export type Conversation = {
+  id: string;
+  name: string;
+  student: string | null;
+  studentId?: string;
+  time: string;
+  unread: number;
+  starred: boolean;
+  phone: string;
+  email: string;
+  memberType?: string;
+  joined?: string;
+  credits?: number | null;
+  upcomingClass?: string | null;
+  branch?: string | null;
+  level?: string | null;
+  enrolledClass?: string | null;
+  streakDays?: number | null;
+  lastClassDate?: string | null;
+  tournament?: { name: string; category: string; status: string; paymentStatus: string; registrationDate: string } | null;
+  lastPayment?: { name: string; amount: string; date: string; status: string } | null;
+  messages: ChatMessage[];
+};
+
+export type Participant = {
+  name: string;
+  rating: number;
+  category: string;
+  score: string;
+  rank: number;
+  prize: string;
+  paymentStatus: string;
+  age: number;
+  guardian: string;
+  contact: string;
+  wins: number;
+  losses: number;
+  draws: number;
+  attendance: string;
+  notes: string;
+};
+
+export type Tournament = {
+  id: string;
+  name: string;
+  status: 'Ongoing' | 'Completed';
+  hasStarted?: boolean;
+  date: string;
+  venue: string;
+  format: string;
+  published: boolean;
+  categories: string[];
+  organizer: string;
+  chiefArbiter: string;
+  registrationDeadline: string;
+  timeControl: string;
+  entryFeeMember: string;
+  entryFeeNonMember: string;
+  earlyBirdFeeMember?: string;
+  earlyBirdFeeNonMember?: string;
+  earlyBirdStart?: string;
+  earlyBirdEnd?: string;
+  certificatesNote?: string;
+  address: string;
+  contactPerson: string;
+  maxParticipants: number;
+  currentParticipants: number;
+  rounds: number;
+  revenue: string;
+  participants: Participant[];
+};
+
+export const ANNOUNCEMENTS_SEED: Announcement[] = [
+    {
+      "title": "Public Holiday Closure — 3 June",
+      "audience": "All Students & Parents",
+      "date": "20 May 2026",
+      "body": "All branches will be closed on Monday, 3 June for the public holiday. Classes resume Tuesday as usual."
+    },
+    {
+      "title": "WCIB Championship Registration Open",
+      "audience": "Tournament Team",
+      "date": "15 May 2026",
+      "body": "Registration for the WCIB Chess Championship 2026 is now open. Please confirm your category with the front desk by 30 May."
+    },
+    {
+      "title": "New Weekend Batch — Thonglor Branch",
+      "audience": "Thonglor Parents",
+      "date": "5 May 2026",
+      "body": "We are opening a new Saturday morning batch at the Thonglor branch starting June. Limited seats available."
+    }
+  ];
+
+export const CONVERSATIONS_SEED: Conversation[] = [
+    {
+      "id": "emma",
+      "name": "Emma's Parent",
+      "student": "Emma Tan",
+      "studentId": "STU-1042",
+      "time": "2m",
+      "unread": 2,
+      "starred": true,
+      "phone": "+66 81 234 5678",
+      "email": "emma.mom@gmail.com",
+      "memberType": "JCA Member",
+      "joined": "12 Jan 2024",
+      "credits": 12,
+      "upcomingClass": "Sat, 24 May 09:00 AM",
+      "branch": "Central",
+      "level": "Intermediate",
+      "enrolledClass": "Master Class",
+      "streakDays": 5,
+      "lastClassDate": "12 May 2026",
+      "tournament": {
+        "name": "WCIB Chess Championship 2025",
+        "category": "Girls U12",
+        "status": "Registered",
+        "paymentStatus": "Paid",
+        "registrationDate": "15 May 2025"
+      },
+      "lastPayment": {
+        "name": "WCIB Chess Championship 2025",
+        "amount": "1,000 THB",
+        "date": "15 May 2025",
+        "status": "Paid"
+      },
+      "messages": [
+        {
+          "from": "them",
+          "text": "Hi, I'd like to change Emma's category for the upcoming WCIB Chess Championship.",
+          "time": "10:29 AM"
+        },
+        {
+          "from": "me",
+          "text": "Hello! Sure, I'd be happy to help you with that. Which category would you like to change it to?",
+          "time": "10:30 AM"
+        },
+        {
+          "from": "them",
+          "text": "Girls U12 please.",
+          "time": "10:30 AM"
+        },
+        {
+          "from": "me",
+          "text": "Noted! I have updated Emma's category to Girls U12. Let me know if you need anything else.",
+          "time": "10:31 AM"
+        },
+        {
+          "from": "them",
+          "text": "Thank you so much!",
+          "time": "10:31 AM"
+        }
+      ]
+    },
+    {
+      "id": "kevin",
+      "name": "Kevin's Parent",
+      "student": "Kevin Lim",
+      "studentId": "STU-1050",
+      "time": "18m",
+      "unread": 1,
+      "starred": false,
+      "phone": "+66 81 555 2231",
+      "email": "kevin.dad@gmail.com",
+      "memberType": "JCA Member",
+      "joined": "3 Mar 2023",
+      "credits": 4,
+      "upcomingClass": "Mon, 26 May 04:00 PM",
+      "branch": "Central",
+      "level": "Beginner",
+      "enrolledClass": "Beginner Class",
+      "streakDays": 2,
+      "lastClassDate": "8 May 2026",
+      "tournament": null,
+      "lastPayment": {
+        "name": "Monthly Package - 10 Credits",
+        "amount": "3,500 THB",
+        "date": "2 May 2025",
+        "status": "Paid"
+      },
+      "messages": [
+        {
+          "from": "them",
+          "text": "Has the payment been confirmed?",
+          "time": "9:48 AM"
+        },
+        {
+          "from": "me",
+          "text": "Yes, confirmed - 10 credits added to the account.",
+          "time": "9:50 AM"
+        }
+      ]
+    },
+    {
+      "id": "sophia",
+      "name": "Sophia's Parent",
+      "student": "Sophia Reyes",
+      "studentId": "STU-1044",
+      "time": "1h",
+      "unread": 0,
+      "starred": true,
+      "phone": "+66 89 771 4420",
+      "email": "sophia.parent@gmail.com",
+      "memberType": "JCA Member",
+      "joined": "20 Aug 2023",
+      "credits": 3,
+      "upcomingClass": "Tue, 27 May 01:00 PM",
+      "branch": "Central",
+      "level": "Intermediate",
+      "enrolledClass": "Intermediate Class",
+      "streakDays": 3,
+      "lastClassDate": "9 May 2026",
+      "tournament": null,
+      "lastPayment": {
+        "name": "Monthly Package - 5 Credits",
+        "amount": "1,800 THB",
+        "date": "18 Apr 2025",
+        "status": "Paid"
+      },
+      "messages": [
+        {
+          "from": "me",
+          "text": "Reminder: only 3 credits remaining on the account.",
+          "time": "8:00 AM"
+        },
+        {
+          "from": "them",
+          "text": "Thank you so much!",
+          "time": "8:14 AM"
+        }
+      ]
+    },
+    {
+      "id": "external",
+      "name": "External Tournament Inquiry",
+      "student": null,
+      "time": "Yesterday",
+      "unread": 3,
+      "starred": false,
+      "phone": "+66 92 010 8834",
+      "email": "guest.inquiry@gmail.com",
+      "memberType": "Guest",
+      "joined": "-",
+      "credits": null,
+      "upcomingClass": null,
+      "branch": "-",
+      "tournament": null,
+      "lastPayment": null,
+      "messages": [
+        {
+          "from": "them",
+          "text": "I would like to know more about the WCIB Chess Championship for non-members.",
+          "time": "Yest, 3:10 PM"
+        }
+      ]
+    },
+    {
+      "id": "daniel",
+      "name": "Daniel's Parent",
+      "student": "Daniel Wong",
+      "studentId": "STU-1051",
+      "time": "Mon",
+      "unread": 0,
+      "starred": false,
+      "phone": "+66 86 442 1190",
+      "email": "daniel.dad@gmail.com",
+      "memberType": "JCA Member",
+      "joined": "11 Nov 2022",
+      "credits": 8,
+      "upcomingClass": "Thu, 29 May 04:00 PM",
+      "branch": "Central",
+      "level": "Beginner",
+      "enrolledClass": "Beginner Class",
+      "streakDays": 1,
+      "lastClassDate": "5 May 2026",
+      "tournament": null,
+      "lastPayment": {
+        "name": "Monthly Package - 10 Credits",
+        "amount": "3,500 THB",
+        "date": "28 Apr 2025",
+        "status": "Paid"
+      },
+      "messages": [
+        {
+          "from": "them",
+          "text": "Can I get the schedule for this week?",
+          "time": "Mon, 2:00 PM"
+        }
+      ]
+    },
+    {
+      "id": "mia",
+      "name": "Mia's Parent",
+      "student": "Mia Novak",
+      "studentId": "STU-1047",
+      "time": "Sun",
+      "unread": 0,
+      "starred": false,
+      "phone": "+66 84 220 6671",
+      "email": "mia.parent@gmail.com",
+      "memberType": "JCA Member",
+      "joined": "5 Feb 2024",
+      "credits": 6,
+      "upcomingClass": "Wed, 28 May 01:00 PM",
+      "branch": "Central",
+      "level": "Intermediate",
+      "enrolledClass": "Intermediate Class",
+      "streakDays": 4,
+      "lastClassDate": "10 May 2026",
+      "tournament": null,
+      "lastPayment": {
+        "name": "Monthly Package - 5 Credits",
+        "amount": "1,800 THB",
+        "date": "20 Apr 2025",
+        "status": "Paid"
+      },
+      "messages": [
+        {
+          "from": "them",
+          "text": "What time is the class tomorrow?",
+          "time": "Sun, 5:30 PM"
+        }
+      ]
+    }
+  ];
+
+export const TOURNAMENTS_SEED: Tournament[] = [
+    {
+      "id": "wcib-2026",
+      "name": "WCIB Chess Championship 2026",
+      "status": "Ongoing",
+      "hasStarted": true,
+      "date": "24–25 May 2026",
+      "venue": "Paradise Park",
+      "format": "Swiss System",
+      "published": true,
+      "categories": [
+        "Open U12",
+        "Open U14",
+        "Open U18"
+      ],
+      "organizer": "JCA Chess Academy",
+      "chiefArbiter": "Somchai Prasert (FIDE Arbiter)",
+      "registrationDeadline": "20 May 2026",
+      "timeControl": "90 min + 30 sec",
+      "entryFeeMember": "500 THB",
+      "entryFeeNonMember": "700 THB",
+      "earlyBirdFeeMember": "400 THB",
+      "earlyBirdFeeNonMember": "600 THB",
+      "earlyBirdStart": "30 Apr 2026",
+      "earlyBirdEnd": "10 May 2026",
+      "certificatesNote": "E-certificates and a medal for all participants.",
+      "address": "99 Paradise Park Ave, Bangkok 10110",
+      "contactPerson": "Somchai Prasert",
+      "maxParticipants": 300,
+      "currentParticipants": 284,
+      "rounds": 7,
+      "revenue": "51,200 THB",
+      "participants": [
+        {
+          "name": "Emma Tan",
+          "rating": 1420,
+          "category": "U12",
+          "score": "6.5/7",
+          "rank": 1,
+          "prize": "5,000 THB",
+          "paymentStatus": "Paid",
+          "age": 11,
+          "guardian": "Emma's Parent",
+          "contact": "+66 81 234 5678",
+          "wins": 6,
+          "losses": 0,
+          "draws": 1,
+          "attendance": "7/7",
+          "notes": "Champion, undefeated run."
+        },
+        {
+          "name": "Kevin Lim",
+          "rating": 1385,
+          "category": "U14",
+          "score": "6.0/7",
+          "rank": 2,
+          "prize": "3,000 THB",
+          "paymentStatus": "Paid",
+          "age": 13,
+          "guardian": "Kevin's Parent",
+          "contact": "+66 81 555 2231",
+          "wins": 5,
+          "losses": 0,
+          "draws": 2,
+          "attendance": "7/7",
+          "notes": "Strong endgame play."
+        },
+        {
+          "name": "Sophia Reyes",
+          "rating": 1350,
+          "category": "U12",
+          "score": "5.5/7",
+          "rank": 3,
+          "prize": "1,500 THB",
+          "paymentStatus": "Paid",
+          "age": 12,
+          "guardian": "Sophia's Parent",
+          "contact": "+66 89 771 4420",
+          "wins": 5,
+          "losses": 1,
+          "draws": 1,
+          "attendance": "6/7",
+          "notes": ""
+        },
+        {
+          "name": "Daniel Wong",
+          "rating": 1290,
+          "category": "Open",
+          "score": "5.0/7",
+          "rank": 4,
+          "prize": "-",
+          "paymentStatus": "Paid",
+          "age": 15,
+          "guardian": "Daniel's Parent",
+          "contact": "+66 86 442 1190",
+          "wins": 5,
+          "losses": 2,
+          "draws": 0,
+          "attendance": "7/7",
+          "notes": ""
+        },
+        {
+          "name": "Mia Novak",
+          "rating": 1210,
+          "category": "U14",
+          "score": "4.5/7",
+          "rank": 5,
+          "prize": "-",
+          "paymentStatus": "Pending",
+          "age": 13,
+          "guardian": "Mia's Parent",
+          "contact": "+66 84 220 6671",
+          "wins": 4,
+          "losses": 2,
+          "draws": 1,
+          "attendance": "6/7",
+          "notes": "Payment follow-up needed."
+        },
+        {
+          "name": "Noah Kim",
+          "rating": 1180,
+          "category": "U12",
+          "score": "4.0/7",
+          "rank": 6,
+          "prize": "-",
+          "paymentStatus": "Paid",
+          "age": 10,
+          "guardian": "Noah's Parent",
+          "contact": "+66 82 110 4432",
+          "wins": 4,
+          "losses": 3,
+          "draws": 0,
+          "attendance": "7/7",
+          "notes": ""
+        },
+        {
+          "name": "Ava Patel",
+          "rating": 1140,
+          "category": "U12",
+          "score": "3.5/7",
+          "rank": 7,
+          "prize": "-",
+          "paymentStatus": "Refunded",
+          "age": 11,
+          "guardian": "Ava's Parent",
+          "contact": "+66 83 900 1122",
+          "wins": 3,
+          "losses": 3,
+          "draws": 1,
+          "attendance": "5/7",
+          "notes": "Withdrew after round 5, refunded."
+        }
+      ]
+    },
+    {
+      "id": "spring-open-2026",
+      "name": "JCA Spring Open 2026",
+      "status": "Completed",
+      "date": "2–3 Mar 2026",
+      "venue": "Paradise Park",
+      "format": "Round Robin",
+      "published": true,
+      "categories": [
+        "Open U10",
+        "Open U12",
+        "Open U14"
+      ],
+      "organizer": "JCA Chess Academy",
+      "chiefArbiter": "Nattapong Srisai (FIDE Arbiter)",
+      "registrationDeadline": "25 Feb 2026",
+      "timeControl": "60 min + 15 sec",
+      "entryFeeMember": "400 THB",
+      "entryFeeNonMember": "600 THB",
+      "earlyBirdFeeMember": "300 THB",
+      "earlyBirdFeeNonMember": "500 THB",
+      "earlyBirdStart": "5 Feb 2026",
+      "earlyBirdEnd": "18 Feb 2026",
+      "certificatesNote": "E-certificates and a Gold Medal for all participants.",
+      "address": "99 Paradise Park Ave, Bangkok 10110",
+      "contactPerson": "Nattapong Srisai",
+      "maxParticipants": 300,
+      "currentParticipants": 267,
+      "rounds": 6,
+      "revenue": "16,000 THB",
+      "participants": [
+        {
+          "name": "Liam Chen",
+          "rating": 1300,
+          "category": "U14",
+          "score": "5.0/6",
+          "rank": 1,
+          "prize": "2,500 THB",
+          "paymentStatus": "Paid",
+          "age": 13,
+          "guardian": "Liam's Parent",
+          "contact": "+66 89 001 2233",
+          "wins": 5,
+          "losses": 1,
+          "draws": 0,
+          "attendance": "6/6",
+          "notes": "Champion."
+        },
+        {
+          "name": "Zoe Bennet",
+          "rating": 1260,
+          "category": "U14",
+          "score": "4.5/6",
+          "rank": 2,
+          "prize": "1,500 THB",
+          "paymentStatus": "Paid",
+          "age": 14,
+          "guardian": "Zoe's Parent",
+          "contact": "+66 89 552 6612",
+          "wins": 4,
+          "losses": 1,
+          "draws": 1,
+          "attendance": "6/6",
+          "notes": ""
+        },
+        {
+          "name": "Leo Adams",
+          "rating": 1230,
+          "category": "U12",
+          "score": "4.0/6",
+          "rank": 3,
+          "prize": "800 THB",
+          "paymentStatus": "Paid",
+          "age": 11,
+          "guardian": "Leo's Parent",
+          "contact": "+66 87 221 9090",
+          "wins": 4,
+          "losses": 2,
+          "draws": 0,
+          "attendance": "5/6",
+          "notes": ""
+        },
+        {
+          "name": "Mason Chu",
+          "rating": 1180,
+          "category": "U12",
+          "score": "3.0/6",
+          "rank": 4,
+          "prize": "-",
+          "paymentStatus": "Paid",
+          "age": 10,
+          "guardian": "Mason's Parent",
+          "contact": "+66 85 664 1120",
+          "wins": 3,
+          "losses": 3,
+          "draws": 0,
+          "attendance": "6/6",
+          "notes": ""
+        }
+      ]
+    },
+    {
+      "id": "youth-rapid-2025",
+      "name": "National Youth Rapid 2025",
+      "status": "Completed",
+      "date": "14 Dec 2025",
+      "venue": "Paradise Park",
+      "format": "Swiss System",
+      "published": true,
+      "categories": [
+        "Open U14",
+        "Open U18",
+        "Girls U14"
+      ],
+      "organizer": "JCA Chess Academy",
+      "chiefArbiter": "Somchai Prasert (FIDE Arbiter)",
+      "registrationDeadline": "5 Dec 2025",
+      "timeControl": "15 min + 10 sec",
+      "entryFeeMember": "400 THB",
+      "entryFeeNonMember": "600 THB",
+      "earlyBirdFeeMember": "300 THB",
+      "earlyBirdFeeNonMember": "500 THB",
+      "earlyBirdStart": "18 Nov 2025",
+      "earlyBirdEnd": "30 Nov 2025",
+      "certificatesNote": "E-certificates and a Gold Medal for all participants.",
+      "address": "99 Paradise Park Ave, Bangkok 10110",
+      "contactPerson": "Somchai Prasert",
+      "maxParticipants": 300,
+      "currentParticipants": 291,
+      "rounds": 5,
+      "revenue": "28,800 THB",
+      "participants": [
+        {
+          "name": "Alex Lee",
+          "rating": 1450,
+          "category": "U16",
+          "score": "5.0/5",
+          "rank": 1,
+          "prize": "4,000 THB",
+          "paymentStatus": "Paid",
+          "age": 15,
+          "guardian": "Alex's Parent",
+          "contact": "+66 90 112 4455",
+          "wins": 5,
+          "losses": 0,
+          "draws": 0,
+          "attendance": "5/5",
+          "notes": "Perfect score."
+        },
+        {
+          "name": "Rachel Ong",
+          "rating": 1400,
+          "category": "U16",
+          "score": "4.0/5",
+          "rank": 2,
+          "prize": "2,000 THB",
+          "paymentStatus": "Paid",
+          "age": 14,
+          "guardian": "Rachel's Parent",
+          "contact": "+66 91 223 5566",
+          "wins": 4,
+          "losses": 1,
+          "draws": 0,
+          "attendance": "5/5",
+          "notes": ""
+        },
+        {
+          "name": "Lucas Wong",
+          "rating": 1370,
+          "category": "U16",
+          "score": "3.5/5",
+          "rank": 3,
+          "prize": "1,000 THB",
+          "paymentStatus": "Paid",
+          "age": 15,
+          "guardian": "Lucas's Parent",
+          "contact": "+66 92 334 6677",
+          "wins": 3,
+          "losses": 1,
+          "draws": 1,
+          "attendance": "4/5",
+          "notes": ""
+        }
+      ]
+    }
+  ];

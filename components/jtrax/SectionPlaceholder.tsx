@@ -7,8 +7,8 @@ import { COLORS, FONT } from "@/lib/jtrax/theme";
 import { useJtrax } from "./JtraxContext";
 import { Card } from "./ui";
 
-/** Ported from the design's `isPlaceholder` branch — the not-yet-built sections. */
-export function SectionPlaceholder({ section }: { section: string }) {
+/** The design's `isPlaceholder` branch, plus the role-guard refusal. */
+export function SectionPlaceholder({ section, noAccess }: { section: string; noAccess?: boolean }) {
   const { role } = useJtrax();
   const meta = SECTION_META[section];
 
@@ -35,13 +35,21 @@ export function SectionPlaceholder({ section }: { section: string }) {
           background: COLORS.light,
         }}
       >
-        <Icon name={meta?.icon ?? "layers"} size={28} color={COLORS.blue} />
+        <Icon name={noAccess ? "lock" : (meta?.icon ?? "layers")} size={28} color={COLORS.blue} />
       </span>
       <h2 style={{ margin: 0, fontFamily: FONT, fontSize: 18, fontWeight: 700, color: COLORS.text }}>
-        {meta?.label ?? "Section"}
+        {noAccess ? "No access" : (meta?.label ?? "Section")}
       </h2>
       <p style={{ margin: 0, maxWidth: 420, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
-        This section is coming soon. You&apos;re viewing as <strong>{role}</strong>.
+        {noAccess ? (
+          <>
+            The <strong>{role}</strong> role can&apos;t open {meta?.label ?? "this section"}.
+          </>
+        ) : (
+          <>
+            This section is coming soon. You&apos;re viewing as <strong>{role}</strong>.
+          </>
+        )}
       </p>
       <Link
         href="/jtrax"

@@ -1,10 +1,9 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { SectionPlaceholder } from "@/components/jtrax/SectionPlaceholder";
+import { SectionRouter } from "@/components/jtrax/SectionRouter";
 import { NAV_STRUCTURE } from "@/lib/jtrax/nav";
 
-/* Only the nav's own section ids resolve; anything else is a 404 rather than an
-   empty placeholder. Role visibility is enforced in the shell/context, not here,
-   because the active role lives in client state. */
+/* Only the nav's own section ids resolve; anything else is a 404. */
 export function generateStaticParams() {
   return NAV_STRUCTURE.filter((item) => item.id !== "home").map((item) => ({ section: item.id }));
 }
@@ -18,5 +17,11 @@ export default async function JtraxSectionPage({
   const known = NAV_STRUCTURE.some((item) => item.id === section && item.id !== "home");
   if (!known) notFound();
 
-  return <SectionPlaceholder section={section} />;
+  /* SectionRouter reads searchParams via useSearchParams, which needs a
+     Suspense boundary to avoid opting the whole route into client rendering. */
+  return (
+    <Suspense fallback={null}>
+      <SectionRouter section={section} />
+    </Suspense>
+  );
 }

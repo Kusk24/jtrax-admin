@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { buildFollowUps, type FollowUpBucket } from "@/lib/jtrax/derive";
 import { Icon } from "@/lib/jtrax/icons";
 import { COLORS, FONT } from "@/lib/jtrax/theme";
+import { useJtrax } from "../JtraxContext";
 import { Card, SectionTitle } from "../ui";
 
 const ROW_CLASS: Record<FollowUpBucket, string> = {
@@ -14,7 +15,8 @@ const ROW_CLASS: Record<FollowUpBucket, string> = {
 
 export function FollowUps({ style }: { style?: React.CSSProperties }) {
   const router = useRouter();
-  const followUps = buildFollowUps();
+  const { creditRules } = useJtrax();
+  const followUps = buildFollowUps(creditRules);
 
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 12, ...style }}>

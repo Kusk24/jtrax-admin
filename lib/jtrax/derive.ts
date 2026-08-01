@@ -220,6 +220,71 @@ export function buildCheckins(dismissed: Record<number, string>): CheckinRow[] {
   });
 }
 
+/* Deterministic PRNG (Lehmer), ported verbatim so the student profile's
+   attendance and practice strips match the design's demo data exactly. */
+function seededRandom(seed: number): () => number {
+  let s = seed % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return () => {
+    s = (s * 16807) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+
+export type AttendanceRow = { date: string; className: string; status: "Present" | "Absent" };
+
+/** Ported from buildAttendanceRows: 8 weekly sessions back from TODAY_REF. */
+export function buildAttendanceRows(seedIdx: number, className: string): AttendanceRow[] {
+  const rand = seededRandom(seedIdx * 97 + 13);
+  const rows: AttendanceRow[] = [];
+  for (let i = 0; i < 8; i++) {
+    const d = new Date(TODAY_REF);
+    d.setDate(d.getDate() - i * 7);
+    rows.push({
+      date: d.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" }),
+      className,
+      status: rand() > 0.2 ? "Present" : "Absent",
+    });
+  }
+  return rows;
+}
+
+/** Ported from buildPracticeStrip: 35-day heat strip plus the trailing streak. */
+export function buildPracticeStrip(seedIdx: number): { days: boolean[]; streak: number } {
+  const rand = seededRandom(seedIdx * 53 + 7);
+  const days: boolean[] = [];
+  for (let i = 0; i < 35; i++) days.push(rand() > 0.28);
+  let streak = 0;
+  for (let i = days.length - 1; i >= 0; i--) {
+    if (days[i]) streak++;
+    else break;
+  }
+  return { days, streak };
+}
+
+/** Ported from buildStudentPayments: real seed rows if any, else synthesised. */
+export function buildStudentPayments(seedIdx: number, name: string, className: string) {
+  const matched = PAYMENTS_SEED.filter((p) => p.name === name);
+  if (matched.length) return matched;
+
+  const rand = seededRandom(seedIdx * 71 + 29);
+  const out = [];
+  for (let i = 0; i < 2; i++) {
+    const d = new Date(TODAY_REF);
+    d.setDate(d.getDate() - (i * 28 + 5));
+    out.push({
+      name,
+      className,
+      credits: `+${5 + Math.floor(rand() * 5)}`,
+      amount: `${(1800 + Math.floor(rand() * 3) * 1200).toLocaleString()} THB`,
+      date: d.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" }),
+      method: ["Credit Card", "Bank Transfer", "PromptPay"][Math.floor(rand() * 3)],
+      status: "Paid" as const,
+    });
+  }
+  return out;
+}
+
 /** Name or parent-phone match, mirroring the design's "name or phone number" hint. */
 export function searchStudents(query: string): Student[] {
   const q = query.trim().toLowerCase();
