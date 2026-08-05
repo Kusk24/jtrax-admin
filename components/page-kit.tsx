@@ -66,6 +66,10 @@ export const labelStyle: CSSProperties = {
 export const primaryButtonStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
+  /* No-op while the button hugs its label, which is most of them — it earns its
+     keep where one stretches to fill a column (the drawer's Save), where the
+     label would otherwise sit against the left edge. */
+  justifyContent: "center",
   gap: 7,
   padding: "9px 16px",
   borderRadius: 999,
@@ -82,6 +86,7 @@ export const primaryButtonStyle: CSSProperties = {
 export const secondaryButtonStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
+  justifyContent: "center",
   gap: 7,
   padding: "9px 16px",
   borderRadius: 999,
