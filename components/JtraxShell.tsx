@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { useTranslations } from "next-intl";
 import { LanguageToggle } from "./LanguageToggle";
+import { signOut } from "@/app/actions/auth";
 import { Icon } from "@/lib/icons";
 import { navItemsForRole } from "@/lib/nav";
 import { COLORS, FONT, ROLE_COLORS } from "@/lib/theme";
@@ -116,29 +117,33 @@ function Sidebar({ section }: { section: string }) {
         })}
       </nav>
 
-      <button
-        type="button"
-        className="jt-nav-row"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          padding: "10px 12px",
-          borderRadius: 8,
-          border: "none",
-          background: "transparent",
-          cursor: "pointer",
-          width: "100%",
-          textAlign: "left",
-        }}
-      >
-        <span style={{ display: "flex", width: 18, height: 18 }}>
-          <Icon name="logout" size={18} color={COLORS.textSecondary} />
-        </span>
-        <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 500, color: COLORS.textSecondary }}>
-          {t("logout")}
-        </span>
-      </button>
+      {/* Clearing the session cookie has to happen on the server, so logout is
+          a form posting to the sign-out action rather than a click handler. */}
+      <form action={signOut}>
+        <button
+          type="submit"
+          className="jt-nav-row"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            padding: "10px 12px",
+            borderRadius: 8,
+            border: "none",
+            background: "transparent",
+            cursor: "pointer",
+            width: "100%",
+            textAlign: "left",
+          }}
+        >
+          <span style={{ display: "flex", width: 18, height: 18 }}>
+            <Icon name="logout" size={18} color={COLORS.textSecondary} />
+          </span>
+          <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 500, color: COLORS.textSecondary }}>
+            {t("logout")}
+          </span>
+        </button>
+      </form>
     </aside>
   );
 }

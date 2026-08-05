@@ -144,6 +144,103 @@ textarea {
   }
 }
 
+/* --- Sign-in screen ---
+   The brand panel sits beside the form once there's room for both; below that
+   it collapses to a compact banner above it (points and motif hidden). */
+.jt-login {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.jt-login-brand {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+  padding: 26px 24px;
+  background: linear-gradient(155deg, #3159a5 0%, #284c8f 48%, #1a3364 100%);
+}
+
+.jt-login-motif,
+.jt-login-points {
+  display: none;
+}
+
+.jt-login-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 22px 24px 28px;
+  background: #f7faff;
+}
+
+@media (width >= 900px) {
+  .jt-login {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .jt-login-brand {
+    gap: 26px;
+    padding: 56px 52px;
+  }
+
+  /* Only the base is clipped, so the piece still reads as a knight. */
+  .jt-login-motif {
+    display: block;
+    position: absolute;
+    right: 8px;
+    bottom: -56px;
+    opacity: 0.1;
+    pointer-events: none;
+  }
+
+  .jt-login-points {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .jt-login-panel {
+    padding: 28px 48px 32px;
+  }
+}
+
+/* The tagline is the panel's largest type — it needs the room at desktop and
+   has to shrink out of the way in the collapsed banner. */
+.jt-login-tagline {
+  font-size: 19px !important;
+}
+
+@media (width >= 900px) {
+  .jt-login-tagline {
+    font-size: 26px !important;
+  }
+}
+
+.jt-demo-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.jt-demo-chip {
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.jt-demo-chip:hover {
+  border-color: #284c8f !important;
+  background: #eef5ff !important;
+}
+
 @keyframes jtrax-spin {
   from {
     transform: rotate(0deg);

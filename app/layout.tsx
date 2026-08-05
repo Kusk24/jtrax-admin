@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 import { Inter, Noto_Sans_Thai } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
-import { JtraxProvider } from "@/components/JtraxContext";
-import { JtraxShell } from "@/components/JtraxShell";
 import "./globals.css";
 
 const inter = Inter({
@@ -31,11 +29,9 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   return (
     <html lang={locale}>
       <body className={`jtrax-root ${inter.variable} ${notoThai.variable}`}>
-        <NextIntlClientProvider>
-          <JtraxProvider>
-            <JtraxShell>{children}</JtraxShell>
-          </JtraxProvider>
-        </NextIntlClientProvider>
+        {/* The shell lives in app/(app)/layout.tsx, behind the session guard —
+            /login renders inside this root layout with no sidebar. */}
+        <NextIntlClientProvider>{children}</NextIntlClientProvider>
       </body>
     </html>
   );

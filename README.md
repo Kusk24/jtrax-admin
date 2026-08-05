@@ -22,6 +22,7 @@ pnpm build
 
 | Route | Screen |
 |---|---|
+| `/login` | Sign in — the only screen outside the app shell |
 | `/` | Dashboard — role-dependent (see below) |
 | `/admins` | Admin accounts, detail drawer, create-admin flow *(Super Admin only)* |
 | `/academy` | Courses and teachers |
@@ -32,6 +33,18 @@ pnpm build
 | `/announcement` | Broadcasts to students and parents |
 | `/chat` | LINE-style messaging with parents |
 | `/settings` | Credit warning rules *(Super Admin only)* |
+
+## Sign in
+
+`/login` is the way in; everything else lives in the `app/(app)` route group, whose layout
+redirects there when the `jtrax_session` cookie is missing. Signing in sets that cookie to
+the admin's id, so the app opens as whoever signed in, and the sidebar's Logout clears it.
+
+Authentication is **mocked to match the mock data**: the four seed admins in `lib/data.ts`
+are the whole account list and they share one demo password (`jca2026`), printed on the
+screen along with quick-fill chips for each account. When the backend lands, only
+`verifyCredentials` in `lib/auth.ts` has to change — the cookie session and the route guard
+above it stay as they are.
 
 ## Roles
 
@@ -64,8 +77,7 @@ truncated, so those were rebuilt from the seed data rather than ported verbatim.
 
 ## Not yet done
 
-- **Thai localisation.** An earlier version of this app used next-intl; the design is
-  English-only so it was dropped. Re-adding it means reinstating `next-intl`, `i18n/` and
-  `messages/`.
-- **Auth.** The signed-in person is picked from the role switcher, not authenticated.
+- **Real auth.** Sign-in checks the seed list against one shared demo password — no
+  backend, no per-account passwords, no reset flow (Forgot password just tells you to ask
+  a Super Admin). The role switcher still lets you become any admin after signing in.
 - **Tournament photos** use generated gradient art rather than real images.

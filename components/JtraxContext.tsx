@@ -23,9 +23,16 @@ type JtraxContextValue = {
 
 const JtraxContext = createContext<JtraxContextValue | null>(null);
 
-export function JtraxProvider({ children }: { children: ReactNode }) {
+export function JtraxProvider({
+  children,
+  /* Whoever signed in, resolved from the session cookie by app/(app)/layout. */
+  initialPerson,
+}: {
+  children: ReactNode;
+  initialPerson: AdminPerson;
+}) {
   const router = useRouter();
-  const [person, setPersonState] = useState<AdminPerson>(ADMIN_SEED[0]);
+  const [person, setPersonState] = useState<AdminPerson>(initialPerson);
   const [creditRules, setCreditRules] = useState<CreditRules>(DEFAULT_CREDIT_RULES);
 
   const setPerson = useCallback(
