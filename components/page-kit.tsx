@@ -29,8 +29,29 @@ export const fieldStyle: CSSProperties = {
   background: COLORS.surface,
   fontFamily: FONT,
   fontSize: 13.5,
+  /* Pinned rather than left at `normal`: an <input> and a <select> resolve the
+     default differently, which is what left the role picker a few pixels
+     shorter than the text fields stacked with it. */
+  lineHeight: "20px",
   color: COLORS.text,
   outline: "none",
+};
+
+/* The chevron from `lib/icons`, inlined — a native <select> arrow comes with
+   its own metrics, so `appearance: none` has to draw the caret itself. */
+const CHEVRON_SVG =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236B7B93' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")";
+
+/** `fieldStyle` for a <select>: same box as the inputs beside it. */
+export const selectStyle: CSSProperties = {
+  ...fieldStyle,
+  appearance: "none",
+  paddingRight: 34,
+  backgroundImage: CHEVRON_SVG,
+  backgroundRepeat: "no-repeat",
+  backgroundPosition: "right 11px center",
+  backgroundSize: "15px 15px",
+  cursor: "pointer",
 };
 
 export const labelStyle: CSSProperties = {
@@ -142,6 +163,9 @@ export function SearchInput({
         background: COLORS.surface,
         width: "100%",
         minWidth: 0,
+        /* Filter bars mix this pill with selects and date inputs; they all sit
+           on the same 40px box so the row doesn't come out ragged. */
+        minHeight: 40,
         ...style,
       }}
     >
@@ -186,7 +210,13 @@ export function SelectFilter({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       aria-label={label}
-      style={{ ...fieldStyle, width: "auto", borderRadius: 999, padding: "9px 14px" }}
+      style={{
+        ...selectStyle,
+        width: "auto",
+        borderRadius: 999,
+        /* Shorthand, so it has to re-state the room the caret needs. */
+        padding: "9px 34px 9px 14px",
+      }}
     >
       {options.map((o) => (
         <option key={o.value} value={o.value}>

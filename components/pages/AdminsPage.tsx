@@ -15,6 +15,7 @@ import {
   PageHeader,
   primaryButtonStyle,
   secondaryButtonStyle,
+  selectStyle,
 } from "../page-kit";
 import { Avatar, Badge, Card, SectionTitle } from "../ui";
 
@@ -217,7 +218,7 @@ export function AdminsPage() {
                     id="ad-role"
                     value={editDraft.role}
                     onChange={(e) => setEditDraft({ ...editDraft, role: e.target.value as JtraxRole })}
-                    style={fieldStyle}
+                    style={selectStyle}
                   >
                     {ROLES.map((r) => (
                       <option key={r} value={r}>{tRole(r)}</option>
@@ -381,7 +382,7 @@ export function AdminsPage() {
             </div>
             <div>
               <label style={labelStyle} htmlFor="ca-role">{t("role")}</label>
-              <select id="ca-role" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as JtraxRole })} style={fieldStyle}>
+              <select id="ca-role" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as JtraxRole })} style={selectStyle}>
                 {ROLES.map((r) => (
                   <option key={r} value={r}>{tRole(r)}</option>
                 ))}

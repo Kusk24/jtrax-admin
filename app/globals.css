@@ -49,6 +49,14 @@ textarea {
   color: inherit;
 }
 
+/* Chrome gives date and time inputs a taller intrinsic box than a text input —
+   their native picker/spinner carries its own metrics — so they need the shared
+   40px field height pinned back or they sit proud of the controls beside them. */
+.jtrax-root input[type="date"],
+.jtrax-root input[type="time"] {
+  height: 40px;
+}
+
 /* Visible keyboard focus — nothing else in the design provides one. */
 .jtrax-root :focus-visible {
   outline: 2px solid #284c8f;
@@ -224,19 +232,19 @@ textarea {
   }
 }
 
-.jt-demo-grid {
+.jt-pick-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
-.jt-demo-chip {
+.jt-pick-chip {
   transition:
     border-color 160ms ease,
     background 160ms ease;
 }
 
-.jt-demo-chip:hover {
+.jt-pick-chip:hover {
   border-color: #284c8f !important;
   background: #eef5ff !important;
 }
@@ -418,6 +426,58 @@ textarea {
 .jt-btn-ghost:hover {
   background: #eef5ff !important;
   border-color: #284c8f !important;
+}
+
+/* --- Row / drawer actions ---
+   Ported markup references these classes but the design's rules for them were
+   past the export's truncation point, so they had no styling at all. */
+.jt-act-edit,
+.jt-act-reset,
+.jt-act-danger,
+.jt-qa-call,
+.jt-qa-line,
+.jt-qa-email,
+.jt-reg-choice {
+  transition: all 160ms ease;
+}
+
+.jt-act-edit:hover,
+.jt-qa-call:hover,
+.jt-reg-choice:hover {
+  border-color: #284c8f !important;
+  background: #eef5ff !important;
+  color: #284c8f !important;
+}
+
+.jt-act-reset:hover {
+  border-color: #ddb874 !important;
+  background: #fbf3e0 !important;
+  color: #b7791f !important;
+}
+
+/* Delete is the one irreversible action on these panels — it reads red before
+   it's pressed, not only in the confirmation that follows. */
+.jt-act-danger:hover {
+  border-color: #c0392b !important;
+  background: #fbeaea !important;
+  color: #c0392b !important;
+}
+
+.jt-qa-line:hover {
+  border-color: #06c755 !important;
+  background: #e6f9ee !important;
+  color: #05873c !important;
+}
+
+.jt-qa-email:hover {
+  border-color: #7c4fc2 !important;
+  background: #f1eafa !important;
+  color: #7c4fc2 !important;
+}
+
+.jt-reg-choice:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgb(36 59 99 / 0.14);
 }
 
 .jt-chip:hover {

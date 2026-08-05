@@ -17,6 +17,7 @@ import {
   SearchInput,
   secondaryButtonStyle,
   SelectFilter,
+  selectStyle,
   Table,
   TableRow,
 } from "../page-kit";
@@ -166,7 +167,7 @@ function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave:
                 setCreditPackage(e.target.value);
                 setAmount(PACKAGES[e.target.value] ?? amount);
               }}
-              style={fieldStyle}
+              style={selectStyle}
             >
               {Object.keys(PACKAGES).map((p) => (
                 <option key={p} value={p}>{p}</option>
@@ -197,7 +198,7 @@ function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave:
           </div>
           <div>
             <label style={labelStyle} htmlFor="pay-method">{t("paymentMethod")}</label>
-            <select id="pay-method" value={method} onChange={(e) => setMethod(e.target.value)} style={fieldStyle}>
+            <select id="pay-method" value={method} onChange={(e) => setMethod(e.target.value)} style={selectStyle}>
               {METHODS.map((m) => (
                 <option key={m} value={m}>{m}</option>
               ))}
@@ -209,7 +210,7 @@ function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave:
               id="pay-status"
               value={status}
               onChange={(e) => setStatus(e.target.value as Payment["status"])}
-              style={fieldStyle}
+              style={selectStyle}
             >
               {(["Paid", "Pending", "Refunded"] as const).map((s) => (
                 <option key={s} value={s}>{tStatus(s)}</option>

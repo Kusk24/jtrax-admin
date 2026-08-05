@@ -19,6 +19,7 @@ import {
   SearchInput,
   secondaryButtonStyle,
   SelectFilter,
+  selectStyle,
   Table,
   TableRow,
 } from "../page-kit";
@@ -27,6 +28,17 @@ import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
 const TEMPLATE = "minmax(160px, 1.6fr) minmax(130px, 1.2fr) 90px 110px 120px";
 const CLASS_OPTIONS = ["Group Class", "Private Class", "Master Class", "Weekend Class"];
 const STATUS_VALUES = ["Normal", "Low Credit", "Expiring", "Expired", "Inactive"] as const;
+const LEVEL_OPTIONS = ["Beginner", "Intermediate", "Advanced"];
+const RELATION_OPTIONS = ["Mother", "Father", "Guardian"];
+
+/* The registration wizard's class list and the seed's class names don't fully
+   overlap, so the edit form unions them — otherwise opening a seeded student
+   would show a picker that doesn't contain their own class and silently move
+   them to the first option on save. */
+const EDIT_CLASS_OPTIONS = Array.from(
+  new Set([...STUDENTS_SEED.map((s) => s.className), ...CLASS_OPTIONS]),
+);
+const BRANCH_OPTIONS = Array.from(new Set(STUDENTS_SEED.map((s) => s.branch).filter((b) => b !== "-")));
 
 type View = { kind: "list" } | { kind: "detail"; id: string } | { kind: "wizard" };
 
@@ -35,11 +47,28 @@ type View = { kind: "list" } | { kind: "detail"; id: string } | { kind: "wizard"
 const DETAIL_TABS = ["Overview", "Attendance", "Practice", "Payments"] as const;
 type DetailTab = (typeof DETAIL_TABS)[number];
 
-function StudentDetail({ student, onBack }: { student: Student; onBack: () => void }) {
+function StudentDetail({
+  student,
+  onBack,
+  onSave,
+  onDelete,
+}: {
+  student: Student;
+  onBack: () => void;
+  onSave: (student: Student) => void;
+  onDelete: (id: string) => void;
+}) {
   const t = useTranslations("students");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
   const [tab, setTab] = useState<DetailTab>("Overview");
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<Student>(student);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+
+  function setField<K extends keyof Student>(key: K, value: Student[K]) {
+    setDraft((d) => ({ ...d, [key]: value }));
+  }
   const seedIdx = STUDENTS_SEED.findIndex((s) => s.id === student.id);
   const attendance = useMemo(() => buildAttendanceRows(seedIdx, student.className), [seedIdx, student.className]);
   const practice = useMemo(() => buildPracticeStrip(seedIdx), [seedIdx]);
@@ -84,17 +113,81 @@ function StudentDetail({ student, onBack }: { student: Student; onBack: () => vo
 {t("yrs", { age: student.age })} · {student.level} · {student.id}
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
           <Badge color={chip.color} bg={chip.bg}>
             {tStatus(student.status)}
           </Badge>
           <Badge color={COLORS.blue} bg={COLORS.light}>
             {student.credit} {tCommon("credits")}
           </Badge>
+          {!editing && (
+            <>
+              <button
+                type="button"
+                className="jt-act-edit"
+                style={secondaryButtonStyle}
+                onClick={() => {
+                  setDraft(student);
+                  setDeleteConfirm(false);
+                  setTab("Overview");
+                  setEditing(true);
+                }}
+              >
+                <Icon name="edit" size={13} /> {tCommon("edit")}
+              </button>
+              <button
+                type="button"
+                className="jt-act-danger"
+                style={secondaryButtonStyle}
+                onClick={() => setDeleteConfirm(true)}
+              >
+                {tCommon("delete")}
+              </button>
+            </>
+          )}
         </div>
       </Card>
 
-      <div style={{ display: "flex", gap: 18, borderBottom: `1px solid ${COLORS.border}`, flexWrap: "wrap" }}>
+      {deleteConfirm && (
+        <div
+          className="jtrax-fade-in-up"
+          style={{
+            padding: 16,
+            borderRadius: 12,
+            border: "1px solid #B13F3F",
+            background: "#FAE2E2",
+            color: "#541111",
+          }}
+        >
+          <div style={{ fontFamily: FONT, fontSize: 13.5, fontWeight: 700 }}>
+            {t("deleteTitle", { name: student.name })}
+          </div>
+          <p style={{ margin: "5px 0 12px", fontFamily: FONT, fontSize: 12.5 }}>{t("deleteBody")}</p>
+          <div style={{ display: "flex", gap: 9 }}>
+            <button type="button" style={secondaryButtonStyle} onClick={() => setDeleteConfirm(false)}>
+              {tCommon("cancel")}
+            </button>
+            <button
+              type="button"
+              style={{ ...primaryButtonStyle, background: COLORS.danger }}
+              onClick={() => onDelete(student.id)}
+            >
+              {t("deleteConfirm")}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden while editing: the form only covers Overview, and leaving the
+          tabs live would let a half-finished edit scroll out of sight. */}
+      <div
+        style={{
+          display: editing ? "none" : "flex",
+          gap: 18,
+          borderBottom: `1px solid ${COLORS.border}`,
+          flexWrap: "wrap",
+        }}
+      >
         {DETAIL_TABS.map((name) => (
           <button
             key={name}
@@ -117,7 +210,107 @@ function StudentDetail({ student, onBack }: { student: Student; onBack: () => vo
         ))}
       </div>
 
-      {tab === "Overview" && (
+      {tab === "Overview" && editing && (
+        <>
+          <div className="jt-duo">
+            <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <SectionTitle>{t("studentSection")}</SectionTitle>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div>
+                  <label style={labelStyle} htmlFor="ed-name">{t("fullName")}</label>
+                  <input id="ed-name" value={draft.name} onChange={(e) => setField("name", e.target.value)} style={fieldStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle} htmlFor="ed-class">{tCommon("class")}</label>
+                  <select id="ed-class" value={draft.className} onChange={(e) => setField("className", e.target.value)} style={selectStyle}>
+                    {EDIT_CLASS_OPTIONS.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle} htmlFor="ed-branch">{tCommon("branch")}</label>
+                  <select id="ed-branch" value={draft.branch} onChange={(e) => setField("branch", e.target.value)} style={selectStyle}>
+                    {BRANCH_OPTIONS.map((b) => (
+                      <option key={b} value={b}>{b}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle} htmlFor="ed-level">{t("level")}</label>
+                  <select id="ed-level" value={draft.level} onChange={(e) => setField("level", e.target.value)} style={selectStyle}>
+                    {LEVEL_OPTIONS.map((l) => (
+                      <option key={l} value={l}>{l}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle} htmlFor="ed-membership">{t("membership")}</label>
+                  <input id="ed-membership" value={draft.membershipType} onChange={(e) => setField("membershipType", e.target.value)} style={fieldStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle} htmlFor="ed-sline">{tCommon("lineId")}</label>
+                  <input id="ed-sline" value={draft.studentLineId} onChange={(e) => setField("studentLineId", e.target.value)} style={fieldStyle} />
+                </div>
+              </div>
+            </Card>
+
+            <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <SectionTitle>{t("parentSection")}</SectionTitle>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div>
+                  <label style={labelStyle} htmlFor="ed-pname">{tCommon("name")}</label>
+                  <input id="ed-pname" value={draft.parentName} onChange={(e) => setField("parentName", e.target.value)} style={fieldStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle} htmlFor="ed-prel">{t("relation")}</label>
+                  <select id="ed-prel" value={draft.parentRelation} onChange={(e) => setField("parentRelation", e.target.value)} style={selectStyle}>
+                    {RELATION_OPTIONS.map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle} htmlFor="ed-pphone">{tCommon("phone")}</label>
+                  <input id="ed-pphone" value={draft.parentPhone} onChange={(e) => setField("parentPhone", e.target.value)} style={fieldStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle} htmlFor="ed-pmail">{tCommon("email")}</label>
+                  <input id="ed-pmail" type="email" value={draft.parentEmail} onChange={(e) => setField("parentEmail", e.target.value)} style={fieldStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle} htmlFor="ed-pline">{tCommon("lineId")}</label>
+                  <input id="ed-pline" value={draft.parentLineId} onChange={(e) => setField("parentLineId", e.target.value)} style={fieldStyle} />
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <button type="button" className="jt-btn-ghost" style={secondaryButtonStyle} onClick={() => setEditing(false)}>
+              {tCommon("cancel")}
+            </button>
+            <button
+              type="button"
+              className="jt-btn-primary"
+              style={{
+                ...primaryButtonStyle,
+                opacity: draft.name.trim() ? 1 : 0.5,
+                cursor: draft.name.trim() ? "pointer" : "not-allowed",
+              }}
+              disabled={!draft.name.trim()}
+              onClick={() => {
+                onSave(draft);
+                setEditing(false);
+              }}
+            >
+              {tCommon("save")}
+            </button>
+          </div>
+        </>
+      )}
+
+      {tab === "Overview" && !editing && (
         <div className="jt-duo">
           <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <SectionTitle>{t("studentSection")}</SectionTitle>
@@ -433,7 +626,7 @@ function AddStudentWizard({
               </div>
               <div>
                 <label style={labelStyle} htmlFor="w-class">{tCommon("class")}</label>
-                <select id="w-class" value={draft.className} onChange={(e) => set("className", e.target.value)} style={fieldStyle}>
+                <select id="w-class" value={draft.className} onChange={(e) => set("className", e.target.value)} style={selectStyle}>
                   {CLASS_OPTIONS.map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
@@ -459,7 +652,7 @@ function AddStudentWizard({
               </div>
               <div>
                 <label style={labelStyle} htmlFor="w-prel">{t("relation")}</label>
-                <select id="w-prel" value={draft.parentRelation} onChange={(e) => set("parentRelation", e.target.value)} style={fieldStyle}>
+                <select id="w-prel" value={draft.parentRelation} onChange={(e) => set("parentRelation", e.target.value)} style={selectStyle}>
                   {["Mother", "Father", "Guardian"].map((r) => (
                     <option key={r} value={r}>{r}</option>
                   ))}
@@ -540,7 +733,18 @@ export function StudentsPage({ startWizard }: { startWizard?: string }) {
 
   if (view.kind === "detail") {
     const student = students.find((s) => s.id === view.id);
-    if (student) return <StudentDetail student={student} onBack={() => setView({ kind: "list" })} />;
+    if (student)
+      return (
+        <StudentDetail
+          student={student}
+          onBack={() => setView({ kind: "list" })}
+          onSave={(next) => setStudents(students.map((s) => (s.id === next.id ? next : s)))}
+          onDelete={(id) => {
+            setStudents(students.filter((s) => s.id !== id));
+            setView({ kind: "list" });
+          }}
+        />
+      );
   }
 
   if (view.kind === "wizard") {

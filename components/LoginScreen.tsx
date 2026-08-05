@@ -375,7 +375,7 @@ export function LoginScreen() {
             {/* Name *and* role, like the topbar switcher — two of the four seed
                 admins share the Admin role, so the role alone can't tell them
                 apart. */}
-            <div className="jt-demo-grid">
+            <div className="jt-pick-grid">
               {ADMIN_SEED.map((person) => {
                 const roleColor = ROLE_COLORS[person.role];
                 const selected = email === person.email;
@@ -387,7 +387,7 @@ export function LoginScreen() {
                       setEmail(person.email);
                       setPassword(DEMO_PASSWORD);
                     }}
-                    className="jt-demo-chip"
+                    className="jt-pick-chip"
                     style={{
                       display: "flex",
                       alignItems: "center",

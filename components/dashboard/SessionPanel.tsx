@@ -5,6 +5,9 @@ import { useTranslations } from "next-intl";
 import { CLASSES_DEFS_REF, STUDENTS_SEED, type ClassDef } from "@/lib/data";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
+/* Shared with the rest of the forms so the panel's fields keep the same box —
+   this file used to carry its own near-identical copies. */
+import { fieldStyle, labelStyle, selectStyle } from "../page-kit";
 import { Avatar } from "../ui";
 
 export type PanelState = { mode: "create" } | { mode: "view"; def: ClassDef } | null;
@@ -132,27 +135,6 @@ function PanelFrame({
   );
 }
 
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  marginBottom: 6,
-  fontFamily: FONT,
-  fontSize: 12.5,
-  fontWeight: 600,
-  color: COLORS.textSecondary,
-};
-
-const fieldStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "10px 12px",
-  borderRadius: 9,
-  border: `1px solid ${COLORS.border}`,
-  background: COLORS.surface,
-  fontFamily: FONT,
-  fontSize: 13.5,
-  color: COLORS.text,
-  outline: "none",
-};
-
 const primaryBtn: React.CSSProperties = {
   padding: "9px 18px",
   borderRadius: 999,
@@ -235,7 +217,7 @@ function CreateSession({ onClose }: { onClose: () => void }) {
                 setStartTime("");
                 setEndTime("");
               }}
-              style={fieldStyle}
+              style={selectStyle}
             >
               {CLASSES_DEFS_REF.map((c) => (
                 <option key={c.name} value={c.name}>

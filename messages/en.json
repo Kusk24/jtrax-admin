@@ -214,7 +214,10 @@
     "fullName": "Full Name",
     "currentSchool": "Current School",
     "fideId": "FIDE ID (optional)",
-    "colCredit": "Credit"
+    "colCredit": "Credit",
+    "deleteTitle": "Delete {name}?",
+    "deleteBody": "This removes the student and their profile. Attendance and payment history are not recoverable.",
+    "deleteConfirm": "Delete Student"
   },
   "payment": {
     "title": "Payment",
@@ -246,7 +249,10 @@
     "empty": "No sessions match these filters.",
     "attendance": "Attendance",
     "presentCount": "{count} present",
-    "time": "Time"
+    "time": "Time",
+    "attendedOn": "{className} · {date} · {time}",
+    "viewAttendee": "View {name}",
+    "noProfile": "{name} attended this session but has no student profile in the system yet."
   },
   "tournament": {
     "title": "Tournament",
@@ -400,7 +406,10 @@
     "icon": "Icon",
     "category": "Category",
     "editTeacher": "Edit Teacher",
-    "saveTeacher": "Save Teacher"
+    "saveTeacher": "Save Teacher",
+    "deleteTeacher": "Delete Teacher",
+    "deleteTeacherTitle": "Delete {name}?",
+    "deleteTeacherBody": "This removes the teacher from the academy. Classes they were assigned to keep their history."
   },
   "settings": {
     "title": "Credit Rules",

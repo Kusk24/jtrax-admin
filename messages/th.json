@@ -214,7 +214,10 @@
     "fullName": "ชื่อ-นามสกุล",
     "currentSchool": "โรงเรียนปัจจุบัน",
     "fideId": "FIDE ID (ไม่บังคับ)",
-    "colCredit": "เครดิต"
+    "colCredit": "เครดิต",
+    "deleteTitle": "ลบ {name} ใช่หรือไม่?",
+    "deleteBody": "การลบจะนำนักเรียนและข้อมูลโปรไฟล์ออกจากระบบ ประวัติการเข้าเรียนและการชำระเงินจะไม่สามารถกู้คืนได้",
+    "deleteConfirm": "ลบนักเรียน"
   },
   "payment": {
     "title": "การชำระเงิน",
@@ -246,7 +249,10 @@
     "empty": "ไม่พบคาบเรียนตามตัวกรองนี้",
     "attendance": "การเข้าเรียน",
     "presentCount": "มาเรียน {count} คน",
-    "time": "เวลา"
+    "time": "เวลา",
+    "attendedOn": "{className} · {date} · {time}",
+    "viewAttendee": "ดูข้อมูล {name}",
+    "noProfile": "{name} เข้าเรียนคาบนี้ แต่ยังไม่มีข้อมูลนักเรียนในระบบ"
   },
   "tournament": {
     "title": "การแข่งขัน",
@@ -400,7 +406,10 @@
     "icon": "ไอคอน",
     "category": "หมวดหมู่",
     "editTeacher": "แก้ไขข้อมูลคุณครู",
-    "saveTeacher": "บันทึกข้อมูลคุณครู"
+    "saveTeacher": "บันทึกข้อมูลคุณครู",
+    "deleteTeacher": "ลบครูผู้สอน",
+    "deleteTeacherTitle": "ลบ {name} ใช่หรือไม่?",
+    "deleteTeacherBody": "การลบจะนำครูออกจากสถาบัน คลาสที่เคยสอนจะยังคงมีประวัติอยู่"
   },
   "settings": {
     "title": "กฎเกณฑ์เครดิต",

@@ -13,6 +13,7 @@ import {
   PageHeader,
   primaryButtonStyle,
   secondaryButtonStyle,
+  selectStyle,
 } from "../page-kit";
 import { Avatar, Badge, Card } from "../ui";
 
@@ -100,6 +101,7 @@ export function AcademyPage() {
   const [teacherModal, setTeacherModal] = useState<Teacher | "new" | null>(null);
   const [courseDetail, setCourseDetail] = useState<Course | null>(null);
   const [teacherDetail, setTeacherDetail] = useState<Teacher | null>(null);
+  const [teacherDeleteConfirm, setTeacherDeleteConfirm] = useState(false);
 
   const [courseDraft, setCourseDraft] = useState<Omit<Course, "id">>({
     name: "",
@@ -108,11 +110,12 @@ export function AcademyPage() {
     icon: "pawn",
     category: "Beginner",
   });
-  const [teacherDraft, setTeacherDraft] = useState<Omit<Teacher, "id" | "status">>({
+  const [teacherDraft, setTeacherDraft] = useState<Omit<Teacher, "id">>({
     name: "",
     email: "",
     phone: "",
     lineId: "",
+    status: "Active",
   });
 
   function openCourseModal(course: Course | "new") {
@@ -122,12 +125,23 @@ export function AcademyPage() {
     );
   }
 
+  function closeTeacherDetail() {
+    setTeacherDetail(null);
+    setTeacherDeleteConfirm(false);
+  }
+
   function openTeacherModal(teacher: Teacher | "new") {
     setTeacherModal(teacher);
     setTeacherDraft(
       teacher === "new"
-        ? { name: "", email: "", phone: "", lineId: "" }
-        : { name: teacher.name, email: teacher.email, phone: teacher.phone, lineId: teacher.lineId },
+        ? { name: "", email: "", phone: "", lineId: "", status: "Active" }
+        : {
+            name: teacher.name,
+            email: teacher.email,
+            phone: teacher.phone,
+            lineId: teacher.lineId,
+            status: teacher.status,
+          },
     );
   }
 
@@ -267,7 +281,35 @@ export function AcademyPage() {
       )}
 
       {teacherDetail && (
-        <Modal title={teacherDetail.name} onClose={() => setTeacherDetail(null)}>
+        <Modal
+          title={teacherDetail.name}
+          onClose={closeTeacherDetail}
+          footer={
+            <>
+              {/* Modal footers justify to the end, so the auto margin on the
+                  first child is what parks Delete away from Edit. */}
+              <button
+                type="button"
+                className="jt-act-danger"
+                style={{ ...secondaryButtonStyle, marginRight: "auto" }}
+                onClick={() => setTeacherDeleteConfirm(true)}
+              >
+                {tCommon("delete")}
+              </button>
+              <button
+                type="button"
+                className="jt-act-edit"
+                style={secondaryButtonStyle}
+                onClick={() => {
+                  openTeacherModal(teacherDetail);
+                  closeTeacherDetail();
+                }}
+              >
+                <Icon name="edit" size={13} /> {tCommon("edit")}
+              </button>
+            </>
+          }
+        >
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <Avatar initials={initialsOf(teacherDetail.name)} size={52} />
@@ -291,6 +333,45 @@ export function AcademyPage() {
               ]}
             />
             <ContactActions phone={teacherDetail.phone} lineId={teacherDetail.lineId} email={teacherDetail.email} />
+
+            {teacherDeleteConfirm && (
+              <div
+                className="jtrax-fade-in-up"
+                style={{
+                  padding: 14,
+                  borderRadius: 12,
+                  border: "1px solid #B13F3F",
+                  background: "#FAE2E2",
+                  color: "#541111",
+                }}
+              >
+                <div style={{ fontFamily: FONT, fontSize: 13.5, fontWeight: 700 }}>
+                  {t("deleteTeacherTitle", { name: teacherDetail.name })}
+                </div>
+                <p style={{ margin: "5px 0 12px", fontFamily: FONT, fontSize: 12.5 }}>
+                  {t("deleteTeacherBody")}
+                </p>
+                <div style={{ display: "flex", gap: 9 }}>
+                  <button
+                    type="button"
+                    style={secondaryButtonStyle}
+                    onClick={() => setTeacherDeleteConfirm(false)}
+                  >
+                    {tCommon("cancel")}
+                  </button>
+                  <button
+                    type="button"
+                    style={{ ...primaryButtonStyle, background: COLORS.danger }}
+                    onClick={() => {
+                      setTeachers(teachers.filter((teacher) => teacher.id !== teacherDetail.id));
+                      closeTeacherDetail();
+                    }}
+                  >
+                    {t("deleteTeacher")}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </Modal>
       )}
@@ -374,7 +455,7 @@ export function AcademyPage() {
                 disabled={!teacherDraft.name}
                 onClick={() => {
                   if (teacherModal === "new") {
-                    setTeachers([...teachers, { ...teacherDraft, id: `teacher-${Date.now()}`, status: "Active" }]);
+                    setTeachers([...teachers, { ...teacherDraft, id: `teacher-${Date.now()}` }]);
                   } else {
                     setTeachers(
                       teachers.map((teacher) =>
@@ -406,6 +487,19 @@ export function AcademyPage() {
             <div>
               <label style={labelStyle} htmlFor="te-line">{tCommon("lineId")}</label>
               <input id="te-line" value={teacherDraft.lineId} onChange={(e) => setTeacherDraft({ ...teacherDraft, lineId: e.target.value })} style={fieldStyle} />
+            </div>
+            <div>
+              <label style={labelStyle} htmlFor="te-status">{tCommon("status")}</label>
+              <select
+                id="te-status"
+                value={teacherDraft.status}
+                onChange={(e) => setTeacherDraft({ ...teacherDraft, status: e.target.value })}
+                style={selectStyle}
+              >
+                {["Active", "Inactive"].map((s) => (
+                  <option key={s} value={s}>{tStatus(s)}</option>
+                ))}
+              </select>
             </div>
           </div>
         </Modal>
