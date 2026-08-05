@@ -390,8 +390,7 @@
     "credentialsHint": "แชร์ข้อมูลนี้ให้ผู้ดูแลคนใหม่ทันที — รหัสผ่านชั่วคราวจะไม่แสดงอีก",
     "copyCredentials": "คัดลอกข้อมูลเข้าใช้งาน",
     "copied": "คัดลอกแล้ว",
-    "editAdmin": "แก้ไขผู้ดูแลระบบ",
-    "saveAdmin": "บันทึกผู้ดูแลระบบ"
+    "editAdmin": "แก้ไขผู้ดูแลระบบ"
   },
   "academy": {
     "coursesTitle": "คอร์สเรียน",
@@ -401,14 +400,12 @@
     "teachersSub": "ผู้สอนของสถาบัน",
     "addTeacher": "เพิ่มคุณครู",
     "editCourse": "แก้ไขคอร์สเรียน",
-    "saveCourse": "บันทึกคอร์สเรียน",
     "courseName": "ชื่อคอร์สเรียน",
     "description": "คำอธิบาย",
     "badge": "ป้ายกำกับ",
     "icon": "ไอคอน",
     "category": "หมวดหมู่",
     "editTeacher": "แก้ไขข้อมูลคุณครู",
-    "saveTeacher": "บันทึกข้อมูลคุณครู",
     "deleteTeacher": "ลบครูผู้สอน",
     "deleteTeacherTitle": "ลบ {name} ใช่หรือไม่?",
     "deleteTeacherBody": "การลบจะนำครูออกจากสถาบัน คลาสที่เคยสอนจะยังคงมีประวัติอยู่"

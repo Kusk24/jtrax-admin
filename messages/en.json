@@ -390,8 +390,7 @@
     "credentialsHint": "Share these with the new admin now — the temporary password is not shown again.",
     "copyCredentials": "Copy credentials",
     "copied": "Copied",
-    "editAdmin": "Edit Admin",
-    "saveAdmin": "Save Admin"
+    "editAdmin": "Edit Admin"
   },
   "academy": {
     "coursesTitle": "Courses",
@@ -401,14 +400,12 @@
     "teachersSub": "Who teaches at the academy",
     "addTeacher": "Add Teacher",
     "editCourse": "Edit Course",
-    "saveCourse": "Save Course",
     "courseName": "Course Name",
     "description": "Description",
     "badge": "Badge",
     "icon": "Icon",
     "category": "Category",
     "editTeacher": "Edit Teacher",
-    "saveTeacher": "Save Teacher",
     "deleteTeacher": "Delete Teacher",
     "deleteTeacherTitle": "Delete {name}?",
     "deleteTeacherBody": "This removes the teacher from the academy. Classes they were assigned to keep their history."

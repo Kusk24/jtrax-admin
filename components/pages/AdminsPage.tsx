@@ -7,7 +7,6 @@ import { Icon } from "@/lib/icons";
 import { COLORS, FONT, ROLE_COLORS, type JtraxRole } from "@/lib/theme";
 import {
   ContactActions,
-  Drawer,
   fieldStyle,
   InfoGrid,
   labelStyle,
@@ -65,7 +64,7 @@ export function AdminsPage() {
 
   const detail = admins.find((a) => a.id === detailId) ?? null;
 
-  function closeDrawer() {
+  function closeDetail() {
     setDetailId(null);
     setResetShown(false);
     setDeleteConfirm(false);
@@ -153,37 +152,39 @@ export function AdminsPage() {
       </div>
 
       {detail && (
-        <Drawer
+        <Modal
           title={detail.name}
-          onClose={closeDrawer}
+          onClose={closeDetail}
           footer={
             <>
+              {/* Delete carries the auto margin so it sits apart from the two
+                  routine actions — the footer justifies to the end. */}
               <button
                 type="button"
-                className="jt-act-edit"
-                style={secondaryButtonStyle}
-                onClick={() => {
-                  openAdminModal(detail);
-                  closeDrawer();
-                }}
+                className="jt-act-danger"
+                style={{ ...secondaryButtonStyle, marginRight: "auto" }}
+                onClick={() => setDeleteConfirm(true)}
               >
-                <Icon name="edit" size={13} /> {tCommon("edit")}
+                {tCommon("delete")}
               </button>
               <button
                 type="button"
                 className="jt-act-reset"
-                style={{ ...secondaryButtonStyle, transition: "all 160ms ease" }}
+                style={secondaryButtonStyle}
                 onClick={() => setResetShown(true)}
               >
                 {t("resetPassword")}
               </button>
               <button
                 type="button"
-                className="jt-act-danger"
-                style={{ ...secondaryButtonStyle, marginLeft: "auto", transition: "all 160ms ease" }}
-                onClick={() => setDeleteConfirm(true)}
+                className="jt-act-edit"
+                style={secondaryButtonStyle}
+                onClick={() => {
+                  openAdminModal(detail);
+                  closeDetail();
+                }}
               >
-                {tCommon("delete")}
+                <Icon name="edit" size={13} /> {tCommon("edit")}
               </button>
             </>
           }
@@ -265,7 +266,7 @@ export function AdminsPage() {
                     style={{ ...primaryButtonStyle, background: COLORS.danger }}
                     onClick={() => {
                       setAdmins(admins.filter((a) => a.id !== detail.id));
-                      closeDrawer();
+                      closeDetail();
                     }}
                   >
                     {t("deleteConfirm")}
@@ -274,7 +275,7 @@ export function AdminsPage() {
               </div>
             )}
           </div>
-        </Drawer>
+        </Modal>
       )}
 
       {adminModal && (
@@ -339,7 +340,7 @@ export function AdminsPage() {
                   setCreated({ email: form.email, password });
                 }}
               >
-                {adminModal === "new" ? t("create") : t("saveAdmin")}
+                {adminModal === "new" ? t("create") : tCommon("save")}
               </button>
             </>
           }

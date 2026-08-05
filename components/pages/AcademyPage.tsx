@@ -403,7 +403,7 @@ export function AcademyPage() {
                   setCourseModal(null);
                 }}
               >
-                {t("saveCourse")}
+                {tCommon("save")}
               </button>
             </>
           }
@@ -466,7 +466,7 @@ export function AcademyPage() {
                   setTeacherModal(null);
                 }}
               >
-                {t("saveTeacher")}
+                {tCommon("save")}
               </button>
             </>
           }
