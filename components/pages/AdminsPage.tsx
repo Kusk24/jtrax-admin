@@ -35,17 +35,30 @@ function generateTempPassword(): string {
 
 const EMPTY_FORM = { fullName: "", phone: "", email: "", lineId: "", role: "Admin" as JtraxRole };
 
+/* Admin names carry an honorific, so the shared `initialsOf` (first two words)
+   would badge Ms. Chloe Claire "MC". The seed takes the last two words —
+   Mr. Jirapak MJ, Ms. Chloe Claire CC — and renaming has to keep matching it. */
+function adminInitials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  return words
+    .slice(-2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase();
+}
+
 export function AdminsPage() {
   const t = useTranslations("admins");
   const tCommon = useTranslations("common");
   const tRole = useTranslations("roles");
   const [admins, setAdmins] = useState<AdminPerson[]>(ADMIN_SEED);
   const [detailId, setDetailId] = useState<string | null>(null);
-  const [editMode, setEditMode] = useState(false);
-  const [editDraft, setEditDraft] = useState<AdminPerson | null>(null);
   const [resetShown, setResetShown] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
-  const [createOpen, setCreateOpen] = useState(false);
+  /* One modal for both jobs, as on the Academy page: "new" creates, an admin
+     edits. Editing opens the same form rather than unfolding fields inside the
+     drawer. */
+  const [adminModal, setAdminModal] = useState<AdminPerson | "new" | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [created, setCreated] = useState<{ email: string; password: string } | null>(null);
   const [copied, setCopied] = useState(false);
@@ -54,10 +67,23 @@ export function AdminsPage() {
 
   function closeDrawer() {
     setDetailId(null);
-    setEditMode(false);
-    setEditDraft(null);
     setResetShown(false);
     setDeleteConfirm(false);
+  }
+
+  function openAdminModal(admin: AdminPerson | "new") {
+    setAdminModal(admin);
+    setForm(
+      admin === "new"
+        ? EMPTY_FORM
+        : {
+            fullName: admin.name,
+            phone: admin.phone,
+            email: admin.email,
+            lineId: admin.lineId,
+            role: admin.role,
+          },
+    );
   }
 
   return (
@@ -70,10 +96,7 @@ export function AdminsPage() {
             type="button"
             className="jt-btn-primary"
             style={primaryButtonStyle}
-            onClick={() => {
-              setForm(EMPTY_FORM);
-              setCreateOpen(true);
-            }}
+            onClick={() => openAdminModal("new")}
           >
             <Icon name="plus" size={15} color="#fff" />
             {t("create")}
@@ -138,13 +161,13 @@ export function AdminsPage() {
               <button
                 type="button"
                 className="jt-act-edit"
-                style={{ ...secondaryButtonStyle, transition: "all 160ms ease" }}
+                style={secondaryButtonStyle}
                 onClick={() => {
-                  setEditMode((v) => !v);
-                  setEditDraft(detail);
+                  openAdminModal(detail);
+                  closeDrawer();
                 }}
               >
-                {editMode ? tCommon("cancel") : tCommon("edit")}
+                <Icon name="edit" size={13} /> {tCommon("edit")}
               </button>
               <button
                 type="button"
@@ -183,73 +206,17 @@ export function AdminsPage() {
               </div>
             </div>
 
-            {editMode && editDraft ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <div>
-                  <label style={labelStyle} htmlFor="ad-name">{tCommon("name")}</label>
-                  <input
-                    id="ad-name"
-                    value={editDraft.name}
-                    onChange={(e) => setEditDraft({ ...editDraft, name: e.target.value })}
-                    style={fieldStyle}
-                  />
-                </div>
-                <div>
-                  <label style={labelStyle} htmlFor="ad-phone">{tCommon("phone")}</label>
-                  <input
-                    id="ad-phone"
-                    value={editDraft.phone}
-                    onChange={(e) => setEditDraft({ ...editDraft, phone: e.target.value })}
-                    style={fieldStyle}
-                  />
-                </div>
-                <div>
-                  <label style={labelStyle} htmlFor="ad-email">{tCommon("email")}</label>
-                  <input
-                    id="ad-email"
-                    value={editDraft.email}
-                    onChange={(e) => setEditDraft({ ...editDraft, email: e.target.value })}
-                    style={fieldStyle}
-                  />
-                </div>
-                <div>
-                  <label style={labelStyle} htmlFor="ad-role">{t("role")}</label>
-                  <select
-                    id="ad-role"
-                    value={editDraft.role}
-                    onChange={(e) => setEditDraft({ ...editDraft, role: e.target.value as JtraxRole })}
-                    style={selectStyle}
-                  >
-                    {ROLES.map((r) => (
-                      <option key={r} value={r}>{tRole(r)}</option>
-                    ))}
-                  </select>
-                </div>
-                <button
-                  type="button"
-                  className="jt-btn-primary"
-                  style={primaryButtonStyle}
-                  onClick={() => {
-                    setAdmins(admins.map((a) => (a.id === editDraft.id ? editDraft : a)));
-                    setEditMode(false);
-                  }}
-                >
-                  {tCommon("save")}
-                </button>
-              </div>
-            ) : (
-              <InfoGrid
-                rows={[
-                  { label: tCommon("email"), value: detail.email },
-                  { label: tCommon("phone"), value: detail.phone },
-                  { label: tCommon("lineId"), value: detail.lineId },
-                  { label: tCommon("branch"), value: detail.branch },
-                  { label: tCommon("status"), value: detail.status },
-                  { label: t("lastLoginLabel"), value: detail.lastLogin },
-                  { label: t("created"), value: t("createdValue", { date: detail.createdDate, by: detail.createdBy }) },
-                ]}
-              />
-            )}
+            <InfoGrid
+              rows={[
+                { label: tCommon("email"), value: detail.email },
+                { label: tCommon("phone"), value: detail.phone },
+                { label: tCommon("lineId"), value: detail.lineId },
+                { label: tCommon("branch"), value: detail.branch },
+                { label: tCommon("status"), value: detail.status },
+                { label: t("lastLoginLabel"), value: detail.lastLogin },
+                { label: t("created"), value: t("createdValue", { date: detail.createdDate, by: detail.createdBy }) },
+              ]}
+            />
 
             {resetShown && (
               <div
@@ -310,13 +277,13 @@ export function AdminsPage() {
         </Drawer>
       )}
 
-      {createOpen && (
+      {adminModal && (
         <Modal
-          title={t("create")}
-          onClose={() => setCreateOpen(false)}
+          title={adminModal === "new" ? t("create") : t("editAdmin")}
+          onClose={() => setAdminModal(null)}
           footer={
             <>
-              <button type="button" className="jt-btn-ghost" style={secondaryButtonStyle} onClick={() => setCreateOpen(false)}>
+              <button type="button" className="jt-btn-ghost" style={secondaryButtonStyle} onClick={() => setAdminModal(null)}>
                 {tCommon("cancel")}
               </button>
               <button
@@ -329,13 +296,27 @@ export function AdminsPage() {
                 }}
                 disabled={!form.fullName || !form.email}
                 onClick={() => {
+                  if (adminModal !== "new") {
+                    setAdmins(
+                      admins.map((a) =>
+                        a.id === adminModal.id
+                          ? {
+                              ...a,
+                              name: form.fullName,
+                              role: form.role,
+                              phone: form.phone,
+                              email: form.email,
+                              lineId: form.lineId,
+                              initials: adminInitials(form.fullName),
+                            }
+                          : a,
+                      ),
+                    );
+                    setAdminModal(null);
+                    return;
+                  }
+
                   const password = generateTempPassword();
-                  const initials = form.fullName
-                    .split(" ")
-                    .map((w) => w[0])
-                    .slice(0, 2)
-                    .join("")
-                    .toUpperCase();
                   setAdmins([
                     ...admins,
                     {
@@ -350,15 +331,15 @@ export function AdminsPage() {
                       createdDate: new Date().toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }),
                       createdBy: "Mr. Jirapak",
                       status: "Active",
-                      initials,
+                      initials: adminInitials(form.fullName),
                     },
                   ]);
-                  setCreateOpen(false);
+                  setAdminModal(null);
                   setCopied(false);
                   setCreated({ email: form.email, password });
                 }}
               >
-                {t("create")}
+                {adminModal === "new" ? t("create") : t("saveAdmin")}
               </button>
             </>
           }

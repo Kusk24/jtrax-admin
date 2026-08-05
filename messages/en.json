@@ -389,7 +389,9 @@
     "credentials": "One-time credentials",
     "credentialsHint": "Share these with the new admin now — the temporary password is not shown again.",
     "copyCredentials": "Copy credentials",
-    "copied": "Copied"
+    "copied": "Copied",
+    "editAdmin": "Edit Admin",
+    "saveAdmin": "Save Admin"
   },
   "academy": {
     "coursesTitle": "Courses",
