@@ -101,7 +101,7 @@ function PanelFrame({
               background: "transparent",
               cursor: "pointer",
               fontFamily: FONT,
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: 600,
               color: COLORS.textSecondary,
               padding: 0,
@@ -110,7 +110,7 @@ function PanelFrame({
             <Icon name="chevronLeft" size={17} color={COLORS.textSecondary} />
             {tCommon("back")}
           </button>
-          <h2 style={{ margin: 0, fontFamily: FONT, fontSize: 16, fontWeight: 700, color: COLORS.text }}>
+          <h2 style={{ margin: 0, fontFamily: FONT, fontSize: 17, fontWeight: 700, color: COLORS.text }}>
             {title}
           </h2>
         </header>
@@ -142,19 +142,22 @@ const primaryBtn: React.CSSProperties = {
   background: COLORS.blue,
   color: "#fff",
   fontFamily: FONT,
-  fontSize: 13,
+  fontSize: 14,
   fontWeight: 600,
   cursor: "pointer",
 };
 
 const ghostBtn: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 7,
   padding: "9px 18px",
   borderRadius: 999,
   border: `1px solid ${COLORS.border}`,
   background: COLORS.surface,
   color: COLORS.text,
   fontFamily: FONT,
-  fontSize: 13,
+  fontSize: 14,
   fontWeight: 600,
   cursor: "pointer",
 };
@@ -183,7 +186,7 @@ function CreateSession({ onClose }: { onClose: () => void }) {
       onClose={onClose}
       footer={
         <>
-          <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
+          <span style={{ fontFamily: FONT, fontSize: 14, color: COLORS.textSecondary }}>
             {t("selectedCount", { count: selected.length })}
           </span>
           <span style={{ display: "flex", gap: 10 }}>
@@ -201,7 +204,7 @@ function CreateSession({ onClose }: { onClose: () => void }) {
     >
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 24 }}>
         <div>
-          <h3 style={{ margin: "0 0 14px", fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text }}>
+          <h3 style={{ margin: "0 0 14px", fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text }}>
             {t("sessionDetails")}
           </h3>
 
@@ -256,12 +259,12 @@ function CreateSession({ onClose }: { onClose: () => void }) {
 
           <div style={{ height: 1, background: COLORS.border, margin: "4px 0 16px" }} />
 
-          <h3 style={{ margin: "0 0 10px", fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text }}>
+          <h3 style={{ margin: "0 0 10px", fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text }}>
             {t("selectedStudents", { count: selected.length })}
           </h3>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
             {selected.length === 0 && (
-              <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+              <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
                 {t("noneSelected")}
               </span>
             )}
@@ -276,7 +279,7 @@ function CreateSession({ onClose }: { onClose: () => void }) {
                   borderRadius: 999,
                   background: COLORS.light,
                   fontFamily: FONT,
-                  fontSize: 12.5,
+                  fontSize: 13.5,
                   color: COLORS.text,
                 }}
               >
@@ -303,7 +306,7 @@ function CreateSession({ onClose }: { onClose: () => void }) {
         </div>
 
         <div>
-          <h3 style={{ margin: "0 0 14px", fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text }}>
+          <h3 style={{ margin: "0 0 14px", fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text }}>
             {t("addStudents")}
           </h3>
           <div style={{ marginBottom: 12 }}>
@@ -338,7 +341,7 @@ function CreateSession({ onClose }: { onClose: () => void }) {
                     style={{ accentColor: COLORS.blue, width: 15, height: 15 }}
                   />
                   <Avatar initials={initialsOf(student.name)} size={26} />
-                  <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.text }}>{student.name}</span>
+                  <span style={{ fontFamily: FONT, fontSize: 14, color: COLORS.text }}>{student.name}</span>
                 </label>
               );
             })}
@@ -355,7 +358,19 @@ function ViewClass({ def, onClose }: { def: ClassDef; onClose: () => void }) {
   const tStatus = useTranslations("status");
   const editable = def.status === "Ongoing";
   const [roster, setRoster] = useState<string[]>(def.roster);
+  const [addOpen, setAddOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const status = statusChipColors(def.status);
+
+  /* Latecomers are the point of this panel: a student who turns up after the
+     session started is added here, so the picker only offers people who
+     aren't on the roster yet. */
+  const addable = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return STUDENTS_SEED.filter(
+      (student) => !roster.includes(student.name) && (!q || student.name.toLowerCase().includes(q)),
+    );
+  }, [roster, search]);
 
   return (
     <PanelFrame
@@ -363,7 +378,7 @@ function ViewClass({ def, onClose }: { def: ClassDef; onClose: () => void }) {
       onClose={onClose}
       footer={
         <>
-          <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
+          <span style={{ fontFamily: FONT, fontSize: 14, color: COLORS.textSecondary }}>
             {def.time} · {def.teacher} · {def.room}
           </span>
           <button type="button" style={editable ? primaryBtn : ghostBtn} onClick={onClose}>
@@ -380,20 +395,20 @@ function ViewClass({ def, onClose }: { def: ClassDef; onClose: () => void }) {
             background: status.bg,
             color: status.color,
             fontFamily: FONT,
-            fontSize: 12,
+            fontSize: 13,
             fontWeight: 600,
           }}
         >
           {tStatus(def.status)}
         </span>
         {!editable && (
-          <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+          <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
             {t("readOnly")}
           </span>
         )}
       </div>
 
-      <h3 style={{ margin: "0 0 12px", fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text }}>
+      <h3 style={{ margin: "0 0 12px", fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text }}>
         {t("checkedInCount", { count: roster.length })}
       </h3>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 9 }}>
@@ -410,7 +425,7 @@ function ViewClass({ def, onClose }: { def: ClassDef; onClose: () => void }) {
             }}
           >
             <Avatar initials={initialsOf(name)} size={28} />
-            <span style={{ flex: 1, fontFamily: FONT, fontSize: 13, color: COLORS.text }}>{name}</span>
+            <span style={{ flex: 1, fontFamily: FONT, fontSize: 14, color: COLORS.text }}>{name}</span>
             {editable && (
               <button
                 type="button"
@@ -431,6 +446,85 @@ function ViewClass({ def, onClose }: { def: ClassDef; onClose: () => void }) {
           </div>
         ))}
       </div>
+
+      {editable && (
+        <div style={{ marginTop: 18 }}>
+          {addOpen ? (
+            <div
+              className="jtrax-fade-in-up"
+              style={{
+                padding: 14,
+                borderRadius: 12,
+                border: `1px solid ${COLORS.border}`,
+                background: COLORS.bg,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10 }}>
+                <h3 style={{ margin: 0, fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text }}>
+                  {t("addStudents")}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAddOpen(false);
+                    setSearch("");
+                  }}
+                  aria-label={tCommon("close")}
+                  style={{ display: "inline-flex", border: "none", background: "transparent", cursor: "pointer", color: COLORS.textSecondary, padding: 0 }}
+                >
+                  <Icon name="x" size={16} />
+                </button>
+              </div>
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t("searchStudents")}
+                aria-label={t("searchStudentsLabel")}
+                style={fieldStyle}
+              />
+              <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 240, overflowY: "auto", marginTop: 10 }}>
+                {addable.length === 0 && (
+                  <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary, padding: "8px 10px" }}>
+                    {t("allAdded")}
+                  </span>
+                )}
+                {addable.map((student) => (
+                  <button
+                    key={student.id}
+                    type="button"
+                    className="jt-find-row"
+                    onClick={() => {
+                      setRoster((prev) => [...prev, student.name]);
+                      setSearch("");
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "8px 10px",
+                      borderRadius: 9,
+                      border: "none",
+                      background: "transparent",
+                      cursor: "pointer",
+                      textAlign: "left",
+                    }}
+                  >
+                    <Avatar initials={initialsOf(student.name)} size={26} />
+                    <span style={{ flex: 1, fontFamily: FONT, fontSize: 14, color: COLORS.text }}>
+                      {student.name}
+                    </span>
+                    <Icon name="plus" size={15} color={COLORS.blue} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <button type="button" className="jt-btn-ghost" style={ghostBtn} onClick={() => setAddOpen(true)}>
+              <Icon name="usersPlus" size={15} /> {t("addStudent")}
+            </button>
+          )}
+        </div>
+      )}
     </PanelFrame>
   );
 }
