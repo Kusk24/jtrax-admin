@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Icon, type IconName } from "@/lib/icons";
-import { COLORS, FONT } from "@/lib/theme";
+import { ACCENTS, ACCENT_TINTS, COLORS, FONT } from "@/lib/theme";
 
 export type QuickAction = {
   key: string;
@@ -16,18 +16,15 @@ export type QuickAction = {
 };
 
 /* The four hero pills, in the accent order the .qa-pill-N classes expect:
-   0 green, 1 red, 2 gold, 3 purple. */
+   0 olive, 1 brick, 2 rust, 3 plum. */
 export const ADMIN_QUICK_ACTIONS: QuickAction[] = [
-  { key: "register", labelKey: "registerStudent", icon: "usersPlus", color: "#1A7F37", bg: "#EAF6EE", href: "/students" },
-  { key: "payment", labelKey: "recordPayment", icon: "wallet", color: "#C0392B", bg: "#FBEAEA", href: "/payment" },
-  { key: "announce", labelKey: "newAnnouncement", icon: "announcement", color: "#B7791F", bg: "#FDF3E0", href: "/announcement" },
-  { key: "tournament", labelKey: "createTournament", icon: "trophy", color: "#6B46C1", bg: "#F1EAFA", href: "/tournament" },
+  { key: "register", labelKey: "registerStudent", icon: "usersPlus", color: COLORS.success, bg: ACCENT_TINTS.olive, href: "/students" },
+  { key: "payment", labelKey: "recordPayment", icon: "wallet", color: ACCENTS.brick, bg: ACCENT_TINTS.brick, href: "/payment" },
+  { key: "announce", labelKey: "newAnnouncement", icon: "announcement", color: ACCENTS.rust, bg: ACCENT_TINTS.rust, href: "/announcement" },
+  { key: "tournament", labelKey: "createTournament", icon: "trophy", color: ACCENTS.plum, bg: ACCENT_TINTS.plum, href: "/tournament" },
 ];
 
-export const RECEPTIONIST_QUICK_ACTIONS: QuickAction[] = [
-  { key: "register", labelKey: "registerStudent", icon: "usersPlus", color: "#1A7F37", bg: "#EAF6EE", href: "/students" },
-  { key: "payment", labelKey: "recordPayment", icon: "wallet", color: "#C0392B", bg: "#FBEAEA", href: "/payment" },
-];
+export const RECEPTIONIST_QUICK_ACTIONS: QuickAction[] = ADMIN_QUICK_ACTIONS.slice(0, 2);
 
 export function QuickActionPill({ action, index }: { action: QuickAction; index: number }) {
   const router = useRouter();
@@ -67,7 +64,7 @@ export function QuickActionPill({ action, index }: { action: QuickAction; index:
         className="qa-label"
         style={{
           fontFamily: FONT,
-          fontSize: 13.5,
+          fontSize: 14.5,
           fontWeight: 600,
           color: COLORS.text,
           whiteSpace: "nowrap",
