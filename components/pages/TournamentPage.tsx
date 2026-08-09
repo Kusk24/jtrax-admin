@@ -11,6 +11,8 @@ import {
   fieldStyle,
   InfoGrid,
   labelStyle,
+  ExportButton,
+  equalTemplate,
   PageHeader,
   paginate,
   Pagination,
@@ -23,7 +25,7 @@ import {
 import { Avatar, Badge, Card, SectionTitle } from "../ui";
 
 const REGISTRATION_LINK = "https://jca-demo-registration-site.vercel.app/";
-const PARTICIPANT_TEMPLATE = "70px minmax(150px, 1.6fr) 90px 110px 100px 120px";
+const PARTICIPANT_TEMPLATE = equalTemplate(5, 80);
 
 /* Ported from buildQrCells: a deterministic pseudo-QR with real finder blocks,
    so the "registration website" card looks like a scannable code without
@@ -166,7 +168,7 @@ function CreateWizard({ onCancel, onPublish }: { onCancel: () => void; onPublish
           background: "transparent",
           cursor: "pointer",
           fontFamily: FONT,
-          fontSize: 13,
+          fontSize: 14,
           fontWeight: 600,
           color: COLORS.textSecondary,
           padding: 0,
@@ -195,7 +197,7 @@ function CreateWizard({ onCancel, onPublish }: { onCancel: () => void; onPublish
                   background: done || current ? COLORS.blue : COLORS.neutralBg,
                   color: done || current ? "#fff" : COLORS.textSecondary,
                   fontFamily: FONT,
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: 700,
                 }}
               >
@@ -204,7 +206,7 @@ function CreateWizard({ onCancel, onPublish }: { onCancel: () => void; onPublish
               <span
                 style={{
                   fontFamily: FONT,
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: current ? 700 : 500,
                   color: current ? COLORS.text : COLORS.textSecondary,
                 }}
@@ -233,17 +235,17 @@ function CreateWizard({ onCancel, onPublish }: { onCancel: () => void; onPublish
                   animation: "jtrax-spin 0.8s linear infinite",
                 }}
               />
-              <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
+              <span style={{ fontFamily: FONT, fontSize: 14.5, color: COLORS.textSecondary }}>
                 {t("extracting", { file: fileName })}
               </span>
             </>
           ) : (
             <>
               <Icon name="fileText" size={30} color={COLORS.blue} />
-              <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text }}>
+              <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 600, color: COLORS.text }}>
                 {t("uploadPrompt")}
               </span>
-              <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+              <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
                 {t("uploadHint")}
               </span>
               <label style={{ ...primaryButtonStyle, cursor: "pointer" }}>
@@ -261,7 +263,7 @@ function CreateWizard({ onCancel, onPublish }: { onCancel: () => void; onPublish
               <button
                 type="button"
                 onClick={() => setStep(2)}
-                style={{ border: "none", background: "transparent", cursor: "pointer", fontFamily: FONT, fontSize: 12.5, color: COLORS.blue }}
+                style={{ border: "none", background: "transparent", cursor: "pointer", fontFamily: FONT, fontSize: 13.5, color: COLORS.blue }}
               >
                 {t("skipManual")}
               </button>
@@ -323,11 +325,11 @@ function CreateWizard({ onCancel, onPublish }: { onCancel: () => void; onPublish
             <Icon name="check" size={25} color={COLORS.success} />
           </span>
           <SectionTitle>{t("liveTitle", { name: draft.name })}</SectionTitle>
-          <p style={{ margin: 0, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
+          <p style={{ margin: 0, fontFamily: FONT, fontSize: 14, color: COLORS.textSecondary }}>
             {t("liveSub")}
           </p>
           <QrCode seed={draft.name} />
-          <code style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: COLORS.blue, wordBreak: "break-all" }}>
+          <code style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, color: COLORS.blue, wordBreak: "break-all" }}>
             {REGISTRATION_LINK}
           </code>
           <button
@@ -408,7 +410,7 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
           background: "transparent",
           cursor: "pointer",
           fontFamily: FONT,
-          fontSize: 13,
+          fontSize: 14,
           fontWeight: 600,
           color: COLORS.textSecondary,
           padding: 0,
@@ -423,14 +425,14 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
         </div>
         <div style={{ flex: "1 1 240px", minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
-            <h2 style={{ margin: 0, fontFamily: FONT, fontSize: 18, fontWeight: 700, color: COLORS.text }}>
+            <h2 style={{ margin: 0, fontFamily: FONT, fontSize: 19, fontWeight: 700, color: COLORS.text }}>
               {tournament.name}
             </h2>
             <Badge color={status.color} bg={status.bg}>
               {tStatus(tournament.status)}
             </Badge>
           </div>
-          <p style={{ margin: "5px 0 0", fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
+          <p style={{ margin: "5px 0 0", fontFamily: FONT, fontSize: 14, color: COLORS.textSecondary }}>
             {tournament.date} · {tournament.venue}
           </p>
         </div>
@@ -441,7 +443,7 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
           <QrCode seed={tournament.name + tournament.id} />
           <div style={{ flex: "1 1 240px", minWidth: 0 }}>
             <SectionTitle>{t("registrationWebsite")}</SectionTitle>
-            <p style={{ margin: "5px 0 10px", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary, wordBreak: "break-all" }}>
+            <p style={{ margin: "5px 0 10px", fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary, wordBreak: "break-all" }}>
               {REGISTRATION_LINK}
             </p>
             <div style={{ display: "flex", gap: 9, flexWrap: "wrap" }}>
@@ -485,7 +487,7 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
               cursor: "pointer",
               padding: "11px 3px",
               fontFamily: FONT,
-              fontSize: 13.5,
+              fontSize: 14.5,
               fontWeight: 600,
               color: tab === tab_ ? COLORS.blue : COLORS.textSecondary,
               borderBottom: `2px solid ${tab === tab_ ? COLORS.blue : "transparent"}`,
@@ -520,8 +522,8 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
                   <Icon name={stat.icon} size={19} color={stat.color} />
                 </span>
                 <div>
-                  <div style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textSecondary }}>{stat.label}</div>
-                  <div style={{ fontFamily: FONT, fontSize: 19, fontWeight: 700, color: COLORS.text }}>{stat.value}</div>
+                  <div style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>{stat.label}</div>
+                  <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 700, color: COLORS.text }}>{stat.value}</div>
                 </div>
               </Card>
             ))}
@@ -562,14 +564,15 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
             />
           </div>
           <Table
-            columns={[t("rank"), t("player"), t("rating"), t("category"), t("score"), t("payment")]}
+            /* No payment column — registration fees are tracked on the
+               Payment page, not per participant row. */
+            columns={[t("rank"), t("player"), t("rating"), t("category"), t("score")]}
             template={PARTICIPANT_TEMPLATE}
-            minWidth={760}
+            minWidth={680}
           >
             {pageRows.length === 0 && <EmptyRow>{t("noParticipants")}</EmptyRow>}
             {pageRows.map((p) => {
               const badge = rankBadge(p.rank);
-              const pay = statusChipColors(p.paymentStatus);
               return (
                 <TableRow key={p.name} template={PARTICIPANT_TEMPLATE} onClick={() => setDrawer(p)}>
                   <span style={{ fontWeight: 700, color: COLORS.textSecondary }}>#{p.rank}</span>
@@ -580,7 +583,7 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
                         {p.name}
                       </span>
                       {badge && (
-                        <span style={{ fontFamily: FONT, fontSize: 10.5, fontWeight: 700, color: badge.color }}>
+                        <span style={{ fontFamily: FONT, fontSize: 11.5, fontWeight: 700, color: badge.color }}>
                           {t(badge.labelKey)}
                         </span>
                       )}
@@ -589,9 +592,6 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
                   <span style={{ color: COLORS.textSecondary }}>{p.rating}</span>
                   <span style={{ color: COLORS.textSecondary }}>{p.category}</span>
                   <span style={{ fontWeight: 600 }}>{p.score}</span>
-                  <Badge color={pay.color} bg={pay.bg} style={{ justifySelf: "start" }}>
-                    {tStatus(p.paymentStatus)}
-                  </Badge>
                 </TableRow>
               );
             })}
@@ -606,8 +606,8 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <Avatar initials={initialsOf(drawer.name)} size={52} />
               <div>
-                <div style={{ fontFamily: FONT, fontSize: 16, fontWeight: 700, color: COLORS.text }}>{drawer.name}</div>
-                <div style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+                <div style={{ fontFamily: FONT, fontSize: 17, fontWeight: 700, color: COLORS.text }}>{drawer.name}</div>
+                <div style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
 {t("ratingLine", { age: drawer.age, rating: drawer.rating, category: drawer.category })}
                 </div>
               </div>
@@ -628,8 +628,8 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
                     textAlign: "center",
                   }}
                 >
-                  <div style={{ fontFamily: FONT, fontSize: 19, fontWeight: 700, color: s.color }}>{s.value}</div>
-                  <div style={{ fontFamily: FONT, fontSize: 11.5, color: COLORS.textSecondary }}>{s.label}</div>
+                  <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 700, color: s.color }}>{s.value}</div>
+                  <div style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>{s.label}</div>
                 </div>
               ))}
             </div>
@@ -653,7 +653,7 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
                   background: COLORS.bg,
                   border: `1px solid ${COLORS.border}`,
                   fontFamily: FONT,
-                  fontSize: 12.5,
+                  fontSize: 13.5,
                   color: COLORS.textSecondary,
                 }}
               >
@@ -726,14 +726,14 @@ export function TournamentPage() {
                 >
                   <TournamentArt name={item.name} />
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 9 }}>
-                    <span style={{ fontFamily: FONT, fontSize: 14.5, fontWeight: 700, color: COLORS.text }}>
+                    <span style={{ fontFamily: FONT, fontSize: 15.5, fontWeight: 700, color: COLORS.text }}>
                       {item.name}
                     </span>
                     <Badge color={status.color} bg={status.bg}>
                       {tStatus(item.status)}
                     </Badge>
                   </div>
-                  <div style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary, lineHeight: 1.6 }}>
+                  <div style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary, lineHeight: 1.6 }}>
                     <div>{item.date}</div>
                     <div>{item.venue}</div>
                     <div>{t("participantCount", { count: item.currentParticipants })}</div>
@@ -753,9 +753,16 @@ export function TournamentPage() {
         title={t("title")}
         sub={t("sub")}
         action={
-          <button type="button" className="jt-btn-primary" style={primaryButtonStyle} onClick={() => setWizardOpen(true)}>
-            <Icon name="plus" size={15} color="#fff" /> {t("create")}
-          </button>
+          <>
+            <ExportButton
+              filename="tournaments"
+              columns={[t("fieldName"), t("fieldDate"), t("format"), t("participants")]}
+              rows={() => filtered.map((x) => [x.name, x.date, x.venue, x.currentParticipants])}
+            />
+            <button type="button" className="jt-btn-primary" style={primaryButtonStyle} onClick={() => setWizardOpen(true)}>
+              <Icon name="plus" size={15} color="#fff" /> {t("create")}
+            </button>
+          </>
         }
       />
 

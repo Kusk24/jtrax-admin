@@ -8,6 +8,8 @@ import { classDotColor, COLORS, FONT, initialsOf, statusChipColors, TODAY_REF } 
 import {
   ContactActions,
   EmptyRow,
+  equalTemplate,
+  ExportButton,
   fieldStyle,
   FilterBar,
   InfoGrid,
@@ -22,7 +24,9 @@ import {
 } from "../page-kit";
 import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
 
-const TEMPLATE = "120px minmax(150px, 1.4fr) 150px 120px 60px";
+/* The chevron is the one column that is not data, so it keeps a fixed
+   width; the four data columns share the rest equally. */
+const TEMPLATE = `${equalTemplate(4, 110)} 44px`;
 
 type HistoryRow = {
   key: string;
@@ -81,7 +85,7 @@ function AttendeeModal({
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Avatar initials={initialsOf(name)} size={52} />
           <div>
-            <div style={{ fontFamily: FONT, fontSize: 16, fontWeight: 700, color: COLORS.text }}>{name}</div>
+            <div style={{ fontFamily: FONT, fontSize: 17, fontWeight: 700, color: COLORS.text }}>{name}</div>
             <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
               {student && chip && (
                 <>
@@ -104,7 +108,7 @@ function AttendeeModal({
             borderRadius: 10,
             background: COLORS.light,
             fontFamily: FONT,
-            fontSize: 12.5,
+            fontSize: 13.5,
             color: COLORS.text,
           }}
         >
@@ -139,7 +143,7 @@ function AttendeeModal({
             />
           </>
         ) : (
-          <p style={{ margin: 0, fontFamily: FONT, fontSize: 13, lineHeight: 1.6, color: COLORS.textSecondary }}>
+          <p style={{ margin: 0, fontFamily: FONT, fontSize: 14, lineHeight: 1.6, color: COLORS.textSecondary }}>
             {t("noProfile", { name })}
           </p>
         )}
@@ -184,7 +188,17 @@ export function ClassHistoryPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <PageHeader title={t("title")} sub={t("sub")} />
+      <PageHeader
+        title={t("title")}
+        sub={t("sub")}
+        action={
+          <ExportButton
+            filename="class-history"
+            columns={[tCommon("date"), tCommon("class"), t("time"), t("attendance")]}
+            rows={() => filtered.map((row) => [row.date, row.className, row.time, row.attendees.length])}
+          />
+        }
+      />
 
       <FilterBar>
         <SearchInput
@@ -288,7 +302,7 @@ export function ClassHistoryPage() {
                           background: COLORS.surface,
                           border: `1px solid ${COLORS.border}`,
                           fontFamily: FONT,
-                          fontSize: 12.5,
+                          fontSize: 13.5,
                           color: COLORS.text,
                           cursor: "pointer",
                         }}

@@ -36,7 +36,7 @@ const bareInputStyle = {
   outline: "none",
   background: "transparent",
   fontFamily: FONT,
-  fontSize: 14,
+  fontSize: 15,
   color: COLORS.text,
 } as const;
 
@@ -64,7 +64,7 @@ function BrandPanel() {
             style={{
               display: "block",
               fontFamily: FONT,
-              fontSize: 21,
+              fontSize: 22,
               fontWeight: 700,
               color: "#fff",
               lineHeight: 1.15,
@@ -73,7 +73,7 @@ function BrandPanel() {
             JTRAX
           </span>
           <span
-            style={{ display: "block", fontFamily: FONT, fontSize: 12.5, color: "rgb(255 255 255 / 0.72)" }}
+            style={{ display: "block", fontFamily: FONT, fontSize: 13.5, color: "rgb(255 255 255 / 0.72)" }}
           >
             {t("brandSub")}
           </span>
@@ -87,7 +87,7 @@ function BrandPanel() {
           margin: 0,
           maxWidth: 380,
           fontFamily: FONT,
-          fontSize: 26,
+          fontSize: 27,
           fontWeight: 700,
           lineHeight: 1.32,
           letterSpacing: "-0.01em",
@@ -114,7 +114,7 @@ function BrandPanel() {
             >
               <Icon name={icon} size={17} color="#fff" />
             </span>
-            <span style={{ fontFamily: FONT, fontSize: 13.5, color: "rgb(255 255 255 / 0.88)" }}>
+            <span style={{ fontFamily: FONT, fontSize: 14.5, color: "rgb(255 255 255 / 0.88)" }}>
               {t(key)}
             </span>
           </li>
@@ -150,7 +150,7 @@ export function LoginScreen() {
               style={{
                 margin: 0,
                 fontFamily: FONT,
-                fontSize: 25,
+                fontSize: 26,
                 fontWeight: 700,
                 color: COLORS.text,
                 letterSpacing: "-0.01em",
@@ -158,7 +158,7 @@ export function LoginScreen() {
             >
               {t("title")}
             </h1>
-            <p style={{ margin: "6px 0 0", fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
+            <p style={{ margin: "6px 0 0", fontFamily: FONT, fontSize: 14.5, color: COLORS.textSecondary }}>
               {t("sub")}
             </p>
           </div>
@@ -176,7 +176,7 @@ export function LoginScreen() {
                 background: COLORS.dangerBg,
                 color: COLORS.danger,
                 fontFamily: FONT,
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: 500,
               }}
             >
@@ -193,7 +193,7 @@ export function LoginScreen() {
                   display: "block",
                   marginBottom: 6,
                   fontFamily: FONT,
-                  fontSize: 12.5,
+                  fontSize: 13.5,
                   fontWeight: 600,
                   color: COLORS.textSecondary,
                 }}
@@ -222,7 +222,7 @@ export function LoginScreen() {
                   display: "block",
                   marginBottom: 6,
                   fontFamily: FONT,
-                  fontSize: 12.5,
+                  fontSize: 13.5,
                   fontWeight: 600,
                   color: COLORS.textSecondary,
                 }}
@@ -249,7 +249,7 @@ export function LoginScreen() {
                     background: "transparent",
                     padding: 0,
                     fontFamily: FONT,
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: 600,
                     color: COLORS.blue,
                     cursor: "pointer",
@@ -275,7 +275,7 @@ export function LoginScreen() {
                   alignItems: "center",
                   gap: 8,
                   fontFamily: FONT,
-                  fontSize: 13,
+                  fontSize: 14,
                   color: COLORS.text,
                   cursor: "pointer",
                 }}
@@ -298,7 +298,7 @@ export function LoginScreen() {
                   background: "transparent",
                   padding: 0,
                   fontFamily: FONT,
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: 600,
                   color: COLORS.blue,
                   cursor: "pointer",
@@ -317,7 +317,7 @@ export function LoginScreen() {
                   borderRadius: 9,
                   background: COLORS.light,
                   fontFamily: FONT,
-                  fontSize: 12.5,
+                  fontSize: 13.5,
                   lineHeight: 1.5,
                   color: COLORS.textSecondary,
                 }}
@@ -342,7 +342,7 @@ export function LoginScreen() {
                 background: COLORS.blue,
                 color: "#fff",
                 fontFamily: FONT,
-                fontSize: 14,
+                fontSize: 15,
                 fontWeight: 600,
                 cursor: pending ? "wait" : "pointer",
                 opacity: pending ? 0.75 : 1,
@@ -369,7 +369,7 @@ export function LoginScreen() {
               fills both fields — the same "pick who you are" idiom the student
               and parent web app opens with. */}
           <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-            <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 600, color: COLORS.textSecondary }}>
+            <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.textSecondary }}>
               {t("demoTitle")}
             </span>
             {/* Name *and* role, like the topbar switcher — two of the four seed
@@ -411,7 +411,7 @@ export function LoginScreen() {
                         background: roleColor.bg,
                         color: roleColor.color,
                         fontFamily: FONT,
-                        fontSize: 10.5,
+                        fontSize: 11.5,
                         fontWeight: 700,
                         flexShrink: 0,
                       }}
@@ -423,7 +423,7 @@ export function LoginScreen() {
                         style={{
                           display: "block",
                           fontFamily: FONT,
-                          fontSize: 12.5,
+                          fontSize: 13.5,
                           fontWeight: 600,
                           color: COLORS.text,
                           overflow: "hidden",
@@ -437,7 +437,7 @@ export function LoginScreen() {
                         style={{
                           display: "block",
                           fontFamily: FONT,
-                          fontSize: 11,
+                          fontSize: 12,
                           fontWeight: 600,
                           color: roleColor.color,
                         }}
@@ -449,7 +449,7 @@ export function LoginScreen() {
                 );
               })}
             </div>
-            <span style={{ fontFamily: FONT, fontSize: 11.5, lineHeight: 1.5, color: COLORS.textSecondary }}>
+            <span style={{ fontFamily: FONT, fontSize: 12.5, lineHeight: 1.5, color: COLORS.textSecondary }}>
               {t("demoHint", { password: DEMO_PASSWORD })}
             </span>
           </div>
@@ -460,7 +460,7 @@ export function LoginScreen() {
             margin: 0,
             textAlign: "center",
             fontFamily: FONT,
-            fontSize: 11.5,
+            fontSize: 12.5,
             color: COLORS.textSecondary,
           }}
         >

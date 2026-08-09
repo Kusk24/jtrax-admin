@@ -4,9 +4,11 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { PAYMENTS_SEED, STUDENTS_SEED, type Payment } from "@/lib/data";
 import { Icon } from "@/lib/icons";
-import { classDotColor, COLORS, FONT, initialsOf, statusChipColors, TODAY_REF } from "@/lib/theme";
+import { classDotColor, COLORS, FONT, initialsOf, TODAY_REF } from "@/lib/theme";
 import {
   EmptyRow,
+  equalTemplate,
+  ExportButton,
   fieldStyle,
   FilterBar,
   labelStyle,
@@ -21,9 +23,9 @@ import {
   Table,
   TableRow,
 } from "../page-kit";
-import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
+import { Avatar, Card, ClassDot, SectionTitle } from "../ui";
 
-const TEMPLATE = "minmax(150px, 1.5fr) minmax(130px, 1.2fr) 80px 110px 120px 120px 100px";
+const TEMPLATE = equalTemplate(6, 90);
 const METHODS = ["Credit Card", "Bank Transfer", "PromptPay", "Cash"];
 
 /* Credit packages snap the amount, ported from the design's lookup table. */
@@ -72,7 +74,7 @@ function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave:
           background: "transparent",
           cursor: "pointer",
           fontFamily: FONT,
-          fontSize: 13,
+          fontSize: 14,
           fontWeight: 600,
           color: COLORS.textSecondary,
           padding: 0,
@@ -142,8 +144,8 @@ function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave:
                   }}
                 >
                   <Avatar initials={initialsOf(s.name)} size={26} />
-                  <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.text }}>{s.name}</span>
-                  <span style={{ marginLeft: "auto", fontFamily: FONT, fontSize: 11.5, color: COLORS.textSecondary }}>
+                  <span style={{ fontFamily: FONT, fontSize: 14, color: COLORS.text }}>{s.name}</span>
+                  <span style={{ marginLeft: "auto", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
                     {s.className}
                   </span>
                 </button>
@@ -151,7 +153,7 @@ function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave:
             </div>
           )}
           {studentQuery.trim() !== "" && matches.length === 0 && !studentName && (
-            <p style={{ margin: "6px 0 0", fontFamily: FONT, fontSize: 12, color: COLORS.textSecondary }}>
+            <p style={{ margin: "6px 0 0", fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
               {t("noMatch", { query: studentQuery })}
             </p>
           )}
@@ -234,8 +236,8 @@ function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave:
         }}
       >
         <div>
-          <div style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>{t("finalAmount")}</div>
-          <div style={{ fontFamily: FONT, fontSize: 22, fontWeight: 700, color: COLORS.text }}>
+          <div style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>{t("finalAmount")}</div>
+          <div style={{ fontFamily: FONT, fontSize: 23, fontWeight: 700, color: COLORS.text }}>
             {finalAmount.toLocaleString()} THB
           </div>
         </div>
@@ -271,7 +273,6 @@ function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave:
 export function PaymentPage() {
   const t = useTranslations("payment");
   const tCommon = useTranslations("common");
-  const tStatus = useTranslations("status");
   const [payments, setPayments] = useState<Payment[]>(PAYMENTS_SEED);
   const [formOpen, setFormOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -311,10 +312,17 @@ export function PaymentPage() {
         title={t("title")}
         sub={t("sub", { count: filtered.length, total: totalPaid.toLocaleString() })}
         action={
-          <button type="button" className="jt-btn-primary" style={primaryButtonStyle} onClick={() => setFormOpen(true)}>
-            <Icon name="wallet" size={15} color="#fff" />
-            {t("recordTitle")}
-          </button>
+          <>
+            <ExportButton
+              filename="payments"
+              columns={[tCommon("student"), tCommon("class"), t("credits"), tCommon("amount"), tCommon("date"), tCommon("method")]}
+              rows={() => filtered.map((p) => [p.name, p.className, p.credits, p.amount, p.date, p.method])}
+            />
+            <button type="button" className="jt-btn-primary" style={primaryButtonStyle} onClick={() => setFormOpen(true)}>
+              <Icon name="wallet" size={15} color="#fff" />
+              {t("recordTitle")}
+            </button>
+          </>
         }
       />
 
@@ -336,13 +344,14 @@ export function PaymentPage() {
 
       <Card style={{ padding: 0, overflow: "hidden" }}>
         <Table
-          columns={[tCommon("student"), tCommon("class"), t("credits"), tCommon("amount"), tCommon("date"), tCommon("method"), tCommon("status")]}
+          /* No status column — a recorded payment is a paid one, so the
+             column was "Paid" on every row. */
+          columns={[tCommon("student"), tCommon("class"), t("credits"), tCommon("amount"), tCommon("date"), tCommon("method")]}
           template={TEMPLATE}
-          minWidth={900}
+          minWidth={860}
         >
           {pageRows.length === 0 && <EmptyRow>{t("empty")}</EmptyRow>}
           {pageRows.map((p, i) => {
-            const chip = statusChipColors(p.status);
             return (
               <TableRow key={`${p.name}-${p.date}-${i}`} template={TEMPLATE}>
                 <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
@@ -359,9 +368,6 @@ export function PaymentPage() {
                 <span style={{ fontWeight: 600 }}>{p.amount}</span>
                 <span style={{ color: COLORS.textSecondary }}>{p.date}</span>
                 <span style={{ color: COLORS.textSecondary }}>{p.method}</span>
-                <Badge color={chip.color} bg={chip.bg} style={{ justifySelf: "start" }}>
-                  {tStatus(p.status)}
-                </Badge>
               </TableRow>
             );
           })}

@@ -57,7 +57,7 @@ function Sidebar({ section }: { section: string }) {
             style={{
               display: "block",
               fontFamily: FONT,
-              fontSize: 17,
+              fontSize: 18,
               fontWeight: 700,
               color: COLORS.text,
               lineHeight: 1.15,
@@ -69,7 +69,7 @@ function Sidebar({ section }: { section: string }) {
             style={{
               display: "block",
               fontFamily: FONT,
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: 500,
               color: COLORS.textSecondary,
             }}
@@ -105,7 +105,7 @@ function Sidebar({ section }: { section: string }) {
               <span
                 style={{
                   fontFamily: FONT,
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: active ? 600 : 500,
                   color: active ? COLORS.blue : COLORS.text,
                 }}
@@ -139,7 +139,7 @@ function Sidebar({ section }: { section: string }) {
           <span style={{ display: "flex", width: 18, height: 18 }}>
             <Icon name="logout" size={18} color={COLORS.textSecondary} />
           </span>
-          <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 500, color: COLORS.textSecondary }}>
+          <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 500, color: COLORS.textSecondary }}>
             {t("logout")}
           </span>
         </button>
@@ -212,7 +212,7 @@ function RoleSwitcher({ section }: { section: string }) {
           border: `1px solid ${COLORS.border}`,
           background: COLORS.surface,
           fontFamily: FONT,
-          fontSize: 13,
+          fontSize: 14,
           fontWeight: 500,
           color: COLORS.textSecondary,
           /* Reserve the row height before the date resolves on the client. */
@@ -241,20 +241,20 @@ function RoleSwitcher({ section }: { section: string }) {
               borderRadius: "50%",
               background: roleColor.bg,
               color: roleColor.color,
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: 700,
             }}
           >
             {person.initials}
           </span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: COLORS.text }}>{person.name}</span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: COLORS.text }}>{person.name}</span>
           <span
             style={{
               padding: "3px 8px",
               borderRadius: 999,
               background: roleColor.bg,
               color: roleColor.color,
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: 600,
             }}
           >
@@ -320,17 +320,17 @@ function RoleSwitcher({ section }: { section: string }) {
                       borderRadius: "50%",
                       background: optionColor.bg,
                       color: optionColor.color,
-                      fontSize: 10,
+                      fontSize: 11,
                       fontWeight: 700,
                       flexShrink: 0,
                     }}
                   >
                     {option.initials}
                   </span>
-                  <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: COLORS.text }}>
+                  <span style={{ flex: 1, fontSize: 14, fontWeight: 500, color: COLORS.text }}>
                     {option.name}
                   </span>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: optionColor.color }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: optionColor.color }}>
                     {tRole(option.role)}
                   </span>
                 </button>
@@ -348,18 +348,14 @@ export function JtraxShell({ children }: { children: React.ReactNode }) {
   const section = sectionFromPath(pathname);
   const { person, role } = useJtrax();
   const t = useTranslations("shell");
-  const tNav = useTranslations("nav");
 
   const isHome = section === "home";
   const firstName = person.name.split(" ").filter((p) => !p.includes("."))[0] ?? "there";
 
-  const title = isHome
-    ? role === "Receptionist"
-      ? t("greeting", { name: firstName })
-      : t("dashboard")
-    : tNav(section);
-  /* Only the dashboard carries a subtitle in the header; every other section
-     renders its own PageHeader with the copy that belongs to it. */
+  /* Only the dashboard titles itself from the shell. Every other section owns
+     its own PageHeader — the shell used to repeat that title above it, which
+     read as the same heading twice. */
+  const title = isHome ? t("greeting", { name: firstName }) : "";
   const sub = isHome
     ? role === "Receptionist"
       ? t("receptionistSub")
@@ -389,20 +385,22 @@ export function JtraxShell({ children }: { children: React.ReactNode }) {
           }}
         >
           <div>
-            <h1
-              style={{
-                margin: 0,
-                fontFamily: FONT,
-                fontSize: 22,
-                fontWeight: 700,
-                color: COLORS.text,
-                letterSpacing: "-0.01em",
-              }}
-            >
-              {title}
-            </h1>
+            {title && (
+              <h1
+                style={{
+                  margin: 0,
+                  fontFamily: FONT,
+                  fontSize: 23,
+                  fontWeight: 700,
+                  color: COLORS.text,
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                {title}
+              </h1>
+            )}
             {sub && (
-              <p style={{ margin: "4px 0 0", fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
+              <p style={{ margin: "4px 0 0", fontFamily: FONT, fontSize: 14.5, color: COLORS.textSecondary }}>
                 {sub}
               </p>
             )}

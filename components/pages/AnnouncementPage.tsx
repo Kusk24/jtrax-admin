@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { ANNOUNCEMENTS_SEED, type Announcement } from "@/lib/data";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT, TODAY_REF } from "@/lib/theme";
-import { EmptyRow, fieldStyle, labelStyle, PageHeader, primaryButtonStyle } from "../page-kit";
+import { EmptyRow, ExportButton, fieldStyle, labelStyle, PageHeader, primaryButtonStyle } from "../page-kit";
 import { Card } from "../ui";
 
 const AUDIENCES = ["Students", "Parents", "Teachers"] as const;
@@ -48,14 +48,21 @@ export function AnnouncementPage() {
         title={t("title")}
         sub={t("sub")}
         action={
-          <button
-            type="button"
-            className="jt-btn-primary"
-            style={primaryButtonStyle}
-            onClick={() => setComposeOpen((v) => !v)}
-          >
-            {composeOpen ? tCommon("cancel") : t("new")}
-          </button>
+          <>
+            <ExportButton
+              filename="announcements"
+              columns={[t("titleField"), t("audience"), tCommon("date"), t("message")]}
+              rows={() => rows.map((r) => [r.title, r.audience, r.date, r.body])}
+            />
+            <button
+              type="button"
+              className="jt-btn-primary"
+              style={primaryButtonStyle}
+              onClick={() => setComposeOpen((v) => !v)}
+            >
+              {composeOpen ? tCommon("cancel") : t("new")}
+            </button>
+          </>
         }
       />
 
@@ -95,7 +102,7 @@ export function AnnouncementPage() {
                     alignItems: "center",
                     gap: 7,
                     fontFamily: FONT,
-                    fontSize: 13,
+                    fontSize: 14,
                     color: COLORS.text,
                     cursor: "pointer",
                   }}
@@ -151,10 +158,10 @@ export function AnnouncementPage() {
                   <Icon name="announcement" size={17} color={COLORS.blue} />
                 </span>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontFamily: FONT, fontSize: 14.5, fontWeight: 700, color: COLORS.text }}>
+                  <div style={{ fontFamily: FONT, fontSize: 15.5, fontWeight: 700, color: COLORS.text }}>
                     {a.title}
                   </div>
-                  <div style={{ marginTop: 2, fontFamily: FONT, fontSize: 12, color: COLORS.textSecondary }}>
+                  <div style={{ marginTop: 2, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
                     {a.audience} · {a.date}
                   </div>
                 </div>
@@ -181,7 +188,7 @@ export function AnnouncementPage() {
               style={{
                 margin: 0,
                 fontFamily: FONT,
-                fontSize: 13,
+                fontSize: 14,
                 lineHeight: 1.55,
                 color: COLORS.textSecondary,
               }}

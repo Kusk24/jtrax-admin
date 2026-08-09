@@ -60,7 +60,7 @@ export function LanguageToggle() {
               background: active ? COLORS.blue : "transparent",
               color: active ? "#fff" : COLORS.textSecondary,
               fontFamily: FONT,
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: 600,
               cursor: isPending ? "wait" : "pointer",
               transition: "background 160ms ease, color 160ms ease",

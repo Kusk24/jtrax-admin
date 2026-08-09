@@ -92,7 +92,7 @@ export function MessagesPage() {
                     background: activeTab ? COLORS.light : COLORS.surface,
                     color: activeTab ? COLORS.blue : COLORS.textSecondary,
                     fontFamily: FONT,
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: 600,
                     cursor: "pointer",
                   }}
@@ -105,7 +105,7 @@ export function MessagesPage() {
                         borderRadius: 999,
                         background: COLORS.danger,
                         color: "#fff",
-                        fontSize: 10.5,
+                        fontSize: 11.5,
                         fontWeight: 700,
                       }}
                     >
@@ -120,7 +120,7 @@ export function MessagesPage() {
 
         <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
           {filtered.length === 0 && (
-            <p style={{ padding: 20, margin: 0, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary, textAlign: "center" }}>
+            <p style={{ padding: 20, margin: 0, fontFamily: FONT, fontSize: 14, color: COLORS.textSecondary, textAlign: "center" }}>
               {t("noConversations")}
             </p>
           )}
@@ -153,7 +153,7 @@ export function MessagesPage() {
                       style={{
                         flex: 1,
                         fontFamily: FONT,
-                        fontSize: 13.5,
+                        fontSize: 14.5,
                         fontWeight: 600,
                         color: COLORS.text,
                         overflow: "hidden",
@@ -164,10 +164,10 @@ export function MessagesPage() {
                       {c.name}
                     </span>
                     {c.starred && <Icon name="star" size={13} color="#DDB874" />}
-                    <span style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textSecondary }}>{c.time}</span>
+                    <span style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textSecondary }}>{c.time}</span>
                   </span>
                   {c.student && (
-                    <span style={{ display: "block", marginTop: 2, fontFamily: FONT, fontSize: 11.5, color: COLORS.blue }}>
+                    <span style={{ display: "block", marginTop: 2, fontFamily: FONT, fontSize: 12.5, color: COLORS.blue }}>
                       {c.student}
                     </span>
                   )}
@@ -178,7 +178,7 @@ export function MessagesPage() {
                       gap: 6,
                       marginTop: 3,
                       fontFamily: FONT,
-                      fontSize: 12,
+                      fontSize: 13,
                       color: COLORS.textSecondary,
                     }}
                   >
@@ -192,7 +192,7 @@ export function MessagesPage() {
                           borderRadius: 999,
                           background: COLORS.danger,
                           color: "#fff",
-                          fontSize: 10.5,
+                          fontSize: 11.5,
                           fontWeight: 700,
                         }}
                       >
@@ -214,15 +214,15 @@ export function MessagesPage() {
             <div style={{ display: "flex", alignItems: "center", gap: 10, padding: 14, borderBottom: `1px solid ${COLORS.border}` }}>
               <Avatar initials={initialsOf(active.name)} size={36} />
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text }}>{active.name}</div>
-                <div style={{ fontFamily: FONT, fontSize: 11.5, color: COLORS.textSecondary }}>
+                <div style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text }}>{active.name}</div>
+                <div style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
                   {active.student ? t("parentOf", { student: active.student }) : t("noLinkedStudent")}
                 </div>
               </div>
             </div>
 
             <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 10, minHeight: 0 }}>
-              <div style={{ textAlign: "center", fontFamily: FONT, fontSize: 11.5, color: COLORS.textSecondary }}>
+              <div style={{ textAlign: "center", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
                 {t("today")}
               </div>
               {active.messages.map((m, i) => {
@@ -248,7 +248,7 @@ export function MessagesPage() {
                           background: mine ? COLORS.blue : COLORS.neutralBg,
                           color: mine ? "#fff" : COLORS.text,
                           fontFamily: FONT,
-                          fontSize: 13,
+                          fontSize: 14,
                           lineHeight: 1.5,
                           wordBreak: "break-word",
                         }}
@@ -260,7 +260,7 @@ export function MessagesPage() {
                           marginTop: 3,
                           textAlign: mine ? "right" : "left",
                           fontFamily: FONT,
-                          fontSize: 10.5,
+                          fontSize: 11.5,
                           color: COLORS.textSecondary,
                         }}
                       >
@@ -292,7 +292,7 @@ export function MessagesPage() {
                   border: `1px solid ${COLORS.border}`,
                   outline: "none",
                   fontFamily: FONT,
-                  fontSize: 13.5,
+                  fontSize: 14.5,
                   color: COLORS.text,
                 }}
               />
@@ -319,7 +319,7 @@ export function MessagesPage() {
             </div>
           </>
         ) : (
-          <p style={{ padding: 28, margin: 0, textAlign: "center", fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
+          <p style={{ padding: 28, margin: 0, textAlign: "center", fontFamily: FONT, fontSize: 14, color: COLORS.textSecondary }}>
             {t("selectConversation")}
           </p>
         )}
@@ -358,7 +358,7 @@ export function MessagesPage() {
                 />
               </div>
             ) : (
-              <p style={{ margin: 0, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+              <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
                 {t("notLinked")}
               </p>
             )}

@@ -11,6 +11,7 @@ import {
   InfoGrid,
   labelStyle,
   Modal,
+  ExportButton,
   PageHeader,
   primaryButtonStyle,
   secondaryButtonStyle,
@@ -91,15 +92,22 @@ export function AdminsPage() {
         title={t("title")}
         sub={t("sub")}
         action={
-          <button
-            type="button"
-            className="jt-btn-primary"
-            style={primaryButtonStyle}
-            onClick={() => openAdminModal("new")}
-          >
-            <Icon name="plus" size={15} color="#fff" />
-            {t("create")}
-          </button>
+          <>
+            <ExportButton
+              filename="admins"
+              columns={[tCommon("name"), t("role"), tCommon("email"), tCommon("phone"), tCommon("branch"), tCommon("status")]}
+              rows={() => admins.map((a) => [a.name, a.role, a.email, a.phone, a.branch, a.status])}
+            />
+            <button
+              type="button"
+              className="jt-btn-primary"
+              style={primaryButtonStyle}
+              onClick={() => openAdminModal("new")}
+            >
+              <Icon name="plus" size={15} color="#fff" />
+              {t("create")}
+            </button>
+          </>
         }
       />
 
@@ -118,7 +126,7 @@ export function AdminsPage() {
               >
                 <Avatar initials={a.initials} size={44} color={roleColor.color} bg={roleColor.bg} />
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontFamily: FONT, fontSize: 14.5, fontWeight: 700, color: COLORS.text }}>
+                  <div style={{ fontFamily: FONT, fontSize: 15.5, fontWeight: 700, color: COLORS.text }}>
                     {a.name}
                   </div>
                   <div style={{ marginTop: 3, display: "flex", alignItems: "center", gap: 7 }}>
@@ -139,7 +147,7 @@ export function AdminsPage() {
                 </div>
               </div>
 
-              <div style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary, lineHeight: 1.6 }}>
+              <div style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary, lineHeight: 1.6 }}>
                 <div style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{a.email}</div>
                 <div>{a.phone}</div>
                 <div>{t("lastLogin", { value: a.lastLogin })}</div>
@@ -198,7 +206,7 @@ export function AdminsPage() {
                 bg={ROLE_COLORS[detail.role].bg}
               />
               <div>
-                <div style={{ fontFamily: FONT, fontSize: 16, fontWeight: 700, color: COLORS.text }}>
+                <div style={{ fontFamily: FONT, fontSize: 17, fontWeight: 700, color: COLORS.text }}>
                   {detail.name}
                 </div>
                 <Badge color={ROLE_COLORS[detail.role].color} bg={ROLE_COLORS[detail.role].bg}>
@@ -231,7 +239,7 @@ export function AdminsPage() {
                   background: COLORS.warningBg,
                   color: COLORS.warning,
                   fontFamily: FONT,
-                  fontSize: 12.5,
+                  fontSize: 13.5,
                   fontWeight: 600,
                 }}
               >
@@ -251,10 +259,10 @@ export function AdminsPage() {
                   color: "#541111",
                 }}
               >
-                <div style={{ fontFamily: FONT, fontSize: 13.5, fontWeight: 700 }}>
+                <div style={{ fontFamily: FONT, fontSize: 14.5, fontWeight: 700 }}>
                   {t("deleteTitle", { name: detail.name })}
                 </div>
-                <p style={{ margin: "5px 0 12px", fontFamily: FONT, fontSize: 12.5 }}>
+                <p style={{ margin: "5px 0 12px", fontFamily: FONT, fontSize: 13.5 }}>
                   {t("deleteBody")}
                 </p>
                 <div style={{ display: "flex", gap: 9 }}>
@@ -387,7 +395,7 @@ export function AdminsPage() {
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <SectionTitle>{t("credentials")}</SectionTitle>
-            <p style={{ margin: 0, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+            <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
               {t("credentialsHint")}
             </p>
             <div
@@ -397,7 +405,7 @@ export function AdminsPage() {
                 background: COLORS.bg,
                 border: `1px solid ${COLORS.border}`,
                 fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-                fontSize: 13,
+                fontSize: 14,
                 color: COLORS.text,
                 lineHeight: 1.8,
                 wordBreak: "break-all",

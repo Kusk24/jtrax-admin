@@ -2,6 +2,7 @@
 
 import { useEffect, type CSSProperties, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
+import { downloadCsv, type CsvCell } from "@/lib/export";
 import { Icon, type IconName } from "@/lib/icons";
 import { COLORS, FONT } from "@/lib/theme";
 
@@ -10,6 +11,9 @@ import { COLORS, FONT } from "@/lib/theme";
    so they live here rather than being re-declared per page. */
 
 export const TABLE_PAGE_SIZE = 10;
+
+/** One row height for every table: 30px avatar + 11px padding + the border. */
+const ROW_HEIGHT = 53;
 
 export function paginate<T>(rows: T[], page: number) {
   const totalPages = Math.max(1, Math.ceil(rows.length / TABLE_PAGE_SIZE));
@@ -28,7 +32,7 @@ export const fieldStyle: CSSProperties = {
   border: `1px solid ${COLORS.border}`,
   background: COLORS.surface,
   fontFamily: FONT,
-  fontSize: 13.5,
+  fontSize: 14.5,
   /* Pinned rather than left at `normal`: an <input> and a <select> resolve the
      default differently, which is what left the role picker a few pixels
      shorter than the text fields stacked with it. */
@@ -58,7 +62,7 @@ export const labelStyle: CSSProperties = {
   display: "block",
   marginBottom: 6,
   fontFamily: FONT,
-  fontSize: 12.5,
+  fontSize: 13.5,
   fontWeight: 600,
   color: COLORS.textSecondary,
 };
@@ -77,7 +81,7 @@ export const primaryButtonStyle: CSSProperties = {
   background: COLORS.blue,
   color: "#fff",
   fontFamily: FONT,
-  fontSize: 13,
+  fontSize: 14,
   fontWeight: 600,
   cursor: "pointer",
   whiteSpace: "nowrap",
@@ -94,21 +98,32 @@ export const secondaryButtonStyle: CSSProperties = {
   background: COLORS.surface,
   color: COLORS.text,
   fontFamily: FONT,
-  fontSize: 13,
+  fontSize: 14,
   fontWeight: 600,
   cursor: "pointer",
   whiteSpace: "nowrap",
 };
 
+/**
+ * The page's own title block. This is the *only* title on a section screen —
+ * the shell used to repeat it above, which read as a duplicate.
+ */
 export function PageHeader({
   title,
   sub,
   action,
+  level = 1,
 }: {
   title: string;
   sub?: string;
+  /* Several pages pass an export button beside their primary action, so the
+     slot is a row rather than a single node. */
   action?: ReactNode;
+  /* Academy stacks two of these on one screen; the second is a subheading so
+     the page still has exactly one h1. */
+  level?: 1 | 2;
 }) {
+  const Heading = level === 1 ? "h1" : "h2";
   return (
     <div
       style={{
@@ -120,18 +135,54 @@ export function PageHeader({
       }}
     >
       <div>
-        <h2 style={{ margin: 0, fontFamily: FONT, fontSize: 17, fontWeight: 700, color: COLORS.text }}>
+        <Heading style={{ margin: 0, fontFamily: FONT, fontSize: level === 1 ? 23 : 19, fontWeight: 700, color: COLORS.text, letterSpacing: "-0.01em" }}>
           {title}
-        </h2>
+        </Heading>
         {sub && (
-          <p style={{ margin: "3px 0 0", fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
+          <p style={{ margin: "4px 0 0", fontFamily: FONT, fontSize: 14, color: COLORS.textSecondary }}>
             {sub}
           </p>
         )}
       </div>
-      {action}
+      {action && (
+        <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>{action}</div>
+      )}
     </div>
   );
+}
+
+/**
+ * Downloads what the screen is currently showing as CSV. `rows` is a callback
+ * so the filtered set is read at click time, not on every render.
+ */
+export function ExportButton({
+  filename,
+  columns,
+  rows,
+}: {
+  filename: string;
+  columns: string[];
+  rows: () => CsvCell[][];
+}) {
+  const t = useTranslations("common");
+  return (
+    <button
+      type="button"
+      className="jt-btn-ghost"
+      style={secondaryButtonStyle}
+      onClick={() => downloadCsv(filename, columns, rows())}
+    >
+      <Icon name="download" size={14} /> {t("export")}
+    </button>
+  );
+}
+
+/**
+ * Every column the same width. The tables used to hand-tune each one, which
+ * left the name column two or three times wider than the rest.
+ */
+export function equalTemplate(count: number, min = 0): string {
+  return `repeat(${count}, minmax(${min}px, 1fr))`;
 }
 
 export function FilterBar({ children }: { children: ReactNode }) {
@@ -187,7 +238,7 @@ export function SearchInput({
           outline: "none",
           background: "transparent",
           fontFamily: FONT,
-          fontSize: 13.5,
+          fontSize: 14.5,
           color: COLORS.text,
         }}
       />
@@ -262,7 +313,7 @@ export function Table({
               key={c}
               style={{
                 fontFamily: FONT,
-                fontSize: 11.5,
+                fontSize: 12.5,
                 fontWeight: 600,
                 color: COLORS.textSecondary,
                 textTransform: "uppercase",
@@ -298,10 +349,14 @@ export function TableRow({
         gap: 12,
         alignItems: "center",
         padding: "11px 16px",
+        /* Every list keeps the same row height. Without this, a table whose
+           cells are plain text (class history) sat 13px shorter than one with
+           avatars in the first column, and the two read as different tables. */
+        minHeight: ROW_HEIGHT,
         borderBottom: `1px solid ${COLORS.border}`,
         cursor: onClick ? "pointer" : undefined,
         fontFamily: FONT,
-        fontSize: 13,
+        fontSize: 14,
         color: COLORS.text,
       }}
     >
@@ -317,7 +372,7 @@ export function EmptyRow({ children }: { children: ReactNode }) {
         padding: "36px 16px",
         textAlign: "center",
         fontFamily: FONT,
-        fontSize: 13.5,
+        fontSize: 14.5,
         color: COLORS.textSecondary,
       }}
     >
@@ -361,7 +416,7 @@ export function Pagination({
         padding: "12px 16px",
       }}
     >
-      <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+      <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
         {t("page", { page: page + 1, total: totalPages })}
       </span>
       <button
@@ -451,7 +506,7 @@ export function Modal({
             borderBottom: `1px solid ${COLORS.border}`,
           }}
         >
-          <h3 style={{ margin: 0, fontFamily: FONT, fontSize: 15.5, fontWeight: 700, color: COLORS.text }}>
+          <h3 style={{ margin: 0, fontFamily: FONT, fontSize: 16.5, fontWeight: 700, color: COLORS.text }}>
             {title}
           </h3>
           <button
@@ -544,7 +599,7 @@ export function Drawer({
             borderBottom: `1px solid ${COLORS.border}`,
           }}
         >
-          <h3 style={{ margin: 0, fontFamily: FONT, fontSize: 15.5, fontWeight: 700, color: COLORS.text }}>
+          <h3 style={{ margin: 0, fontFamily: FONT, fontSize: 16.5, fontWeight: 700, color: COLORS.text }}>
             {title}
           </h3>
           <button
@@ -590,7 +645,7 @@ export function ContactActions({ phone, lineId, email }: { phone: string; lineId
     border: `1px solid ${COLORS.border}`,
     background: COLORS.surface,
     fontFamily: FONT,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: 600,
     color: COLORS.text,
     textDecoration: "none",
@@ -630,13 +685,13 @@ export function InfoGrid({ rows }: { rows: Array<{ label: string; value: ReactNo
             style={{
               flex: "0 0 128px",
               fontFamily: FONT,
-              fontSize: 12.5,
+              fontSize: 13.5,
               color: COLORS.textSecondary,
             }}
           >
             {row.label}
           </dt>
-          <dd style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, fontWeight: 500, color: COLORS.text }}>
+          <dd style={{ margin: 0, fontFamily: FONT, fontSize: 14.5, fontWeight: 500, color: COLORS.text }}>
             {row.value}
           </dd>
         </div>

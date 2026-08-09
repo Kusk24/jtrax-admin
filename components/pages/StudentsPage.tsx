@@ -12,6 +12,8 @@ import {
   FilterBar,
   InfoGrid,
   labelStyle,
+  equalTemplate,
+  ExportButton,
   PageHeader,
   paginate,
   Pagination,
@@ -25,7 +27,8 @@ import {
 } from "../page-kit";
 import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
 
-const TEMPLATE = "minmax(160px, 1.6fr) minmax(130px, 1.2fr) 90px 110px 120px";
+const TEMPLATE = equalTemplate(5, 90);
+const ATTENDANCE_TEMPLATE = equalTemplate(2, 120);
 const CLASS_OPTIONS = ["Group Class", "Private Class", "Master Class", "Weekend Class"];
 const STATUS_VALUES = ["Normal", "Low Credit", "Expiring", "Expired", "Inactive"] as const;
 const LEVEL_OPTIONS = ["Beginner", "Intermediate", "Advanced"];
@@ -94,7 +97,7 @@ function StudentDetail({
           background: "transparent",
           cursor: "pointer",
           fontFamily: FONT,
-          fontSize: 13,
+          fontSize: 14,
           fontWeight: 600,
           color: COLORS.textSecondary,
           padding: 0,
@@ -106,11 +109,13 @@ function StudentDetail({
       <Card style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
         <Avatar initials={initialsOf(student.name)} size={54} />
         <div style={{ flex: "1 1 220px", minWidth: 0 }}>
-          <div style={{ fontFamily: FONT, fontSize: 18, fontWeight: 700, color: COLORS.text }}>
+          <div style={{ fontFamily: FONT, fontSize: 19, fontWeight: 700, color: COLORS.text }}>
             {student.name}
           </div>
-          <div style={{ marginTop: 3, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
-{t("yrs", { age: student.age })} · {student.level} · {student.id}
+          <div style={{ marginTop: 3, fontFamily: FONT, fontSize: 14, color: COLORS.textSecondary }}>
+{/* The STU-xxxx id is an internal key — the desk identifies students by
+                name, so it isn't shown. */}
+            {t("yrs", { age: student.age })} · {student.level}
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
@@ -159,10 +164,10 @@ function StudentDetail({
             color: "#541111",
           }}
         >
-          <div style={{ fontFamily: FONT, fontSize: 13.5, fontWeight: 700 }}>
+          <div style={{ fontFamily: FONT, fontSize: 14.5, fontWeight: 700 }}>
             {t("deleteTitle", { name: student.name })}
           </div>
-          <p style={{ margin: "5px 0 12px", fontFamily: FONT, fontSize: 12.5 }}>{t("deleteBody")}</p>
+          <p style={{ margin: "5px 0 12px", fontFamily: FONT, fontSize: 13.5 }}>{t("deleteBody")}</p>
           <div style={{ display: "flex", gap: 9 }}>
             <button type="button" style={secondaryButtonStyle} onClick={() => setDeleteConfirm(false)}>
               {tCommon("cancel")}
@@ -199,7 +204,7 @@ function StudentDetail({
               cursor: "pointer",
               padding: "10px 2px",
               fontFamily: FONT,
-              fontSize: 13.5,
+              fontSize: 14.5,
               fontWeight: 600,
               color: tab === name ? COLORS.blue : COLORS.textSecondary,
               borderBottom: `2px solid ${tab === name ? COLORS.blue : "transparent"}`,
@@ -349,22 +354,19 @@ function StudentDetail({
             </SectionTitle>
           </div>
           <div style={{ marginTop: 12 }}>
-            <Table columns={[tCommon("date"), tCommon("class"), tCommon("status")]} template="140px 1fr 110px" minWidth={480}>
-              {attendance.map((row) => {
-                const s = statusChipColors(row.status === "Present" ? "Paid" : "Expired");
-                return (
-                  <TableRow key={row.date} template="140px 1fr 110px">
-                    <span style={{ color: COLORS.textSecondary }}>{row.date}</span>
-                    <span style={{ display: "flex", alignItems: "center" }}>
-                      <ClassDot color={classDotColor(row.className)} />
-                      {row.className}
-                    </span>
-                    <Badge color={s.color} bg={s.bg} style={{ justifySelf: "start" }}>
-                      {tStatus(row.status)}
-                    </Badge>
-                  </TableRow>
-                );
-              })}
+            {/* No status column: every row in this list is an attended
+                session, so a column reading "Present" all the way down told
+                the reader nothing. */}
+            <Table columns={[tCommon("date"), tCommon("class")]} template={ATTENDANCE_TEMPLATE} minWidth={420}>
+              {attendance.map((row) => (
+                <TableRow key={row.date} template={ATTENDANCE_TEMPLATE}>
+                  <span style={{ color: COLORS.textSecondary }}>{row.date}</span>
+                  <span style={{ display: "flex", alignItems: "center" }}>
+                    <ClassDot color={classDotColor(row.className)} />
+                    {row.className}
+                  </span>
+                </TableRow>
+              ))}
             </Table>
           </div>
         </Card>
@@ -373,7 +375,7 @@ function StudentDetail({
       {tab === "Practice" && (
         <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <SectionTitle>{t("practiceSummary", { days: practice.streak })}</SectionTitle>
-          <p style={{ margin: 0, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+          <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
             {t("practiceHint")}
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, maxWidth: 320 }}>
@@ -395,9 +397,9 @@ function StudentDetail({
 
       {tab === "Payments" && (
         <Card style={{ padding: 0, overflow: "hidden" }}>
-          <Table columns={[tCommon("class"), t("colCredit"), tCommon("amount"), tCommon("date"), tCommon("method")]} template="1.4fr 90px 120px 130px 130px" minWidth={640}>
+          <Table columns={[tCommon("class"), t("colCredit"), tCommon("amount"), tCommon("date"), tCommon("method")]} template={equalTemplate(5, 80)} minWidth={640}>
             {payments.map((p, i) => (
-              <TableRow key={`${p.date}-${i}`} template="1.4fr 90px 120px 130px 130px">
+              <TableRow key={`${p.date}-${i}`} template={equalTemplate(5, 80)}>
                 <span style={{ display: "flex", alignItems: "center" }}>
                   <ClassDot color={classDotColor(p.className)} />
                   {p.className}
@@ -496,7 +498,7 @@ function AddStudentWizard({
           background: "transparent",
           cursor: "pointer",
           fontFamily: FONT,
-          fontSize: 13,
+          fontSize: 14,
           fontWeight: 600,
           color: COLORS.textSecondary,
           padding: 0,
@@ -547,10 +549,10 @@ function AddStudentWizard({
               >
                 <Icon name={choice.icon} size={19} color={COLORS.blue} />
               </span>
-              <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text }}>
+              <span style={{ fontFamily: FONT, fontSize: 16, fontWeight: 700, color: COLORS.text }}>
                 {t(choice.titleKey)}
               </span>
-              <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+              <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
                 {t(choice.descKey)}
               </span>
             </button>
@@ -572,14 +574,14 @@ function AddStudentWizard({
                   animation: "jtrax-spin 0.8s linear infinite",
                 }}
               />
-              <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
+              <span style={{ fontFamily: FONT, fontSize: 14.5, color: COLORS.textSecondary }}>
                 {t("reading", { file: docName })}
               </span>
             </>
           ) : (
             <>
               <Icon name="fileText" size={30} color={COLORS.blue} />
-              <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text }}>
+              <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 600, color: COLORS.text }}>
                 {t("uploadPrompt")}
               </span>
               <label style={{ ...primaryButtonStyle, cursor: "pointer" }}>
@@ -611,7 +613,7 @@ function AddStudentWizard({
           {docName && (
             <Card style={{ display: "flex", alignItems: "center", gap: 9, padding: "11px 14px" }}>
               <Icon name="check" size={15} color={COLORS.success} />
-              <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+              <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
                 {t("prefilled", { file: docName })}
               </span>
             </Card>
@@ -784,15 +786,22 @@ export function StudentsPage({ startWizard }: { startWizard?: string }) {
         title={t("title")}
         sub={t("sub")}
         action={
-          <button
-            type="button"
-            className="jt-btn-primary"
-            style={primaryButtonStyle}
-            onClick={() => setView({ kind: "wizard" })}
-          >
-            <Icon name="usersPlus" size={15} color="#fff" />
-            {t("registerTitle")}
-          </button>
+          <>
+            <ExportButton
+              filename="students"
+              columns={[tCommon("student"), tCommon("class"), tCommon("branch"), t("colCredit"), tCommon("status"), tCommon("phone")]}
+              rows={() => filtered.map((s) => [s.name, s.className, s.branch, s.credit, s.status, s.parentPhone])}
+            />
+            <button
+              type="button"
+              className="jt-btn-primary"
+              style={primaryButtonStyle}
+              onClick={() => setView({ kind: "wizard" })}
+            >
+              <Icon name="usersPlus" size={15} color="#fff" />
+              {t("registerTitle")}
+            </button>
+          </>
         }
       />
 
@@ -850,7 +859,7 @@ export function StudentsPage({ startWizard }: { startWizard?: string }) {
                     borderRadius: 999,
                     border: `1px solid ${COLORS.border}`,
                     fontFamily: FONT,
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: 600,
                     color: COLORS.text,
                     textDecoration: "none",

@@ -66,11 +66,11 @@ export function SettingsPage() {
             <div style={{ flex: "1 1 260px", minWidth: 0 }}>
               <label
                 htmlFor={`jtrax-rule-${rule.key}`}
-                style={{ display: "block", fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text }}
+                style={{ display: "block", fontFamily: FONT, fontSize: 15, fontWeight: 600, color: COLORS.text }}
               >
                 {t(rule.titleKey)}
               </label>
-              <p style={{ margin: "3px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+              <p style={{ margin: "3px 0 0", fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
                 {t(rule.descKey)}
               </p>
             </div>
@@ -91,13 +91,13 @@ export function SettingsPage() {
                   borderRadius: 9,
                   border: `1px solid ${COLORS.border}`,
                   fontFamily: FONT,
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: 600,
                   color: COLORS.text,
                   outline: "none",
                 }}
               />
-              <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+              <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
                 {t(rule.unitKey)}
               </span>
             </div>
@@ -123,7 +123,7 @@ export function SettingsPage() {
               alignItems: "center",
               gap: 6,
               fontFamily: FONT,
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: 600,
               color: COLORS.success,
               opacity: saved ? 1 : 0,

@@ -42,10 +42,10 @@ export function SectionPlaceholder({ section, noAccess }: { section: string; noA
       >
         <Icon name={noAccess ? "lock" : icon} size={28} color={COLORS.blue} />
       </span>
-      <h2 style={{ margin: 0, fontFamily: FONT, fontSize: 18, fontWeight: 700, color: COLORS.text }}>
+      <h2 style={{ margin: 0, fontFamily: FONT, fontSize: 19, fontWeight: 700, color: COLORS.text }}>
         {noAccess ? t("noAccessTitle") : label}
       </h2>
-      <p style={{ margin: 0, maxWidth: 420, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
+      <p style={{ margin: 0, maxWidth: 420, fontFamily: FONT, fontSize: 14.5, color: COLORS.textSecondary }}>
         {noAccess
           ? t("noAccessBody", { role: tRole(role), section: label })
           : t("comingSoon", { role: tRole(role) })}
@@ -60,7 +60,7 @@ export function SectionPlaceholder({ section, noAccess }: { section: string; noA
           background: COLORS.blue,
           color: "#fff",
           fontFamily: FONT,
-          fontSize: 13,
+          fontSize: 14,
           fontWeight: 600,
           textDecoration: "none",
         }}

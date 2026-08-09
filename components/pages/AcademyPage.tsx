@@ -10,6 +10,7 @@ import {
   InfoGrid,
   labelStyle,
   Modal,
+  ExportButton,
   PageHeader,
   primaryButtonStyle,
   secondaryButtonStyle,
@@ -151,9 +152,16 @@ export function AcademyPage() {
         title={t("coursesTitle")}
         sub={t("coursesSub")}
         action={
-          <button type="button" className="jt-btn-primary" style={primaryButtonStyle} onClick={() => openCourseModal("new")}>
-            <Icon name="plus" size={15} color="#fff" /> {t("addCourse")}
-          </button>
+          <>
+            <ExportButton
+              filename="courses"
+              columns={[t("courseName"), t("badge"), t("category"), t("description")]}
+              rows={() => courses.map((c) => [c.name, c.badge, c.category, c.desc])}
+            />
+            <button type="button" className="jt-btn-primary" style={primaryButtonStyle} onClick={() => openCourseModal("new")}>
+              <Icon name="plus" size={15} color="#fff" /> {t("addCourse")}
+            </button>
+          </>
         }
       />
 
@@ -183,8 +191,8 @@ export function AcademyPage() {
                   {c.badge}
                 </Badge>
               </div>
-              <div style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text }}>{c.name}</div>
-              <p style={{ margin: 0, fontFamily: FONT, fontSize: 12.5, lineHeight: 1.55, color: COLORS.textSecondary }}>
+              <div style={{ fontFamily: FONT, fontSize: 16, fontWeight: 700, color: COLORS.text }}>{c.name}</div>
+              <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, lineHeight: 1.55, color: COLORS.textSecondary }}>
                 {c.desc}
               </p>
             </div>
@@ -201,12 +209,20 @@ export function AcademyPage() {
       </div>
 
       <PageHeader
+        level={2}
         title={t("teachersTitle")}
         sub={t("teachersSub")}
         action={
-          <button type="button" className="jt-btn-primary" style={primaryButtonStyle} onClick={() => openTeacherModal("new")}>
-            <Icon name="plus" size={15} color="#fff" /> {t("addTeacher")}
-          </button>
+          <>
+            <ExportButton
+              filename="teachers"
+              columns={[tCommon("name"), tCommon("email"), tCommon("phone"), tCommon("lineId"), tCommon("status")]}
+              rows={() => teachers.map((x) => [x.name, x.email, x.phone, x.lineId, x.status])}
+            />
+            <button type="button" className="jt-btn-primary" style={primaryButtonStyle} onClick={() => openTeacherModal("new")}>
+              <Icon name="plus" size={15} color="#fff" /> {t("addTeacher")}
+            </button>
+          </>
         }
       />
 
@@ -216,7 +232,7 @@ export function AcademyPage() {
             <div onClick={() => setTeacherDetail(teacher)} style={{ display: "flex", alignItems: "center", gap: 11 }}>
               <Avatar initials={initialsOf(teacher.name)} size={44} />
               <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontFamily: FONT, fontSize: 14.5, fontWeight: 700, color: COLORS.text }}>{teacher.name}</div>
+                <div style={{ fontFamily: FONT, fontSize: 15.5, fontWeight: 700, color: COLORS.text }}>{teacher.name}</div>
                 <div style={{ marginTop: 3, display: "flex", alignItems: "center", gap: 6 }}>
                   <span
                     style={{
@@ -227,11 +243,11 @@ export function AcademyPage() {
                       background: teacher.status === "Active" ? COLORS.success : COLORS.textSecondary,
                     }}
                   />
-                  <span style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textSecondary }}>{tStatus(teacher.status)}</span>
+                  <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>{tStatus(teacher.status)}</span>
                 </div>
               </div>
             </div>
-            <div style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary, lineHeight: 1.6 }}>
+            <div style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary, lineHeight: 1.6 }}>
               <div style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{teacher.email}</div>
               <div>{teacher.phone}</div>
             </div>
@@ -272,7 +288,7 @@ export function AcademyPage() {
             >
               <Icon name={courseDetail.icon} size={25} color={COLORS.blue} />
             </span>
-            <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, lineHeight: 1.6, color: COLORS.textSecondary }}>
+            <p style={{ margin: 0, fontFamily: FONT, fontSize: 14.5, lineHeight: 1.6, color: COLORS.textSecondary }}>
               {courseDetail.desc}
             </p>
             <InfoGrid rows={[{ label: t("badge"), value: courseDetail.badge }, { label: t("category"), value: courseDetail.category }]} />
@@ -314,7 +330,7 @@ export function AcademyPage() {
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <Avatar initials={initialsOf(teacherDetail.name)} size={52} />
               <div>
-                <div style={{ fontFamily: FONT, fontSize: 16, fontWeight: 700, color: COLORS.text }}>
+                <div style={{ fontFamily: FONT, fontSize: 17, fontWeight: 700, color: COLORS.text }}>
                   {teacherDetail.name}
                 </div>
                 <Badge
@@ -345,10 +361,10 @@ export function AcademyPage() {
                   color: "#541111",
                 }}
               >
-                <div style={{ fontFamily: FONT, fontSize: 13.5, fontWeight: 700 }}>
+                <div style={{ fontFamily: FONT, fontSize: 14.5, fontWeight: 700 }}>
                   {t("deleteTeacherTitle", { name: teacherDetail.name })}
                 </div>
-                <p style={{ margin: "5px 0 12px", fontFamily: FONT, fontSize: 12.5 }}>
+                <p style={{ margin: "5px 0 12px", fontFamily: FONT, fontSize: 13.5 }}>
                   {t("deleteTeacherBody")}
                 </p>
                 <div style={{ display: "flex", gap: 9 }}>

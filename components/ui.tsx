@@ -38,7 +38,7 @@ export function SectionTitle({ children, style }: { children: ReactNode; style?:
       style={{
         margin: 0,
         fontFamily: FONT,
-        fontSize: 15,
+        fontSize: 16,
         fontWeight: 700,
         color: COLORS.text,
         ...style,
@@ -103,7 +103,7 @@ export function Badge({
         background: bg,
         color,
         fontFamily: FONT,
-        fontSize: 11.5,
+        fontSize: 12.5,
         fontWeight: 600,
         whiteSpace: "nowrap",
         ...style,
