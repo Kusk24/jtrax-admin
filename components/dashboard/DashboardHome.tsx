@@ -3,13 +3,13 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import type { ClassDef } from "@/lib/data";
-import { COLORS, FONT } from "@/lib/theme";
 import { useJtrax } from "../JtraxContext";
 import { Card, SectionTitle } from "../ui";
 import { CheckinTable } from "./CheckinTable";
 import { FindStudent } from "./FindStudent";
 import { FollowUps } from "./FollowUps";
-import { Overview } from "./Overview";
+import { KpiStrip } from "./KpiStrip";
+import { RevenueTrend } from "./RevenueTrend";
 import {
   ADMIN_QUICK_ACTIONS,
   QuickActionPill,
@@ -18,21 +18,17 @@ import {
 import { SessionPanel, type PanelState } from "./SessionPanel";
 import { TodaysClasses } from "./TodaysClasses";
 
-function AdminHero({ firstName }: { firstName: string }) {
+/**
+ * Quick actions as a full-width strip. They used to sit inside a greeting card
+ * that repeated the shell's own greeting and left half its width empty.
+ */
+function QuickActions({ actions }: { actions: typeof ADMIN_QUICK_ACTIONS }) {
   const t = useTranslations("dashboard");
-  const tShell = useTranslations("shell");
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div>
-        <div style={{ fontFamily: FONT, fontSize: 19, fontWeight: 700, color: COLORS.text }}>
-          {tShell("greeting", { name: firstName })}
-        </div>
-        <div style={{ marginTop: 3, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
-          {t("heroSub")}
-        </div>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 10 }}>
-        {ADMIN_QUICK_ACTIONS.map((action, i) => (
+    <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <SectionTitle>{t("quickActions")}</SectionTitle>
+      <div className="jt-qa-grid">
+        {actions.map((action, i) => (
           <QuickActionPill key={action.key} action={action} index={i} />
         ))}
       </div>
@@ -41,34 +37,29 @@ function AdminHero({ firstName }: { firstName: string }) {
 }
 
 export function DashboardHome() {
-  const { person, role } = useJtrax();
-  const t = useTranslations("dashboard");
+  const { role } = useJtrax();
   const [panel, setPanel] = useState<PanelState>(null);
 
   const isReceptionist = role === "Receptionist";
-  const firstName = person.name.split(" ").filter((p) => !p.includes("."))[0] ?? "there";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {isReceptionist ? (
-        <div className="jt-split">
+        <>
+          {/* The desk's whole job starts here, so the search owns the top of
+              the screen and its results have the full width to open into. */}
           <FindStudent />
-          <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <SectionTitle>{t("quickActions")}</SectionTitle>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {RECEPTIONIST_QUICK_ACTIONS.map((action, i) => (
-                <QuickActionPill key={action.key} action={action} index={i} />
-              ))}
-            </div>
-          </Card>
-        </div>
+          <QuickActions actions={RECEPTIONIST_QUICK_ACTIONS} />
+          <FollowUps wide />
+        </>
       ) : (
         <>
+          <KpiStrip />
           <div className="jt-split">
-            <AdminHero firstName={firstName} />
+            <RevenueTrend />
             <FollowUps />
           </div>
-          <Overview />
+          <QuickActions actions={ADMIN_QUICK_ACTIONS} />
         </>
       )}
 
@@ -76,8 +67,6 @@ export function DashboardHome() {
         onCreateSession={() => setPanel({ mode: "create" })}
         onViewClass={(def: ClassDef) => setPanel({ mode: "view", def })}
       />
-
-      {isReceptionist && <FollowUps />}
 
       <CheckinTable />
 

@@ -4,10 +4,13 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { buildCheckins } from "@/lib/derive";
 import { classDotColor, COLORS, FONT, statusChipColors } from "@/lib/theme";
+import { equalTemplate, Table, TableRow } from "../page-kit";
 import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
 
 const COLLAPSED_ROWS = 5;
-const GRID = "minmax(160px, 2fr) 80px minmax(120px, 1.2fr) 100px 110px 110px 100px";
+/* Shared with every other list on purpose — this table used to roll its own
+   grid and padding, which made its rows a different height from the rest. */
+const GRID = equalTemplate(7, 90);
 
 function creditColors(credit: number) {
   if (credit <= 0) return { color: COLORS.danger, bg: COLORS.dangerBg };
@@ -57,7 +60,7 @@ export function CheckinTable() {
               background: "transparent",
               cursor: "pointer",
               fontFamily: FONT,
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: 600,
               color: COLORS.blue,
             }}
@@ -67,133 +70,82 @@ export function CheckinTable() {
         )}
       </div>
 
-      <div style={{ overflowX: "auto", paddingBottom: 4 }}>
-        <div style={{ minWidth: 860 }}>
-          <div
-            role="row"
-            style={{
-              display: "grid",
-              gridTemplateColumns: GRID,
-              gap: 12,
-              padding: "10px 18px",
-              borderBottom: `1px solid ${COLORS.border}`,
-              background: COLORS.bg,
-            }}
-          >
-            {[
-              tCommon("student"),
-              t("colCredit"),
-              tCommon("class"),
-              t("colArrival"),
-              t("colDismissal"),
-              tCommon("status"),
-              tCommon("action"),
-            ].map((h) => (
-              <span
-                key={h}
-                style={{
-                  fontFamily: FONT,
-                  fontSize: 11.5,
-                  fontWeight: 600,
-                  color: COLORS.textSecondary,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.04em",
-                }}
-              >
-                {h}
-              </span>
-            ))}
-          </div>
-
-          {visible.map((row) => {
-            const credit = creditColors(row.credit);
-            const status = statusChipColors(row.status === "In class" ? "Ongoing" : "Dismissed");
-            return (
-              <div
-                key={row.idx}
-                className="jt-table-row"
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: GRID,
-                  gap: 12,
-                  alignItems: "center",
-                  padding: "11px 18px",
-                  borderBottom: `1px solid ${COLORS.border}`,
-                }}
-              >
-                <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                  <Avatar initials={row.initials} size={30} />
-                  <span
-                    style={{
-                      fontFamily: FONT,
-                      fontSize: 13.5,
-                      fontWeight: 600,
-                      color: COLORS.text,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {row.name}
-                  </span>
-                </span>
-
-                <Badge color={credit.color} bg={credit.bg} style={{ justifySelf: "start" }}>
-                  {row.credit}
-                </Badge>
-
+      <Table
+        columns={[
+          tCommon("student"),
+          t("colCredit"),
+          tCommon("class"),
+          t("colArrival"),
+          t("colDismissal"),
+          tCommon("status"),
+          tCommon("action"),
+        ]}
+        template={GRID}
+        minWidth={860}
+      >
+        {visible.map((row) => {
+          const credit = creditColors(row.credit);
+          const status = statusChipColors(row.status === "In class" ? "Ongoing" : "Dismissed");
+          return (
+            <TableRow key={row.idx} template={GRID}>
+              <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                <Avatar initials={row.initials} size={30} />
                 <span
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    fontFamily: FONT,
-                    fontSize: 13,
-                    color: COLORS.textSecondary,
+                    fontWeight: 600,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
                   }}
                 >
-                  <ClassDot color={classDotColor(row.class)} />
-                  {row.class}
+                  {row.name}
                 </span>
+              </span>
 
-                <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
-                  {row.timeIn}
-                </span>
-                <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
-                  {row.timeOut}
-                </span>
+              <Badge color={credit.color} bg={credit.bg} style={{ justifySelf: "start" }}>
+                {row.credit}
+              </Badge>
 
-                <Badge color={status.color} bg={status.bg} style={{ justifySelf: "start" }}>
-                  {tStatus(row.displayStatus)}
-                </Badge>
+              <span style={{ display: "flex", alignItems: "center", color: COLORS.textSecondary }}>
+                <ClassDot color={classDotColor(row.class)} />
+                {row.class}
+              </span>
 
-                <span>
-                  {row.canDismiss && (
-                    <button
-                      type="button"
-                      className="jt-chip"
-                      onClick={() => dismiss(row.idx)}
-                      style={{
-                        padding: "5px 12px",
-                        borderRadius: 999,
-                        border: `1px solid ${COLORS.border}`,
-                        background: COLORS.surface,
-                        color: COLORS.text,
-                        fontFamily: FONT,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        transition: "all 160ms ease",
-                      }}
-                    >
-                      {t("dismiss")}
-                    </button>
-                  )}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+              <span style={{ color: COLORS.textSecondary }}>{row.timeIn}</span>
+              <span style={{ color: COLORS.textSecondary }}>{row.timeOut}</span>
+
+              <Badge color={status.color} bg={status.bg} style={{ justifySelf: "start" }}>
+                {tStatus(row.displayStatus)}
+              </Badge>
+
+              <span>
+                {row.canDismiss && (
+                  <button
+                    type="button"
+                    className="jt-chip"
+                    onClick={() => dismiss(row.idx)}
+                    style={{
+                      padding: "5px 12px",
+                      borderRadius: 999,
+                      border: `1px solid ${COLORS.border}`,
+                      background: COLORS.surface,
+                      color: COLORS.text,
+                      fontFamily: FONT,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      transition: "all 160ms ease",
+                    }}
+                  >
+                    {t("dismiss")}
+                  </button>
+                )}
+              </span>
+            </TableRow>
+          );
+        })}
+      </Table>
+
     </Card>
   );
 }

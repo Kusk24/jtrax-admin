@@ -20,7 +20,7 @@ const LABEL_KEY: Record<FollowUpBucket, string> = {
   inactive: "inactiveStudents",
 };
 
-export function FollowUps({ style }: { style?: React.CSSProperties }) {
+export function FollowUps({ style, wide = false }: { style?: React.CSSProperties; wide?: boolean }) {
   const router = useRouter();
   const { creditRules } = useJtrax();
   const t = useTranslations("dashboard");
@@ -36,7 +36,12 @@ export function FollowUps({ style }: { style?: React.CSSProperties }) {
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 12, ...style }}>
       <SectionTitle>{t("needsFollowUp")}</SectionTitle>
-      <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+      {/* Stacked in a narrow column, three across when the card owns the full
+          width — otherwise a full-width card leaves two thirds of each row empty. */}
+      <div
+        className={wide ? "jt-follow-grid" : undefined}
+        style={wide ? undefined : { display: "flex", flexDirection: "column", gap: 9 }}
+      >
         {followUps.map((fu) => (
           <button
             key={fu.key}
@@ -72,7 +77,7 @@ export function FollowUps({ style }: { style?: React.CSSProperties }) {
             </span>
             <span style={{ flex: 1, minWidth: 0 }}>
               <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontFamily: FONT, fontSize: 13.5, fontWeight: 600, color: COLORS.text }}>
+                <span style={{ fontFamily: FONT, fontSize: 14.5, fontWeight: 600, color: COLORS.text }}>
                   {t(LABEL_KEY[fu.key])}
                 </span>
                 <span
@@ -82,7 +87,7 @@ export function FollowUps({ style }: { style?: React.CSSProperties }) {
                     background: fu.bg,
                     color: fu.color,
                     fontFamily: FONT,
-                    fontSize: 11.5,
+                    fontSize: 12.5,
                     fontWeight: 700,
                   }}
                 >
@@ -94,7 +99,7 @@ export function FollowUps({ style }: { style?: React.CSSProperties }) {
                   display: "block",
                   marginTop: 2,
                   fontFamily: FONT,
-                  fontSize: 12,
+                  fontSize: 13,
                   color: COLORS.textSecondary,
                 }}
               >

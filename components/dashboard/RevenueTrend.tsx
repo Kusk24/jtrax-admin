@@ -1,12 +1,16 @@
 "use client";
 
+/**
+ * Six-month revenue line for the dashboard. The KPI numbers that used to sit
+ * beside it now live in the full-width `KpiStrip`.
+ */
+
 import { useTranslations } from "next-intl";
-import { buildKpiCards, buildRevenueTrend, trendPointStrings } from "@/lib/derive";
-import { Icon } from "@/lib/icons";
+import { buildRevenueTrend, trendPointStrings } from "@/lib/derive";
 import { COLORS, FONT } from "@/lib/theme";
 import { Card, SectionTitle } from "../ui";
 
-function RevenueTrend() {
+export function RevenueTrend() {
   const t = useTranslations("dashboard");
   const points = buildRevenueTrend();
   const { line, area } = trendPointStrings(points);
@@ -14,7 +18,7 @@ function RevenueTrend() {
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       <SectionTitle>{t("revenueTrend")}</SectionTitle>
-      <p style={{ margin: 0, fontFamily: FONT, fontSize: 12, color: COLORS.textSecondary }}>
+      <p style={{ margin: 0, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
         {t("lastSixMonths")}
       </p>
       <svg
@@ -38,69 +42,11 @@ function RevenueTrend() {
       </svg>
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
         {points.map((p) => (
-          <span key={p.month} style={{ fontFamily: FONT, fontSize: 11.5, color: COLORS.textSecondary }}>
+          <span key={p.month} style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
             {p.month}
           </span>
         ))}
       </div>
     </Card>
-  );
-}
-
-function KpiCards() {
-  const t = useTranslations("dashboard");
-  const kpis = buildKpiCards();
-  return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <SectionTitle>{t("overview")}</SectionTitle>
-      {kpis.map((kpi) => (
-        <div
-          key={kpi.key}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            padding: "13px 14px",
-            borderRadius: 12,
-            border: `1px solid ${COLORS.border}`,
-          }}
-        >
-          <span
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 38,
-              height: 38,
-              borderRadius: "50%",
-              background: kpi.bg,
-              flexShrink: 0,
-            }}
-          >
-            <Icon name={kpi.icon} size={19} color={kpi.color} />
-          </span>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textSecondary }}>
-              {kpi.key === "revenue" ? t("revenueThisMonth") : t("totalStudents")}
-            </div>
-            <div style={{ fontFamily: FONT, fontSize: 19, fontWeight: 700, color: COLORS.text }}>
-              {kpi.value}
-            </div>
-            <div style={{ fontFamily: FONT, fontSize: 11.5, color: COLORS.textSecondary }}>
-              {kpi.key === "revenue" ? t("fromPayments", { count: kpi.count }) : t("enrolledAcross")}
-            </div>
-          </div>
-        </div>
-      ))}
-    </Card>
-  );
-}
-
-export function Overview() {
-  return (
-    <div className="jt-duo">
-      <RevenueTrend />
-      <KpiCards />
-    </div>
   );
 }

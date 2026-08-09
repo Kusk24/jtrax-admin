@@ -61,7 +61,7 @@ function ClassCard({ def, onView }: { def: ClassDef; onView: (def: ClassDef) => 
               background: status.bg,
               color: status.color,
               fontFamily: FONT,
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: 600,
             }}
           >
@@ -73,7 +73,7 @@ function ClassCard({ def, onView }: { def: ClassDef; onView: (def: ClassDef) => 
             display: "block",
             marginTop: 11,
             fontFamily: FONT,
-            fontSize: 14.5,
+            fontSize: 15.5,
             fontWeight: 700,
             color: COLORS.text,
           }}
@@ -81,7 +81,7 @@ function ClassCard({ def, onView }: { def: ClassDef; onView: (def: ClassDef) => 
           {def.name}
         </span>
         <span
-          style={{ display: "block", marginTop: 2, fontFamily: FONT, fontSize: 12, color: COLORS.textSecondary }}
+          style={{ display: "block", marginTop: 2, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}
         >
           {def.time}
         </span>
@@ -103,7 +103,7 @@ function ClassCard({ def, onView }: { def: ClassDef; onView: (def: ClassDef) => 
                 color: COLORS.blue,
                 border: `2px solid ${COLORS.surface}`,
                 fontFamily: FONT,
-                fontSize: 9.5,
+                fontSize: 10.5,
                 fontWeight: 700,
                 marginLeft: i === 0 ? 0 : -8,
               }}
@@ -124,7 +124,7 @@ function ClassCard({ def, onView }: { def: ClassDef; onView: (def: ClassDef) => 
                 color: COLORS.textSecondary,
                 border: `2px solid ${COLORS.surface}`,
                 fontFamily: FONT,
-                fontSize: 9.5,
+                fontSize: 10.5,
                 fontWeight: 700,
                 marginLeft: -8,
               }}
@@ -153,9 +153,11 @@ export function TodaysClasses({
     <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <SectionTitle>{t("todaysClasses")}</SectionTitle>
       <div
+        /* auto-fit, not auto-fill: with five cards on a six-slot row the
+           cards stretch to fill instead of leaving a hole on the right. */
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
           gap: 12,
         }}
       >
@@ -191,10 +193,10 @@ export function TodaysClasses({
           >
             <Icon name="plus" size={19} color={COLORS.blue} />
           </span>
-          <span style={{ marginTop: 6, fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.blue }}>
+          <span style={{ marginTop: 6, fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.blue }}>
             {t("createSession")}
           </span>
-          <span style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textSecondary }}>
+          <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
             {t("createSessionSub")}
           </span>
         </button>
