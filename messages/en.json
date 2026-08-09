@@ -36,7 +36,8 @@
     "Absent": "Absent",
     "Active": "Active",
     "In class": "In class",
-    "Dismissed": "Dismissed"
+    "Dismissed": "Dismissed",
+    "Registered": "Registered"
   },
   "common": {
     "search": "Search",
@@ -77,7 +78,9 @@
     "allClasses": "All Classes",
     "allMethods": "All Methods",
     "fromDate": "From date",
-    "toDate": "To date"
+    "toDate": "To date",
+    "export": "Export",
+    "exported": "Exported"
   },
   "shell": {
     "dashboard": "Dashboard",
@@ -139,7 +142,11 @@
     "colCredit": "Credit",
     "colArrival": "Arrival",
     "colDismissal": "Dismissal",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "checkedInToday": "Checked In Today",
+    "checkedInSub": "Students at the academy today",
+    "classesToday": "Classes Today",
+    "classesTodaySub": "Ongoing of today's sessions"
   },
   "find": {
     "title": "Find a Student",
@@ -155,7 +162,9 @@
     "dismissed": "Dismissed",
     "creditCount": "{count} credits",
     "registerStudent": "Register Student",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "contact": "Contact",
+    "noAction": "No action needed"
   },
   "session": {
     "createTitle": "Create Session",
@@ -173,7 +182,9 @@
     "checkedInCount": "Checked In ({count})",
     "readOnly": "This session has finished — the roster is read-only.",
     "saveChanges": "Save Changes",
-    "removeFromRoster": "Remove {name} from roster"
+    "removeFromRoster": "Remove {name} from roster",
+    "addStudent": "Add Student",
+    "allAdded": "Everyone is already on the roster."
   },
   "students": {
     "title": "Students",

@@ -36,7 +36,8 @@
     "Absent": "ขาดเรียน",
     "Active": "ใช้งานอยู่",
     "In class": "อยู่ในคลาส",
-    "Dismissed": "ปล่อยกลับแล้ว"
+    "Dismissed": "ปล่อยกลับแล้ว",
+    "Registered": "ลงทะเบียนแล้ว"
   },
   "common": {
     "search": "ค้นหา",
@@ -77,7 +78,9 @@
     "allClasses": "ทุกคลาส",
     "allMethods": "ทุกช่องทาง",
     "fromDate": "ตั้งแต่วันที่",
-    "toDate": "ถึงวันที่"
+    "toDate": "ถึงวันที่",
+    "export": "ส่งออก",
+    "exported": "ส่งออกแล้ว"
   },
   "shell": {
     "dashboard": "แดชบอร์ด",
@@ -139,7 +142,11 @@
     "colCredit": "เครดิต",
     "colArrival": "เวลาเข้า",
     "colDismissal": "เวลาออก",
-    "dismiss": "ปล่อยกลับ"
+    "dismiss": "ปล่อยกลับ",
+    "checkedInToday": "เช็คอินวันนี้",
+    "checkedInSub": "นักเรียนที่มาสถาบันวันนี้",
+    "classesToday": "คลาสวันนี้",
+    "classesTodaySub": "กำลังเรียนจากคาบทั้งหมดวันนี้"
   },
   "find": {
     "title": "ค้นหานักเรียน",
@@ -155,7 +162,9 @@
     "dismissed": "ปล่อยกลับแล้ว",
     "creditCount": "{count} เครดิต",
     "registerStudent": "ลงทะเบียนนักเรียน",
-    "dismiss": "ปล่อยกลับ"
+    "dismiss": "ปล่อยกลับ",
+    "contact": "ติดต่อ",
+    "noAction": "ไม่ต้องดำเนินการ"
   },
   "session": {
     "createTitle": "สร้างคาบเรียน",
@@ -173,7 +182,9 @@
     "checkedInCount": "เช็คอินแล้ว ({count})",
     "readOnly": "คาบเรียนนี้จบแล้ว — ไม่สามารถแก้ไขรายชื่อได้",
     "saveChanges": "บันทึกการแก้ไข",
-    "removeFromRoster": "นำ {name} ออกจากรายชื่อ"
+    "removeFromRoster": "นำ {name} ออกจากรายชื่อ",
+    "addStudent": "เพิ่มนักเรียน",
+    "allAdded": "นักเรียนทุกคนอยู่ในรายชื่อแล้ว"
   },
   "students": {
     "title": "นักเรียน",
