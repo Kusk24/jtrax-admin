@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { suggestedActions, type DeskAction, type DeskStatus } from "@/lib/desk-actions";
 import { searchStudents } from "@/lib/derive";
 import { CLASSES_DEFS_REF } from "@/lib/data";
 import { Icon } from "@/lib/icons";
@@ -13,7 +14,7 @@ const CREDIT_TOP_UPS = [5, 10, 20];
 
 /** Per-student desk state: where a walk-in is in the check-in → class → dismiss cycle. */
 type DeskState = {
-  status: "none" | "checked_in" | "in_class" | "dismissed";
+  status: DeskStatus;
   className?: string;
   extraCredits: number;
 };
@@ -70,7 +71,7 @@ export function FindStudent() {
                 outline: "none",
                 background: "transparent",
                 fontFamily: FONT,
-                fontSize: 13.5,
+                fontSize: 14.5,
                 color: COLORS.text,
               }}
             />
@@ -97,7 +98,7 @@ export function FindStudent() {
                 padding: "26px 16px",
               }}
             >
-              <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
+              <p style={{ margin: 0, fontFamily: FONT, fontSize: 14.5, color: COLORS.textSecondary }}>
                 {t("noStudent")}
               </p>
               <button
@@ -114,7 +115,7 @@ export function FindStudent() {
                   background: COLORS.blue,
                   color: "#fff",
                   fontFamily: FONT,
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: 600,
                   cursor: "pointer",
                 }}
@@ -129,6 +130,7 @@ export function FindStudent() {
               const credit = student.credit + state.extraCredits;
               const chip = statusChipColors(student.status);
               const open = popover.id === student.id ? popover.kind : null;
+              const actions: DeskAction[] = suggestedActions(state.status, student.status);
 
               const checkinLabel =
                 state.status === "in_class"
@@ -153,7 +155,7 @@ export function FindStudent() {
                   >
                     <Avatar initials={initialsOf(student.name)} size={36} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text }}>
+                      <div style={{ fontFamily: FONT, fontSize: 15, fontWeight: 600, color: COLORS.text }}>
                         {student.name}
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 4 }}>
@@ -166,45 +168,68 @@ export function FindStudent() {
                       </div>
                     </div>
 
-                    {state.status === "none" && (
-                      <button
-                        type="button"
-                        className="jt-btn-primary"
-                        onClick={() => update(student.id, { status: "checked_in" })}
-                        style={primaryBtn}
-                      >
-                        {t("checkIn")}
-                      </button>
+                    {/* Which buttons appear is the spec's matrix, not a fixed
+                        set: attendance state crossed with credit standing. */}
+                    {actions.length === 0 && (
+                      <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary, flexShrink: 0 }}>
+                        {t("noAction")}
+                      </span>
                     )}
-                    {state.status === "checked_in" && (
-                      <button
-                        type="button"
-                        className="jt-btn-primary"
-                        onClick={() => togglePopover(student.id, "class")}
-                        style={primaryBtn}
-                      >
-                        {t("assignClass")}
-                      </button>
-                    )}
-                    {state.status === "in_class" && (
-                      <button
-                        type="button"
-                        className="jt-chip"
-                        onClick={() => update(student.id, { status: "dismissed" })}
-                        style={ghostBtn}
-                      >
-                        {t("dismiss")}
-                      </button>
-                    )}
-
-                    <button
-                      type="button"
-                      className="jt-chip"
-                      onClick={() => togglePopover(student.id, "credit")}
-                      style={ghostBtn}
-                    >
-                      {t("addCredits")}
-                    </button>
+                    {actions.map((action) => {
+                      if (action === "contact") {
+                        return (
+                          <a
+                            key={action}
+                            href={`tel:${student.parentPhone.replace(/\s/g, "")}`}
+                            className="jt-chip"
+                            style={{ ...ghostBtn, display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none" }}
+                          >
+                            <Icon name="phone" size={13} /> {t("contact")}
+                          </a>
+                        );
+                      }
+                      if (action === "addCredits") {
+                        return (
+                          <button
+                            key={action}
+                            type="button"
+                            className="jt-chip"
+                            onClick={() => togglePopover(student.id, "credit")}
+                            style={ghostBtn}
+                          >
+                            {t("addCredits")}
+                          </button>
+                        );
+                      }
+                      if (action === "dismiss") {
+                        return (
+                          <button
+                            key={action}
+                            type="button"
+                            className="jt-chip"
+                            onClick={() => update(student.id, { status: "dismissed" })}
+                            style={ghostBtn}
+                          >
+                            {t("dismiss")}
+                          </button>
+                        );
+                      }
+                      return (
+                        <button
+                          key={action}
+                          type="button"
+                          className="jt-btn-primary"
+                          onClick={() =>
+                            action === "checkIn"
+                              ? update(student.id, { status: "checked_in" })
+                              : togglePopover(student.id, "class")
+                          }
+                          style={primaryBtn}
+                        >
+                          {action === "checkIn" ? t("checkIn") : t("assignClass")}
+                        </button>
+                      );
+                    })}
                   </div>
 
                   {open === "class" && (
@@ -261,7 +286,7 @@ const primaryBtn: React.CSSProperties = {
   background: COLORS.blue,
   color: "#fff",
   fontFamily: FONT,
-  fontSize: 12.5,
+  fontSize: 13.5,
   fontWeight: 600,
   cursor: "pointer",
   flexShrink: 0,
@@ -274,7 +299,7 @@ const ghostBtn: React.CSSProperties = {
   background: COLORS.surface,
   color: COLORS.text,
   fontFamily: FONT,
-  fontSize: 12.5,
+  fontSize: 13.5,
   fontWeight: 600,
   cursor: "pointer",
   transition: "all 160ms ease",
@@ -288,7 +313,7 @@ const chipBtn: React.CSSProperties = {
   background: COLORS.surface,
   color: COLORS.text,
   fontFamily: FONT,
-  fontSize: 12.5,
+  fontSize: 13.5,
   fontWeight: 600,
   cursor: "pointer",
   transition: "all 160ms ease",
