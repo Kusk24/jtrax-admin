@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties, ReactNode } from "react";
-import { COLORS, FONT } from "@/lib/theme";
+import { COLORS, FONT, FONT_DISPLAY } from "@/lib/theme";
 
 /** The mockup's standard white panel: 1px hairline border, 14px radius. */
 export function Card({
@@ -21,8 +21,9 @@ export function Card({
       onClick={onClick}
       style={{
         background: COLORS.surface,
-        border: `1px solid ${COLORS.border}`,
-        borderRadius: 14,
+        /* 1.5px hairline and a 16px corner, as the parent portal draws cards. */
+        border: `1.5px solid ${COLORS.border}`,
+        borderRadius: 16,
         padding: 18,
         ...style,
       }}
@@ -37,9 +38,9 @@ export function SectionTitle({ children, style }: { children: ReactNode; style?:
     <h2
       style={{
         margin: 0,
-        fontFamily: FONT,
+        fontFamily: FONT_DISPLAY,
         fontSize: 16,
-        fontWeight: 700,
+        fontWeight: 600,
         color: COLORS.text,
         ...style,
       }}

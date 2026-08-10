@@ -9,7 +9,7 @@ import { LanguageToggle } from "./LanguageToggle";
 import { signOut } from "@/app/actions/auth";
 import { Icon } from "@/lib/icons";
 import { navItemsForRole } from "@/lib/nav";
-import { COLORS, FONT, ROLE_COLORS } from "@/lib/theme";
+import { COLORS, FONT, FONT_DISPLAY, ROLE_COLORS } from "@/lib/theme";
 import { useJtrax } from "./JtraxContext";
 
 const SIDEBAR_WIDTH = 232;
@@ -389,7 +389,7 @@ export function JtraxShell({ children }: { children: React.ReactNode }) {
               <h1
                 style={{
                   margin: 0,
-                  fontFamily: FONT,
+                  fontFamily: FONT_DISPLAY,
                   fontSize: 23,
                   fontWeight: 700,
                   color: COLORS.text,

@@ -1,18 +1,24 @@
 import type { Metadata } from "next";
-import { Inter, Noto_Sans_Thai } from "next/font/google";
+import { DM_Sans, Mitr, Poppins } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
 import "./globals.css";
 
-const inter = Inter({
+/* The parent portal's pairing: DM Sans for body copy, Poppins for display. */
+const dmSans = DM_Sans({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-jtrax-inter",
+  variable: "--font-jtrax-sans",
 });
 
-/* Inter has no Thai glyphs, so Thai text falls through to Noto Sans Thai —
-   the closest neutral companion to Inter's tone. */
-const notoThai = Noto_Sans_Thai({
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-jtrax-display",
+});
+
+/* Both are Latin-only, so Thai falls through to Mitr — the project's Thai
+   face across the portals. */
+const mitr = Mitr({
   subsets: ["thai", "latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-jtrax-thai",
@@ -28,7 +34,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
 
   return (
     <html lang={locale}>
-      <body className={`jtrax-root ${inter.variable} ${notoThai.variable}`}>
+      <body className={`jtrax-root ${dmSans.variable} ${poppins.variable} ${mitr.variable}`}>
         {/* The shell lives in app/(app)/layout.tsx, behind the session guard —
             /login renders inside this root layout with no sidebar. */}
         <NextIntlClientProvider>{children}</NextIntlClientProvider>

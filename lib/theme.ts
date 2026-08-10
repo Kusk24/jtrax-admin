@@ -1,10 +1,10 @@
 /**
  * Design tokens for the admin console.
  *
- * The palette is the shared JTrax one — the same cream / navy / brick / olive /
- * peach tokens the student, parent and teacher portals use in
- * `jtrax-web-app/app/globals.css`, so the admin app reads as part of the same
- * product rather than a separate blue app.
+ * The palette and type are the parent portal's clean-blue design system — the
+ * `pp-*` tokens in `jtrax-web-app/app/globals.css` (ink, blue, deep, navy,
+ * line, soft, mist) with DM Sans for body and Poppins for display — so the
+ * admin app reads as the same product as the parent portal.
  *
  * Components style themselves inline from these tokens; `app/globals.css`
  * carries only what inline styles can't express (hover, focus, keyframes,
@@ -12,71 +12,80 @@
  */
 
 export const COLORS = {
-  /* Primary. Still the "blue" of the design, now the JTrax navy. */
-  blue: "#2B4380",
-  blueHover: "#1F3567",
-  bg: "#F7F4EE",
-  surface: "#FFFDFA",
-  light: "#E6EAF4",
-  border: "#E4E0D8",
-  text: "#2B2B2B",
-  textSecondary: "#7A7872",
-  /* Olive reads as success, but the flat olive fails contrast as text on a
-     light card — text uses the darkened step, fills use `oliveFill`. */
-  success: "#5F7A2E",
-  successBg: "#DDE3C4",
-  oliveFill: "#8FA653",
-  warning: "#8C3A1E",
-  warningBg: "#F8E3C9",
-  danger: "#C0392B",
-  dangerBg: "#F6D7CE",
-  maroon: "#7D3C3C",
-  neutralBg: "#EDEAE3",
+  /* pp-blue / pp-deep. */
+  blue: "#2E5CB8",
+  blueHover: "#234A9F",
+  navy: "#1E3A70",
+  /* pp-mist rather than the near-white pp-bg: the console is wall-to-wall
+     cards, and they need a tinted page behind them to read as cards. */
+  bg: "#F0F4FC",
+  surface: "#FFFFFF",
+  light: "#E8EEFA",
+  border: "#E7EBF3",
+  text: "#1A2B4A",
+  textSecondary: "#5C6880",
+  /* The portal's status colours are tuned for dots and fills; as 12.5px bold
+     text on their own tint they land at ~4.1:1, so each has a darker step that
+     clears 4.5:1. `*Fill` keeps the portal's original for dots and chart marks. */
+  success: "#2A7150",
+  successBg: "#E6F4EC",
+  successFill: "#4CAF7D",
+  warning: "#9C5A1B",
+  warningBg: "#FBEEDF",
+  warningFill: "#C97A2E",
+  danger: "#B54040",
+  dangerBg: "#FBEAEA",
+  dangerFill: "#E0645F",
+  neutralBg: "#EEF1F7",
   /* LINE's brand green — a third-party mark, not ours to re-skin. */
   line: "#06C755",
 } as const;
 
 /**
- * Categorical accents. These are the derived palette steps that passed the
- * dataviz contrast check on a card surface in the earlier admin portal, so
- * they are safe for chips, dots and chart series alike.
+ * Categorical accents, all drawn from the parent portal's palette and darkened
+ * where needed so they hold up as small text on their own tint.
  */
 export const ACCENTS = {
-  navy: "#4A63A8",
-  brick: "#C0392B",
-  olive: "#7E9440",
-  rust: "#8C3A1E",
-  maroon: "#7D3C3C",
-  plum: "#6B4A7D",
+  navy: "#1E3A70",
+  blue: "#2E5CB8",
+  green: "#2A7150",
+  amber: "#9C5A1B",
+  red: "#B54040",
+  plum: "#5C4A8A",
 } as const;
 
 /** Each accent paired with the tint it sits on. */
 export const ACCENT_TINTS: Record<keyof typeof ACCENTS, string> = {
-  navy: "#E1E6F3",
-  brick: "#F6D7CE",
-  olive: "#E2E8CB",
-  rust: "#F8E3C9",
-  maroon: "#F0DEDE",
-  plum: "#EBE2F0",
+  navy: "#E3E9F6",
+  blue: "#E8EEFA",
+  green: "#E6F4EC",
+  amber: "#FBEEDF",
+  red: "#FBEAEA",
+  plum: "#EAE6F5",
 };
 
-/* Thai falls through to Noto Sans Thai — Inter carries no Thai glyphs. */
+/* DM Sans for body copy, matching the parent portal. Thai falls through to
+   Mitr — DM Sans and Poppins are both Latin-only. */
 export const FONT =
-  "var(--font-jtrax-inter), var(--font-jtrax-thai), 'Inter', system-ui, sans-serif";
+  "var(--font-jtrax-sans), var(--font-jtrax-thai), ui-sans-serif, system-ui, sans-serif";
+
+/** Poppins, for headings and the numbers that carry a card. */
+export const FONT_DISPLAY =
+  "var(--font-jtrax-display), var(--font-jtrax-thai), ui-sans-serif, system-ui, sans-serif";
 
 export type JtraxRole = "Super Admin" | "Admin" | "Receptionist";
 
 export const ROLE_COLORS: Record<JtraxRole, { color: string; bg: string }> = {
   "Super Admin": { color: ACCENTS.navy, bg: ACCENT_TINTS.navy },
-  Admin: { color: ACCENTS.rust, bg: ACCENT_TINTS.rust },
-  Receptionist: { color: ACCENTS.olive, bg: ACCENT_TINTS.olive },
+  Admin: { color: ACCENTS.plum, bg: ACCENT_TINTS.plum },
+  Receptionist: { color: ACCENTS.amber, bg: ACCENT_TINTS.amber },
 };
 
 export const CLASS_CATEGORY_COLORS: Record<string, string> = {
   Master: ACCENTS.navy,
-  Intermediate: ACCENTS.rust,
-  Beginner: ACCENTS.olive,
-  Weekend: ACCENTS.maroon,
+  Intermediate: ACCENTS.amber,
+  Beginner: ACCENTS.green,
+  Weekend: ACCENTS.plum,
 };
 
 /** The tint that goes with a class category, for icon wells and chips. */
@@ -85,11 +94,11 @@ export function classCategoryTint(category: string | undefined): string {
     case "Master":
       return ACCENT_TINTS.navy;
     case "Intermediate":
-      return ACCENT_TINTS.rust;
+      return ACCENT_TINTS.amber;
     case "Beginner":
-      return ACCENT_TINTS.olive;
+      return ACCENT_TINTS.green;
     case "Weekend":
-      return ACCENT_TINTS.maroon;
+      return ACCENT_TINTS.plum;
     default:
       return COLORS.light;
   }

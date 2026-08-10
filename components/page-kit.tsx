@@ -4,7 +4,7 @@ import { useEffect, type CSSProperties, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { downloadCsv, type CsvCell } from "@/lib/export";
 import { Icon, type IconName } from "@/lib/icons";
-import { COLORS, FONT } from "@/lib/theme";
+import { COLORS, FONT, FONT_DISPLAY } from "@/lib/theme";
 
 /* Shared building blocks for the nine list/detail pages. The design reuses one
    set of table, filter-bar, pagination and modal treatments across all of them,
@@ -12,8 +12,9 @@ import { COLORS, FONT } from "@/lib/theme";
 
 export const TABLE_PAGE_SIZE = 10;
 
-/** One row height for every table: 30px avatar + 11px padding + the border. */
-const ROW_HEIGHT = 53;
+/** One row height for every table — tall enough to clear the tallest cell any
+    of them puts in a row (the Contact chip on the student list). */
+const ROW_HEIGHT = 54;
 
 export function paginate<T>(rows: T[], page: number) {
   const totalPages = Math.max(1, Math.ceil(rows.length / TABLE_PAGE_SIZE));
@@ -44,7 +45,7 @@ export const fieldStyle: CSSProperties = {
 /* The chevron from `lib/icons`, inlined — a native <select> arrow comes with
    its own metrics, so `appearance: none` has to draw the caret itself. */
 const CHEVRON_SVG =
-  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236B7B93' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")";
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364708C' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")";
 
 /** `fieldStyle` for a <select>: same box as the inputs beside it. */
 export const selectStyle: CSSProperties = {
@@ -135,7 +136,7 @@ export function PageHeader({
       }}
     >
       <div>
-        <Heading style={{ margin: 0, fontFamily: FONT, fontSize: level === 1 ? 23 : 19, fontWeight: 700, color: COLORS.text, letterSpacing: "-0.01em" }}>
+        <Heading style={{ margin: 0, fontFamily: FONT_DISPLAY, fontSize: level === 1 ? 23 : 19, fontWeight: 700, color: COLORS.text, letterSpacing: "-0.01em" }}>
           {title}
         </Heading>
         {sub && (

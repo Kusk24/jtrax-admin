@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { CLASSES_DEFS_REF } from "@/lib/data";
 import { buildCheckins, buildKpiCards } from "@/lib/derive";
 import { Icon, type IconName } from "@/lib/icons";
-import { ACCENTS, ACCENT_TINTS, COLORS, FONT } from "@/lib/theme";
+import { ACCENTS, ACCENT_TINTS, COLORS, FONT, FONT_DISPLAY } from "@/lib/theme";
 import { Card } from "../ui";
 
 /**
@@ -31,8 +31,8 @@ export function KpiStrip() {
       key: "revenueThisMonth",
       icon: "wallet",
       value: revenue.value,
-      color: ACCENTS.olive,
-      bg: ACCENT_TINTS.olive,
+      color: ACCENTS.green,
+      bg: ACCENT_TINTS.green,
     },
     {
       key: "totalStudents",
@@ -45,15 +45,15 @@ export function KpiStrip() {
       key: "checkedInToday",
       icon: "userCheck",
       value: String(checkins.length),
-      color: ACCENTS.rust,
-      bg: ACCENT_TINTS.rust,
+      color: ACCENTS.amber,
+      bg: ACCENT_TINTS.amber,
     },
     {
       key: "classesToday",
       icon: "calendar",
       value: `${ongoing}/${CLASSES_DEFS_REF.length}`,
-      color: ACCENTS.maroon,
-      bg: ACCENT_TINTS.maroon,
+      color: ACCENTS.plum,
+      bg: ACCENT_TINTS.plum,
     },
   ];
 
@@ -96,18 +96,13 @@ export function KpiStrip() {
             <div style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
               {t(tile.key)}
             </div>
-            <div style={{ fontFamily: FONT, fontSize: 21, fontWeight: 700, color: COLORS.text, lineHeight: 1.2 }}>
+            <div style={{ fontFamily: FONT_DISPLAY, fontSize: 21, fontWeight: 600, color: COLORS.text, lineHeight: 1.2 }}>
               {tile.value}
             </div>
             <div
-              style={{
-                fontFamily: FONT,
-                fontSize: 12.5,
-                color: COLORS.textSecondary,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
+              /* Wraps rather than truncating — the grid makes every tile as
+                 tall as the tallest, so a second line costs nothing. */
+              style={{ fontFamily: FONT, fontSize: 12.5, lineHeight: 1.4, color: COLORS.textSecondary }}
             >
               {sub[tile.key]}
             </div>
