@@ -556,6 +556,8 @@ export const ADMIN_SEED: AdminPerson[] = [
 
 
 export type Announcement = {
+  /** Present on live rows from the backend; absent in the design seed. */
+  id?: string;
   title: string;
   audience: string;
   date: string;

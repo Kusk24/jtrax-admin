@@ -148,6 +148,7 @@ export function toAnnouncements(c: LiveCollections): Announcement[] {
   return [...c.announcements]
     .sort((a, b) => s(b, "posted_at").localeCompare(s(a, "posted_at")))
     .map((a) => ({
+      id: s(a, "announcement_id"),
       title: s(a, "title"),
       audience: "All",
       date: fmtDate(s(a, "posted_at")),

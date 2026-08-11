@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { ANNOUNCEMENTS_SEED, type Announcement } from "@/lib/data";
+import { useData } from "@/components/DataProvider";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT, TODAY_REF } from "@/lib/theme";
 import { EmptyRow, ExportButton, fieldStyle, labelStyle, PageHeader, primaryButtonStyle } from "../page-kit";
@@ -13,7 +13,7 @@ const AUDIENCES = ["Students", "Parents", "Teachers"] as const;
 export function AnnouncementPage() {
   const t = useTranslations("announcement");
   const tCommon = useTranslations("common");
-  const [rows, setRows] = useState<Announcement[]>(ANNOUNCEMENTS_SEED);
+  const { announcements: rows, meAccountId, create, remove } = useData();
   const [composeOpen, setComposeOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -28,15 +28,12 @@ export function AnnouncementPage() {
 
   function send() {
     if (!canSend) return;
-    setRows([
-      {
-        title: title.trim(),
-        audience: selected.join(" & "),
-        date: TODAY_REF.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }),
-        body: body.trim(),
-      },
-      ...rows,
-    ]);
+    create("announcements", {
+      title: title.trim(),
+      body: body.trim(),
+      author_user_account_id: meAccountId,
+      posted_at: new Date().toISOString(),
+    }).catch((e) => window.alert(e instanceof Error ? e.message : "post failed"));
     setTitle("");
     setBody("");
     setComposeOpen(false);
@@ -169,7 +166,7 @@ export function AnnouncementPage() {
               <button
                 type="button"
                 aria-label={t("deleteItem", { title: a.title })}
-                onClick={() => setRows(rows.filter((_, idx) => idx !== i))}
+                onClick={() => a.id && remove("announcements", a.id).catch((e) => window.alert(e instanceof Error ? e.message : "delete failed"))}
                 style={{
                   display: "inline-flex",
                   border: `1px solid ${COLORS.border}`,
