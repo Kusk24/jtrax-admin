@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { TOURNAMENTS_SEED, type Participant, type Tournament } from "@/lib/data";
+import { type Participant, type Tournament } from "@/lib/data";
+import { useData } from "@/components/DataProvider";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
 import {
@@ -672,7 +673,7 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
 export function TournamentPage() {
   const t = useTranslations("tournament");
   const tStatus = useTranslations("status");
-  const [tournaments, setTournaments] = useState<Tournament[]>(TOURNAMENTS_SEED);
+  const { tournaments, create } = useData();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -692,10 +693,36 @@ export function TournamentPage() {
     return (
       <CreateWizard
         onCancel={() => setWizardOpen(false)}
-        onPublish={(t) => {
-          setTournaments([t, ...tournaments]);
+        onPublish={async (t) => {
+          const iso = (v: string) => {
+            const d = new Date(v);
+            return isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+          };
+          const money = (v: string | undefined) => {
+            const digits = (v ?? "").replace(/[^0-9.]/g, "");
+            return digits ? Number(digits) : null;
+          };
+          try {
+            const created = await create("tournaments", {
+              name: t.name,
+              tournament_status: "Upcoming",
+              start_date: iso(t.date),
+              venue_name: t.venue,
+              venue_address: t.address,
+              organizer_name: t.organizer,
+              registration_deadline: iso(t.registrationDeadline),
+              early_bird_fee: money(t.earlyBirdFeeMember),
+              regular_fee: money(t.entryFeeMember),
+              max_participants: t.maxParticipants || null,
+            });
+            for (const name of t.categories) {
+              await create("tournament-categories", { tournament_id: created.tournament_id, name });
+            }
+            setSelectedId(String(created.tournament_id));
+          } catch (e) {
+            window.alert(e instanceof Error ? e.message : "publish failed");
+          }
           setWizardOpen(false);
-          setSelectedId(t.id);
         }}
       />
     );
