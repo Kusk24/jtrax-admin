@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { JtraxProvider } from "@/components/JtraxContext";
 import { JtraxShell } from "@/components/JtraxShell";
-import { SESSION_COOKIE, findAdminById } from "@/lib/auth";
+import { SESSION_COOKIE, fetchMe } from "@/lib/auth";
 
 /**
  * The guard for every signed-in screen: no session cookie, no shell — straight
@@ -13,7 +13,7 @@ import { SESSION_COOKIE, findAdminById } from "@/lib/auth";
  */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const store = await cookies();
-  const person = findAdminById(store.get(SESSION_COOKIE)?.value);
+  const person = await fetchMe(store.get(SESSION_COOKIE)?.value);
   if (!person) redirect("/login");
 
   return (

@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { ADMIN_SEED, type AdminPerson } from "@/lib/data";
+import { type AdminPerson } from "@/lib/data";
 import { DEFAULT_CREDIT_RULES, type CreditRules } from "@/lib/derive";
 import { canRoleAccess } from "@/lib/nav";
 import type { JtraxRole } from "@/lib/theme";
@@ -45,7 +45,7 @@ export function JtraxProvider({
   );
 
   const value = useMemo<JtraxContextValue>(
-    () => ({ person, role: person.role, people: ADMIN_SEED, setPerson, creditRules, setCreditRules }),
+    () => ({ person, role: person.role, people: [person], setPerson, creditRules, setCreditRules }),
     [person, setPerson, creditRules],
   );
 

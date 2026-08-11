@@ -5,8 +5,11 @@ import { useActionState, useState } from "react";
 import { useTranslations } from "next-intl";
 import { LanguageToggle } from "./LanguageToggle";
 import { signIn, type SignInState } from "@/app/actions/auth";
-import { ADMIN_SEED } from "@/lib/data";
-import { DEMO_PASSWORD } from "@/lib/auth";
+/* Seeded backend dev accounts (see jtrax-backend internal/db/seed.go). */
+const DEMO_PASSWORD = "jtrax-dev-1234";
+const DEV_ACCOUNTS = [
+  { id: "usr_admin1", name: "JCA Head Office", role: "Super Admin" as const, email: "admin@jca.ac.th", initials: "JH" },
+];
 import { Icon, type IconName } from "@/lib/icons";
 import { COLORS, FONT, ROLE_COLORS } from "@/lib/theme";
 
@@ -181,7 +184,7 @@ export function LoginScreen() {
               }}
             >
               <Icon name="alertTriangle" size={17} color={COLORS.danger} />
-              {t(state.error === "missing" ? "errorMissing" : "errorInvalid")}
+              {t(state.error === "missing" ? "errorMissing" : state.error === "unreachable" ? "errorUnreachable" : "errorInvalid")}
             </div>
           )}
 
@@ -376,7 +379,7 @@ export function LoginScreen() {
                 admins share the Admin role, so the role alone can't tell them
                 apart. */}
             <div className="jt-pick-grid">
-              {ADMIN_SEED.map((person) => {
+              {DEV_ACCOUNTS.map((person) => {
                 const roleColor = ROLE_COLORS[person.role];
                 const selected = email === person.email;
                 return (
