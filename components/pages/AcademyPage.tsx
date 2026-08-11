@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { useData } from "@/components/DataProvider";
 import { Icon, type IconName } from "@/lib/icons";
 import { COLORS, FONT, initialsOf } from "@/lib/theme";
 import {
@@ -96,8 +97,23 @@ export function AcademyPage() {
   const t = useTranslations("academy");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
-  const [courses, setCourses] = useState<Course[]>(COURSES_SEED);
-  const [teachers, setTeachers] = useState<Teacher[]>(TEACHERS_SEED);
+  const { raw, create, update, remove } = useData();
+  const courses: Course[] = raw.classes.map((c) => ({
+    id: String(c.class_id),
+    name: String(c.name ?? ""),
+    desc: String(c.description ?? ""),
+    badge: String(c.class_type ?? ""),
+    icon: c.class_type === "Master" ? "trophy" : c.class_type === "Private" ? "king" : "queen",
+    category: String(c.class_type ?? ""),
+  }));
+  const teachers: Teacher[] = raw.teachers.map((t) => ({
+    id: String(t.teacher_id),
+    name: String(t.name ?? ""),
+    email: String(t.email ?? ""),
+    phone: String(t.phone ?? ""),
+    lineId: String(t.line_id ?? ""),
+    status: "Active",
+  }));
   const [courseModal, setCourseModal] = useState<Course | "new" | null>(null);
   const [teacherModal, setTeacherModal] = useState<Teacher | "new" | null>(null);
   const [courseDetail, setCourseDetail] = useState<Course | null>(null);
@@ -379,7 +395,9 @@ export function AcademyPage() {
                     type="button"
                     style={{ ...primaryButtonStyle, background: COLORS.danger }}
                     onClick={() => {
-                      setTeachers(teachers.filter((teacher) => teacher.id !== teacherDetail.id));
+                      remove("teachers", teacherDetail.id).catch((e) =>
+                        window.alert(e instanceof Error ? e.message : "delete failed"),
+                      );
                       closeTeacherDetail();
                     }}
                   >
@@ -412,9 +430,16 @@ export function AcademyPage() {
                 disabled={!courseDraft.name}
                 onClick={() => {
                   if (courseModal === "new") {
-                    setCourses([...courses, { ...courseDraft, id: `course-${Date.now()}` }]);
+                    create("classes", {
+                      name: courseDraft.name,
+                      description: courseDraft.desc,
+                      class_type: ["Private", "Group", "Master"].includes(courseDraft.category) ? courseDraft.category : "Group",
+                    }).catch((e) => window.alert(e instanceof Error ? e.message : "create failed"));
                   } else {
-                    setCourses(courses.map((c) => (c.id === courseModal.id ? { ...courseDraft, id: courseModal.id } : c)));
+                    update("classes", courseModal.id, {
+                      name: courseDraft.name,
+                      description: courseDraft.desc,
+                    }).catch((e) => window.alert(e instanceof Error ? e.message : "save failed"));
                   }
                   setCourseModal(null);
                 }}
@@ -469,15 +494,32 @@ export function AcademyPage() {
                   cursor: teacherDraft.name ? "pointer" : "not-allowed",
                 }}
                 disabled={!teacherDraft.name}
-                onClick={() => {
-                  if (teacherModal === "new") {
-                    setTeachers([...teachers, { ...teacherDraft, id: `teacher-${Date.now()}` }]);
-                  } else {
-                    setTeachers(
-                      teachers.map((teacher) =>
-                        teacher.id === teacherModal.id ? { ...teacher, ...teacherDraft } : teacher,
-                      ),
-                    );
+                onClick={async () => {
+                  try {
+                    if (teacherModal === "new") {
+                      const acct = await create("user-accounts", {
+                        email: teacherDraft.email || `${teacherDraft.name.toLowerCase().replace(/\s+/g, ".")}@jca.ac.th`,
+                        password: `teach-${Math.random().toString(36).slice(2, 10)}`,
+                        role: "Teacher",
+                        display_name: teacherDraft.name,
+                      });
+                      await create("teachers", {
+                        user_account_id: acct.user_account_id,
+                        name: teacherDraft.name,
+                        email: teacherDraft.email,
+                        phone: teacherDraft.phone,
+                        line_id: teacherDraft.lineId,
+                      });
+                    } else {
+                      await update("teachers", teacherModal.id, {
+                        name: teacherDraft.name,
+                        email: teacherDraft.email,
+                        phone: teacherDraft.phone,
+                        line_id: teacherDraft.lineId,
+                      });
+                    }
+                  } catch (e) {
+                    window.alert(e instanceof Error ? e.message : "save failed");
                   }
                   setTeacherModal(null);
                 }}

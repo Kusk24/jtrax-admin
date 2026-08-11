@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { STUDENTS_SEED, type Student } from "@/lib/data";
+import { type Student } from "@/lib/data";
+import { useData } from "@/components/DataProvider";
 import { buildAttendanceRows, buildPracticeStrip, buildStudentPayments } from "@/lib/derive";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
@@ -38,10 +39,7 @@ const RELATION_OPTIONS = ["Mother", "Father", "Guardian"];
    overlap, so the edit form unions them — otherwise opening a seeded student
    would show a picker that doesn't contain their own class and silently move
    them to the first option on save. */
-const EDIT_CLASS_OPTIONS = Array.from(
-  new Set([...STUDENTS_SEED.map((s) => s.className), ...CLASS_OPTIONS]),
-);
-const BRANCH_OPTIONS = Array.from(new Set(STUDENTS_SEED.map((s) => s.branch).filter((b) => b !== "-")));
+const BRANCH_OPTIONS = ["Bangkok"];
 
 type View = { kind: "list" } | { kind: "detail"; id: string } | { kind: "wizard" };
 
@@ -72,7 +70,13 @@ function StudentDetail({
   function setField<K extends keyof Student>(key: K, value: Student[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
   }
-  const seedIdx = STUDENTS_SEED.findIndex((s) => s.id === student.id);
+  const { raw } = useData();
+  const EDIT_CLASS_OPTIONS = Array.from(
+    new Set([...raw.classes.map((c) => String(c.name ?? "")), ...CLASS_OPTIONS]),
+  );
+  /* Attendance/practice strips are still demo visualisations — keyed by a
+     stable hash of the id until per-session data is wired. */
+  const seedIdx = Math.abs([...student.id].reduce((h, ch) => h * 31 + ch.charCodeAt(0), 7)) % 10;
   const attendance = useMemo(() => buildAttendanceRows(seedIdx, student.className), [seedIdx, student.className]);
   const practice = useMemo(() => buildPracticeStrip(seedIdx), [seedIdx]);
   const payments = useMemo(
@@ -697,7 +701,7 @@ export function StudentsPage({ startWizard }: { startWizard?: string }) {
   const t = useTranslations("students");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
-  const [students, setStudents] = useState<Student[]>(STUDENTS_SEED);
+  const { students, raw, create, update, remove, loading, error } = useData();
   const [view, setView] = useState<View>(startWizard ? { kind: "wizard" } : { kind: "list" });
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
@@ -709,9 +713,9 @@ export function StudentsPage({ startWizard }: { startWizard?: string }) {
   const branchOptions = useMemo(
     () => [
       { value: "", label: tCommon("allBranches") },
-      ...Array.from(new Set(STUDENTS_SEED.map((s) => s.branch))).map((b) => ({ value: b, label: b })),
+      ...Array.from(new Set(students.map((s) => s.branch))).map((b) => ({ value: b, label: b })),
     ],
-    [tCommon],
+    [tCommon, students],
   );
   const statusOptions = useMemo(
     () => [
@@ -740,9 +744,15 @@ export function StudentsPage({ startWizard }: { startWizard?: string }) {
         <StudentDetail
           student={student}
           onBack={() => setView({ kind: "list" })}
-          onSave={(next) => setStudents(students.map((s) => (s.id === next.id ? next : s)))}
+          onSave={(next) => {
+            update("students", next.id, { name: next.name, current_level: next.level }).catch((e) =>
+              window.alert(e instanceof Error ? e.message : "save failed"),
+            );
+          }}
           onDelete={(id) => {
-            setStudents(students.filter((s) => s.id !== id));
+            remove("students", id).catch((e) =>
+              window.alert(e instanceof Error ? e.message : "delete failed — remove enrollments and payments first"),
+            );
             setView({ kind: "list" });
           }}
         />
@@ -754,26 +764,21 @@ export function StudentsPage({ startWizard }: { startWizard?: string }) {
       <AddStudentWizard
         initialName={startWizard ?? ""}
         onCancel={() => setView({ kind: "list" })}
-        onCreate={(draft) => {
-          const id = `STU-${1052 + students.length - STUDENTS_SEED.length}`;
-          setStudents([
-            {
-              ...draft,
-              id,
-              branch: "Central",
-              credit: 0,
-              expires: "—",
-              status: "Expired",
-              age: 0,
-              level: "Beginner",
-              parentLineIdNo: "",
-              studentLineId: "",
-              studentLineIdNo: "",
-              membershipType: "Standard",
-              joinedDate: new Date().toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }),
-            },
-            ...students,
-          ]);
+        onCreate={async (draft) => {
+          try {
+            const created = await create("students", { name: draft.name, current_level: "Beginner" });
+            const cls = raw.classes.find((c) => String(c.name) === draft.className);
+            if (cls) {
+              await create("enrollments", {
+                student_id: created.student_id,
+                class_id: cls.class_id,
+                enrolled_date: new Date().toISOString().slice(0, 10),
+                status: "Active",
+              });
+            }
+          } catch (e) {
+            window.alert(e instanceof Error ? e.message : "create failed");
+          }
           setView({ kind: "list" });
         }}
       />

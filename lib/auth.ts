@@ -1,31 +1,74 @@
 /**
- * Mock authentication.
+ * Real authentication against jtrax-backend.
  *
- * There is no backend yet (see `data.ts`), so the seed admins *are* the account
- * list and they all share one demo password, printed on the sign-in screen.
- * Only this module knows that: the session cookie and the route guard above it
- * stay the same once a real credential check replaces `verifyCredentials`.
- *
- * Kept free of `next/headers` on purpose — the sign-in screen imports
- * `DEMO_PASSWORD` on the client for its quick-fill chips.
+ * The session cookie stores the backend's opaque bearer token (httpOnly, so
+ * client code never sees it). Server components resolve the signed-in admin
+ * with `fetchMe`; browser CRUD calls go through the /api proxy route which
+ * attaches the token server-side.
  */
-import { ADMIN_SEED, type AdminPerson } from "./data";
+import type { AdminPerson } from "./data";
+import type { JtraxRole } from "./theme";
 
 export const SESSION_COOKIE = "jtrax_session";
 
 /** "Keep me signed in" swaps the browser-session cookie for a week-long one. */
 export const SESSION_MAX_AGE = 60 * 60 * 24 * 7;
 
-export const DEMO_PASSWORD = "jca2026";
+export const API_BASE = process.env.JTRAX_API_URL ?? "http://localhost:8790";
 
-export function findAdminById(id: string | undefined): AdminPerson | undefined {
-  return id ? ADMIN_SEED.find((person) => person.id === id) : undefined;
+/** Identity shape returned by the backend's /auth endpoints. */
+export type BackendIdentity = {
+  userAccountId: string;
+  email: string;
+  role: string;
+  displayName: string;
+  languagePreference: string;
+  themePreference: string;
+  adminId?: string;
+};
+
+/* The backend knows Admin/Receptionist; the console's top role is Super Admin.
+   Every backend Admin gets the full console until branch scoping is real. */
+function toConsoleRole(backendRole: string): JtraxRole {
+  return backendRole === "Receptionist" ? "Receptionist" : "Super Admin";
 }
 
-export function verifyCredentials(email: string, password: string): AdminPerson | undefined {
-  const match = ADMIN_SEED.find(
-    (person) => person.email.toLowerCase() === email.trim().toLowerCase(),
-  );
-  if (!match || password !== DEMO_PASSWORD) return undefined;
-  return match;
+export function identityToPerson(id: BackendIdentity): AdminPerson {
+  const initials = id.displayName
+    .split(/\s+/)
+    .map((w) => w[0] ?? "")
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+  return {
+    id: id.adminId ?? id.userAccountId,
+    name: id.displayName,
+    role: toConsoleRole(id.role),
+    phone: "",
+    email: id.email,
+    lineId: "",
+    branch: "Bangkok",
+    lastLogin: "",
+    createdDate: "",
+    createdBy: "",
+    status: "Active",
+    initials,
+  };
+}
+
+/** Resolves a session token to the signed-in admin, or undefined. */
+export async function fetchMe(token: string | undefined): Promise<AdminPerson | undefined> {
+  if (!token) return undefined;
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (!res.ok) return undefined;
+    const id = (await res.json()) as BackendIdentity;
+    if (id.role !== "Admin" && id.role !== "Receptionist") return undefined; // console is staff-only
+    return identityToPerson(id);
+  } catch {
+    return undefined;
+  }
 }

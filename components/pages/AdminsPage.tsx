@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { ADMIN_SEED, type AdminPerson } from "@/lib/data";
+import { type AdminPerson } from "@/lib/data";
+import { useData } from "@/components/DataProvider";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT, ROLE_COLORS, type JtraxRole } from "@/lib/theme";
 import {
@@ -51,7 +52,7 @@ export function AdminsPage() {
   const t = useTranslations("admins");
   const tCommon = useTranslations("common");
   const tRole = useTranslations("roles");
-  const [admins, setAdmins] = useState<AdminPerson[]>(ADMIN_SEED);
+  const { admins, raw, create, update, remove } = useData();
   const [detailId, setDetailId] = useState<string | null>(null);
   const [resetShown, setResetShown] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -273,7 +274,10 @@ export function AdminsPage() {
                     type="button"
                     style={{ ...primaryButtonStyle, background: COLORS.danger }}
                     onClick={() => {
-                      setAdmins(admins.filter((a) => a.id !== detail.id));
+                      const row = raw.admins.find((a) => String(a.admin_id) === detail.id);
+                      remove("admins", detail.id)
+                        .then(() => (row?.user_account_id ? remove("user-accounts", String(row.user_account_id)) : undefined))
+                        .catch((e) => window.alert(e instanceof Error ? e.message : "delete failed"));
                       closeDetail();
                     }}
                   >
@@ -304,45 +308,42 @@ export function AdminsPage() {
                   cursor: form.fullName && form.email ? "pointer" : "not-allowed",
                 }}
                 disabled={!form.fullName || !form.email}
-                onClick={() => {
+                onClick={async () => {
                   if (adminModal !== "new") {
-                    setAdmins(
-                      admins.map((a) =>
-                        a.id === adminModal.id
-                          ? {
-                              ...a,
-                              name: form.fullName,
-                              role: form.role,
-                              phone: form.phone,
-                              email: form.email,
-                              lineId: form.lineId,
-                              initials: adminInitials(form.fullName),
-                            }
-                          : a,
-                      ),
-                    );
+                    try {
+                      await update("admins", adminModal.id, {
+                        name: form.fullName,
+                        phone: form.phone,
+                        email: form.email,
+                        line_id: form.lineId,
+                      });
+                    } catch (e) {
+                      window.alert(e instanceof Error ? e.message : "save failed");
+                    }
                     setAdminModal(null);
                     return;
                   }
 
                   const password = generateTempPassword();
-                  setAdmins([
-                    ...admins,
-                    {
-                      id: `admin-${Date.now()}`,
+                  try {
+                    const acct = await create("user-accounts", {
+                      email: form.email,
+                      password,
+                      role: form.role === "Receptionist" ? "Receptionist" : "Admin",
+                      display_name: form.fullName,
+                    });
+                    await create("admins", {
+                      user_account_id: acct.user_account_id,
                       name: form.fullName,
-                      role: form.role,
                       phone: form.phone,
                       email: form.email,
-                      lineId: form.lineId,
-                      branch: "Central",
-                      lastLogin: "Never",
-                      createdDate: new Date().toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }),
-                      createdBy: "Mr. Jirapak",
-                      status: "Active",
-                      initials: adminInitials(form.fullName),
-                    },
-                  ]);
+                      line_id: form.lineId,
+                    });
+                  } catch (e) {
+                    window.alert(e instanceof Error ? e.message : "create failed");
+                    setAdminModal(null);
+                    return;
+                  }
                   setAdminModal(null);
                   setCopied(false);
                   setCreated({ email: form.email, password });

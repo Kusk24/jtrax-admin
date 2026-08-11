@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { PAYMENTS_SEED, STUDENTS_SEED, type Payment } from "@/lib/data";
+import { type Payment } from "@/lib/data";
+import { useData } from "@/components/DataProvider";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf, TODAY_REF } from "@/lib/theme";
 import {
@@ -36,7 +37,15 @@ const PACKAGES: Record<string, number> = {
   "30 Sessions": 9000,
 };
 
-function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave: (p: Payment) => void }) {
+type PaymentDraft = {
+  studentId: string;
+  amount: number;
+  discount: number;
+  method: string;
+};
+
+function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave: (p: PaymentDraft) => void }) {
+  const { students } = useData();
   const t = useTranslations("payment");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
@@ -53,10 +62,10 @@ function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave:
   const matches = useMemo(() => {
     const q = studentQuery.trim().toLowerCase();
     if (!q) return [];
-    return STUDENTS_SEED.filter((s) => s.name.toLowerCase().includes(q)).slice(0, 6);
-  }, [studentQuery]);
+    return students.filter((s) => s.name.toLowerCase().includes(q)).slice(0, 6);
+  }, [studentQuery, students]);
 
-  const selected = STUDENTS_SEED.find((s) => s.name === studentName);
+  const selected = students.find((s) => s.name === studentName);
   const finalAmount = Math.max(0, amount - discount);
   const canSave = studentName !== "";
 
@@ -252,13 +261,10 @@ function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave:
             disabled={!canSave}
             onClick={() =>
               onSave({
-                name: studentName,
-                className: selected?.className ?? "—",
-                credits: `+${creditPackage.split(" ")[0]}`,
-                amount: `${finalAmount.toLocaleString()} THB`,
-                date: TODAY_REF.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }),
+                studentId: selected?.id ?? "",
+                amount,
+                discount,
                 method,
-                status,
               })
             }
           >
@@ -273,7 +279,7 @@ function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave:
 export function PaymentPage() {
   const t = useTranslations("payment");
   const tCommon = useTranslations("common");
-  const [payments, setPayments] = useState<Payment[]>(PAYMENTS_SEED);
+  const { payments, raw, create } = useData();
   const [formOpen, setFormOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [method, setMethod] = useState("");
@@ -297,8 +303,24 @@ export function PaymentPage() {
     return (
       <RecordPaymentForm
         onCancel={() => setFormOpen(false)}
-        onSave={(p) => {
-          setPayments([p, ...payments]);
+        onSave={async (p) => {
+          try {
+            const enr = raw.enrollments.find(
+              (e) => String(e.student_id) === p.studentId && String(e.status) === "Active",
+            );
+            await create("payments", {
+              student_id: p.studentId,
+              enrollment_id: enr ? enr.enrollment_id : null,
+              amount: p.amount,
+              discount_amount: p.discount,
+              final_amount: Math.max(0, p.amount - p.discount),
+              payment_method: p.method.replace(/\s+/g, ""),
+              status: "Paid",
+              payment_date: new Date().toISOString().slice(0, 10),
+            });
+          } catch (e) {
+            window.alert(e instanceof Error ? e.message : "payment failed");
+          }
           setFormOpen(false);
           setPage(0);
         }}
