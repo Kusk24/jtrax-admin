@@ -1,0 +1,207 @@
+/**
+ * Adapter between jtrax-backend rows (snake_case, ISO dates, numeric money)
+ * and the console's display types from lib/data.ts (formatted strings).
+ * All joins happen here so the page components keep their existing shapes.
+ */
+import type { AdminPerson, Announcement, Payment, Student, Tournament, Participant } from "./data";
+import type { JtraxRole } from "./theme";
+
+/* ---- raw backend row shapes (only the fields we read) ---- */
+export type Row = Record<string, unknown>;
+const s = (r: Row, k: string) => (r[k] as string | null) ?? "";
+const n = (r: Row, k: string) => Number(r[k] ?? 0);
+
+export type LiveCollections = {
+  students: Row[];
+  parents: Row[];
+  parentContacts: Row[];
+  studentParents: Row[];
+  classes: Row[];
+  enrollments: Row[];
+  creditTransactions: Row[];
+  creditPackages: Row[];
+  payments: Row[];
+  teachers: Row[];
+  admins: Row[];
+  accounts: Row[];
+  announcements: Row[];
+  tournaments: Row[];
+  tournamentCategories: Row[];
+  tournamentRegistrations: Row[];
+};
+
+export function fmtDate(iso: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(d);
+}
+
+export function fmtTHB(amount: number): string {
+  return `${new Intl.NumberFormat("en-US").format(amount)} THB`;
+}
+
+function age(dobISO: string): number {
+  if (!dobISO) return 0;
+  const dob = new Date(dobISO);
+  const now = new Date();
+  let a = now.getFullYear() - dob.getFullYear();
+  if (now < new Date(now.getFullYear(), dob.getMonth(), dob.getDate())) a--;
+  return a;
+}
+
+/* Status thresholds mirror lib/derive.ts DEFAULT_CREDIT_RULES. */
+function studentStatus(credit: number, expiresISO: string, lastAttended: string): Student["status"] {
+  const today = new Date();
+  if (expiresISO) {
+    const exp = new Date(expiresISO);
+    if (exp < today) return "Expired";
+    if (exp.getTime() - today.getTime() < 7 * 86400_000) return "Expiring";
+  }
+  if (credit <= 3) return "Low Credit";
+  if (lastAttended && today.getTime() - new Date(lastAttended).getTime() > 30 * 86400_000) return "Inactive";
+  return "Normal";
+}
+
+/** One student row joined across enrollment, class, credits and parent info. */
+export function toStudents(c: LiveCollections): Student[] {
+  return c.students.map((st) => {
+    const sid = s(st, "student_id");
+    const enr = c.enrollments.find((e) => s(e, "student_id") === sid && s(e, "status") === "Active")
+      ?? c.enrollments.find((e) => s(e, "student_id") === sid);
+    const cls = enr ? c.classes.find((k) => s(k, "class_id") === s(enr, "class_id")) : undefined;
+    const txs = enr ? c.creditTransactions.filter((t) => s(t, "enrollment_id") === s(enr, "enrollment_id")) : [];
+    const credit = txs.reduce((sum, t) => sum + n(t, "amount"), 0);
+    const expiry = txs.filter((t) => s(t, "expiry_date")).map((t) => s(t, "expiry_date")).sort().at(-1) ?? "";
+    const link = c.studentParents.find((sp) => s(sp, "student_id") === sid);
+    const parent = link ? c.parents.find((p) => s(p, "parent_id") === s(link, "parent_id")) : undefined;
+    const contacts = parent ? c.parentContacts.filter((pc) => s(pc, "parent_id") === s(parent, "parent_id")) : [];
+    const contact = (type: string) => s(contacts.find((pc) => s(pc, "contact_type") === type) ?? {}, "value");
+    return {
+      id: sid,
+      name: s(st, "name"),
+      branch: "Bangkok",
+      className: cls ? s(cls, "name") : "—",
+      credit,
+      expires: fmtDate(expiry),
+      status: studentStatus(credit, expiry, s(st, "last_attended_date")),
+      age: age(s(st, "date_of_birth")),
+      level: s(st, "current_level") || "—",
+      parentName: parent ? s(parent, "name") : "—",
+      parentRelation: link ? s(link, "relationship_type") || "Guardian" : "—",
+      parentPhone: contact("phone"),
+      parentEmail: contact("email"),
+      parentLineId: contact("line_id"),
+      parentLineIdNo: "",
+      studentLineId: "",
+      studentLineIdNo: "",
+      membershipType: cls ? s(cls, "class_type") : "—",
+      joinedDate: enr ? fmtDate(s(enr, "enrolled_date")) : "",
+    };
+  });
+}
+
+export function toPayments(c: LiveCollections): Payment[] {
+  return [...c.payments]
+    .sort((a, b) => s(b, "payment_date").localeCompare(s(a, "payment_date")))
+    .map((p) => {
+      const st = c.students.find((x) => s(x, "student_id") === s(p, "student_id"));
+      const enr = c.enrollments.find((e) => s(e, "enrollment_id") === s(p, "enrollment_id"));
+      const cls = enr ? c.classes.find((k) => s(k, "class_id") === s(enr, "class_id")) : undefined;
+      const pkg = c.creditPackages.find((k) => s(k, "credit_package_id") === s(p, "credit_package_id"));
+      return {
+        name: st ? s(st, "name") : s(p, "student_id"),
+        className: cls ? s(cls, "name") : "—",
+        credits: pkg ? `+${n(pkg, "credit_amount")}` : "—",
+        amount: fmtTHB(n(p, "final_amount")),
+        date: fmtDate(s(p, "payment_date")),
+        method: s(p, "payment_method"),
+        status: "Paid",
+      };
+    });
+}
+
+const CONSOLE_ROLE: Record<string, JtraxRole> = { Admin: "Admin", Receptionist: "Receptionist" };
+
+export function toAdmins(c: LiveCollections): AdminPerson[] {
+  return c.admins.map((a) => {
+    const acct = c.accounts.find((u) => s(u, "user_account_id") === s(a, "user_account_id"));
+    const name = s(a, "name");
+    return {
+      id: s(a, "admin_id"),
+      name,
+      role: acct ? CONSOLE_ROLE[s(acct, "role")] ?? "Admin" : "Admin",
+      phone: s(a, "phone"),
+      email: s(a, "email") || (acct ? s(acct, "email") : ""),
+      lineId: s(a, "line_id"),
+      branch: "Bangkok",
+      lastLogin: "—",
+      createdDate: "",
+      createdBy: "",
+      status: "Active",
+      initials: name.split(/\s+/).map((w) => w[0] ?? "").join("").slice(0, 2).toUpperCase(),
+    };
+  });
+}
+
+export function toAnnouncements(c: LiveCollections): Announcement[] {
+  return [...c.announcements]
+    .sort((a, b) => s(b, "posted_at").localeCompare(s(a, "posted_at")))
+    .map((a) => ({
+      title: s(a, "title"),
+      audience: "All",
+      date: fmtDate(s(a, "posted_at")),
+      body: s(a, "body"),
+    }));
+}
+
+export function toTournaments(c: LiveCollections): Tournament[] {
+  return c.tournaments.map((t) => {
+    const tid = s(t, "tournament_id");
+    const cats = c.tournamentCategories.filter((k) => s(k, "tournament_id") === tid);
+    const regs = c.tournamentRegistrations.filter((k) => s(k, "tournament_id") === tid);
+    const participants: Participant[] = regs.map((r, i) => ({
+      name: s(r, "participant_name"),
+      rating: n(r, "fide_rating"),
+      category: s(cats.find((k) => s(k, "tournament_category_id") === s(r, "tournament_category_id")) ?? {}, "name") || "—",
+      score: "—",
+      rank: i + 1,
+      prize: "—",
+      paymentStatus: "Paid",
+      age: 0,
+      guardian: "—",
+      contact: s(r, "participant_contact"),
+      wins: 0,
+      losses: 0,
+      draws: 0,
+      attendance: "—",
+      notes: "",
+    }));
+    const backendStatus = s(t, "tournament_status");
+    return {
+      id: tid,
+      name: s(t, "name"),
+      status: backendStatus === "Completed" ? "Completed" : "Ongoing",
+      hasStarted: backendStatus !== "Upcoming",
+      date: fmtDate(s(t, "start_date")),
+      venue: s(t, "venue_name"),
+      format: "Swiss",
+      published: true,
+      categories: cats.map((k) => s(k, "name")),
+      organizer: s(t, "organizer_name"),
+      chiefArbiter: "—",
+      registrationDeadline: fmtDate(s(t, "registration_deadline")),
+      timeControl: "—",
+      entryFeeMember: t["regular_fee"] == null ? "—" : fmtTHB(n(t, "regular_fee")),
+      entryFeeNonMember: t["regular_fee"] == null ? "—" : fmtTHB(n(t, "regular_fee")),
+      earlyBirdFeeMember: t["early_bird_fee"] == null ? undefined : fmtTHB(n(t, "early_bird_fee")),
+      address: s(t, "venue_address"),
+      contactPerson: s(t, "organizer_name"),
+      maxParticipants: n(t, "max_participants"),
+      currentParticipants: regs.length,
+      rounds: 0,
+      revenue: fmtTHB(regs.reduce((sum, r) => sum + n(r, "fee_charged"), 0)),
+      participants,
+    };
+  });
+}
