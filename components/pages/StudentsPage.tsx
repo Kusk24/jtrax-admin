@@ -329,6 +329,7 @@ function StudentDetail({
                 { label: tCommon("branch"), value: student.branch },
                 { label: t("level"), value: student.level },
                 { label: t("membership"), value: student.membershipType },
+                { label: tCommon("email"), value: student.email || t("noAccountYet") },
                 { label: t("joined"), value: student.joinedDate },
                 { label: t("creditsExpire"), value: student.expires },
                 { label: tCommon("lineId"), value: student.studentLineId },

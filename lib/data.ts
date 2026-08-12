@@ -10,6 +10,10 @@ import type { JtraxRole } from './theme';
 export type Student = {
   id: string;
   name: string;
+  /** Login email from user_account, served as a staff-only derived column.
+      Optional because a student registered at the desk has no account until
+      someone issues one, and the mock fixtures below predate the field. */
+  email?: string;
   branch: string;
   className: string;
   credit: number;
