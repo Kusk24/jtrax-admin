@@ -9,9 +9,16 @@ export const metadata: Metadata = {
 };
 
 /* Outside app/(app), so this is the one route that renders without the shell. */
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ reset?: string }>;
+}) {
   const store = await cookies();
   if (await fetchMe(store.get(SESSION_COOKIE)?.value)) redirect("/");
 
-  return <LoginScreen />;
+  /* ?reset=1 comes from the reset action, which lands here because completing
+     a reset revokes every session for the account. */
+  const { reset } = await searchParams;
+  return <LoginScreen justReset={reset === "1"} />;
 }
