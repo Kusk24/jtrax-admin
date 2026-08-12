@@ -2,9 +2,19 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { CLASSES_DEFS_REF, STUDENTS_SEED } from "@/lib/data";
+import { useData } from "@/components/DataProvider";
+import { type Student } from "@/lib/data";
+import { fmtDate } from "@/lib/live";
 import { Icon } from "@/lib/icons";
-import { classDotColor, COLORS, FONT, initialsOf, statusChipColors, TODAY_REF } from "@/lib/theme";
+import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
+import {
+  AddButton,
+  ConfirmDeleteModal,
+  CrudFormModal,
+  RowActions,
+  type CrudField,
+  type CrudValues,
+} from "../crud";
 import {
   ContactActions,
   EmptyRow,
@@ -13,52 +23,41 @@ import {
   fieldStyle,
   FilterBar,
   InfoGrid,
+  labelStyle,
   Modal,
   PageHeader,
+  primaryButtonStyle,
   paginate,
   Pagination,
   SearchInput,
   SelectFilter,
+  selectStyle,
   Table,
   TableRow,
 } from "../page-kit";
 import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
 
 /* The chevron is the one column that is not data, so it keeps a fixed
-   width; the four data columns share the rest equally. */
-const TEMPLATE = `${equalTemplate(4, 110)} 44px`;
+   width; the five data columns share the rest equally. */
+const TEMPLATE = `${equalTemplate(5, 100)} 44px`;
+
+const SESSION_STATUSES = ["Scheduled", "Ongoing", "Completed"];
+
+type Attendee = { attendanceId: string; studentId: string; name: string };
 
 type HistoryRow = {
   key: string;
+  id: string;
+  classId: string;
   dateObj: Date;
   date: string;
   className: string;
   time: string;
-  attendees: string[];
+  startTime: string;
+  endTime: string;
+  status: string;
+  attendees: Attendee[];
 };
-
-/* RECONSTRUCTED: the design's class-history rows were built past the truncation
-   point. Sessions are projected backwards from TODAY_REF, one per class per
-   week, which matches the seed's weekly cadence and keeps the demo deterministic. */
-function buildHistory(): HistoryRow[] {
-  const rows: HistoryRow[] = [];
-  for (let week = 1; week <= 6; week++) {
-    CLASSES_DEFS_REF.forEach((cls, i) => {
-      const d = new Date(TODAY_REF);
-      d.setDate(d.getDate() - week * 7 - i);
-      rows.push({
-        key: `${cls.name}-${week}`,
-        dateObj: d,
-        date: d.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" }),
-        className: cls.name,
-        time: cls.time,
-        /* Later weeks trim the tail of the roster so attendance varies. */
-        attendees: cls.roster.slice(0, Math.max(2, cls.roster.length - (week % 3))),
-      });
-    });
-  }
-  return rows.sort((a, b) => b.dateObj.getTime() - a.dateObj.getTime());
-}
 
 /** Brief student + guardian card for one attendee of a past session. */
 function AttendeeModal({
@@ -74,9 +73,10 @@ function AttendeeModal({
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
   const tStudents = useTranslations("students");
-  /* Roster names come from the class fixtures, which run wider than the
-     student seed — four of them have no profile behind them. */
-  const student = STUDENTS_SEED.find((s) => s.name === name);
+  const { students } = useData();
+  /* An attendance row can outlive the student it points at, so the profile
+     block is conditional rather than assumed. */
+  const student: Student | undefined = students.find((s) => s.name === name);
   const chip = student ? statusChipColors(student.status) : null;
 
   return (
@@ -155,7 +155,8 @@ function AttendeeModal({
 export function ClassHistoryPage() {
   const t = useTranslations("classHistory");
   const tCommon = useTranslations("common");
-  const all = useMemo(() => buildHistory(), []);
+  const tStatus = useTranslations("status");
+  const { raw, students, create, update, remove } = useData();
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("");
   const [from, setFrom] = useState("");
@@ -163,11 +164,101 @@ export function ClassHistoryPage() {
   const [page, setPage] = useState(0);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [attendee, setAttendee] = useState<{ name: string; session: HistoryRow } | null>(null);
+  const [sessionModal, setSessionModal] = useState<HistoryRow | "new" | null>(null);
+  const [sessionValues, setSessionValues] = useState<CrudValues>({});
+  const [deletingSession, setDeletingSession] = useState<HistoryRow | null>(null);
+  const [addingTo, setAddingTo] = useState<HistoryRow | null>(null);
+  const [addStudentId, setAddStudentId] = useState("");
+
+  /* Real sessions, each with the students actually checked in to it. */
+  const all: HistoryRow[] = useMemo(() => {
+    return raw.classSessions
+      .map((session) => {
+        const id = String(session["session_id"]);
+        const cls = raw.classes.find((c) => String(c["class_id"]) === String(session["class_id"]));
+        const date = String(session["session_date"] ?? "");
+        const start = String(session["start_time"] ?? "");
+        const end = String(session["end_time"] ?? "");
+        const attendees: Attendee[] = raw.attendance
+          .filter((a) => String(a["session_id"]) === id)
+          .map((a) => {
+            const student = students.find((s) => s.id === String(a["student_id"]));
+            return {
+              attendanceId: String(a["attendance_id"]),
+              studentId: String(a["student_id"]),
+              name: student?.name ?? String(a["student_id"]),
+            };
+          });
+        return {
+          key: id,
+          id,
+          classId: String(session["class_id"] ?? ""),
+          dateObj: new Date(date),
+          date: fmtDate(date),
+          className: cls ? String(cls["name"] ?? "") : "—",
+          time: start && end ? `${start} – ${end}` : start,
+          startTime: start,
+          endTime: end,
+          status: String(session["session_status"] ?? ""),
+          attendees,
+        };
+      })
+      .sort((a, b) => b.dateObj.getTime() - a.dateObj.getTime());
+  }, [raw.classSessions, raw.classes, raw.attendance, students]);
 
   const classOptions = [
     { value: "", label: tCommon("allClasses") },
-    ...CLASSES_DEFS_REF.map((c) => ({ value: c.name, label: c.name })),
+    ...raw.classes.map((c) => ({ value: String(c["name"] ?? ""), label: String(c["name"] ?? "") })),
   ];
+
+  const sessionFields: CrudField[] = [
+    {
+      name: "class_id",
+      label: tCommon("class"),
+      kind: "select",
+      required: true,
+      options: raw.classes.map((c) => ({ value: String(c["class_id"]), label: String(c["name"] ?? "") })),
+    },
+    { name: "session_date", label: tCommon("date"), kind: "date", required: true, half: true },
+    {
+      name: "session_status",
+      label: tCommon("status"),
+      kind: "select",
+      half: true,
+      options: SESSION_STATUSES.map((v) => ({ value: v, label: tStatus(v) })),
+    },
+    { name: "start_time", label: t("startTime"), kind: "time", required: true, half: true },
+    { name: "end_time", label: t("endTime"), kind: "time", required: true, half: true },
+  ];
+
+  function openSessionModal(row: HistoryRow | "new") {
+    setSessionModal(row);
+    setSessionValues(
+      row === "new"
+        ? {
+            class_id: raw.classes[0] ? String(raw.classes[0]["class_id"]) : "",
+            session_date: new Date().toISOString().slice(0, 10),
+            session_status: "Scheduled",
+            start_time: "",
+            end_time: "",
+          }
+        : {
+            class_id: row.classId,
+            session_date: raw.classSessions.find((s) => String(s["session_id"]) === row.id)
+              ? String(raw.classSessions.find((s) => String(s["session_id"]) === row.id)!["session_date"] ?? "")
+              : "",
+            session_status: row.status,
+            start_time: row.startTime,
+            end_time: row.endTime,
+          },
+    );
+  }
+
+  /* Attendance rows reference the session, so they go before it. */
+  async function deleteSession(row: HistoryRow) {
+    for (const a of row.attendees) await remove("attendance", a.attendanceId);
+    await remove("class-sessions", row.id);
+  }
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -175,7 +266,7 @@ export function ClassHistoryPage() {
     const toTime = to ? new Date(to).getTime() : null;
     return all.filter((row) => {
       if (classFilter && row.className !== classFilter) return false;
-      if (q && !row.className.toLowerCase().includes(q) && !row.attendees.some((a) => a.toLowerCase().includes(q)))
+      if (q && !row.className.toLowerCase().includes(q) && !row.attendees.some((a) => a.name.toLowerCase().includes(q)))
         return false;
       const t = row.dateObj.getTime();
       if (fromTime !== null && t < fromTime) return false;
@@ -192,11 +283,14 @@ export function ClassHistoryPage() {
         title={t("title")}
         sub={t("sub")}
         action={
-          <ExportButton
-            filename="class-history"
-            columns={[tCommon("date"), tCommon("class"), t("time"), t("attendance")]}
-            rows={() => filtered.map((row) => [row.date, row.className, row.time, row.attendees.length])}
-          />
+          <>
+            <ExportButton
+              filename="class-history"
+              columns={[tCommon("date"), tCommon("class"), t("time"), t("attendance")]}
+              rows={() => filtered.map((row) => [row.date, row.className, row.time, row.attendees.length])}
+            />
+            <AddButton label={t("addSession")} onClick={() => openSessionModal("new")} />
+          </>
         }
       />
 
@@ -243,7 +337,7 @@ export function ClassHistoryPage() {
       </FilterBar>
 
       <Card style={{ padding: 0, overflow: "hidden" }}>
-        <Table columns={[tCommon("date"), tCommon("class"), t("time"), t("attendance"), ""]} template={TEMPLATE} minWidth={720}>
+        <Table columns={[tCommon("date"), tCommon("class"), t("time"), t("attendance"), tCommon("action"), ""]} template={TEMPLATE} minWidth={880}>
           {pageRows.length === 0 && <EmptyRow>{t("empty")}</EmptyRow>}
           {pageRows.map((row) => {
             const open = expanded[row.key] ?? false;
@@ -262,6 +356,11 @@ export function ClassHistoryPage() {
                   <span style={{ color: COLORS.textSecondary }}>
                     {t("presentCount", { count: row.attendees.length })}
                   </span>
+                  <RowActions
+                    label={t("sessionOn", { className: row.className, date: row.date })}
+                    onEdit={() => openSessionModal(row)}
+                    onDelete={() => setDeletingSession(row)}
+                  />
                   <span
                     style={{
                       display: "inline-flex",
@@ -286,31 +385,86 @@ export function ClassHistoryPage() {
                       borderBottom: `1px solid ${COLORS.border}`,
                     }}
                   >
-                    {row.attendees.map((name) => (
-                      <button
-                        key={name}
-                        type="button"
+                    {row.attendees.length === 0 && (
+                      <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
+                        {t("noAttendees")}
+                      </span>
+                    )}
+                    {row.attendees.map((a) => (
+                      <span
+                        key={a.attendanceId}
                         className="jt-pick-chip"
-                        title={t("viewAttendee", { name })}
-                        onClick={() => setAttendee({ name, session: row })}
                         style={{
                           display: "inline-flex",
                           alignItems: "center",
                           gap: 7,
-                          padding: "5px 11px 5px 5px",
+                          padding: "5px 7px 5px 5px",
                           borderRadius: 999,
                           background: COLORS.surface,
                           border: `1px solid ${COLORS.border}`,
                           fontFamily: FONT,
                           fontSize: 13.5,
                           color: COLORS.text,
-                          cursor: "pointer",
                         }}
                       >
-                        <Avatar initials={initialsOf(name)} size={20} />
-                        {name}
-                      </button>
+                        <button
+                          type="button"
+                          title={t("viewAttendee", { name: a.name })}
+                          onClick={() => setAttendee({ name: a.name, session: row })}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 7,
+                            border: "none",
+                            background: "transparent",
+                            padding: 0,
+                            cursor: "pointer",
+                            fontFamily: FONT,
+                            fontSize: 13.5,
+                            color: COLORS.text,
+                          }}
+                        >
+                          <Avatar initials={initialsOf(a.name)} size={20} />
+                          {a.name}
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={t("removeAttendee", { name: a.name })}
+                          onClick={() => remove("attendance", a.attendanceId)}
+                          style={{
+                            display: "inline-flex",
+                            border: "none",
+                            background: "transparent",
+                            padding: 0,
+                            cursor: "pointer",
+                            color: COLORS.textSecondary,
+                          }}
+                        >
+                          <Icon name="x" size={12} />
+                        </button>
+                      </span>
                     ))}
+                    <button
+                      type="button"
+                      className="jt-pick-chip"
+                      onClick={() => { setAddingTo(row); setAddStudentId(""); }}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "6px 12px",
+                        borderRadius: 999,
+                        background: COLORS.surface,
+                        border: `1px dashed ${COLORS.border}`,
+                        fontFamily: FONT,
+                        fontSize: 13.5,
+                        fontWeight: 600,
+                        color: COLORS.blue,
+                        cursor: "pointer",
+                      }}
+                    >
+                      <Icon name="plus" size={12} color={COLORS.blue} /> {t("addAttendee")}
+                    </button>
                   </div>
                 )}
               </div>
@@ -326,6 +480,76 @@ export function ClassHistoryPage() {
           session={attendee.session}
           onClose={() => setAttendee(null)}
         />
+      )}
+
+      {sessionModal && (
+        <CrudFormModal
+          title={sessionModal === "new" ? t("addSession") : t("editSession")}
+          fields={sessionFields}
+          values={sessionValues}
+          onChange={setSessionValues}
+          onClose={() => setSessionModal(null)}
+          onSubmit={async (payload) => {
+            if (sessionModal === "new") await create("class-sessions", payload);
+            else await update("class-sessions", sessionModal.id, payload);
+          }}
+        />
+      )}
+
+      {deletingSession && (
+        <ConfirmDeleteModal
+          what={t("sessionOn", { className: deletingSession.className, date: deletingSession.date })}
+          note={t("sessionDeleteNote")}
+          onClose={() => setDeletingSession(null)}
+          onConfirm={() => deleteSession(deletingSession)}
+        />
+      )}
+
+      {addingTo && (
+        <Modal
+          title={t("addAttendee")}
+          width={420}
+          onClose={() => setAddingTo(null)}
+          footer={
+            <button
+              type="button"
+              className="jt-btn-primary"
+              style={{ ...primaryButtonStyle, opacity: addStudentId ? 1 : 0.5 }}
+              disabled={!addStudentId}
+              onClick={async () => {
+                /* check_in_time is what marks them present; the session's own
+                   date carries the when, so the clock only needs the time. */
+                await create("attendance", {
+                  student_id: addStudentId,
+                  session_id: addingTo.id,
+                  check_in_time: new Date().toISOString(),
+                });
+                setAddingTo(null);
+              }}
+            >
+              {tCommon("add")}
+            </button>
+          }
+        >
+          <label htmlFor="ch-add-student" style={labelStyle}>
+            {tCommon("student")}
+          </label>
+          <select
+            id="ch-add-student"
+            value={addStudentId}
+            onChange={(e) => setAddStudentId(e.target.value)}
+            style={selectStyle}
+          >
+            <option value="">—</option>
+            {students
+              .filter((s) => !addingTo.attendees.some((a) => a.studentId === s.id))
+              .map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+          </select>
+        </Modal>
       )}
     </div>
   );
