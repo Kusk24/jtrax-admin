@@ -108,8 +108,6 @@
     "signingIn": "Signing in…",
     "errorMissing": "Enter your email and password.",
     "errorInvalid": "That email and password don't match an admin account.",
-    "demoTitle": "Demo accounts",
-    "demoHint": "No backend yet — pick an account to fill the form. Password: {password}",
     "footer": "JCA Chess School · Admin console",
     "errorUnreachable": "Cannot reach the JTrax backend — is it running?"
   },

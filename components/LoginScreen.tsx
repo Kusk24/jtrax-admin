@@ -5,13 +5,8 @@ import { useActionState, useState } from "react";
 import { useTranslations } from "next-intl";
 import { LanguageToggle } from "./LanguageToggle";
 import { signIn, type SignInState } from "@/app/actions/auth";
-/* Seeded backend dev accounts (see jtrax-backend internal/db/seed.go). */
-const DEMO_PASSWORD = "jtrax-dev-1234";
-const DEV_ACCOUNTS = [
-  { id: "usr_admin1", name: "JCA Head Office", role: "Super Admin" as const, email: "admin@jca.ac.th", initials: "JH" },
-];
 import { Icon, type IconName } from "@/lib/icons";
-import { COLORS, FONT, ROLE_COLORS } from "@/lib/theme";
+import { COLORS, FONT } from "@/lib/theme";
 
 /* The three lines on the brand panel, each with one of the mockup's icons. */
 const POINTS: Array<{ key: string; icon: IconName }> = [
@@ -129,10 +124,9 @@ function BrandPanel() {
 
 export function LoginScreen() {
   const t = useTranslations("auth");
-  const tRole = useTranslations("roles");
   const [state, formAction, pending] = useActionState<SignInState, FormData>(signIn, {});
 
-  /* Controlled so the demo chips can fill both fields in one click. */
+  /* Controlled so the show/hide toggle can re-render without losing the value. */
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -368,94 +362,6 @@ export function LoginScreen() {
             </button>
           </form>
 
-          {/* No backend yet, so the seed admins double as demo logins. One tap
-              fills both fields — the same "pick who you are" idiom the student
-              and parent web app opens with. */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-            <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.textSecondary }}>
-              {t("demoTitle")}
-            </span>
-            {/* Name *and* role, like the topbar switcher — two of the four seed
-                admins share the Admin role, so the role alone can't tell them
-                apart. */}
-            <div className="jt-pick-grid">
-              {DEV_ACCOUNTS.map((person) => {
-                const roleColor = ROLE_COLORS[person.role];
-                const selected = email === person.email;
-                return (
-                  <button
-                    key={person.id}
-                    type="button"
-                    onClick={() => {
-                      setEmail(person.email);
-                      setPassword(DEMO_PASSWORD);
-                    }}
-                    className="jt-pick-chip"
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 9,
-                      padding: "8px 10px",
-                      borderRadius: 11,
-                      border: `1px solid ${selected ? COLORS.blue : COLORS.border}`,
-                      background: selected ? COLORS.light : COLORS.surface,
-                      cursor: "pointer",
-                      textAlign: "left",
-                    }}
-                  >
-                    <span
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        width: 28,
-                        height: 28,
-                        borderRadius: "50%",
-                        background: roleColor.bg,
-                        color: roleColor.color,
-                        fontFamily: FONT,
-                        fontSize: 11.5,
-                        fontWeight: 700,
-                        flexShrink: 0,
-                      }}
-                    >
-                      {person.initials}
-                    </span>
-                    <span style={{ minWidth: 0 }}>
-                      <span
-                        style={{
-                          display: "block",
-                          fontFamily: FONT,
-                          fontSize: 13.5,
-                          fontWeight: 600,
-                          color: COLORS.text,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {person.name}
-                      </span>
-                      <span
-                        style={{
-                          display: "block",
-                          fontFamily: FONT,
-                          fontSize: 12,
-                          fontWeight: 600,
-                          color: roleColor.color,
-                        }}
-                      >
-                        {tRole(person.role)}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            <span style={{ fontFamily: FONT, fontSize: 12.5, lineHeight: 1.5, color: COLORS.textSecondary }}>
-              {t("demoHint", { password: DEMO_PASSWORD })}
-            </span>
-          </div>
         </div>
 
         <p
