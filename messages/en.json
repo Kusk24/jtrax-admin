@@ -226,7 +226,8 @@
     "colCredit": "Credit",
     "deleteTitle": "Delete {name}?",
     "deleteBody": "This removes the student and their profile. Attendance and payment history are not recoverable.",
-    "deleteConfirm": "Delete Student"
+    "deleteConfirm": "Delete Student",
+    "noAccountYet": "No login account yet"
   },
   "payment": {
     "title": "Payment",

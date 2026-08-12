@@ -80,6 +80,7 @@ export function toStudents(c: LiveCollections): Student[] {
     return {
       id: sid,
       name: s(st, "name"),
+      email: s(st, "email"),
       branch: "Bangkok",
       className: cls ? s(cls, "name") : "—",
       credit,
