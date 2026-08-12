@@ -4,39 +4,42 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useData } from "@/components/DataProvider";
 import { Icon } from "@/lib/icons";
-import { COLORS, FONT, TODAY_REF } from "@/lib/theme";
-import { EmptyRow, ExportButton, fieldStyle, labelStyle, PageHeader, primaryButtonStyle } from "../page-kit";
+import { COLORS, FONT } from "@/lib/theme";
+import {
+  AddButton, ConfirmDeleteModal, CrudFormModal, RowActions,
+  emptyValues, valuesFrom, type CrudField, type CrudValues,
+} from "../crud";
+import { EmptyRow, ExportButton, PageHeader } from "../page-kit";
 import { Card } from "../ui";
 
-const AUDIENCES = ["Students", "Parents", "Teachers"] as const;
+/* The ER model has no audience column, so what a broadcast reaches is not
+   something this screen can set — the list has always shown "All". */
+const FIELDS = (t: (k: string) => string): CrudField[] => [
+  { name: "title", label: t("titleField"), required: true },
+  { name: "body", label: t("message"), kind: "textarea", required: true },
+];
+
+type Editing = { mode: "create" } | { mode: "edit"; id: string };
 
 export function AnnouncementPage() {
   const t = useTranslations("announcement");
   const tCommon = useTranslations("common");
-  const { announcements: rows, meAccountId, create, remove } = useData();
-  const [composeOpen, setComposeOpen] = useState(false);
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [audience, setAudience] = useState<Record<string, boolean>>({
-    Students: true,
-    Parents: true,
-    Teachers: false,
-  });
+  const { announcements: rows, meAccountId, create, update, remove } = useData();
 
-  const selected = AUDIENCES.filter((a) => audience[a]);
-  const canSend = title.trim() !== "" && body.trim() !== "" && selected.length > 0;
+  const fields = FIELDS(t);
+  const [editing, setEditing] = useState<Editing | null>(null);
+  const [values, setValues] = useState<CrudValues>(() => emptyValues(fields));
+  const [deleting, setDeleting] = useState<{ id: string; title: string } | null>(null);
 
-  function send() {
-    if (!canSend) return;
-    create("announcements", {
-      title: title.trim(),
-      body: body.trim(),
-      author_user_account_id: meAccountId,
-      posted_at: new Date().toISOString(),
-    }).catch((e) => window.alert(e instanceof Error ? e.message : "post failed"));
-    setTitle("");
-    setBody("");
-    setComposeOpen(false);
+  function openCreate() {
+    setValues(emptyValues(fields));
+    setEditing({ mode: "create" });
+  }
+
+  function openEdit(row: (typeof rows)[number]) {
+    if (!row.id) return;
+    setValues(valuesFrom(fields, { title: row.title, body: row.body }));
+    setEditing({ mode: "edit", id: row.id });
   }
 
   return (
@@ -51,83 +54,39 @@ export function AnnouncementPage() {
               columns={[t("titleField"), t("audience"), tCommon("date"), t("message")]}
               rows={() => rows.map((r) => [r.title, r.audience, r.date, r.body])}
             />
-            <button
-              type="button"
-              className="jt-btn-primary"
-              style={primaryButtonStyle}
-              onClick={() => setComposeOpen((v) => !v)}
-            >
-              {composeOpen ? tCommon("cancel") : t("new")}
-            </button>
+            <AddButton label={t("new")} onClick={openCreate} />
           </>
         }
       />
 
-      {composeOpen && (
-        <Card className="jtrax-fade-in-up" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div>
-            <label style={labelStyle} htmlFor="jtrax-ann-title">
-              {t("titleField")}
-            </label>
-            <input
-              id="jtrax-ann-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              style={fieldStyle}
-            />
-          </div>
-          <div>
-            <label style={labelStyle} htmlFor="jtrax-ann-body">
-              {t("message")}
-            </label>
-            <textarea
-              id="jtrax-ann-body"
-              rows={4}
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              style={{ ...fieldStyle, resize: "vertical", lineHeight: 1.5 }}
-            />
-          </div>
-          <div>
-            <span style={labelStyle}>{t("audience")}</span>
-            <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-              {AUDIENCES.map((a) => (
-                <label
-                  key={a}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 7,
-                    fontFamily: FONT,
-                    fontSize: 14,
-                    color: COLORS.text,
-                    cursor: "pointer",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={audience[a]}
-                    onChange={() => setAudience({ ...audience, [a]: !audience[a] })}
-                    style={{ accentColor: COLORS.blue, width: 15, height: 15 }}
-                  />
-                  {t(`audience${a}`)}
-                </label>
-              ))}
-            </div>
-          </div>
-          <div>
-            <button
-              type="button"
-              className="jt-btn-primary"
-              style={{ ...primaryButtonStyle, opacity: canSend ? 1 : 0.5, cursor: canSend ? "pointer" : "not-allowed" }}
-              disabled={!canSend}
-              onClick={send}
-            >
-              <Icon name="send" size={15} color="#fff" />
-              {t("send")}
-            </button>
-          </div>
-        </Card>
+      {editing && (
+        <CrudFormModal
+          title={editing.mode === "create" ? t("new") : t("editTitle")}
+          fields={fields}
+          values={values}
+          onChange={setValues}
+          onClose={() => setEditing(null)}
+          submitLabel={editing.mode === "create" ? t("send") : tCommon("save")}
+          onSubmit={async (payload) => {
+            if (editing.mode === "create") {
+              await create("announcements", {
+                ...payload,
+                author_user_account_id: meAccountId,
+                posted_at: new Date().toISOString(),
+              });
+            } else {
+              await update("announcements", editing.id, payload);
+            }
+          }}
+        />
+      )}
+
+      {deleting && (
+        <ConfirmDeleteModal
+          what={deleting.title}
+          onClose={() => setDeleting(null)}
+          onConfirm={() => remove("announcements", deleting.id)}
+        />
       )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -137,7 +96,7 @@ export function AnnouncementPage() {
           </Card>
         )}
         {rows.map((a, i) => (
-          <Card key={`${a.title}-${i}`} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <Card key={a.id ?? `${a.title}-${i}`} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
               <div style={{ display: "flex", alignItems: "flex-start", gap: 11, minWidth: 0 }}>
                 <span
@@ -163,23 +122,13 @@ export function AnnouncementPage() {
                   </div>
                 </div>
               </div>
-              <button
-                type="button"
-                aria-label={t("deleteItem", { title: a.title })}
-                onClick={() => a.id && remove("announcements", a.id).catch((e) => window.alert(e instanceof Error ? e.message : "delete failed"))}
-                style={{
-                  display: "inline-flex",
-                  border: `1px solid ${COLORS.border}`,
-                  borderRadius: 8,
-                  padding: 6,
-                  background: COLORS.surface,
-                  cursor: "pointer",
-                  color: COLORS.textSecondary,
-                  flexShrink: 0,
-                }}
-              >
-                <Icon name="x" size={14} />
-              </button>
+              {a.id && (
+                <RowActions
+                  label={a.title}
+                  onEdit={() => openEdit(a)}
+                  onDelete={() => setDeleting({ id: a.id!, title: a.title })}
+                />
+              )}
             </div>
             <p
               style={{

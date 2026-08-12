@@ -7,6 +7,13 @@ import { useData } from "@/components/DataProvider";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf, TODAY_REF } from "@/lib/theme";
 import {
+  ConfirmDeleteModal,
+  CrudFormModal,
+  RowActions,
+  type CrudField,
+  type CrudValues,
+} from "../crud";
+import {
   EmptyRow,
   equalTemplate,
   ExportButton,
@@ -26,7 +33,7 @@ import {
 } from "../page-kit";
 import { Avatar, Card, ClassDot, SectionTitle } from "../ui";
 
-const TEMPLATE = equalTemplate(6, 90);
+const TEMPLATE = equalTemplate(7, 80);
 const METHODS = ["Credit Card", "Bank Transfer", "PromptPay", "Cash"];
 
 /* Credit packages snap the amount, ported from the design's lookup table. */
@@ -276,14 +283,56 @@ function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave:
   );
 }
 
+/* The API's own spelling of the method column; the filter bar shows the spaced
+   labels above, which is why recording one strips the spaces. */
+const METHOD_VALUES = ["CreditCard", "BankTransfer", "PromptPay", "Cash"];
+
 export function PaymentPage() {
   const t = useTranslations("payment");
   const tCommon = useTranslations("common");
-  const { payments, raw, create } = useData();
+  const { payments, raw, create, update, remove } = useData();
   const [formOpen, setFormOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [method, setMethod] = useState("");
   const [page, setPage] = useState(0);
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [values, setValues] = useState<CrudValues>({});
+  const [deleting, setDeleting] = useState<Payment | null>(null);
+
+  const editFields: CrudField[] = useMemo(
+    () => [
+      { name: "amount", label: t("amount"), kind: "number", required: true, half: true, min: 0 },
+      { name: "discount_amount", label: t("discount"), kind: "number", half: true, min: 0 },
+      { name: "final_amount", label: t("finalAmount"), kind: "number", required: true, half: true, min: 0 },
+      {
+        name: "payment_method",
+        label: t("paymentMethod"),
+        kind: "select",
+        required: true,
+        half: true,
+        options: METHOD_VALUES.map((m) => ({ value: m, label: m })),
+      },
+      { name: "payment_date", label: tCommon("date"), kind: "date", required: true, half: true },
+      { name: "reference_number", label: t("reference"), half: true },
+    ],
+    [t, tCommon],
+  );
+
+  function openEdit(payment: Payment) {
+    if (!payment.id) return;
+    const row = raw.payments.find((p) => String(p["payment_id"]) === payment.id);
+    if (!row) return;
+    setValues({
+      amount: String(row["amount"] ?? ""),
+      discount_amount: String(row["discount_amount"] ?? 0),
+      final_amount: String(row["final_amount"] ?? ""),
+      payment_method: String(row["payment_method"] ?? ""),
+      payment_date: String(row["payment_date"] ?? ""),
+      reference_number: String(row["reference_number"] ?? ""),
+    });
+    setEditingId(payment.id);
+  }
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -330,6 +379,25 @@ export function PaymentPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {editingId && (
+        <CrudFormModal
+          title={t("editTitle")}
+          fields={editFields}
+          values={values}
+          onChange={setValues}
+          onClose={() => setEditingId(null)}
+          onSubmit={(payload) => update("payments", editingId, payload).then(() => undefined)}
+        />
+      )}
+
+      {deleting && (
+        <ConfirmDeleteModal
+          what={t("paymentFor", { name: deleting.name, amount: deleting.amount })}
+          onClose={() => setDeleting(null)}
+          onConfirm={() => remove("payments", deleting.id!)}
+        />
+      )}
+
       <PageHeader
         title={t("title")}
         sub={t("sub", { count: filtered.length, total: totalPaid.toLocaleString() })}
@@ -368,14 +436,14 @@ export function PaymentPage() {
         <Table
           /* No status column — a recorded payment is a paid one, so the
              column was "Paid" on every row. */
-          columns={[tCommon("student"), tCommon("class"), t("credits"), tCommon("amount"), tCommon("date"), tCommon("method")]}
+          columns={[tCommon("student"), tCommon("class"), t("credits"), tCommon("amount"), tCommon("date"), tCommon("method"), tCommon("action")]}
           template={TEMPLATE}
-          minWidth={860}
+          minWidth={960}
         >
           {pageRows.length === 0 && <EmptyRow>{t("empty")}</EmptyRow>}
           {pageRows.map((p, i) => {
             return (
-              <TableRow key={`${p.name}-${p.date}-${i}`} template={TEMPLATE}>
+              <TableRow key={p.id ?? `${p.name}-${p.date}-${i}`} template={TEMPLATE}>
                 <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                   <Avatar initials={initialsOf(p.name)} size={30} />
                   <span style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -390,6 +458,15 @@ export function PaymentPage() {
                 <span style={{ fontWeight: 600 }}>{p.amount}</span>
                 <span style={{ color: COLORS.textSecondary }}>{p.date}</span>
                 <span style={{ color: COLORS.textSecondary }}>{p.method}</span>
+                {p.id ? (
+                  <RowActions
+                    label={t("paymentFor", { name: p.name, amount: p.amount })}
+                    onEdit={() => openEdit(p)}
+                    onDelete={() => setDeleting(p)}
+                  />
+                ) : (
+                  <span />
+                )}
               </TableRow>
             );
           })}
