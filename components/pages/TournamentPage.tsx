@@ -2,10 +2,21 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { removeIfPresent } from "@/lib/credentials";
 import { type Participant, type Tournament } from "@/lib/data";
 import { useData } from "@/components/DataProvider";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
+import {
+  AddButton,
+  ConfirmDeleteModal,
+  CrudFormModal,
+  ErrorNote,
+  RowActions,
+  errorText,
+  type CrudField,
+  type CrudValues,
+} from "../crud";
 import {
   Drawer,
   EmptyRow,
@@ -26,7 +37,7 @@ import {
 import { Avatar, Badge, Card, SectionTitle } from "../ui";
 
 const REGISTRATION_LINK = "https://jca-demo-registration-site.vercel.app/";
-const PARTICIPANT_TEMPLATE = equalTemplate(5, 80);
+const PARTICIPANT_TEMPLATE = equalTemplate(6, 70);
 
 /* Ported from buildQrCells: a deterministic pseudo-QR with real finder blocks,
    so the "registration website" card looks like a scannable code without
@@ -373,10 +384,88 @@ function CreateWizard({ onCancel, onPublish }: { onCancel: () => void; onPublish
 
 /* ---------------------------------------------------------------- detail --- */
 
-function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBack: () => void }) {
+function TournamentDetail({
+  tournament,
+  onBack,
+  onEdit,
+  onDelete,
+}: {
+  tournament: Tournament;
+  onBack: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
   const t = useTranslations("tournament");
+  const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
+  const { students, create, update, remove } = useData();
   const [tab, setTab] = useState<"overview" | "participants">("overview");
+  const [categoryDraft, setCategoryDraft] = useState("");
+  const [rowError, setRowError] = useState<string | null>(null);
+  const [participantModal, setParticipantModal] = useState<"new" | Participant | null>(null);
+  const [participantValues, setParticipantValues] = useState<CrudValues>({});
+  const [deletingParticipant, setDeletingParticipant] = useState<Participant | null>(null);
+  const [deletingCategory, setDeletingCategory] = useState<{ id: string; name: string } | null>(null);
+
+  /* Memoised because the participant field spec depends on it — a fresh []
+     every render would rebuild that spec on every keystroke. */
+  const categoryRows = useMemo(() => tournament.categoryRows ?? [], [tournament.categoryRows]);
+
+  const participantFields: CrudField[] = useMemo(
+    () => [
+      {
+        name: "student_id",
+        label: tCommon("student"),
+        kind: "select",
+        required: true,
+        options: students.map((s) => ({ value: s.id, label: s.name })),
+        help: t("participantStudentHelp"),
+      },
+      { name: "participant_name", label: t("player"), required: true, half: true },
+      { name: "participant_contact", label: tCommon("phone"), half: true },
+      { name: "participant_date_of_birth", label: t("dateOfBirth"), kind: "date", half: true },
+      {
+        name: "tournament_category_id",
+        label: t("category"),
+        kind: "select",
+        half: true,
+        options: categoryRows.map((c) => ({ value: c.id, label: c.name })),
+      },
+      { name: "fide_rating", label: t("rating"), kind: "number", half: true, min: 0 },
+      { name: "fee_charged", label: t("feeCharged"), kind: "number", half: true, min: 0 },
+    ],
+    [students, categoryRows, t, tCommon],
+  );
+
+  function openParticipant(p: Participant | "new") {
+    setParticipantModal(p);
+    setParticipantValues(
+      p === "new"
+        ? {
+            student_id: "", participant_name: "", participant_contact: "",
+            participant_date_of_birth: "", tournament_category_id: "", fide_rating: "", fee_charged: "",
+          }
+        : {
+            student_id: p.studentId ?? "",
+            participant_name: p.name,
+            participant_contact: p.contact === "—" ? "" : p.contact,
+            participant_date_of_birth: p.dateOfBirth ?? "",
+            tournament_category_id: p.categoryId ?? "",
+            fide_rating: p.rating ? String(p.rating) : "",
+            fee_charged: p.feeCharged ? String(p.feeCharged) : "",
+          },
+    );
+  }
+
+  async function guarded(job: () => Promise<unknown>) {
+    setRowError(null);
+    try {
+      await job();
+    } catch (e) {
+      setRowError(errorText(e, tCommon("saveFailed")));
+    }
+  }
+
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [drawer, setDrawer] = useState<Participant | null>(null);
@@ -437,7 +526,50 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
             {tournament.date} · {tournament.venue}
           </p>
         </div>
+        <span style={{ marginLeft: "auto" }}>
+          <RowActions label={tournament.name} onEdit={onEdit} onDelete={onDelete} />
+        </span>
       </Card>
+
+      {rowError && <ErrorNote>{rowError}</ErrorNote>}
+
+      {participantModal && (
+        <CrudFormModal
+          title={participantModal === "new" ? t("addParticipant") : t("editParticipant")}
+          fields={participantFields}
+          values={participantValues}
+          onChange={setParticipantValues}
+          onClose={() => setParticipantModal(null)}
+          onSubmit={async (payload) => {
+            if (participantModal === "new") {
+              await create("tournament-registrations", {
+                ...payload,
+                tournament_id: tournament.id,
+                registered_at: new Date().toISOString(),
+              });
+            } else {
+              await update("tournament-registrations", participantModal.id!, payload);
+            }
+          }}
+        />
+      )}
+
+      {deletingParticipant && (
+        <ConfirmDeleteModal
+          what={deletingParticipant.name}
+          onClose={() => setDeletingParticipant(null)}
+          onConfirm={() => remove("tournament-registrations", deletingParticipant.id!)}
+        />
+      )}
+
+      {deletingCategory && (
+        <ConfirmDeleteModal
+          what={deletingCategory.name}
+          note={t("categoryDeleteNote")}
+          onClose={() => setDeletingCategory(null)}
+          onConfirm={() => remove("tournament-categories", deletingCategory.id)}
+        />
+      )}
 
       {tournament.published && (
         <Card style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
@@ -552,10 +684,81 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
               ]}
             />
           </Card>
+
+          <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <SectionTitle>{t("categories")}</SectionTitle>
+            {categoryRows.length === 0 ? (
+              <p style={{ margin: 0, fontFamily: FONT, fontSize: 14, color: COLORS.textSecondary }}>
+                {t("noCategories")}
+              </p>
+            ) : (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {categoryRows.map((c) => (
+                  <span
+                    key={c.id}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 7,
+                      padding: "6px 8px 6px 12px",
+                      borderRadius: 999,
+                      border: `1px solid ${COLORS.border}`,
+                      fontFamily: FONT,
+                      fontSize: 13.5,
+                      color: COLORS.text,
+                    }}
+                  >
+                    {c.name}
+                    <button
+                      type="button"
+                      aria-label={tCommon("deleteThing", { what: c.name })}
+                      onClick={() => setDeletingCategory(c)}
+                      style={{
+                        display: "inline-flex",
+                        border: "none",
+                        background: "transparent",
+                        padding: 0,
+                        cursor: "pointer",
+                        color: COLORS.textSecondary,
+                      }}
+                    >
+                      <Icon name="x" size={13} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <input
+                value={categoryDraft}
+                onChange={(e) => setCategoryDraft(e.target.value)}
+                placeholder={t("categoryPlaceholder")}
+                aria-label={t("categoryPlaceholder")}
+                style={{ ...fieldStyle, flex: "1 1 180px", width: "auto" }}
+              />
+              <button
+                type="button"
+                className="jt-btn-ghost"
+                style={{ ...secondaryButtonStyle, opacity: categoryDraft.trim() ? 1 : 0.5 }}
+                disabled={!categoryDraft.trim()}
+                onClick={() =>
+                  guarded(async () => {
+                    await create("tournament-categories", {
+                      tournament_id: tournament.id,
+                      name: categoryDraft.trim(),
+                    });
+                    setCategoryDraft("");
+                  })
+                }
+              >
+                <Icon name="plus" size={13} /> {tCommon("add")}
+              </button>
+            </div>
+          </Card>
         </>
       ) : (
         <Card style={{ padding: 0, overflow: "hidden" }}>
-          <div style={{ padding: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: 14, flexWrap: "wrap" }}>
             <SearchInput
               value={search}
               onChange={(v) => { setSearch(v); setPage(0); }}
@@ -563,13 +766,16 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
               label={t("searchParticipants")}
               style={{ maxWidth: 340 }}
             />
+            <span style={{ marginLeft: "auto" }}>
+              <AddButton label={t("addParticipant")} onClick={() => openParticipant("new")} />
+            </span>
           </div>
           <Table
             /* No payment column — registration fees are tracked on the
                Payment page, not per participant row. */
-            columns={[t("rank"), t("player"), t("rating"), t("category"), t("score")]}
+            columns={[t("rank"), t("player"), t("rating"), t("category"), t("score"), tCommon("action")]}
             template={PARTICIPANT_TEMPLATE}
-            minWidth={680}
+            minWidth={780}
           >
             {pageRows.length === 0 && <EmptyRow>{t("noParticipants")}</EmptyRow>}
             {pageRows.map((p) => {
@@ -593,6 +799,15 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
                   <span style={{ color: COLORS.textSecondary }}>{p.rating}</span>
                   <span style={{ color: COLORS.textSecondary }}>{p.category}</span>
                   <span style={{ fontWeight: 600 }}>{p.score}</span>
+                  {p.id ? (
+                    <RowActions
+                      label={p.name}
+                      onEdit={() => openParticipant(p)}
+                      onDelete={() => setDeletingParticipant(p)}
+                    />
+                  ) : (
+                    <span />
+                  )}
                 </TableRow>
               );
             })}
@@ -670,13 +885,98 @@ function TournamentDetail({ tournament, onBack }: { tournament: Tournament; onBa
 
 /* ------------------------------------------------------------------ page --- */
 
+const TOURNAMENT_STATUSES = ["Upcoming", "Ongoing", "Completed"];
+
 export function TournamentPage() {
   const t = useTranslations("tournament");
+  const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
-  const { tournaments, create } = useData();
+  const { tournaments, raw, create, update, remove } = useData();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [values, setValues] = useState<CrudValues>({});
+  const [deleting, setDeleting] = useState<Tournament | null>(null);
+
+  const editFields: CrudField[] = useMemo(
+    () => [
+      { name: "name", label: t("fieldName"), required: true },
+      {
+        name: "tournament_status",
+        label: tCommon("status"),
+        kind: "select",
+        half: true,
+        options: TOURNAMENT_STATUSES.map((s) => ({ value: s, label: tStatus(s) })),
+      },
+      { name: "organizer_name", label: t("organizer"), half: true },
+      { name: "start_date", label: t("fieldDate"), kind: "date", half: true },
+      { name: "end_date", label: t("endDate"), kind: "date", half: true },
+      { name: "venue_name", label: t("fieldVenue"), half: true },
+      { name: "venue_address", label: t("address"), half: true },
+      { name: "registration_deadline", label: t("registrationCloses"), kind: "date", half: true },
+      { name: "max_participants", label: t("fieldMaxParticipants"), kind: "number", half: true, min: 0 },
+      { name: "early_bird_fee", label: t("earlyBirdFee"), kind: "number", half: true, min: 0 },
+      { name: "regular_fee", label: t("regularFee"), kind: "number", half: true, min: 0 },
+    ],
+    [t, tCommon, tStatus],
+  );
+
+  function openEdit(tournament: Tournament) {
+    const row = raw.tournaments.find((r) => String(r["tournament_id"]) === tournament.id);
+    if (!row) return;
+    const read = (k: string) => (row[k] == null ? "" : String(row[k]));
+    setValues({
+      name: read("name"),
+      tournament_status: read("tournament_status"),
+      organizer_name: read("organizer_name"),
+      start_date: read("start_date"),
+      end_date: read("end_date"),
+      venue_name: read("venue_name"),
+      venue_address: read("venue_address"),
+      registration_deadline: read("registration_deadline"),
+      max_participants: read("max_participants"),
+      early_bird_fee: read("early_bird_fee"),
+      regular_fee: read("regular_fee"),
+    });
+    setEditingId(tournament.id);
+  }
+
+  /* Registrations and categories point at the tournament, so they go first —
+     the backend answers a referenced row with a 409 rather than cascading. */
+  async function deleteTournament(tournament: Tournament) {
+    for (const p of tournament.participants) {
+      if (p.id) await removeIfPresent(remove, "tournament-registrations", p.id);
+    }
+    for (const c of tournament.categoryRows ?? []) {
+      await removeIfPresent(remove, "tournament-categories", c.id);
+    }
+    await remove("tournaments", tournament.id);
+    setSelectedId(null);
+  }
+
+  const dialogs = (
+    <>
+      {editingId && (
+        <CrudFormModal
+          title={t("editTitle")}
+          fields={editFields}
+          values={values}
+          onChange={setValues}
+          onClose={() => setEditingId(null)}
+          onSubmit={(payload) => update("tournaments", editingId, payload).then(() => undefined)}
+        />
+      )}
+      {deleting && (
+        <ConfirmDeleteModal
+          what={deleting.name}
+          note={t("deleteNote")}
+          onClose={() => setDeleting(null)}
+          onConfirm={() => deleteTournament(deleting)}
+        />
+      )}
+    </>
+  );
 
   const selected = tournaments.find((t) => t.id === selectedId) ?? null;
 
@@ -729,7 +1029,17 @@ export function TournamentPage() {
   }
 
   if (selected) {
-    return <TournamentDetail tournament={selected} onBack={() => setSelectedId(null)} />;
+    return (
+      <>
+        <TournamentDetail
+          tournament={selected}
+          onBack={() => setSelectedId(null)}
+          onEdit={() => openEdit(selected)}
+          onDelete={() => setDeleting(selected)}
+        />
+        {dialogs}
+      </>
+    );
   }
 
   function section(title: string, list: Tournament[]) {
@@ -765,6 +1075,11 @@ export function TournamentPage() {
                     <div>{item.venue}</div>
                     <div>{t("participantCount", { count: item.currentParticipants })}</div>
                   </div>
+                  <RowActions
+                    label={item.name}
+                    onEdit={() => openEdit(item)}
+                    onDelete={() => setDeleting(item)}
+                  />
                 </Card>
               );
             })}
@@ -776,6 +1091,7 @@ export function TournamentPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {dialogs}
       <PageHeader
         title={t("title")}
         sub={t("sub")}
