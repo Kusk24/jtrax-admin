@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { type Payment } from "@/lib/data";
 import { useData } from "@/components/DataProvider";
 import { Icon } from "@/lib/icons";
-import { classDotColor, COLORS, FONT, initialsOf, TODAY_REF } from "@/lib/theme";
+import { classDotColor, COLORS, FONT, initialsOf } from "@/lib/theme";
 import {
   ConfirmDeleteModal,
   CrudFormModal,

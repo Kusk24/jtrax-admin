@@ -1,10 +1,10 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { CLASSES_DEFS_REF } from "@/lib/data";
-import { buildCheckins, buildKpiCards } from "@/lib/derive";
+import { fmtTHB } from "@/lib/live";
 import { Icon, type IconName } from "@/lib/icons";
 import { ACCENTS, ACCENT_TINTS, COLORS, FONT, FONT_DISPLAY } from "@/lib/theme";
+import { useData } from "../DataProvider";
 import { Card } from "../ui";
 
 /**
@@ -22,22 +22,21 @@ type Tile = {
 
 export function KpiStrip() {
   const t = useTranslations("dashboard");
-  const [revenue, students] = buildKpiCards();
-  const checkins = buildCheckins({});
-  const ongoing = CLASSES_DEFS_REF.filter((c) => c.status === "Ongoing").length;
+  const { students, checkins, todaysClasses, monthRevenue } = useData();
+  const ongoing = todaysClasses.filter((c) => c.status === "Ongoing").length;
 
   const tiles: Tile[] = [
     {
       key: "revenueThisMonth",
       icon: "wallet",
-      value: revenue.value,
+      value: fmtTHB(monthRevenue.total),
       color: ACCENTS.green,
       bg: ACCENT_TINTS.green,
     },
     {
       key: "totalStudents",
       icon: "students",
-      value: students.value,
+      value: String(students.length),
       color: ACCENTS.navy,
       bg: ACCENT_TINTS.navy,
     },
@@ -51,14 +50,14 @@ export function KpiStrip() {
     {
       key: "classesToday",
       icon: "calendar",
-      value: `${ongoing}/${CLASSES_DEFS_REF.length}`,
+      value: `${ongoing}/${todaysClasses.length}`,
       color: ACCENTS.plum,
       bg: ACCENT_TINTS.plum,
     },
   ];
 
   const sub: Record<string, string> = {
-    revenueThisMonth: t("fromPayments", { count: revenue.count }),
+    revenueThisMonth: t("fromPayments", { count: monthRevenue.count }),
     totalStudents: t("enrolledAcross"),
     checkedInToday: t("checkedInSub"),
     classesToday: t("classesTodaySub"),

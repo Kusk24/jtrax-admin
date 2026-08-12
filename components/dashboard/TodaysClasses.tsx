@@ -3,11 +3,12 @@
 import { useTranslations } from "next-intl";
 import type { IconName } from "@/lib/icons";
 import { Icon } from "@/lib/icons";
-import { CLASSES_DEFS_REF, type ClassDef } from "@/lib/data";
+import { type ClassDef } from "@/lib/data";
 import { CLASS_CATEGORY_COLORS, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
+import { useData } from "../DataProvider";
 import { Card, SectionTitle } from "../ui";
 
-/* Each course tier gets its chess piece, matching COURSES_SEED's icon field. */
+/* Each course tier gets its chess piece. */
 const CATEGORY_ICON: Record<string, IconName> = {
   Master: "trophy",
   Intermediate: "king",
@@ -149,6 +150,7 @@ export function TodaysClasses({
   onViewClass: (def: ClassDef) => void;
 }) {
   const t = useTranslations("dashboard");
+  const { todaysClasses } = useData();
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <SectionTitle>{t("todaysClasses")}</SectionTitle>
@@ -201,8 +203,8 @@ export function TodaysClasses({
           </span>
         </button>
 
-        {CLASSES_DEFS_REF.map((def) => (
-          <ClassCard key={def.name} def={def} onView={onViewClass} />
+        {todaysClasses.map((def) => (
+          <ClassCard key={def.id ?? def.name} def={def} onView={onViewClass} />
         ))}
       </div>
     </Card>

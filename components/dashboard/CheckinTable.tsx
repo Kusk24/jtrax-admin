@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { buildCheckins } from "@/lib/derive";
-import { classDotColor, COLORS, FONT, statusChipColors } from "@/lib/theme";
+import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
+import { useData } from "../DataProvider";
 import { equalTemplate, Table, TableRow } from "../page-kit";
 import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
 
@@ -22,16 +22,15 @@ export function CheckinTable() {
   const t = useTranslations("dashboard");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
-  const [dismissed, setDismissed] = useState<Record<number, string>>({});
+  const { checkins: rows, update } = useData();
   const [expanded, setExpanded] = useState(false);
-
-  const rows = buildCheckins(dismissed);
   const visible = expanded ? rows : rows.slice(0, COLLAPSED_ROWS);
 
-  function dismiss(idx: number) {
-    if (dismissed[idx]) return;
-    const time = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-    setDismissed((prev) => ({ ...prev, [idx]: time }));
+  /* Dismissing stamps check_out_time on the attendance row, so the desk's
+     action outlives the page — it used to live in component state and vanish
+     on the next render. */
+  function dismiss(attendanceId: string) {
+    update("attendance", attendanceId, { check_out_time: new Date().toISOString() }).catch(() => {});
   }
 
   return (
@@ -87,9 +86,9 @@ export function CheckinTable() {
           const credit = creditColors(row.credit);
           const status = statusChipColors(row.status === "In class" ? "Ongoing" : "Dismissed");
           return (
-            <TableRow key={row.idx} template={GRID}>
+            <TableRow key={row.attendanceId} template={GRID}>
               <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                <Avatar initials={row.initials} size={30} />
+                <Avatar initials={initialsOf(row.name)} size={30} />
                 <span
                   style={{
                     fontWeight: 600,
@@ -115,15 +114,15 @@ export function CheckinTable() {
               <span style={{ color: COLORS.textSecondary }}>{row.timeOut}</span>
 
               <Badge color={status.color} bg={status.bg} style={{ justifySelf: "start" }}>
-                {tStatus(row.displayStatus)}
+                {tStatus(row.status)}
               </Badge>
 
               <span>
-                {row.canDismiss && (
+                {row.status === "In class" && row.attendanceId && (
                   <button
                     type="button"
                     className="jt-chip"
-                    onClick={() => dismiss(row.idx)}
+                    onClick={() => dismiss(row.attendanceId!)}
                     style={{
                       padding: "5px 12px",
                       borderRadius: 999,

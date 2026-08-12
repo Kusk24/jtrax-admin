@@ -5,8 +5,7 @@ import { useTranslations } from "next-intl";
 import { generateTempPassword } from "@/lib/credentials";
 import { type Student } from "@/lib/data";
 import { useData } from "@/components/DataProvider";
-import { buildPracticeStrip } from "@/lib/derive";
-import { fmtDate, fmtTHB } from "@/lib/live";
+import { fmtDate, fmtTHB, practiceStrip } from "@/lib/live";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
 import {
@@ -99,9 +98,6 @@ function StudentDetail({
   const EDIT_CLASS_OPTIONS = Array.from(
     new Set([...raw.classes.map((c) => String(c.name ?? "")), ...CLASS_OPTIONS]),
   );
-  /* The practice strip is still a demo visualisation — keyed by a stable hash
-     of the id until practice_activity is wired to this screen. */
-  const seedIdx = Math.abs([...student.id].reduce((h, ch) => h * 31 + ch.charCodeAt(0), 7)) % 10;
 
   /* Real attendance: the sessions this student was checked in to, newest first. */
   const attendance = useMemo(() => {
@@ -269,7 +265,7 @@ function StudentDetail({
     );
   }
 
-  const practice = useMemo(() => buildPracticeStrip(seedIdx), [seedIdx]);
+  const practice = useMemo(() => practiceStrip(raw, student.id), [raw, student.id]);
 
   /* This student's real payments, newest first — the tab used to show a
      generated set that had nothing to do with what the office recorded. */
