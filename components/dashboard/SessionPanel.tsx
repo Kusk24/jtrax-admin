@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { CLASSES_DEFS_REF, STUDENTS_SEED, type ClassDef } from "@/lib/data";
+import { type ClassDef } from "@/lib/data";
+import { todayISO } from "@/lib/live";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
 /* Shared with the rest of the forms so the panel's fields keep the same box —
    this file used to carry its own near-identical copies. */
+import { useData } from "../DataProvider";
 import { fieldStyle, labelStyle, selectStyle } from "../page-kit";
 import { Avatar } from "../ui";
 
@@ -165,16 +167,53 @@ const ghostBtn: React.CSSProperties = {
 function CreateSession({ onClose }: { onClose: () => void }) {
   const t = useTranslations("session");
   const tCommon = useTranslations("common");
-  const [className, setClassName] = useState(CLASSES_DEFS_REF[1]?.name ?? "Master Class");
+  const { raw, students, create } = useData();
+  const classes = raw.classes.map((c) => ({ id: String(c.class_id), name: String(c.name ?? "") }));
+  const [className, setClassName] = useState(classes[0]?.name ?? "");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
 
   const available = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return STUDENTS_SEED.filter((s) => !q || s.name.toLowerCase().includes(q));
-  }, [search]);
+    return students.filter((s) => !q || s.name.toLowerCase().includes(q));
+  }, [search, students]);
+
+  const canCreate = Boolean(className && startTime && endTime) && !busy;
+
+  /* Creates the session, then checks in everyone picked — the panel used to
+     close without writing anything. */
+  async function createSession() {
+    const cls = classes.find((c) => c.name === className);
+    if (!cls) return;
+    setBusy(true);
+    try {
+      const session = await create("class-sessions", {
+        class_id: cls.id,
+        session_date: todayISO(),
+        start_time: startTime,
+        end_time: endTime,
+        session_status: "Ongoing",
+      });
+      for (const name of selected) {
+        const student = students.find((s) => s.name === name);
+        if (student) {
+          await create("attendance", {
+            student_id: student.id,
+            session_id: session.session_id,
+            check_in_time: new Date().toISOString(),
+          });
+        }
+      }
+      onClose();
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : "could not create the session");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   function toggle(name: string) {
     setSelected((prev) => (prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]));
@@ -193,9 +232,13 @@ function CreateSession({ onClose }: { onClose: () => void }) {
             <button type="button" style={ghostBtn} onClick={onClose}>
               {tCommon("cancel")}
             </button>
-            {/* Mockup parity: there is no persistence layer yet, so this closes
-                the panel exactly as the design's own handler did. */}
-            <button type="button" className="jt-btn-primary" style={primaryBtn} onClick={onClose}>
+            <button
+              type="button"
+              className="jt-btn-primary"
+              style={{ ...primaryBtn, opacity: canCreate ? 1 : 0.5, cursor: canCreate ? "pointer" : "not-allowed" }}
+              disabled={!canCreate}
+              onClick={createSession}
+            >
               {t("createTitle")}
             </button>
           </span>
@@ -222,8 +265,8 @@ function CreateSession({ onClose }: { onClose: () => void }) {
               }}
               style={selectStyle}
             >
-              {CLASSES_DEFS_REF.map((c) => (
-                <option key={c.name} value={c.name}>
+              {classes.map((c) => (
+                <option key={c.id} value={c.name}>
                   {c.name}
                 </option>
               ))}
@@ -356,8 +399,11 @@ function ViewClass({ def, onClose }: { def: ClassDef; onClose: () => void }) {
   const t = useTranslations("session");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
+  const { students, raw, create, remove } = useData();
   const editable = def.status === "Ongoing";
-  const [roster, setRoster] = useState<string[]>(def.roster);
+  /* The roster comes from attendance, so adding or removing someone writes a
+     row rather than editing a local array that the next refresh discards. */
+  const roster = def.roster;
   const [addOpen, setAddOpen] = useState(false);
   const [search, setSearch] = useState("");
   const status = statusChipColors(def.status);
@@ -367,10 +413,10 @@ function ViewClass({ def, onClose }: { def: ClassDef; onClose: () => void }) {
      aren't on the roster yet. */
   const addable = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return STUDENTS_SEED.filter(
+    return students.filter(
       (student) => !roster.includes(student.name) && (!q || student.name.toLowerCase().includes(q)),
     );
-  }, [roster, search]);
+  }, [roster, search, students]);
 
   return (
     <PanelFrame
@@ -429,7 +475,13 @@ function ViewClass({ def, onClose }: { def: ClassDef; onClose: () => void }) {
             {editable && (
               <button
                 type="button"
-                onClick={() => setRoster((prev) => prev.filter((n) => n !== name))}
+                onClick={() => {
+                  const student = students.find((s) => s.name === name);
+                  const row = raw.attendance.find(
+                    (a) => String(a.session_id) === def.id && String(a.student_id) === student?.id,
+                  );
+                  if (row) remove("attendance", String(row.attendance_id)).catch(() => {});
+                }}
                 aria-label={t("removeFromRoster", { name })}
                 style={{
                   display: "inline-flex",
@@ -494,7 +546,11 @@ function ViewClass({ def, onClose }: { def: ClassDef; onClose: () => void }) {
                     type="button"
                     className="jt-find-row"
                     onClick={() => {
-                      setRoster((prev) => [...prev, student.name]);
+                      create("attendance", {
+                        student_id: student.id,
+                        session_id: def.id,
+                        check_in_time: new Date().toISOString(),
+                      }).catch(() => {});
                       setSearch("");
                     }}
                     style={{

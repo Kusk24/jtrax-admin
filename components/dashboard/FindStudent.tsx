@@ -4,10 +4,10 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { suggestedActions, type DeskAction, type DeskStatus } from "@/lib/desk-actions";
-import { searchStudents } from "@/lib/derive";
-import { CLASSES_DEFS_REF } from "@/lib/data";
+
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
+import { useData } from "../DataProvider";
 import { Avatar, Badge, Card, SectionTitle } from "../ui";
 
 const CREDIT_TOP_UPS = [5, 10, 20];
@@ -24,11 +24,21 @@ type PopoverKind = "class" | "credit" | null;
 export function FindStudent() {
   const router = useRouter();
   const t = useTranslations("find");
+  const { students, todaysClasses } = useData();
   const [query, setQuery] = useState("");
   const [desk, setDesk] = useState<Record<string, DeskState>>({});
   const [popover, setPopover] = useState<{ id: string; kind: PopoverKind }>({ id: "", kind: null });
 
-  const results = useMemo(() => searchStudents(query), [query]);
+  /* Name or parent-phone, against the real roster. */
+  const results = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return students.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        s.parentPhone.replace(/\s/g, "").includes(q.replace(/\s/g, "")),
+    );
+  }, [query, students]);
   const showResults = query.trim().length > 0;
 
   function deskFor(id: string): DeskState {
@@ -234,7 +244,7 @@ export function FindStudent() {
 
                   {open === "class" && (
                     <div className="jtrax-fade-in-up" style={popoverStyle}>
-                      {CLASSES_DEFS_REF.map((cls) => (
+                      {todaysClasses.map((cls) => (
                         <button
                           key={cls.name}
                           type="button"

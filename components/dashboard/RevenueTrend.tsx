@@ -6,13 +6,14 @@
  */
 
 import { useTranslations } from "next-intl";
-import { buildRevenueTrend, trendPointStrings } from "@/lib/derive";
+import { trendPointStrings } from "@/lib/derive";
 import { COLORS, FONT } from "@/lib/theme";
+import { useData } from "../DataProvider";
 import { Card, SectionTitle } from "../ui";
 
 export function RevenueTrend() {
   const t = useTranslations("dashboard");
-  const points = buildRevenueTrend();
+  const { revenueTrend: points } = useData();
   const { line, area } = trendPointStrings(points);
 
   return (

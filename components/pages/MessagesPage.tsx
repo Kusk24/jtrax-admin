@@ -2,6 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+/* The only screen still on fixtures: the ER model has no message table, so
+   there is nothing to read. Everything here lives in component state and is
+   gone on reload — the banner below says so rather than letting the screen
+   pass for a working inbox. */
 import { CONVERSATIONS_SEED, type ChatMessage, type Conversation } from "@/lib/data";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
@@ -58,6 +62,26 @@ export function MessagesPage() {
   }
 
   return (
+    <>
+      <div
+        role="note"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 9,
+          marginBottom: 12,
+          padding: "10px 13px",
+          borderRadius: 10,
+          background: COLORS.warningBg,
+          color: COLORS.warning,
+          fontFamily: FONT,
+          fontSize: 13.5,
+          lineHeight: 1.45,
+        }}
+      >
+        <Icon name="alertTriangle" size={16} color={COLORS.warning} />
+        {t("previewNotice")}
+      </div>
     <div className="jt-chat-grid">
       {/* ---- conversation list ---- */}
       <Card style={{ padding: 0, display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
@@ -404,5 +428,6 @@ export function MessagesPage() {
         )}
       </Card>
     </div>
+    </>
   );
 }

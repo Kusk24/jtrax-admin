@@ -49,41 +49,6 @@ type CreditPackage = {
 
 const PACKAGE_TEMPLATE = equalTemplate(5, 90);
 
-const COURSES_SEED: Course[] = [
-  {
-    id: "private",
-    name: "Private Class",
-    desc: "One-on-one coaching tailored to the student's pace, with a dedicated teacher and flexible scheduling.",
-    badge: "Private",
-    icon: "king",
-    category: "Intermediate",
-  },
-  {
-    id: "group",
-    name: "Group Class",
-    desc: "Small-group sessions that build fundamentals through friendly practice games and peer learning.",
-    badge: "Group",
-    icon: "queen",
-    category: "Beginner",
-  },
-  {
-    id: "master",
-    name: "Master Class",
-    desc: "Advanced training for students preparing to compete in tournaments, with strategy and endgame focus.",
-    badge: "For Tournament Players",
-    icon: "trophy",
-    category: "Master",
-  },
-];
-
-const TEACHERS_SEED: Teacher[] = [
-  { id: "jessica", name: "Jessica Tan", email: "jessica.tan@jca.ac.th", phone: "+66 86 330 7712", lineId: "jessica.tan", status: "Active" },
-  { id: "somchai", name: "Somchai Prasert", email: "somchai.p@jca.ac.th", phone: "+66 81 774 2210", lineId: "somchai.p", status: "Active" },
-  { id: "nadia", name: "Nadia Rahman", email: "nadia.r@jca.ac.th", phone: "+66 92 551 8834", lineId: "nadia.r", status: "Active" },
-  { id: "peter", name: "Peter Lim", email: "peter.lim@jca.ac.th", phone: "+66 89 220 1176", lineId: "peter.lim", status: "Active" },
-  { id: "aran", name: "Aran Chaiyo", email: "aran.c@jca.ac.th", phone: "+66 84 663 9028", lineId: "aran.c", status: "Inactive" },
-];
-
 function IconPicker({ value, onChange }: { value: IconName; onChange: (i: IconName) => void }) {
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>

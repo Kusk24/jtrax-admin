@@ -120,10 +120,6 @@ export function initialsOf(name: string): string {
     .toUpperCase();
 }
 
-/* The mockup's fixed "today" — all relative date maths key off it so the demo
-   data stays deterministic. */
-export const TODAY_REF = new Date(2026, 6, 23);
-
 export const MONTH_SHORT = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",

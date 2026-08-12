@@ -8,10 +8,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api } from "@/lib/api";
 import {
-  toAdmins, toAnnouncements, toParents, toPayments, toStudents, toTournaments,
-  type LiveCollections, type Row,
+  monthRevenue, toAdmins, toAnnouncements, toCheckins, toParents, toPayments,
+  toRevenueTrend, toStudents, toTodaysClasses, toTournaments,
+  type LiveCollections, type Row, type TrendPoint,
 } from "@/lib/live";
-import type { AdminPerson, Announcement, ParentPerson, Payment, Student, Tournament } from "@/lib/data";
+import type {
+  AdminPerson, Announcement, CheckinDef, ClassDef, ParentPerson, Payment, Student, Tournament,
+} from "@/lib/data";
 import { DEFAULT_CREDIT_RULES, type CreditRules } from "@/lib/derive";
 
 const EMPTY: LiveCollections = {
@@ -19,7 +22,7 @@ const EMPTY: LiveCollections = {
   classSessions: [], attendance: [], enrollments: [], creditTransactions: [],
   creditPackages: [], payments: [], teachers: [], admins: [], accounts: [],
   announcements: [], tournaments: [], tournamentCategories: [],
-  tournamentRegistrations: [], systemConfig: [],
+  tournamentRegistrations: [], practiceActivities: [], systemConfig: [],
 };
 
 const PATHS: Record<keyof LiveCollections, string> = {
@@ -30,6 +33,7 @@ const PATHS: Record<keyof LiveCollections, string> = {
   payments: "payments", teachers: "teachers", admins: "admins", accounts: "user-accounts",
   announcements: "announcements", tournaments: "tournaments",
   tournamentCategories: "tournament-categories", tournamentRegistrations: "tournament-registrations",
+  practiceActivities: "practice-activities",
   systemConfig: "system-configuration",
 };
 
@@ -44,6 +48,11 @@ type DataContextValue = {
   admins: AdminPerson[];
   announcements: Announcement[];
   tournaments: Tournament[];
+  /* Today's dashboard, from the same rows as everything else. */
+  todaysClasses: ClassDef[];
+  checkins: CheckinDef[];
+  revenueTrend: TrendPoint[];
+  monthRevenue: { total: number; count: number };
   /* Read from system_configuration, so the thresholds the dashboard follows are
      the academy's, not one browser's. */
   creditRules: CreditRules;
@@ -150,6 +159,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     admins: toAdmins(raw),
     announcements: toAnnouncements(raw),
     tournaments: toTournaments(raw),
+    /* `new Date()` inside the memo, not at render: the collections are empty
+       until the client fetch lands, so the server and the first client render
+       both produce empty lists and cannot disagree about the date. */
+    todaysClasses: toTodaysClasses(raw),
+    checkins: toCheckins(raw),
+    revenueTrend: toRevenueTrend(raw),
+    monthRevenue: monthRevenue(raw),
     creditRules,
     saveCreditRules,
     refresh,
