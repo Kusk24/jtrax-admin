@@ -29,6 +29,18 @@ export type Student = {
   joinedDate: string;
 };
 
+/** A parent as the console lists them: their own contact details plus the
+    children they are linked to through `student_parent`. */
+export type ParentPerson = {
+  id: string;
+  name: string;
+  loginEmail: string;
+  phone: string;
+  email: string;
+  lineId: string;
+  children: { id: string; name: string; relation: string; className: string; credit: number }[];
+};
+
 export type Payment = {
   name: string;
   className: string;

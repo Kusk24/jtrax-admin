@@ -3,7 +3,7 @@
  * and the console's display types from lib/data.ts (formatted strings).
  * All joins happen here so the page components keep their existing shapes.
  */
-import type { AdminPerson, Announcement, Payment, Student, Tournament, Participant } from "./data";
+import type { AdminPerson, Announcement, ParentPerson, Payment, Student, Tournament, Participant } from "./data";
 import type { JtraxRole } from "./theme";
 
 /* ---- raw backend row shapes (only the fields we read) ---- */
@@ -97,6 +97,43 @@ export function toStudents(c: LiveCollections): Student[] {
       studentLineIdNo: "",
       membershipType: cls ? s(cls, "class_type") : "—",
       joinedDate: enr ? fmtDate(s(enr, "enrolled_date")) : "",
+    };
+  });
+}
+
+/** One parent row with their contacts and the children linked to them.
+    `loginEmail` is the account address from user_account, which the backend
+    serves as a staff-only derived column; `email` is whatever contact address
+    the office recorded in parent_contact, and the two are often different. */
+export function toParents(c: LiveCollections): ParentPerson[] {
+  const students = toStudents(c);
+  return c.parents.map((p) => {
+    const pid = s(p, "parent_id");
+    const contacts = c.parentContacts.filter((pc) => s(pc, "parent_id") === pid);
+    const contact = (type: string) => s(contacts.find((pc) => s(pc, "contact_type") === type) ?? {}, "value");
+    const children = c.studentParents
+      .filter((sp) => s(sp, "parent_id") === pid)
+      .map((sp) => {
+        const child = students.find((st) => st.id === s(sp, "student_id"));
+        /* relationship_type is free text and the seed stores it lower-case,
+           but the console's own picker offers Mother/Father/Guardian. */
+        const rel = s(sp, "relationship_type");
+        return {
+          id: s(sp, "student_id"),
+          name: child?.name ?? s(sp, "student_id"),
+          relation: rel ? rel[0].toUpperCase() + rel.slice(1) : "Guardian",
+          className: child?.className ?? "—",
+          credit: child?.credit ?? 0,
+        };
+      });
+    return {
+      id: pid,
+      name: s(p, "name"),
+      loginEmail: s(p, "email"),
+      phone: contact("phone"),
+      email: contact("email"),
+      lineId: contact("line_id"),
+      children,
     };
   });
 }

@@ -5,6 +5,7 @@
     "academy": "Academy",
     "classhistory": "Class History",
     "students": "Students",
+    "parents": "Parents",
     "payment": "Payment",
     "tournament": "Tournament",
     "announcement": "Announcement",
@@ -79,7 +80,8 @@
     "fromDate": "From date",
     "toDate": "To date",
     "export": "Export",
-    "exported": "Exported"
+    "exported": "Exported",
+    "loading": "Loading…"
   },
   "shell": {
     "dashboard": "Dashboard",
@@ -227,6 +229,28 @@
     "deleteTitle": "Delete {name}?",
     "deleteBody": "This removes the student and their profile. Attendance and payment history are not recoverable.",
     "deleteConfirm": "Delete Student"
+  },
+  "parents": {
+    "title": "Parents",
+    "sub": "Parent accounts and the children linked to them",
+    "searchPlaceholder": "Search by parent, child, email or phone",
+    "searchLabel": "Search parents",
+    "empty": "No parents match these filters.",
+    "backToParents": "Back to Parents",
+    "colParent": "Parent",
+    "colChildren": "Children",
+    "allParents": "All parents",
+    "withChildren": "With children",
+    "withoutChildren": "Without children",
+    "childCount": "{count, plural, =0 {No children linked} one {# child} other {# children}}",
+    "children": "Children",
+    "noChildren": "No children are linked to this parent yet.",
+    "contactInfo": "Contact information",
+    "loginEmail": "Login email",
+    "lineId": "LINE ID",
+    "creditsShort": "{count, plural, one {# credit} other {# credits}}",
+    "call": "Call",
+    "emailAction": "Email"
   },
   "payment": {
     "title": "Payment",
