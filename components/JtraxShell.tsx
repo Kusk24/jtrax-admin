@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
+import { useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 import { LanguageToggle } from "./LanguageToggle";
 import { signOut } from "@/app/actions/auth";
@@ -163,42 +163,14 @@ function useToday(): string {
   return useSyncExternalStore(subscribeToNothing, formatToday, () => "");
 }
 
-function RoleSwitcher({ section }: { section: string }) {
-  const { person, people, setPerson } = useJtrax();
+/* Identity, not a control. This used to be a dropdown that switched between
+   mock people; the role now comes from the signed-in account, so the only way
+   to see the console as someone else is to sign in as them. */
+function AccountChip() {
+  const { person } = useJtrax();
   const tRole = useTranslations("roles");
-  const [open, setOpen] = useState(false);
   const today = useToday();
-  const wrapRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function onPointerDown(event: MouseEvent) {
-      if (!wrapRef.current?.contains(event.target as Node)) setOpen(false);
-    }
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("mousedown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
-
   const roleColor = ROLE_COLORS[person.role];
-
-  const chipStyle: CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    gap: 9,
-    padding: "6px 10px 6px 6px",
-    borderRadius: 999,
-    border: `1px solid ${COLORS.border}`,
-    background: COLORS.surface,
-    cursor: "pointer",
-    fontFamily: FONT,
-  };
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -223,121 +195,48 @@ function RoleSwitcher({ section }: { section: string }) {
         {today}
       </div>
 
-      <div ref={wrapRef} style={{ position: "relative" }}>
-        <button
-          type="button"
-          style={chipStyle}
-          onClick={() => setOpen((v) => !v)}
-          aria-haspopup="listbox"
-          aria-expanded={open}
+      <div
+        title={person.email}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 9,
+          padding: "6px 12px 6px 6px",
+          borderRadius: 999,
+          border: `1px solid ${COLORS.border}`,
+          background: COLORS.surface,
+          fontFamily: FONT,
+        }}
+      >
+        <span
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 28,
+            height: 28,
+            borderRadius: "50%",
+            background: roleColor.bg,
+            color: roleColor.color,
+            fontSize: 12,
+            fontWeight: 700,
+          }}
         >
-          <span
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 28,
-              height: 28,
-              borderRadius: "50%",
-              background: roleColor.bg,
-              color: roleColor.color,
-              fontSize: 12,
-              fontWeight: 700,
-            }}
-          >
-            {person.initials}
-          </span>
-          <span style={{ fontSize: 14, fontWeight: 600, color: COLORS.text }}>{person.name}</span>
-          <span
-            style={{
-              padding: "3px 8px",
-              borderRadius: 999,
-              background: roleColor.bg,
-              color: roleColor.color,
-              fontSize: 12,
-              fontWeight: 600,
-            }}
-          >
-            {tRole(person.role)}
-          </span>
-          <span style={{ display: "flex", color: COLORS.textSecondary }}>
-            <Icon name="chevronDown" size={15} />
-          </span>
-        </button>
-
-        {open && (
-          <div
-            role="listbox"
-            className="jtrax-fade-in-up"
-            style={{
-              position: "absolute",
-              top: "calc(100% + 6px)",
-              right: 0,
-              minWidth: 240,
-              background: COLORS.surface,
-              border: `1px solid ${COLORS.border}`,
-              borderRadius: 12,
-              boxShadow: "0 12px 28px rgb(36 59 99 / 0.14)",
-              padding: 6,
-              zIndex: 40,
-            }}
-          >
-            {people.map((option) => {
-              const selected = option.id === person.id;
-              const optionColor = ROLE_COLORS[option.role];
-              return (
-                <button
-                  key={option.id}
-                  type="button"
-                  role="option"
-                  aria-selected={selected}
-                  className="jt-nav-row"
-                  onClick={() => {
-                    setPerson(option, section);
-                    setOpen(false);
-                  }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    width: "100%",
-                    padding: "9px 10px",
-                    borderRadius: 8,
-                    border: "none",
-                    background: selected ? COLORS.light : "transparent",
-                    cursor: "pointer",
-                    textAlign: "left",
-                    fontFamily: FONT,
-                  }}
-                >
-                  <span
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      width: 26,
-                      height: 26,
-                      borderRadius: "50%",
-                      background: optionColor.bg,
-                      color: optionColor.color,
-                      fontSize: 11,
-                      fontWeight: 700,
-                      flexShrink: 0,
-                    }}
-                  >
-                    {option.initials}
-                  </span>
-                  <span style={{ flex: 1, fontSize: 14, fontWeight: 500, color: COLORS.text }}>
-                    {option.name}
-                  </span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: optionColor.color }}>
-                    {tRole(option.role)}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        )}
+          {person.initials}
+        </span>
+        <span style={{ fontSize: 14, fontWeight: 600, color: COLORS.text }}>{person.name}</span>
+        <span
+          style={{
+            padding: "3px 8px",
+            borderRadius: 999,
+            background: roleColor.bg,
+            color: roleColor.color,
+            fontSize: 12,
+            fontWeight: 600,
+          }}
+        >
+          {tRole(person.role)}
+        </span>
       </div>
     </div>
   );
@@ -407,7 +306,7 @@ export function JtraxShell({ children }: { children: React.ReactNode }) {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <LanguageToggle />
-            <RoleSwitcher section={section} />
+            <AccountChip />
           </div>
         </header>
 

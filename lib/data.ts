@@ -495,66 +495,6 @@ export const CLASSES_DEFS_REF: ClassDef[] = [
     }
   ];
 
-export const ADMIN_SEED: AdminPerson[] = [
-    {
-      "id": "jirapak",
-      "name": "Mr. Jirapak",
-      "role": "Super Admin",
-      "phone": "+66 81-234-5678",
-      "email": "jirapak@jca.ac.th",
-      "lineId": "jirapak.jca",
-      "branch": "Central",
-      "lastLogin": "Today • 9:18 AM",
-      "createdDate": "12 Jan 2024",
-      "createdBy": "System",
-      "status": "Active",
-      "initials": "MJ"
-    },
-    {
-      "id": "chloe",
-      "name": "Ms. Chloe Claire",
-      "role": "Admin",
-      "phone": "+66 89-555-2211",
-      "email": "chloe.claire@jca.ac.th",
-      "lineId": "chloe.claire",
-      "branch": "Central",
-      "lastLogin": "Yesterday • 4:42 PM",
-      "createdDate": "3 Mar 2024",
-      "createdBy": "Mr. Jirapak",
-      "status": "Active",
-      "initials": "CC"
-    },
-    {
-      "id": "pai",
-      "name": "Mr. Pai Pinatpong",
-      "role": "Admin",
-      "phone": "+66 92-118-9034",
-      "email": "pai.pinatpong@jca.ac.th",
-      "lineId": "pai.pinatpong",
-      "branch": "Central",
-      "lastLogin": "3 days ago • 11:05 AM",
-      "createdDate": "18 Jun 2024",
-      "createdBy": "Mr. Jirapak",
-      "status": "Active",
-      "initials": "PP"
-    },
-    {
-      "id": "jessica",
-      "name": "Ms. Jessica Jolin",
-      "role": "Receptionist",
-      "phone": "+66 86-330-7712",
-      "email": "jessica.tan@jca.ac.th",
-      "lineId": "jessica.tan",
-      "branch": "Central",
-      "lastLogin": "Today • 8:52 AM",
-      "createdDate": "22 Jul 2024",
-      "createdBy": "Mr. Jirapak",
-      "status": "Active",
-      "initials": "JJ"
-    }
-  ];
-
-
 export type Announcement = {
   /** Present on live rows from the backend; absent in the design seed. */
   id?: string;

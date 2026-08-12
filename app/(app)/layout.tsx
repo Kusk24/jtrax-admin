@@ -9,8 +9,8 @@ import { SESSION_COOKIE, fetchMe } from "@/lib/auth";
  * The guard for every signed-in screen: no session cookie, no shell — straight
  * to /login. `/login` sits outside this group, so it renders on its own.
  *
- * The signed-in admin also seeds the role switcher, so the app opens as whoever
- * actually signed in rather than always as the first seed admin.
+ * The account resolved here is the one the whole console runs as, name, role
+ * and all — there is no way to become anyone else without signing in again.
  */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const store = await cookies();
@@ -18,7 +18,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!person) redirect("/login");
 
   return (
-    <JtraxProvider initialPerson={person}>
+    <JtraxProvider person={person}>
       <DataProvider>
         <JtraxShell>{children}</JtraxShell>
       </DataProvider>
