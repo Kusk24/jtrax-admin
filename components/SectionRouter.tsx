@@ -8,6 +8,7 @@ import { AdminsPage } from "./pages/AdminsPage";
 import { AnnouncementPage } from "./pages/AnnouncementPage";
 import { ClassHistoryPage } from "./pages/ClassHistoryPage";
 import { MessagesPage } from "./pages/MessagesPage";
+import { ParentsPage } from "./pages/ParentsPage";
 import { PaymentPage } from "./pages/PaymentPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { StudentsPage } from "./pages/StudentsPage";
@@ -36,6 +37,8 @@ export function SectionRouter({
   switch (section) {
     case "students":
       return <StudentsPage key={newStudentName ?? "list"} startWizard={newStudentName} />;
+    case "parents":
+      return <ParentsPage />;
     case "payment":
       return <PaymentPage />;
     case "classhistory":

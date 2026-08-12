@@ -8,10 +8,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api } from "@/lib/api";
 import {
-  toAdmins, toAnnouncements, toPayments, toStudents, toTournaments,
+  toAdmins, toAnnouncements, toParents, toPayments, toStudents, toTournaments,
   type LiveCollections, type Row,
 } from "@/lib/live";
-import type { AdminPerson, Announcement, Payment, Student, Tournament } from "@/lib/data";
+import type { AdminPerson, Announcement, ParentPerson, Payment, Student, Tournament } from "@/lib/data";
 
 const EMPTY: LiveCollections = {
   students: [], parents: [], parentContacts: [], studentParents: [], classes: [],
@@ -35,6 +35,7 @@ type DataContextValue = {
   raw: LiveCollections;
   meAccountId: string;
   students: Student[];
+  parents: ParentPerson[];
   payments: Payment[];
   admins: AdminPerson[];
   announcements: Announcement[];
@@ -98,6 +99,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     raw,
     meAccountId,
     students: toStudents(raw),
+    parents: toParents(raw),
     payments: toPayments(raw),
     admins: toAdmins(raw),
     announcements: toAnnouncements(raw),

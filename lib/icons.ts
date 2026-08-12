@@ -26,6 +26,14 @@ const ICON_DATA = {
     ["circle", { "cx": 17, "cy": 9, "r": 2.5 }],
     ["path", { "d": "M14.8 13.2A4.5 4.5 0 0 1 20.5 20" }],
   ],
+  /* Two adults of equal size — `students` is the same pair with the second
+     figure drawn smaller, which is what reads as "child" there. */
+  "parents": [
+    ["circle", { "cx": 8, "cy": 8, "r": 3 }],
+    ["path", { "d": "M2.5 20a5.5 5.5 0 0 1 11 0" }],
+    ["circle", { "cx": 16.5, "cy": 8, "r": 3 }],
+    ["path", { "d": "M13.6 13.6A5.5 5.5 0 0 1 21.5 20" }],
+  ],
   "payment": [
     ["rect", { "x": 2.5, "y": 5.5, "width": 19, "height": 13, "rx": 2 }],
     ["line", { "x1": 2.5, "y1": 10, "x2": 21.5, "y2": 10 }],
