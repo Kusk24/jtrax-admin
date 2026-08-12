@@ -5,7 +5,8 @@ import { useTranslations } from "next-intl";
 import { DEFAULT_CREDIT_RULES, type CreditRules } from "@/lib/derive";
 import { Icon, type IconName } from "@/lib/icons";
 import { COLORS, FONT } from "@/lib/theme";
-import { useJtrax } from "../JtraxContext";
+import { useData } from "../DataProvider";
+import { ErrorNote, errorText } from "../crud";
 import { PageHeader, primaryButtonStyle, secondaryButtonStyle } from "../page-kit";
 import { Card } from "../ui";
 
@@ -18,10 +19,18 @@ const RULES: Array<{ key: RuleKey; icon: IconName; titleKey: string; descKey: st
 ];
 
 export function SettingsPage() {
-  const { creditRules, setCreditRules } = useJtrax();
+  const { creditRules, saveCreditRules } = useData();
   const t = useTranslations("settings");
-  const [draft, setDraft] = useState<CreditRules>(creditRules);
+  const tCommon = useTranslations("common");
+  /* null until the user types. The saved values only arrive after the first
+     render, and a draft that copies them in an effect would either render the
+     defaults over what is stored or trip the cascading-render rule; falling
+     through to `creditRules` needs neither. */
+  const [edited, setEdited] = useState<CreditRules | null>(null);
+  const draft = edited ?? creditRules;
   const [saved, setSaved] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
@@ -32,9 +41,25 @@ export function SettingsPage() {
     timer.current = setTimeout(() => setSaved(false), 2200);
   }
 
+  async function persist(rules: CreditRules) {
+    setBusy(true);
+    setError(null);
+    try {
+      await saveCreditRules(rules);
+      setEdited(null);
+      flash();
+    } catch (e) {
+      setError(errorText(e, tCommon("saveFailed")));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 820 }}>
       <PageHeader title={t("title")} sub={t("sub")} />
+
+      {error && <ErrorNote>{error}</ErrorNote>}
 
       <Card style={{ padding: 0 }}>
         {RULES.map((rule, i) => (
@@ -83,7 +108,7 @@ export function SettingsPage() {
                 onChange={(e) => {
                   /* Empty input parses to NaN; clamp to 0 so the field stays controlled. */
                   const next = Number.parseInt(e.target.value, 10);
-                  setDraft({ ...draft, [rule.key]: Number.isNaN(next) ? 0 : Math.max(0, next) });
+                  setEdited({ ...draft, [rule.key]: Number.isNaN(next) ? 0 : Math.max(0, next) });
                 }}
                 style={{
                   width: 78,
@@ -138,23 +163,18 @@ export function SettingsPage() {
             <button
               type="button"
               className="jt-btn-ghost"
-              style={secondaryButtonStyle}
-              onClick={() => {
-                setDraft(DEFAULT_CREDIT_RULES);
-                setCreditRules(DEFAULT_CREDIT_RULES);
-                flash();
-              }}
+              style={{ ...secondaryButtonStyle, opacity: busy ? 0.6 : 1 }}
+              disabled={busy}
+              onClick={() => persist(DEFAULT_CREDIT_RULES)}
             >
               {t("reset")}
             </button>
             <button
               type="button"
               className="jt-btn-primary"
-              style={primaryButtonStyle}
-              onClick={() => {
-                setCreditRules(draft);
-                flash();
-              }}
+              style={{ ...primaryButtonStyle, opacity: busy ? 0.6 : 1, cursor: busy ? "wait" : "pointer" }}
+              disabled={busy}
+              onClick={() => persist(draft)}
             >
               {t("save")}
             </button>

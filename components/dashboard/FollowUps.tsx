@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { buildFollowUps, type FollowUpBucket } from "@/lib/derive";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT } from "@/lib/theme";
-import { useJtrax } from "../JtraxContext";
+import { useData } from "../DataProvider";
 import { Card, SectionTitle } from "../ui";
 
 const ROW_CLASS: Record<FollowUpBucket, string> = {
@@ -22,9 +22,11 @@ const LABEL_KEY: Record<FollowUpBucket, string> = {
 
 export function FollowUps({ style, wide = false }: { style?: React.CSSProperties; wide?: boolean }) {
   const router = useRouter();
-  const { creditRules } = useJtrax();
+  const { creditRules, students } = useData();
   const t = useTranslations("dashboard");
-  const followUps = buildFollowUps(creditRules);
+  /* Real students against the saved thresholds — this card used to count the
+     design fixtures, so the numbers never moved when the roster did. */
+  const followUps = buildFollowUps(creditRules, students);
 
   const description = (key: FollowUpBucket) =>
     key === "low"
