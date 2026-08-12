@@ -37,7 +37,9 @@
     "Active": "ใช้งานอยู่",
     "In class": "อยู่ในคลาส",
     "Dismissed": "ปล่อยกลับแล้ว",
-    "Registered": "ลงทะเบียนแล้ว"
+    "Registered": "ลงทะเบียนแล้ว",
+    "Withdrawn": "ถอนการลงทะเบียน",
+    "Scheduled": "ตามกำหนดการ"
   },
   "common": {
     "search": "ค้นหา",
@@ -81,7 +83,18 @@
     "toDate": "ถึงวันที่",
     "export": "ส่งออก",
     "exported": "ส่งออกแล้ว",
-    "loading": "กำลังโหลด…"
+    "loading": "กำลังโหลด…",
+    "add": "เพิ่ม",
+    "saveFailed": "บันทึกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
+    "deleteFailed": "ลบไม่สำเร็จ",
+    "fieldRequired": "ต้องระบุ{field}",
+    "deleteTitle": "ลบ",
+    "deleteConfirm": "ลบ{what} ใช่หรือไม่ การกระทำนี้ไม่สามารถย้อนกลับได้",
+    "editThing": "แก้ไข{what}",
+    "deleteThing": "ลบ{what}",
+    "none": "ไม่มี",
+    "optional": "ไม่บังคับ",
+    "saved": "บันทึกแล้ว"
   },
   "shell": {
     "dashboard": "แดชบอร์ด",
@@ -252,7 +265,34 @@
     "deleteTitle": "ลบ {name} ใช่หรือไม่?",
     "deleteBody": "การลบจะนำนักเรียนและข้อมูลโปรไฟล์ออกจากระบบ ประวัติการเข้าเรียนและการชำระเงินจะไม่สามารถกู้คืนได้",
     "deleteConfirm": "ลบนักเรียน",
-    "noAccountYet": "ยังไม่มีบัญชีเข้าสู่ระบบ"
+    "noAccountYet": "ยังไม่มีบัญชีเข้าสู่ระบบ",
+    "noAttendance": "ยังไม่มีคาบเรียนที่เข้าเรียน",
+    "enrolment": "การลงทะเบียน",
+    "creditType": "ประเภท",
+    "creditType_purchase": "ซื้อเครดิต",
+    "creditType_consumption": "ใช้เครดิต",
+    "creditType_manual_adjustment": "ปรับด้วยตนเอง",
+    "creditAmountHelp": "ค่าบวกคือเพิ่มเครดิต ค่าลบคือหักเครดิต",
+    "expires": "หมดอายุ",
+    "notes": "หมายเหตุ",
+    "addCredit": "เพิ่มเครดิต",
+    "editCredit": "แก้ไขรายการเครดิต",
+    "creditBalance": "คงเหลือ {count} เครดิต",
+    "noCredits": "ยังไม่มีรายการเครดิต",
+    "creditEntry": "รายการเครดิต {amount} วันที่ {date}",
+    "noPayments": "ยังไม่มีการชำระเงิน",
+    "enrolments": "การลงทะเบียนเรียน",
+    "addEnrolment": "เพิ่มการลงทะเบียน",
+    "editEnrolment": "แก้ไขการลงทะเบียน",
+    "noEnrolments": "ยังไม่ได้ลงทะเบียนคลาสใด",
+    "enrolledDate": "วันที่ลงทะเบียน",
+    "enrolmentDeleteNote": "ไม่สามารถลบการลงทะเบียนที่มีรายการเครดิตหรือการชำระเงินอยู่",
+    "loginsTitle": "สร้างบัญชีแล้ว",
+    "loginsHint": "กรุณาคัดลอกตอนนี้ ระบบจะไม่แสดงรหัสผ่านอีก",
+    "studentLogin": "บัญชีนักเรียน",
+    "parentLogin": "บัญชีผู้ปกครอง",
+    "tempPassword": "รหัสผ่านชั่วคราว",
+    "tabCredits": "เครดิต"
   },
   "parents": {
     "title": "ผู้ปกครอง",
@@ -274,7 +314,23 @@
     "lineId": "ไลน์ไอดี",
     "creditsShort": "{count, plural, other {# เครดิต}}",
     "call": "โทร",
-    "emailAction": "ส่งอีเมล"
+    "emailAction": "ส่งอีเมล",
+    "add": "เพิ่มผู้ปกครอง",
+    "editParent": "แก้ไขผู้ปกครอง",
+    "deleteNote": "ระบบจะลบบัญชีเข้าสู่ระบบ ข้อมูลติดต่อ และการเชื่อมโยงกับบุตรหลาน แต่ข้อมูลนักเรียนจะยังคงอยู่",
+    "linkChild": "เชื่อมโยงบุตรหลาน",
+    "linkChildLabel": "เลือกนักเรียนที่ต้องการเชื่อมโยง",
+    "unlinkChild": "ยกเลิกการเชื่อมโยง {name}",
+    "relation": "ความสัมพันธ์",
+    "relationMother": "มารดา",
+    "relationFather": "บิดา",
+    "relationGuardian": "ผู้ปกครอง",
+    "noUnlinked": "นักเรียนทุกคนมีผู้ปกครองเชื่อมโยงแล้ว",
+    "createdTitle": "สร้างบัญชีผู้ปกครองแล้ว",
+    "createdHint": "กรุณาคัดลอกรหัสผ่านชั่วคราวตอนนี้ ระบบจะไม่แสดงอีก",
+    "copy": "คัดลอก",
+    "copied": "คัดลอกแล้ว",
+    "manageChildren": "จัดการบุตรหลาน"
   },
   "payment": {
     "title": "การชำระเงิน",
@@ -295,7 +351,12 @@
     "paymentMethod": "ช่องทางการชำระเงิน",
     "refNumber": "เลขที่อ้างอิง (ไม่บังคับ)",
     "finalAmount": "ยอดสุทธิ",
-    "savePayment": "บันทึกการชำระเงิน"
+    "savePayment": "บันทึกการชำระเงิน",
+    "editTitle": "แก้ไขการชำระเงิน",
+    "discount": "ส่วนลด",
+    "reference": "เลขที่อ้างอิง",
+    "amount": "จำนวนเงิน",
+    "paymentFor": "การชำระเงิน {amount} จาก {name}"
   },
   "classHistory": {
     "title": "ประวัติคลาสเรียน",
@@ -309,7 +370,16 @@
     "time": "เวลา",
     "attendedOn": "{className} · {date} · {time}",
     "viewAttendee": "ดูข้อมูล {name}",
-    "noProfile": "{name} เข้าเรียนคาบนี้ แต่ยังไม่มีข้อมูลนักเรียนในระบบ"
+    "noProfile": "{name} เข้าเรียนคาบนี้ แต่ยังไม่มีข้อมูลนักเรียนในระบบ",
+    "addSession": "เพิ่มคาบเรียน",
+    "editSession": "แก้ไขคาบเรียน",
+    "startTime": "เวลาเริ่ม",
+    "endTime": "เวลาสิ้นสุด",
+    "sessionOn": "คาบเรียน {className} วันที่ {date}",
+    "sessionDeleteNote": "ข้อมูลการเช็คชื่อของคาบนี้จะถูกลบไปด้วย",
+    "noAttendees": "ไม่มีผู้เช็คชื่อในคาบนี้",
+    "addAttendee": "เพิ่มนักเรียน",
+    "removeAttendee": "นำ {name} ออกจากคาบเรียนนี้"
   },
   "tournament": {
     "title": "การแข่งขัน",
@@ -381,7 +451,20 @@
     "fieldFormat": "รูปแบบ",
     "fieldTimeControl": "การจับเวลา",
     "fieldChiefArbiter": "กรรมการหลัก",
-    "fieldMaxParticipants": "จำนวนผู้เข้าแข่งขันสูงสุด"
+    "fieldMaxParticipants": "จำนวนผู้เข้าแข่งขันสูงสุด",
+    "editTitle": "แก้ไขการแข่งขัน",
+    "endDate": "วันสิ้นสุด",
+    "earlyBirdFee": "ค่าสมัครล่วงหน้า",
+    "regularFee": "ค่าสมัครปกติ",
+    "deleteNote": "ประเภทการแข่งขันและรายชื่อผู้เข้าแข่งขันจะถูกลบไปด้วย",
+    "addParticipant": "เพิ่มผู้เข้าแข่งขัน",
+    "editParticipant": "แก้ไขผู้เข้าแข่งขัน",
+    "participantStudentHelp": "การลงทะเบียนจะเชื่อมโยงกับข้อมูลนักเรียน",
+    "dateOfBirth": "วันเกิด",
+    "feeCharged": "ค่าสมัครที่เรียกเก็บ",
+    "noCategories": "ยังไม่มีประเภทการแข่งขัน",
+    "categoryPlaceholder": "ชื่อประเภท เช่น รุ่นอายุไม่เกิน 10 ปี",
+    "categoryDeleteNote": "ผู้เข้าแข่งขันในประเภทนี้จะยังลงทะเบียนอยู่ แต่จะไม่มีประเภทกำกับ"
   },
   "announcement": {
     "title": "ประกาศ",
@@ -395,7 +478,8 @@
     "audienceTeachers": "คุณครู",
     "send": "ส่งประกาศ",
     "empty": "ยังไม่มีประกาศ",
-    "deleteItem": "ลบ {title}"
+    "deleteItem": "ลบ {title}",
+    "editTitle": "แก้ไขประกาศ"
   },
   "messages": {
     "conversations": "การสนทนา",
@@ -465,7 +549,18 @@
     "editTeacher": "แก้ไขข้อมูลคุณครู",
     "deleteTeacher": "ลบครูผู้สอน",
     "deleteTeacherTitle": "ลบ {name} ใช่หรือไม่?",
-    "deleteTeacherBody": "การลบจะนำครูออกจากสถาบัน คลาสที่เคยสอนจะยังคงมีประวัติอยู่"
+    "deleteTeacherBody": "การลบจะนำครูออกจากสถาบัน คลาสที่เคยสอนจะยังคงมีประวัติอยู่",
+    "packagesTitle": "แพ็กเกจเครดิต",
+    "packagesSub": "ราคาของแต่ละคลาสและอายุการใช้งานเครดิต",
+    "addPackage": "เพิ่มแพ็กเกจ",
+    "editPackage": "แก้ไขแพ็กเกจ",
+    "creditAmount": "เครดิต",
+    "price": "ราคา",
+    "validity": "อายุการใช้งาน (วัน)",
+    "validityDays": "{days} วัน",
+    "noPackages": "ยังไม่มีแพ็กเกจเครดิต",
+    "packageFor": "แพ็กเกจ {credits} เครดิตของ {className}",
+    "courseDeleteNote": "ไม่สามารถลบคลาสที่ยังมีการลงทะเบียน คาบเรียน หรือแพ็กเกจอยู่"
   },
   "settings": {
     "title": "กฎเกณฑ์เครดิต",
