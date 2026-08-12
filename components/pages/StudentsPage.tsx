@@ -2,17 +2,28 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { generateTempPassword } from "@/lib/credentials";
 import { type Student } from "@/lib/data";
 import { useData } from "@/components/DataProvider";
-import { buildAttendanceRows, buildPracticeStrip, buildStudentPayments } from "@/lib/derive";
+import { buildPracticeStrip } from "@/lib/derive";
+import { fmtDate, fmtTHB } from "@/lib/live";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
+import {
+  AddButton,
+  ConfirmDeleteModal,
+  CrudFormModal,
+  RowActions,
+  type CrudField,
+  type CrudValues,
+} from "../crud";
 import {
   EmptyRow,
   fieldStyle,
   FilterBar,
   InfoGrid,
   labelStyle,
+  Modal,
   equalTemplate,
   ExportButton,
   PageHeader,
@@ -41,11 +52,25 @@ const RELATION_OPTIONS = ["Mother", "Father", "Guardian"];
    them to the first option on save. */
 const BRANCH_OPTIONS = ["Bangkok"];
 
+/* Same convention the roster import uses, so an address created here and one
+   imported in bulk look alike: first.last@student.jca.ac.th. */
+function studentEmailFor(name: string): string {
+  const slug = name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ".")
+    .replace(/^\.|\.$/g, "");
+  return `${slug || "student"}@student.jca.ac.th`;
+}
+
 type View = { kind: "list" } | { kind: "detail"; id: string } | { kind: "wizard" };
 
 /* ---------------------------------------------------------------- detail --- */
 
-const DETAIL_TABS = ["Overview", "Attendance", "Practice", "Payments"] as const;
+const DETAIL_TABS = ["Overview", "Attendance", "Credits", "Practice", "Payments"] as const;
+const CREDIT_TEMPLATE = equalTemplate(5, 90);
+const CREDIT_TYPES = ["purchase", "consumption", "manual_adjustment"];
+const ENROLMENT_STATUSES = ["Active", "Completed", "Withdrawn"];
 type DetailTab = (typeof DETAIL_TABS)[number];
 
 function StudentDetail({
@@ -70,22 +95,211 @@ function StudentDetail({
   function setField<K extends keyof Student>(key: K, value: Student[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
   }
-  const { raw } = useData();
+  const { raw, create, update, remove } = useData();
   const EDIT_CLASS_OPTIONS = Array.from(
     new Set([...raw.classes.map((c) => String(c.name ?? "")), ...CLASS_OPTIONS]),
   );
-  /* Attendance/practice strips are still demo visualisations — keyed by a
-     stable hash of the id until per-session data is wired. */
+  /* The practice strip is still a demo visualisation — keyed by a stable hash
+     of the id until practice_activity is wired to this screen. */
   const seedIdx = Math.abs([...student.id].reduce((h, ch) => h * 31 + ch.charCodeAt(0), 7)) % 10;
-  const attendance = useMemo(() => buildAttendanceRows(seedIdx, student.className), [seedIdx, student.className]);
+
+  /* Real attendance: the sessions this student was checked in to, newest first. */
+  const attendance = useMemo(() => {
+    return raw.attendance
+      .filter((a) => String(a["student_id"]) === student.id)
+      .map((a) => {
+        const session = raw.classSessions.find((s) => String(s["session_id"]) === String(a["session_id"]));
+        const cls = session
+          ? raw.classes.find((c) => String(c["class_id"]) === String(session["class_id"]))
+          : undefined;
+        return {
+          id: String(a["attendance_id"]),
+          date: session ? String(session["session_date"] ?? "") : "",
+          className: cls ? String(cls["name"] ?? "") : "—",
+        };
+      })
+      .sort((a, b) => b.date.localeCompare(a.date));
+  }, [raw.attendance, raw.classSessions, raw.classes, student.id]);
+
+  /* Credit ledger for this student's enrolments — what actually adds up to the
+     balance shown on the header chip. */
+  const enrolmentIds = useMemo(
+    () =>
+      raw.enrollments
+        .filter((e) => String(e["student_id"]) === student.id)
+        .map((e) => String(e["enrollment_id"])),
+    [raw.enrollments, student.id],
+  );
+
+  const creditRows = useMemo(() => {
+    return raw.creditTransactions
+      .filter((tx) => enrolmentIds.includes(String(tx["enrollment_id"])))
+      .map((tx) => ({
+        id: String(tx["credit_transaction_id"]),
+        enrollmentId: String(tx["enrollment_id"]),
+        type: String(tx["transaction_type"] ?? ""),
+        amount: Number(tx["amount"] ?? 0),
+        date: String(tx["transaction_date"] ?? ""),
+        expiry: String(tx["expiry_date"] ?? ""),
+        notes: String(tx["notes"] ?? ""),
+      }))
+      .sort((a, b) => b.date.localeCompare(a.date));
+  }, [raw.creditTransactions, enrolmentIds]);
+
+  const enrolments = useMemo(
+    () =>
+      raw.enrollments
+        .filter((e) => String(e["student_id"]) === student.id)
+        .map((e) => {
+          const cls = raw.classes.find((c) => String(c["class_id"]) === String(e["class_id"]));
+          return {
+            id: String(e["enrollment_id"]),
+            classId: String(e["class_id"] ?? ""),
+            className: cls ? String(cls["name"] ?? "") : "—",
+            enrolledDate: String(e["enrolled_date"] ?? ""),
+            status: String(e["status"] ?? ""),
+          };
+        }),
+    [raw.enrollments, raw.classes, student.id],
+  );
+
+  const [enrolmentModal, setEnrolmentModal] = useState<(typeof enrolments)[number] | "new" | null>(null);
+  const [enrolmentValues, setEnrolmentValues] = useState<CrudValues>({});
+  const [deletingEnrolment, setDeletingEnrolment] = useState<(typeof enrolments)[number] | null>(null);
+
+  const enrolmentFields: CrudField[] = useMemo(
+    () => [
+      {
+        name: "class_id",
+        label: tCommon("class"),
+        kind: "select",
+        required: true,
+        options: raw.classes.map((c) => ({ value: String(c["class_id"]), label: String(c["name"] ?? "") })),
+      },
+      { name: "enrolled_date", label: t("enrolledDate"), kind: "date", required: true, half: true },
+      {
+        name: "status",
+        label: tCommon("status"),
+        kind: "select",
+        half: true,
+        options: ENROLMENT_STATUSES.map((v) => ({ value: v, label: tStatus(v) })),
+      },
+    ],
+    [raw.classes, t, tCommon, tStatus],
+  );
+
+  function openEnrolmentModal(row: (typeof enrolments)[number] | "new") {
+    setEnrolmentModal(row);
+    setEnrolmentValues(
+      row === "new"
+        ? {
+            class_id: raw.classes[0] ? String(raw.classes[0]["class_id"]) : "",
+            enrolled_date: new Date().toISOString().slice(0, 10),
+            status: "Active",
+          }
+        : { class_id: row.classId, enrolled_date: row.enrolledDate, status: row.status },
+    );
+  }
+
+  const [creditModal, setCreditModal] = useState<(typeof creditRows)[number] | "new" | null>(null);
+  const [creditValues, setCreditValues] = useState<CrudValues>({});
+  const [deletingCredit, setDeletingCredit] = useState<(typeof creditRows)[number] | null>(null);
+
+  const creditFields: CrudField[] = useMemo(
+    () => [
+      {
+        name: "enrollment_id",
+        label: t("enrolment"),
+        kind: "select",
+        required: true,
+        options: raw.enrollments
+          .filter((e) => String(e["student_id"]) === student.id)
+          .map((e) => {
+            const cls = raw.classes.find((c) => String(c["class_id"]) === String(e["class_id"]));
+            return {
+              value: String(e["enrollment_id"]),
+              label: cls ? String(cls["name"] ?? "") : String(e["enrollment_id"]),
+            };
+          }),
+      },
+      {
+        name: "transaction_type",
+        label: t("creditType"),
+        kind: "select",
+        required: true,
+        half: true,
+        options: CREDIT_TYPES.map((v) => ({ value: v, label: t(`creditType_${v}`) })),
+      },
+      {
+        name: "amount",
+        label: tCommon("amount"),
+        kind: "number",
+        required: true,
+        half: true,
+        help: t("creditAmountHelp"),
+      },
+      { name: "transaction_date", label: tCommon("date"), kind: "date", required: true, half: true },
+      { name: "expiry_date", label: t("expires"), kind: "date", half: true },
+      { name: "notes", label: t("notes"), kind: "textarea" },
+    ],
+    [raw.enrollments, raw.classes, student.id, t, tCommon],
+  );
+
+  function openCreditModal(row: (typeof creditRows)[number] | "new") {
+    setCreditModal(row);
+    const today = new Date().toISOString().slice(0, 10);
+    setCreditValues(
+      row === "new"
+        ? {
+            enrollment_id: enrolmentIds[0] ?? "",
+            transaction_type: "manual_adjustment",
+            amount: "",
+            transaction_date: today,
+            expiry_date: "",
+            notes: "",
+          }
+        : {
+            enrollment_id: row.enrollmentId,
+            transaction_type: row.type,
+            amount: String(row.amount),
+            transaction_date: row.date,
+            expiry_date: row.expiry,
+            notes: row.notes,
+          },
+    );
+  }
+
   const practice = useMemo(() => buildPracticeStrip(seedIdx), [seedIdx]);
+
+  /* This student's real payments, newest first — the tab used to show a
+     generated set that had nothing to do with what the office recorded. */
   const payments = useMemo(
-    () => buildStudentPayments(seedIdx, student.name, student.className),
-    [seedIdx, student.name, student.className],
+    () =>
+      raw.payments
+        .filter((p) => String(p["student_id"]) === student.id)
+        .map((p) => {
+          const enr = raw.enrollments.find((e) => String(e["enrollment_id"]) === String(p["enrollment_id"]));
+          const cls = enr ? raw.classes.find((c) => String(c["class_id"]) === String(enr["class_id"])) : undefined;
+          const pkg = raw.creditPackages.find(
+            (k) => String(k["credit_package_id"]) === String(p["credit_package_id"]),
+          );
+          return {
+            id: String(p["payment_id"]),
+            className: cls ? String(cls["name"] ?? "") : "—",
+            credits: pkg ? `+${Number(pkg["credit_amount"] ?? 0)}` : "—",
+            amount: fmtTHB(Number(p["final_amount"] ?? 0)),
+            date: String(p["payment_date"] ?? ""),
+            method: String(p["payment_method"] ?? ""),
+          };
+        })
+        .sort((a, b) => b.date.localeCompare(a.date)),
+    [raw.payments, raw.enrollments, raw.classes, raw.creditPackages, student.id],
   );
 
   const chip = statusChipColors(student.status);
-  const presentCount = attendance.filter((a) => a.status === "Present").length;
+  /* Every attendance row is a session the student was checked in to, so the
+     count of them is the count present. */
+  const presentCount = attendance.length;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -351,6 +565,133 @@ function StudentDetail({
         </div>
       )}
 
+      {creditModal && (
+        <CrudFormModal
+          title={creditModal === "new" ? t("addCredit") : t("editCredit")}
+          fields={creditFields}
+          values={creditValues}
+          onChange={setCreditValues}
+          onClose={() => setCreditModal(null)}
+          onSubmit={async (payload) => {
+            if (creditModal === "new") await create("credit-transactions", payload);
+            else await update("credit-transactions", creditModal.id, payload);
+          }}
+        />
+      )}
+
+      {deletingCredit && (
+        <ConfirmDeleteModal
+          what={t("creditEntry", { amount: deletingCredit.amount, date: fmtDate(deletingCredit.date) })}
+          onClose={() => setDeletingCredit(null)}
+          onConfirm={() => remove("credit-transactions", deletingCredit.id)}
+        />
+      )}
+
+      {tab === "Overview" && !editing && (
+        <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+            <SectionTitle>{t("enrolments")}</SectionTitle>
+            <AddButton label={t("addEnrolment")} onClick={() => openEnrolmentModal("new")} />
+          </div>
+          {enrolments.length === 0 ? (
+            <p style={{ margin: 0, fontFamily: FONT, fontSize: 14, color: COLORS.textSecondary }}>
+              {t("noEnrolments")}
+            </p>
+          ) : (
+            <div style={{ display: "grid", gap: 10 }}>
+              {enrolments.map((e) => (
+                <div
+                  key={e.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    border: `1px solid ${COLORS.border}`,
+                  }}
+                >
+                  <ClassDot color={classDotColor(e.className)} />
+                  <span style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 14.5, fontWeight: 600 }}>
+                    {e.className}
+                  </span>
+                  <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
+                    {fmtDate(e.enrolledDate)}
+                  </span>
+                  <Badge
+                    color={e.status === "Active" ? COLORS.success : COLORS.textSecondary}
+                    bg={e.status === "Active" ? COLORS.successBg : COLORS.neutralBg}
+                  >
+                    {tStatus(e.status)}
+                  </Badge>
+                  <RowActions
+                    label={e.className}
+                    onEdit={() => openEnrolmentModal(e)}
+                    onDelete={() => setDeletingEnrolment(e)}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {enrolmentModal && (
+        <CrudFormModal
+          title={enrolmentModal === "new" ? t("addEnrolment") : t("editEnrolment")}
+          fields={enrolmentFields}
+          values={enrolmentValues}
+          onChange={setEnrolmentValues}
+          onClose={() => setEnrolmentModal(null)}
+          onSubmit={async (payload) => {
+            if (enrolmentModal === "new") await create("enrollments", { ...payload, student_id: student.id });
+            else await update("enrollments", enrolmentModal.id, payload);
+          }}
+        />
+      )}
+
+      {deletingEnrolment && (
+        <ConfirmDeleteModal
+          what={deletingEnrolment.className}
+          note={t("enrolmentDeleteNote")}
+          onClose={() => setDeletingEnrolment(null)}
+          onConfirm={() => remove("enrollments", deletingEnrolment.id)}
+        />
+      )}
+
+      {tab === "Credits" && (
+        <Card style={{ padding: 0, overflow: "hidden" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: 16, flexWrap: "wrap" }}>
+            <SectionTitle>{t("creditBalance", { count: student.credit })}</SectionTitle>
+            <span style={{ marginLeft: "auto" }}>
+              <AddButton label={t("addCredit")} onClick={() => openCreditModal("new")} />
+            </span>
+          </div>
+          <Table
+            columns={[tCommon("date"), t("creditType"), tCommon("amount"), t("expires"), tCommon("action")]}
+            template={CREDIT_TEMPLATE}
+            minWidth={720}
+          >
+            {creditRows.length === 0 && <EmptyRow>{t("noCredits")}</EmptyRow>}
+            {creditRows.map((row) => (
+              <TableRow key={row.id} template={CREDIT_TEMPLATE}>
+                <span style={{ color: COLORS.textSecondary }}>{fmtDate(row.date)}</span>
+                <span>{t(`creditType_${row.type}`)}</span>
+                <span style={{ fontWeight: 700, color: row.amount < 0 ? COLORS.danger : COLORS.success }}>
+                  {row.amount > 0 ? `+${row.amount}` : row.amount}
+                </span>
+                <span style={{ color: COLORS.textSecondary }}>{row.expiry ? fmtDate(row.expiry) : "—"}</span>
+                <RowActions
+                  label={t("creditEntry", { amount: row.amount, date: fmtDate(row.date) })}
+                  onEdit={() => openCreditModal(row)}
+                  onDelete={() => setDeletingCredit(row)}
+                />
+              </TableRow>
+            ))}
+          </Table>
+        </Card>
+      )}
+
       {tab === "Attendance" && (
         <Card style={{ padding: 0, overflow: "hidden" }}>
           <div style={{ padding: "16px 16px 0" }}>
@@ -363,9 +704,10 @@ function StudentDetail({
                 session, so a column reading "Present" all the way down told
                 the reader nothing. */}
             <Table columns={[tCommon("date"), tCommon("class")]} template={ATTENDANCE_TEMPLATE} minWidth={420}>
+              {attendance.length === 0 && <EmptyRow>{t("noAttendance")}</EmptyRow>}
               {attendance.map((row) => (
-                <TableRow key={row.date} template={ATTENDANCE_TEMPLATE}>
-                  <span style={{ color: COLORS.textSecondary }}>{row.date}</span>
+                <TableRow key={row.id} template={ATTENDANCE_TEMPLATE}>
+                  <span style={{ color: COLORS.textSecondary }}>{fmtDate(row.date)}</span>
                   <span style={{ display: "flex", alignItems: "center" }}>
                     <ClassDot color={classDotColor(row.className)} />
                     {row.className}
@@ -403,15 +745,16 @@ function StudentDetail({
       {tab === "Payments" && (
         <Card style={{ padding: 0, overflow: "hidden" }}>
           <Table columns={[tCommon("class"), t("colCredit"), tCommon("amount"), tCommon("date"), tCommon("method")]} template={equalTemplate(5, 80)} minWidth={640}>
-            {payments.map((p, i) => (
-              <TableRow key={`${p.date}-${i}`} template={equalTemplate(5, 80)}>
+            {payments.length === 0 && <EmptyRow>{t("noPayments")}</EmptyRow>}
+            {payments.map((p) => (
+              <TableRow key={p.id} template={equalTemplate(5, 80)}>
                 <span style={{ display: "flex", alignItems: "center" }}>
                   <ClassDot color={classDotColor(p.className)} />
                   {p.className}
                 </span>
                 <span style={{ color: COLORS.success, fontWeight: 600 }}>{p.credits}</span>
                 <span style={{ fontWeight: 600 }}>{p.amount}</span>
-                <span style={{ color: COLORS.textSecondary }}>{p.date}</span>
+                <span style={{ color: COLORS.textSecondary }}>{fmtDate(p.date)}</span>
                 <span style={{ color: COLORS.textSecondary }}>{p.method}</span>
               </TableRow>
             ))}
@@ -704,6 +1047,10 @@ export function StudentsPage({ startWizard }: { startWizard?: string }) {
   const tStatus = useTranslations("status");
   const { students, raw, create, update, remove, loading, error } = useData();
   const [view, setView] = useState<View>(startWizard ? { kind: "wizard" } : { kind: "list" });
+  const [createdLogins, setCreatedLogins] = useState<{
+    student: { email: string; password: string };
+    parent: { email: string; password: string } | null;
+  } | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [branch, setBranch] = useState("");
@@ -767,16 +1114,73 @@ export function StudentsPage({ startWizard }: { startWizard?: string }) {
         onCancel={() => setView({ kind: "list" })}
         onCreate={async (draft) => {
           try {
-            const created = await create("students", { name: draft.name, current_level: "Beginner" });
+            const today = new Date().toISOString().slice(0, 10);
+
+            /* A student who can sign in to the portal, not just a row on a
+               list. The address follows the roster convention so the office can
+               predict it; the password is shown once, at the end. */
+            const studentPassword = generateTempPassword();
+            const studentAccount = await create("user-accounts", {
+              email: studentEmailFor(draft.name),
+              password: studentPassword,
+              role: "Student",
+              display_name: draft.name,
+            });
+            const created = await create("students", {
+              user_account_id: studentAccount.user_account_id,
+              name: draft.name,
+              current_level: "Beginner",
+              fide_rating: draft.fideRating ? Number(draft.fideRating) : null,
+            });
+
             const cls = raw.classes.find((c) => String(c.name) === draft.className);
             if (cls) {
               await create("enrollments", {
                 student_id: created.student_id,
                 class_id: cls.class_id,
-                enrolled_date: new Date().toISOString().slice(0, 10),
+                enrolled_date: today,
                 status: "Active",
               });
             }
+
+            /* The wizard asks for a guardian, so make one — an account, a
+               parent row, their contacts and the link to this child. */
+            let parentCredentials: { email: string; password: string } | null = null;
+            if (draft.parentName.trim() && draft.parentEmail.trim()) {
+              const parentPassword = generateTempPassword();
+              const parentAccount = await create("user-accounts", {
+                email: draft.parentEmail.trim(),
+                password: parentPassword,
+                role: "Parent",
+                display_name: draft.parentName.trim(),
+              });
+              const parent = await create("parents", {
+                user_account_id: parentAccount.user_account_id,
+                name: draft.parentName.trim(),
+              });
+              const parentId = String(parent.parent_id);
+              for (const [kind, value] of [
+                ["phone", draft.parentPhone],
+                ["email", draft.parentEmail],
+                ["line_id", draft.parentLineId],
+              ] as const) {
+                if (value.trim()) {
+                  await create("parent-contacts", { parent_id: parentId, contact_type: kind, value: value.trim() });
+                }
+              }
+              await create("notification-preferences", { parent_id: parentId }).catch(() => {});
+              await create("student-parents", {
+                student_id: created.student_id,
+                parent_id: parentId,
+                relationship_type: draft.parentRelation || "Guardian",
+              });
+              parentCredentials = { email: draft.parentEmail.trim(), password: parentPassword };
+            }
+
+            setCreatedLogins({
+              student: { email: studentEmailFor(draft.name), password: studentPassword },
+              parent: parentCredentials,
+            });
           } catch (e) {
             window.alert(e instanceof Error ? e.message : "create failed");
           }
@@ -788,6 +1192,42 @@ export function StudentsPage({ startWizard }: { startWizard?: string }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {createdLogins && (
+        <Modal title={t("loginsTitle")} width={460} onClose={() => setCreatedLogins(null)}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
+              {t("loginsHint")}
+            </p>
+            <div>
+              <SectionTitle>{t("studentLogin")}</SectionTitle>
+              <InfoGrid
+                rows={[
+                  { label: tCommon("email"), value: createdLogins.student.email },
+                  {
+                    label: t("tempPassword"),
+                    value: <strong style={{ letterSpacing: "0.04em" }}>{createdLogins.student.password}</strong>,
+                  },
+                ]}
+              />
+            </div>
+            {createdLogins.parent && (
+              <div>
+                <SectionTitle>{t("parentLogin")}</SectionTitle>
+                <InfoGrid
+                  rows={[
+                    { label: tCommon("email"), value: createdLogins.parent.email },
+                    {
+                      label: t("tempPassword"),
+                      value: <strong style={{ letterSpacing: "0.04em" }}>{createdLogins.parent.password}</strong>,
+                    },
+                  ]}
+                />
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
+
       <PageHeader
         title={t("title")}
         sub={t("sub")}
