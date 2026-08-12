@@ -73,11 +73,12 @@ export const FONT =
 export const FONT_DISPLAY =
   "var(--font-jtrax-display), var(--font-jtrax-thai), ui-sans-serif, system-ui, sans-serif";
 
-export type JtraxRole = "Super Admin" | "Admin" | "Receptionist";
+/** The two staff roles the backend issues sign-ins for; nothing else reaches
+    the console, so there is no third label to keep in step with. */
+export type JtraxRole = "Admin" | "Receptionist";
 
 export const ROLE_COLORS: Record<JtraxRole, { color: string; bg: string }> = {
-  "Super Admin": { color: ACCENTS.navy, bg: ACCENT_TINTS.navy },
-  Admin: { color: ACCENTS.plum, bg: ACCENT_TINTS.plum },
+  Admin: { color: ACCENTS.navy, bg: ACCENT_TINTS.navy },
   Receptionist: { color: ACCENTS.amber, bg: ACCENT_TINTS.amber },
 };
 

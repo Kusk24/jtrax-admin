@@ -20,7 +20,7 @@ import {
 } from "../page-kit";
 import { Avatar, Badge, Card, SectionTitle } from "../ui";
 
-const ROLES: JtraxRole[] = ["Super Admin", "Admin", "Receptionist"];
+const ROLES: JtraxRole[] = ["Admin", "Receptionist"];
 
 /** Mirrors the mockup's generateTempPassword: 8 chars mixing the four classes. */
 function generateTempPassword(): string {
@@ -329,7 +329,7 @@ export function AdminsPage() {
                     const acct = await create("user-accounts", {
                       email: form.email,
                       password,
-                      role: form.role === "Receptionist" ? "Receptionist" : "Admin",
+                      role: form.role,
                       display_name: form.fullName,
                     });
                     await create("admins", {

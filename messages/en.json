@@ -15,7 +15,6 @@
     "language": "Language"
   },
   "roles": {
-    "Super Admin": "Super Admin",
     "Admin": "Admin",
     "Receptionist": "Receptionist"
   },
@@ -103,7 +102,7 @@
     "hide": "Hide",
     "remember": "Keep me signed in",
     "forgot": "Forgot password?",
-    "forgotHint": "Ask a Super Admin to reset it for you from the Admins page.",
+    "forgotHint": "Ask an Admin to reset it for you from the Admins page.",
     "submit": "Sign in",
     "signingIn": "Signing in…",
     "errorMissing": "Enter your email and password.",
@@ -383,7 +382,7 @@
   },
   "admins": {
     "title": "Admins",
-    "sub": "Manage admin and super admin accounts",
+    "sub": "Manage admin and receptionist accounts",
     "create": "Create Admin",
     "lastLogin": "Last login: {value}",
     "lastLoginLabel": "Last login",

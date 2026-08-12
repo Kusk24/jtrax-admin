@@ -5,7 +5,7 @@ export type NavItem = {
   id: string;
   label: string;
   icon: IconName;
-  superOnly?: boolean;
+  adminOnly?: boolean;
   hideForReceptionist?: boolean;
 };
 
@@ -13,7 +13,7 @@ export type NavItem = {
    index route, everything else is /<id>. */
 export const NAV_STRUCTURE: NavItem[] = [
   { id: "home", label: "Dashboard", icon: "home" },
-  { id: "admins", label: "Admins", icon: "userCheck", superOnly: true },
+  { id: "admins", label: "Admins", icon: "userCheck", adminOnly: true },
   { id: "academy", label: "Academy", icon: "book", hideForReceptionist: true },
   { id: "classhistory", label: "Class History", icon: "history" },
   { id: "students", label: "Students", icon: "students" },
@@ -21,19 +21,19 @@ export const NAV_STRUCTURE: NavItem[] = [
   { id: "tournament", label: "Tournament", icon: "tournament" },
   { id: "announcement", label: "Announcement", icon: "announcement" },
   { id: "chat", label: "Messages", icon: "chat" },
-  { id: "settings", label: "Settings", icon: "settings", superOnly: true, hideForReceptionist: true },
+  { id: "settings", label: "Settings", icon: "settings", adminOnly: true, hideForReceptionist: true },
 ];
 
 export function navItemsForRole(role: JtraxRole): NavItem[] {
   return NAV_STRUCTURE.filter((item) => {
-    if (item.superOnly && role !== "Super Admin") return false;
+    if (item.adminOnly && role !== "Admin") return false;
     if (item.hideForReceptionist && role === "Receptionist") return false;
     return true;
   });
 }
 
-/* Mirrors setUserRole's page guards: switching into a weaker role while sitting
-   on a page that role can't see bounces you home. */
+/* The nav hides what a role can't use; this is what stops a hand-typed URL
+   from reaching the same page anyway. */
 export function canRoleAccess(role: JtraxRole, sectionId: string): boolean {
   return navItemsForRole(role).some((item) => item.id === sectionId);
 }

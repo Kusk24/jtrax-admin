@@ -27,10 +27,10 @@ export type BackendIdentity = {
   adminId?: string;
 };
 
-/* The backend knows Admin/Receptionist; the console's top role is Super Admin.
-   Every backend Admin gets the full console until branch scoping is real. */
+/* Roles map one-to-one, so the role on the sign-in matches the role the Admins
+   page shows for the same person. */
 function toConsoleRole(backendRole: string): JtraxRole {
-  return backendRole === "Receptionist" ? "Receptionist" : "Super Admin";
+  return backendRole === "Receptionist" ? "Receptionist" : "Admin";
 }
 
 export function identityToPerson(id: BackendIdentity): AdminPerson {
