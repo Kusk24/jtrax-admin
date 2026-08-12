@@ -46,6 +46,8 @@ export type ParentPerson = {
 };
 
 export type Payment = {
+  /** Present on live rows; absent in the design seed. */
+  id?: string;
   name: string;
   className: string;
   credits: string;
@@ -547,6 +549,13 @@ export type Conversation = {
 };
 
 export type Participant = {
+  /* Present on live rows; the design seed has neither. `categoryId` is what the
+     edit form binds to — `category` is the resolved name, for display. */
+  id?: string;
+  studentId?: string;
+  categoryId?: string;
+  dateOfBirth?: string;
+  feeCharged?: number;
   name: string;
   rating: number;
   category: string;
@@ -574,6 +583,8 @@ export type Tournament = {
   format: string;
   published: boolean;
   categories: string[];
+  /** The same categories with their ids, for the screens that manage them. */
+  categoryRows?: Array<{ id: string; name: string }>;
   organizer: string;
   chiefArbiter: string;
   registrationDeadline: string;
