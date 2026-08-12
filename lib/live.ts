@@ -17,6 +17,8 @@ export type LiveCollections = {
   parentContacts: Row[];
   studentParents: Row[];
   classes: Row[];
+  classSessions: Row[];
+  attendance: Row[];
   enrollments: Row[];
   creditTransactions: Row[];
   creditPackages: Row[];
@@ -28,6 +30,7 @@ export type LiveCollections = {
   tournaments: Row[];
   tournamentCategories: Row[];
   tournamentRegistrations: Row[];
+  systemConfig: Row[];
 };
 
 export function fmtDate(iso: string): string {
@@ -148,6 +151,7 @@ export function toPayments(c: LiveCollections): Payment[] {
       const cls = enr ? c.classes.find((k) => s(k, "class_id") === s(enr, "class_id")) : undefined;
       const pkg = c.creditPackages.find((k) => s(k, "credit_package_id") === s(p, "credit_package_id"));
       return {
+        id: s(p, "payment_id"),
         name: st ? s(st, "name") : s(p, "student_id"),
         className: cls ? s(cls, "name") : "—",
         credits: pkg ? `+${n(pkg, "credit_amount")}` : "—",
@@ -200,6 +204,11 @@ export function toTournaments(c: LiveCollections): Tournament[] {
     const cats = c.tournamentCategories.filter((k) => s(k, "tournament_id") === tid);
     const regs = c.tournamentRegistrations.filter((k) => s(k, "tournament_id") === tid);
     const participants: Participant[] = regs.map((r, i) => ({
+      id: s(r, "tournament_registration_id"),
+      studentId: s(r, "student_id"),
+      categoryId: s(r, "tournament_category_id"),
+      dateOfBirth: s(r, "participant_date_of_birth"),
+      feeCharged: n(r, "fee_charged"),
       name: s(r, "participant_name"),
       rating: n(r, "fide_rating"),
       category: s(cats.find((k) => s(k, "tournament_category_id") === s(r, "tournament_category_id")) ?? {}, "name") || "—",
@@ -227,6 +236,7 @@ export function toTournaments(c: LiveCollections): Tournament[] {
       format: "Swiss",
       published: true,
       categories: cats.map((k) => s(k, "name")),
+      categoryRows: cats.map((k) => ({ id: s(k, "tournament_category_id"), name: s(k, "name") })),
       organizer: s(t, "organizer_name"),
       chiefArbiter: "—",
       registrationDeadline: fmtDate(s(t, "registration_deadline")),

@@ -276,6 +276,15 @@ const ICON_DATA = {
     ["path", { "d": "M14.5 4.5l5 5L8 21H3v-5L14.5 4.5Z" }],
     ["line", { "x1": 12.5, "y1": 6.5, "x2": 17.5, "y2": 11.5 }],
   ],
+  /* Drawn in the same 24px stroke idiom as the rest of the set — lucide's
+     trash sits at a different weight beside these. */
+  "trash": [
+    ["path", { "d": "M4 7h16" }],
+    ["path", { "d": "M9.5 7V5h5v2" }],
+    ["path", { "d": "M6.5 7l.8 12a1 1 0 0 0 1 .9h7.4a1 1 0 0 0 1-.9L17.5 7" }],
+    ["line", { "x1": 10.5, "y1": 11, "x2": 10.5, "y2": 16.5 }],
+    ["line", { "x1": 13.5, "y1": 11, "x2": 13.5, "y2": 16.5 }],
+  ],
   "printer": [
     ["rect", { "x": 6, "y": 9, "width": 12, "height": 7, "rx": 1 }],
     ["path", { "d": "M7 9V4.5h10V9" }],

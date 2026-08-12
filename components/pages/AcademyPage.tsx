@@ -3,19 +3,32 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useData } from "@/components/DataProvider";
+import { fmtTHB } from "@/lib/live";
 import { Icon, type IconName } from "@/lib/icons";
 import { COLORS, FONT, initialsOf } from "@/lib/theme";
+import {
+  AddButton,
+  ConfirmDeleteModal,
+  CrudFormModal,
+  RowActions,
+  type CrudField,
+  type CrudValues,
+} from "../crud";
 import {
   ContactActions,
   fieldStyle,
   InfoGrid,
   labelStyle,
   Modal,
+  EmptyRow,
+  equalTemplate,
   ExportButton,
   PageHeader,
   primaryButtonStyle,
   secondaryButtonStyle,
   selectStyle,
+  Table,
+  TableRow,
 } from "../page-kit";
 import { Avatar, Badge, Card } from "../ui";
 
@@ -25,6 +38,16 @@ const PIECE_OPTIONS: IconName[] = ["king", "queen", "rook", "knight", "bishop", 
 
 type Course = { id: string; name: string; desc: string; badge: string; icon: IconName; category: string };
 type Teacher = { id: string; name: string; email: string; phone: string; lineId: string; status: string };
+type CreditPackage = {
+  id: string;
+  classId: string;
+  className: string;
+  creditAmount: number;
+  price: number;
+  validityDays: number;
+};
+
+const PACKAGE_TEMPLATE = equalTemplate(5, 90);
 
 const COURSES_SEED: Course[] = [
   {
@@ -114,6 +137,52 @@ export function AcademyPage() {
     lineId: String(t.line_id ?? ""),
     status: "Active",
   }));
+  /* A package is priced per class, so the list joins the class name in rather
+     than showing a bare class id. */
+  const packages: CreditPackage[] = raw.creditPackages.map((p) => {
+    const cls = raw.classes.find((c) => String(c.class_id) === String(p.class_id));
+    return {
+      id: String(p.credit_package_id),
+      classId: String(p.class_id ?? ""),
+      className: cls ? String(cls.name ?? "") : "—",
+      creditAmount: Number(p.credit_amount ?? 0),
+      price: Number(p.standard_price ?? 0),
+      validityDays: Number(p.validity_days ?? 0),
+    };
+  });
+
+  const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
+  const [packageModal, setPackageModal] = useState<CreditPackage | "new" | null>(null);
+  const [packageValues, setPackageValues] = useState<CrudValues>({});
+  const [deletingPackage, setDeletingPackage] = useState<CreditPackage | null>(null);
+
+  const packageFields: CrudField[] = [
+    {
+      name: "class_id",
+      label: tCommon("class"),
+      kind: "select",
+      required: true,
+      options: courses.map((c) => ({ value: c.id, label: c.name })),
+    },
+    { name: "credit_amount", label: t("creditAmount"), kind: "number", required: true, half: true, min: 0 },
+    { name: "standard_price", label: t("price"), kind: "number", required: true, half: true, min: 0 },
+    { name: "validity_days", label: t("validity"), kind: "number", required: true, half: true, min: 0 },
+  ];
+
+  function openPackageModal(p: CreditPackage | "new") {
+    setPackageModal(p);
+    setPackageValues(
+      p === "new"
+        ? { class_id: "", credit_amount: "", standard_price: "", validity_days: "" }
+        : {
+            class_id: p.classId,
+            credit_amount: String(p.creditAmount),
+            standard_price: String(p.price),
+            validity_days: String(p.validityDays),
+          },
+    );
+  }
+
   const [courseModal, setCourseModal] = useState<Course | "new" | null>(null);
   const [teacherModal, setTeacherModal] = useState<Teacher | "new" | null>(null);
   const [courseDetail, setCourseDetail] = useState<Course | null>(null);
@@ -164,6 +233,40 @@ export function AcademyPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+      {packageModal && (
+        <CrudFormModal
+          title={packageModal === "new" ? t("addPackage") : t("editPackage")}
+          fields={packageFields}
+          values={packageValues}
+          onChange={setPackageValues}
+          onClose={() => setPackageModal(null)}
+          onSubmit={async (payload) => {
+            if (packageModal === "new") await create("credit-packages", payload);
+            else await update("credit-packages", packageModal.id, payload);
+          }}
+        />
+      )}
+
+      {deletingPackage && (
+        <ConfirmDeleteModal
+          what={t("packageFor", { className: deletingPackage.className, credits: deletingPackage.creditAmount })}
+          onClose={() => setDeletingPackage(null)}
+          onConfirm={() => remove("credit-packages", deletingPackage.id)}
+        />
+      )}
+
+      {deletingCourse && (
+        <ConfirmDeleteModal
+          what={deletingCourse.name}
+          note={t("courseDeleteNote")}
+          onClose={() => setDeletingCourse(null)}
+          onConfirm={async () => {
+            await remove("classes", deletingCourse.id);
+            setCourseDetail(null);
+          }}
+        />
+      )}
+
       <PageHeader
         title={t("coursesTitle")}
         sub={t("coursesSub")}
@@ -212,16 +315,44 @@ export function AcademyPage() {
                 {c.desc}
               </p>
             </div>
-            <button
-              type="button"
-              className="jt-btn-ghost"
-              style={{ ...secondaryButtonStyle, alignSelf: "flex-start" }}
-              onClick={() => openCourseModal(c)}
-            >
-              <Icon name="edit" size={13} /> {tCommon("edit")}
-            </button>
+            <RowActions
+              label={c.name}
+              onEdit={() => openCourseModal(c)}
+              onDelete={() => setDeletingCourse(c)}
+            />
           </Card>
         ))}
+      </div>
+
+      <div>
+        <PageHeader
+          level={2}
+          title={t("packagesTitle")}
+          sub={t("packagesSub")}
+          action={<AddButton label={t("addPackage")} onClick={() => openPackageModal("new")} />}
+        />
+        <Card style={{ padding: 0, overflow: "hidden", marginTop: 12 }}>
+          <Table
+            columns={[tCommon("class"), t("creditAmount"), t("price"), t("validity"), tCommon("action")]}
+            template={PACKAGE_TEMPLATE}
+            minWidth={720}
+          >
+            {packages.length === 0 && <EmptyRow>{t("noPackages")}</EmptyRow>}
+            {packages.map((p) => (
+              <TableRow key={p.id} template={PACKAGE_TEMPLATE}>
+                <span style={{ fontWeight: 600 }}>{p.className}</span>
+                <span style={{ color: COLORS.success, fontWeight: 600 }}>+{p.creditAmount}</span>
+                <span>{fmtTHB(p.price)}</span>
+                <span style={{ color: COLORS.textSecondary }}>{t("validityDays", { days: p.validityDays })}</span>
+                <RowActions
+                  label={t("packageFor", { className: p.className, credits: p.creditAmount })}
+                  onEdit={() => openPackageModal(p)}
+                  onDelete={() => setDeletingPackage(p)}
+                />
+              </TableRow>
+            ))}
+          </Table>
+        </Card>
       </div>
 
       <PageHeader

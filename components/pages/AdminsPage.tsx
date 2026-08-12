@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { generateTempPassword } from "@/lib/credentials";
 import { type AdminPerson } from "@/lib/data";
 import { useData } from "@/components/DataProvider";
 import { Icon } from "@/lib/icons";
@@ -21,18 +22,6 @@ import {
 import { Avatar, Badge, Card, SectionTitle } from "../ui";
 
 const ROLES: JtraxRole[] = ["Admin", "Receptionist"];
-
-/** Mirrors the mockup's generateTempPassword: 8 chars mixing the four classes. */
-function generateTempPassword(): string {
-  const sets = ["ABCDEFGHJKLMNPQRSTUVWXYZ", "abcdefghijkmnpqrstuvwxyz", "23456789", "!@#$%&*"];
-  const out: string[] = [];
-  for (let i = 0; i < 8; i++) {
-    const set = sets[i % sets.length];
-    out.push(set[Math.floor(Math.random() * set.length)]);
-  }
-  /* Shuffle so the class order isn't predictable. */
-  return out.sort(() => Math.random() - 0.5).join("");
-}
 
 const EMPTY_FORM = { fullName: "", phone: "", email: "", lineId: "", role: "Admin" as JtraxRole };
 

@@ -37,7 +37,9 @@
     "Active": "Active",
     "In class": "In class",
     "Dismissed": "Dismissed",
-    "Registered": "Registered"
+    "Registered": "Registered",
+    "Withdrawn": "Withdrawn",
+    "Scheduled": "Scheduled"
   },
   "common": {
     "search": "Search",
@@ -81,7 +83,18 @@
     "toDate": "To date",
     "export": "Export",
     "exported": "Exported",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "add": "Add",
+    "saveFailed": "Could not save. Please try again.",
+    "deleteFailed": "Could not delete.",
+    "fieldRequired": "{field} is required.",
+    "deleteTitle": "Delete",
+    "deleteConfirm": "Delete {what}? This cannot be undone.",
+    "editThing": "Edit {what}",
+    "deleteThing": "Delete {what}",
+    "none": "None",
+    "optional": "Optional",
+    "saved": "Saved"
   },
   "shell": {
     "dashboard": "Dashboard",
@@ -252,7 +265,34 @@
     "deleteTitle": "Delete {name}?",
     "deleteBody": "This removes the student and their profile. Attendance and payment history are not recoverable.",
     "deleteConfirm": "Delete Student",
-    "noAccountYet": "No login account yet"
+    "noAccountYet": "No login account yet",
+    "noAttendance": "No sessions attended yet.",
+    "enrolment": "Enrolment",
+    "creditType": "Type",
+    "creditType_purchase": "Purchase",
+    "creditType_consumption": "Consumption",
+    "creditType_manual_adjustment": "Manual adjustment",
+    "creditAmountHelp": "Positive adds credits, negative takes them away.",
+    "expires": "Expires",
+    "notes": "Notes",
+    "addCredit": "Add Credits",
+    "editCredit": "Edit Credit Entry",
+    "creditBalance": "Balance: {count} credits",
+    "noCredits": "No credit entries yet.",
+    "creditEntry": "the {amount}-credit entry from {date}",
+    "noPayments": "No payments recorded yet.",
+    "enrolments": "Enrolments",
+    "addEnrolment": "Add Enrolment",
+    "editEnrolment": "Edit Enrolment",
+    "noEnrolments": "Not enrolled in any class yet.",
+    "enrolledDate": "Enrolled on",
+    "enrolmentDeleteNote": "An enrolment with credit entries or payments against it cannot be deleted.",
+    "loginsTitle": "Accounts created",
+    "loginsHint": "Copy these now — the passwords are not shown again.",
+    "studentLogin": "Student login",
+    "parentLogin": "Parent login",
+    "tempPassword": "Temporary password",
+    "tabCredits": "Credits"
   },
   "parents": {
     "title": "Parents",
@@ -274,7 +314,23 @@
     "lineId": "LINE ID",
     "creditsShort": "{count, plural, one {# credit} other {# credits}}",
     "call": "Call",
-    "emailAction": "Email"
+    "emailAction": "Email",
+    "add": "Add Parent",
+    "editParent": "Edit Parent",
+    "deleteNote": "The parent's login, contact details and links to their children are removed. The children themselves are kept.",
+    "linkChild": "Link a child",
+    "linkChildLabel": "Choose a student to link",
+    "unlinkChild": "Unlink {name}",
+    "relation": "Relationship",
+    "relationMother": "Mother",
+    "relationFather": "Father",
+    "relationGuardian": "Guardian",
+    "noUnlinked": "Every student already has a parent linked.",
+    "createdTitle": "Parent account created",
+    "createdHint": "Copy the temporary password now — it is not shown again.",
+    "copy": "Copy",
+    "copied": "Copied",
+    "manageChildren": "Manage children"
   },
   "payment": {
     "title": "Payment",
@@ -295,7 +351,12 @@
     "paymentMethod": "Payment Method",
     "refNumber": "Reference Number (optional)",
     "finalAmount": "Final Amount",
-    "savePayment": "Save Payment"
+    "savePayment": "Save Payment",
+    "editTitle": "Edit Payment",
+    "discount": "Discount",
+    "reference": "Reference number",
+    "amount": "Amount",
+    "paymentFor": "the {amount} payment from {name}"
   },
   "classHistory": {
     "title": "Class History",
@@ -309,7 +370,16 @@
     "time": "Time",
     "attendedOn": "{className} · {date} · {time}",
     "viewAttendee": "View {name}",
-    "noProfile": "{name} attended this session but has no student profile in the system yet."
+    "noProfile": "{name} attended this session but has no student profile in the system yet.",
+    "addSession": "Add Session",
+    "editSession": "Edit Session",
+    "startTime": "Start time",
+    "endTime": "End time",
+    "sessionOn": "the {className} session on {date}",
+    "sessionDeleteNote": "Its attendance records are removed with it.",
+    "noAttendees": "Nobody was checked in to this session.",
+    "addAttendee": "Add student",
+    "removeAttendee": "Remove {name} from this session"
   },
   "tournament": {
     "title": "Tournament",
@@ -381,7 +451,20 @@
     "fieldFormat": "Format",
     "fieldTimeControl": "Time Control",
     "fieldChiefArbiter": "Chief Arbiter",
-    "fieldMaxParticipants": "Max Participants"
+    "fieldMaxParticipants": "Max Participants",
+    "editTitle": "Edit Tournament",
+    "endDate": "End date",
+    "earlyBirdFee": "Early bird fee",
+    "regularFee": "Regular fee",
+    "deleteNote": "Its categories and participant registrations are removed with it.",
+    "addParticipant": "Add Participant",
+    "editParticipant": "Edit Participant",
+    "participantStudentHelp": "Registrations are linked to a student record.",
+    "dateOfBirth": "Date of birth",
+    "feeCharged": "Fee charged",
+    "noCategories": "No categories yet.",
+    "categoryPlaceholder": "Category name, e.g. Under 10",
+    "categoryDeleteNote": "Participants registered in this category keep their registration, but lose the category."
   },
   "announcement": {
     "title": "Announcement",
@@ -395,7 +478,8 @@
     "audienceTeachers": "Teachers",
     "send": "Send Announcement",
     "empty": "No announcements yet.",
-    "deleteItem": "Delete {title}"
+    "deleteItem": "Delete {title}",
+    "editTitle": "Edit Announcement"
   },
   "messages": {
     "conversations": "Conversations",
@@ -465,7 +549,18 @@
     "editTeacher": "Edit Teacher",
     "deleteTeacher": "Delete Teacher",
     "deleteTeacherTitle": "Delete {name}?",
-    "deleteTeacherBody": "This removes the teacher from the academy. Classes they were assigned to keep their history."
+    "deleteTeacherBody": "This removes the teacher from the academy. Classes they were assigned to keep their history.",
+    "packagesTitle": "Credit Packages",
+    "packagesSub": "What a class costs and how long the credits last",
+    "addPackage": "Add Package",
+    "editPackage": "Edit Package",
+    "creditAmount": "Credits",
+    "price": "Price",
+    "validity": "Validity (days)",
+    "validityDays": "{days} days",
+    "noPackages": "No credit packages yet.",
+    "packageFor": "the {credits}-credit package for {className}",
+    "courseDeleteNote": "A class that still has enrolments, sessions or packages cannot be deleted."
   },
   "settings": {
     "title": "Credit Rules",
