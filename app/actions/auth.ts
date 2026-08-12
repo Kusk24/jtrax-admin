@@ -52,3 +52,54 @@ export async function signOut() {
   store.delete(SESSION_COOKIE);
   redirect("/login");
 }
+
+export type ResetRequestState = { status?: "sent"; error?: "missing" | "unreachable" };
+
+/* The backend replies the same way whether or not the address is registered,
+   so there is nothing to branch on here — which is the point. */
+export async function requestPasswordReset(
+  _prev: ResetRequestState,
+  formData: FormData,
+): Promise<ResetRequestState> {
+  const email = String(formData.get("email") ?? "").trim();
+  if (!email) return { error: "missing" };
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/auth/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+      cache: "no-store",
+    });
+    if (!res.ok) return { error: "unreachable" };
+  } catch {
+    return { error: "unreachable" };
+  }
+  return { status: "sent" };
+}
+
+export type ResetState = { error?: "missing" | "mismatch" | "short" | "invalid" | "unreachable" };
+
+export async function resetPassword(_prev: ResetState, formData: FormData): Promise<ResetState> {
+  const token = String(formData.get("token") ?? "");
+  const password = String(formData.get("password") ?? "");
+  const confirm = String(formData.get("confirm") ?? "");
+  if (!token || !password) return { error: "missing" };
+  if (password.length < 8) return { error: "short" };
+  if (password !== confirm) return { error: "mismatch" };
+
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/auth/reset-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, password }),
+      cache: "no-store",
+    });
+    /* 400 is the backend's answer for an expired, spent or unknown token. */
+    if (!res.ok) return { error: res.status === 400 ? "invalid" : "unreachable" };
+  } catch {
+    return { error: "unreachable" };
+  }
+  /* The reset revoked every session for the account, so there is nothing to
+     resume — back to sign-in to prove the new password. */
+  redirect("/login?reset=1");
+}

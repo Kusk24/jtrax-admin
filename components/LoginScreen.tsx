@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useActionState, useState } from "react";
 import { useTranslations } from "next-intl";
 import { LanguageToggle } from "./LanguageToggle";
@@ -38,7 +39,7 @@ const bareInputStyle = {
   color: COLORS.text,
 } as const;
 
-function BrandPanel() {
+export function BrandPanel() {
   const t = useTranslations("auth");
 
   return (
@@ -122,7 +123,7 @@ function BrandPanel() {
   );
 }
 
-export function LoginScreen() {
+export function LoginScreen({ justReset }: { justReset?: boolean }) {
   const t = useTranslations("auth");
   const [state, formAction, pending] = useActionState<SignInState, FormData>(signIn, {});
 
@@ -130,7 +131,6 @@ export function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [showForgot, setShowForgot] = useState(false);
 
   return (
     <main className="jt-login">
@@ -159,6 +159,28 @@ export function LoginScreen() {
               {t("sub")}
             </p>
           </div>
+
+          {justReset && !state.error && (
+            <div
+              role="status"
+              className="jtrax-fade-in-up"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 9,
+                padding: "10px 13px",
+                borderRadius: 10,
+                background: COLORS.successBg,
+                color: COLORS.success,
+                fontFamily: FONT,
+                fontSize: 13.5,
+                fontWeight: 600,
+              }}
+            >
+              <Icon name="check" size={16} />
+              {t("resetDone")}
+            </div>
+          )}
 
           {state.error && (
             <div
@@ -286,42 +308,20 @@ export function LoginScreen() {
                 {t("remember")}
               </label>
 
-              <button
-                type="button"
-                onClick={() => setShowForgot((v) => !v)}
-                aria-expanded={showForgot}
+              <Link
+                href="/forgot-password"
                 style={{
-                  border: "none",
-                  background: "transparent",
-                  padding: 0,
                   fontFamily: FONT,
                   fontSize: 14,
                   fontWeight: 600,
                   color: COLORS.blue,
-                  cursor: "pointer",
+                  textDecoration: "none",
                 }}
               >
                 {t("forgot")}
-              </button>
+              </Link>
             </div>
 
-            {showForgot && (
-              <p
-                className="jtrax-fade-in-up"
-                style={{
-                  margin: 0,
-                  padding: "9px 12px",
-                  borderRadius: 9,
-                  background: COLORS.light,
-                  fontFamily: FONT,
-                  fontSize: 13.5,
-                  lineHeight: 1.5,
-                  color: COLORS.textSecondary,
-                }}
-              >
-                {t("forgotHint")}
-              </p>
-            )}
 
             <button
               type="submit"
