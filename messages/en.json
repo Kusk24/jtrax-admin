@@ -510,7 +510,8 @@
     "for": "For",
     "level": "Level",
     "category": "Category",
-    "payment": "Payment"
+    "payment": "Payment",
+    "previewNotice": "Preview only — messages are not stored yet. There is no message table in the database, so anything sent here is gone on reload."
   },
   "admins": {
     "title": "Admins",
