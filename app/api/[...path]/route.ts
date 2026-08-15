@@ -27,12 +27,32 @@ async function forward(req: NextRequest, params: Promise<{ path: string[] }>) {
     init.body = await req.text();
   }
 
+  // A game's event stream never ends, so it must not be buffered — and it must
+  // be abortable, or the upstream connection outlives the browser tab.
+  const wantsStream = req.headers.get("accept")?.includes("text/event-stream");
+  if (wantsStream) init.signal = req.signal;
+
   let upstream: Response;
   try {
     upstream = await fetch(url, init);
   } catch {
     return NextResponse.json({ error: "backend unreachable" }, { status: 502 });
   }
+
+  if (wantsStream && upstream.body && upstream.headers.get("content-type")?.includes("text/event-stream")) {
+    return new NextResponse(upstream.body, {
+      status: upstream.status,
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+        // Vercel and nginx both buffer by default, which would hold every
+        // event until the response ended — that is, until the game did.
+        "X-Accel-Buffering": "no",
+      },
+    });
+  }
+
   const body = await upstream.text();
   return new NextResponse(body, {
     status: upstream.status,
