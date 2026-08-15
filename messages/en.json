@@ -13,7 +13,8 @@
     "settings": "Settings",
     "logout": "Logout",
     "brandSub": "Chess School",
-    "language": "Language"
+    "language": "Language",
+    "games": "Games"
   },
   "roles": {
     "Admin": "Admin",
@@ -577,5 +578,64 @@
     "saved": "Changes saved",
     "reset": "Reset to Default",
     "save": "Save Changes"
+  },
+  "games": {
+    "title": "Games",
+    "subtitle": "Open a board for two students, watch it live, and keep the record.",
+    "openRoom": "Open a room",
+    "roomReady": "Room is open",
+    "readOutCode": "Read this code out to the players",
+    "firstTwo": "The first two students to enter it take the seats.",
+    "watchGame": "Watch the board",
+    "gameTitle": "Game",
+    "search": "Search players, code or label",
+    "empty": "No games yet. Open a room to start one.",
+    "waiting": "Waiting",
+    "moves": "Moves",
+    "noMoves": "No moves played yet.",
+    "stopGame": "Stop this game",
+    "lasted": "Lasted {time}",
+    "status": {
+      "all": "All games",
+      "Open": "Waiting for players",
+      "Active": "In play",
+      "Finished": "Finished",
+      "Cancelled": "Stopped"
+    },
+    "connection": {
+      "connecting": "Connecting",
+      "live": "Live",
+      "offline": "Reconnecting"
+    },
+    "side": {
+      "white": "White",
+      "black": "Black"
+    },
+    "result": {
+      "white": "White won",
+      "black": "Black won",
+      "draw": "Drawn"
+    },
+    "reason": {
+      "Checkmate": "checkmate",
+      "Stalemate": "stalemate",
+      "Resignation": "resignation",
+      "ThreefoldRepetition": "threefold repetition",
+      "FiftyMoveRule": "fifty-move rule",
+      "InsufficientMaterial": "not enough pieces to mate",
+      "FivefoldRepetition": "fivefold repetition",
+      "SeventyFiveMoveRule": "seventy-five-move rule"
+    },
+    "col": {
+      "players": "Players",
+      "status": "Status",
+      "code": "Code",
+      "moves": "Moves",
+      "result": "Result",
+      "label": "Label",
+      "started": "Started",
+      "duration": "Duration"
+    },
+    "failed": "Something went wrong. Try again."
   }
 }
