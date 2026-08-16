@@ -388,7 +388,19 @@
     "sessionDeleteNote": "ข้อมูลการเช็คชื่อของคาบนี้จะถูกลบไปด้วย",
     "noAttendees": "ไม่มีผู้เช็คชื่อในคาบนี้",
     "addAttendee": "เพิ่มนักเรียน",
-    "removeAttendee": "นำ {name} ออกจากคาบเรียนนี้"
+    "removeAttendee": "นำ {name} ออกจากคาบเรียนนี้",
+    "calendarTitle": "คาบเรียนรายวัน",
+    "weekendOnly": "เฉพาะวันหยุดสุดสัปดาห์",
+    "allDays": "ทุกวัน",
+    "previousMonth": "เดือนก่อนหน้า",
+    "nextMonth": "เดือนถัดไป",
+    "thisMonth": "เดือนนี้",
+    "sessionsInMonth": "{count, plural, =0 {ไม่มีคาบเรียนในเดือนนี้} other {# คาบเรียนในเดือนนี้}}",
+    "moreSessions": "อีก {count} รายการ",
+    "dayWithSessions": "{date} — {count, plural, =0 {ไม่มีคาบเรียน} other {# คาบเรียน}}",
+    "pickADay": "เลือกวันเพื่อดูคาบเรียนและผู้เข้าเรียน",
+    "noSessionsOn": "ไม่มีคาบเรียนวันที่ {date}",
+    "weekdayHidden": "{count, plural, other {# รายการในวันธรรมดา}}"
   },
   "tournament": {
     "title": "การแข่งขัน",
