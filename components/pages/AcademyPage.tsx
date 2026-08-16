@@ -21,6 +21,7 @@ import {
   InfoGrid,
   labelStyle,
   Modal,
+  dangerSolidButtonStyle,
   EmptyRow,
   equalTemplate,
   ExportButton,
@@ -32,6 +33,7 @@ import {
   TableRow,
 } from "../page-kit";
 import { Avatar, Badge, Card } from "../ui";
+import { DangerPanel, DeleteButton, DetailHeader, EditButton } from "../detail";
 import { CardGrid, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 
@@ -493,17 +495,21 @@ export function AcademyPage() {
           title={courseDetail.name}
           onClose={() => setCourseDetail(null)}
           footer={
-            <button
-              type="button"
-              className="jt-btn-primary"
-              style={primaryButtonStyle}
-              onClick={() => {
-                openCourseModal(courseDetail);
-                setCourseDetail(null);
-              }}
-            >
-              {t("editCourse")}
-            </button>
+            <>
+              <DeleteButton
+                onClick={() => {
+                  setDeletingCourse(courseDetail);
+                  setCourseDetail(null);
+                }}
+              />
+              <EditButton
+                label={t("editCourse")}
+                onClick={() => {
+                  openCourseModal(courseDetail);
+                  setCourseDetail(null);
+                }}
+              />
+            </>
           }
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -529,50 +535,31 @@ export function AcademyPage() {
       )}
 
       {teacherDetail && (
-        <Modal
-          title={teacherDetail.name}
-          onClose={closeTeacherDetail}
-          footer={
-            <>
-              {/* Modal footers justify to the end, so the auto margin on the
-                  first child is what parks Delete away from Edit. */}
-              <button
-                type="button"
-                className="jt-act-danger"
-                style={{ ...secondaryButtonStyle, marginRight: "auto" }}
-                onClick={() => setTeacherDeleteConfirm(true)}
-              >
-                {tCommon("delete")}
-              </button>
-              <button
-                type="button"
-                className="jt-act-edit"
-                style={secondaryButtonStyle}
-                onClick={() => {
-                  openTeacherModal(teacherDetail);
-                  closeTeacherDetail();
-                }}
-              >
-                <Icon name="edit" size={13} /> {tCommon("edit")}
-              </button>
-            </>
-          }
-        >
+        <Modal title={teacherDetail.name} onClose={closeTeacherDetail} width={600}>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <Avatar initials={initialsOf(teacherDetail.name)} size={52} />
-              <div>
-                <div style={{ fontFamily: FONT, fontSize: 17, fontWeight: 700, color: COLORS.text }}>
-                  {teacherDetail.name}
-                </div>
+            <DetailHeader
+              avatar={<Avatar initials={initialsOf(teacherDetail.name)} size={52} />}
+              title={teacherDetail.name}
+              badges={
                 <Badge
                   color={teacherDetail.status === "Active" ? COLORS.success : COLORS.textSecondary}
                   bg={teacherDetail.status === "Active" ? COLORS.successBg : COLORS.neutralBg}
                 >
                   {tStatus(teacherDetail.status)}
                 </Badge>
-              </div>
-            </div>
+              }
+              actions={
+                <>
+                  <EditButton
+                    onClick={() => {
+                      openTeacherModal(teacherDetail);
+                      closeTeacherDetail();
+                    }}
+                  />
+                  <DeleteButton onClick={() => setTeacherDeleteConfirm(true)} />
+                </>
+              }
+            />
             <InfoGrid
               rows={[
                 { label: tCommon("email"), value: teacherDetail.email },
@@ -583,22 +570,10 @@ export function AcademyPage() {
             <ContactActions phone={teacherDetail.phone} lineId={teacherDetail.lineId} email={teacherDetail.email} />
 
             {teacherDeleteConfirm && (
-              <div
-                className="jtrax-fade-in-up"
-                style={{
-                  padding: 14,
-                  borderRadius: 12,
-                  border: "1px solid #B13F3F",
-                  background: "#FAE2E2",
-                  color: "#541111",
-                }}
+              <DangerPanel
+                title={t("deleteTeacherTitle", { name: teacherDetail.name })}
+                body={t("deleteTeacherBody")}
               >
-                <div style={{ fontFamily: FONT, fontSize: 14.5, fontWeight: 700 }}>
-                  {t("deleteTeacherTitle", { name: teacherDetail.name })}
-                </div>
-                <p style={{ margin: "5px 0 12px", fontFamily: FONT, fontSize: 13.5 }}>
-                  {t("deleteTeacherBody")}
-                </p>
                 <div style={{ display: "flex", gap: 9 }}>
                   <button
                     type="button"
@@ -608,7 +583,7 @@ export function AcademyPage() {
                     {tCommon("cancel")}
                   </button>
                   <ActionButton
-                    style={{ ...primaryButtonStyle, background: COLORS.danger }}
+                    style={dangerSolidButtonStyle}
                     busyLabel={tCommon("deleting")}
                     onClick={async () => {
                       try {
@@ -622,7 +597,7 @@ export function AcademyPage() {
                     {t("deleteTeacher")}
                   </ActionButton>
                 </div>
-              </div>
+              </DangerPanel>
             )}
           </div>
         </Modal>

@@ -20,19 +20,24 @@ const ICON_DATA = {
     ["circle", { "cx": 12, "cy": 12, "r": 9 }],
     ["path", { "d": "M12 7v5l3.5 2" }],
   ],
+  /* A graduation cap. The old icon was two figures of different sizes, which
+     at 18px was indistinguishable from `parents` — two figures of the same
+     size — so the two nav entries looked alike in the only place they matter. */
   "students": [
-    ["circle", { "cx": 9, "cy": 8, "r": 3 }],
-    ["path", { "d": "M3.5 20a5.5 5.5 0 0 1 11 0" }],
-    ["circle", { "cx": 17, "cy": 9, "r": 2.5 }],
-    ["path", { "d": "M14.8 13.2A4.5 4.5 0 0 1 20.5 20" }],
+    ["path", { "d": "M12 4 2.5 8.5 12 13l9.5-4.5L12 4Z" }],
+    ["path", { "d": "M6.5 10.7V15c0 1.7 2.5 3 5.5 3s5.5-1.3 5.5-3v-4.3" }],
+    ["path", { "d": "M21 8.8v5" }],
   ],
-  /* Two adults of equal size — `students` is the same pair with the second
-     figure drawn smaller, which is what reads as "child" there. */
+  /* An adult and a child hand in hand: a family rather than two colleagues.
+     The height difference and the joined hands are what carry the meaning at
+     nav size — two circles of different radii do not. */
   "parents": [
-    ["circle", { "cx": 8, "cy": 8, "r": 3 }],
-    ["path", { "d": "M2.5 20a5.5 5.5 0 0 1 11 0" }],
-    ["circle", { "cx": 16.5, "cy": 8, "r": 3 }],
-    ["path", { "d": "M13.6 13.6A5.5 5.5 0 0 1 21.5 20" }],
+    ["circle", { "cx": 8, "cy": 5.4, "r": 2.6 }],
+    ["path", { "d": "M8 8v6.5" }],
+    ["path", { "d": "M5.2 20.5V15a2.8 2.8 0 0 1 5.6 0v5.5" }],
+    ["path", { "d": "M10.8 13h2.6a2 2 0 0 1 2 2" }],
+    ["circle", { "cx": 17.4, "cy": 10.6, "r": 2 }],
+    ["path", { "d": "M15 20.5v-3.6a2.4 2.4 0 0 1 4.8 0v3.6" }],
   ],
   "payment": [
     ["rect", { "x": 2.5, "y": 5.5, "width": 19, "height": 13, "rx": 2 }],
@@ -108,9 +113,14 @@ const ICON_DATA = {
     ["line", { "x1": 12, "y1": 5, "x2": 12, "y2": 19 }],
     ["line", { "x1": 5, "y1": 12, "x2": 19, "y2": 12 }],
   ],
+  /* Courses, teachers and packages — what the academy teaches. A plain book
+     said "documentation"; a board with a piece on it says the subject. */
   "book": [
-    ["path", { "d": "M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5Z" }],
-    ["path", { "d": "M4 5.5v15" }],
+    ["rect", { "x": 3, "y": 3, "width": 18, "height": 18, "rx": 2 }],
+    ["path", { "d": "M3 9h18" }],
+    ["path", { "d": "M3 15h18" }],
+    ["path", { "d": "M9 3v18" }],
+    ["path", { "d": "M15 3v18" }],
   ],
   "king": [
     ["path", { "d": "M12 3v3" }],
