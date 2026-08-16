@@ -23,11 +23,14 @@ import { TournamentPage } from "./pages/TournamentPage";
 export function SectionRouter({
   section,
   newStudentName,
+  followUp,
 }: {
   section: string;
   /* Threaded from the server component rather than read with useSearchParams,
      which would bail the whole route out of server rendering. */
   newStudentName?: string;
+  /* Which follow-up bucket the dashboard sent us to look at. */
+  followUp?: string;
 }) {
   const { role } = useJtrax();
 
@@ -37,7 +40,15 @@ export function SectionRouter({
 
   switch (section) {
     case "students":
-      return <StudentsPage key={newStudentName ?? "list"} startWizard={newStudentName} />;
+      /* Keyed so arriving from a different follow-up card resets the filter
+         rather than keeping the state of the previous visit. */
+      return (
+        <StudentsPage
+          key={`${newStudentName ?? ""}|${followUp ?? ""}`}
+          startWizard={newStudentName}
+          startFollowUp={followUp}
+        />
+      );
     case "parents":
       return <ParentsPage />;
     case "payment":

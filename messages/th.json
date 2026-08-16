@@ -301,7 +301,12 @@
     "parentLogin": "บัญชีผู้ปกครอง",
     "tempPassword": "รหัสผ่านชั่วคราว",
     "tabCredits": "เครดิต",
-    "parentLabel": "ผู้ปกครอง"
+    "parentLabel": "ผู้ปกครอง",
+    "followUpFilter": "ต้องติดตาม",
+    "followUpAll": "นักเรียนทั้งหมด",
+    "followUpLow": "เครดิตเหลือน้อย",
+    "followUpExpiring": "ใกล้หมดอายุ",
+    "followUpInactive": "ไม่ได้เข้าเรียน"
   },
   "parents": {
     "title": "ผู้ปกครอง",

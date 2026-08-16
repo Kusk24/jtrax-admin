@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { generateTempPassword } from "@/lib/credentials";
 import { type Student } from "@/lib/data";
 import { useData } from "@/components/DataProvider";
+import { buildFollowUps, type FollowUpBucket } from "@/lib/derive";
 import { fmtDate, fmtTHB, practiceStrip } from "@/lib/live";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
@@ -42,6 +43,16 @@ import { useViewMode } from "@/lib/view-mode";
 
 const TEMPLATE = equalTemplate(5, 90);
 const VIEWS = ["list", "card"] as const;
+
+/* The dashboard's three follow-up cards, and the label each one carries here.
+   `?followUp=` is validated against this list so a hand-typed value cannot
+   silently empty the screen. */
+const FOLLOW_UP_BUCKETS: FollowUpBucket[] = ["low", "expiring", "inactive"];
+const FOLLOW_UP_LABEL: Record<FollowUpBucket, string> = {
+  low: "followUpLow",
+  expiring: "followUpExpiring",
+  inactive: "followUpInactive",
+};
 const ATTENDANCE_TEMPLATE = equalTemplate(2, 120);
 const CLASS_OPTIONS = ["Group Class", "Private Class", "Master Class", "Weekend Class"];
 const STATUS_VALUES = ["Normal", "Low Credit", "Expiring", "Expired", "Inactive"] as const;
@@ -1048,11 +1059,19 @@ function AddStudentWizard({
 
 /* ------------------------------------------------------------------ list --- */
 
-export function StudentsPage({ startWizard }: { startWizard?: string }) {
+export function StudentsPage({
+  startWizard,
+  startFollowUp,
+}: {
+  startWizard?: string;
+  /* The bucket the dashboard's follow-up card was clicked on, if we got here
+     from one. */
+  startFollowUp?: string;
+}) {
   const t = useTranslations("students");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
-  const { students, raw, create, update, remove, loading, error } = useData();
+  const { students, raw, create, update, remove, creditRules, loading, error } = useData();
   const [view, setView] = useState<View>(startWizard ? { kind: "wizard" } : { kind: "list" });
   const [mode, setMode] = useViewMode("students", VIEWS);
   const [createdLogins, setCreatedLogins] = useState<{
@@ -1062,7 +1081,29 @@ export function StudentsPage({ startWizard }: { startWizard?: string }) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [branch, setBranch] = useState("");
+  const [followUp, setFollowUp] = useState(
+    FOLLOW_UP_BUCKETS.includes(startFollowUp as FollowUpBucket) ? startFollowUp! : "",
+  );
   const [page, setPage] = useState(0);
+
+  /* The same bucketing the dashboard card counted, so the number on the card
+     and the number of rows here cannot disagree. */
+  const followUps = useMemo(() => buildFollowUps(creditRules, students), [creditRules, students]);
+  const followUpIds = useMemo(() => {
+    const bucket = followUps.find((f) => f.key === followUp);
+    return bucket ? new Set(bucket.students.map((s) => s.id)) : null;
+  }, [followUps, followUp]);
+
+  const followUpOptions = useMemo(
+    () => [
+      { value: "", label: t("followUpAll") },
+      ...followUps.map((f) => ({
+        value: f.key,
+        label: `${t(FOLLOW_UP_LABEL[f.key])} (${f.count})`,
+      })),
+    ],
+    [followUps, t],
+  );
 
   /* Filter values stay "" for "all" so the label can be localised without
      changing what the filter compares against. */
@@ -1084,12 +1125,13 @@ export function StudentsPage({ startWizard }: { startWizard?: string }) {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return students.filter((s) => {
+      if (followUpIds && !followUpIds.has(s.id)) return false;
       if (status && s.status !== status) return false;
       if (branch && s.branch !== branch) return false;
       if (q && !s.name.toLowerCase().includes(q) && !s.parentPhone.includes(q)) return false;
       return true;
     });
-  }, [students, search, status, branch]);
+  }, [students, search, status, branch, followUpIds]);
 
   const { pageRows, totalPages, page: current } = paginate(filtered, page);
 
@@ -1269,6 +1311,12 @@ export function StudentsPage({ startWizard }: { startWizard?: string }) {
         />
         <SelectFilter value={branch} onChange={(v) => { setBranch(v); setPage(0); }} options={branchOptions} label={tCommon("branch")} />
         <SelectFilter value={status} onChange={(v) => { setStatus(v); setPage(0); }} options={statusOptions} label={tCommon("status")} />
+        <SelectFilter
+          value={followUp}
+          onChange={(v) => { setFollowUp(v); setPage(0); }}
+          options={followUpOptions}
+          label={t("followUpFilter")}
+        />
         <ViewToggle value={mode} onChange={setMode} options={VIEWS} style={{ marginLeft: "auto" }} />
       </FilterBar>
 

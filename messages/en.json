@@ -301,7 +301,12 @@
     "parentLogin": "Parent login",
     "tempPassword": "Temporary password",
     "tabCredits": "Credits",
-    "parentLabel": "Parent"
+    "parentLabel": "Parent",
+    "followUpFilter": "Follow-up",
+    "followUpAll": "All students",
+    "followUpLow": "Low credit",
+    "followUpExpiring": "Expiring soon",
+    "followUpInactive": "Inactive"
   },
   "parents": {
     "title": "Parents",
