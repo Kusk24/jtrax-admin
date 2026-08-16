@@ -77,7 +77,13 @@ function studentEmailFor(name: string): string {
   return `${slug || "student"}@student.jca.ac.th`;
 }
 
-type View = { kind: "list" } | { kind: "detail"; id: string } | { kind: "wizard" };
+type View =
+  | { kind: "list" }
+  /* `edit` / `remove` are set when the card's own buttons were used: the card
+     has no room for a form, so it opens the student on the state that button
+     asked for. */
+  | { kind: "detail"; id: string; edit?: boolean; remove?: boolean }
+  | { kind: "wizard" };
 
 /* ---------------------------------------------------------------- detail --- */
 
@@ -89,6 +95,8 @@ type DetailTab = (typeof DETAIL_TABS)[number];
 
 function StudentDetail({
   student,
+  startEditing = false,
+  startDeleting = false,
   guardianOptions,
   onBack,
   onSave,
@@ -97,6 +105,8 @@ function StudentDetail({
   onUnlinkGuardian,
 }: {
   student: Student;
+  startEditing?: boolean;
+  startDeleting?: boolean;
   /* Every guardian on file. A child has one, so this is a picker rather than
      a create form — making a new guardian is the Parents screen's job. */
   guardianOptions: Array<{ id: string; name: string }>;
@@ -113,9 +123,9 @@ function StudentDetail({
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
   const [tab, setTab] = useState<DetailTab>("Overview");
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(startEditing);
   const [draft, setDraft] = useState<Student>(student);
-  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(startDeleting);
   const [alsoParent, setAlsoParent] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [guardianId, setGuardianId] = useState("");
@@ -484,6 +494,16 @@ function StudentDetail({
                       <option key={b} value={b}>{b}</option>
                     ))}
                   </select>
+                </div>
+                <div>
+                  <label style={labelStyle} htmlFor="ed-dob">{t("dateOfBirth")}</label>
+                  <input
+                    id="ed-dob"
+                    type="date"
+                    value={draft.dateOfBirth}
+                    onChange={(e) => setField("dateOfBirth", e.target.value)}
+                    style={fieldStyle}
+                  />
                 </div>
                 <div>
                   <label style={labelStyle} htmlFor="ed-level">{t("level")}</label>
@@ -859,6 +879,11 @@ function StudentDetail({
 type Draft = {
   name: string;
   className: string;
+  /* The list and the cards show age and level on every student. Registration
+     collected neither, so a student added through the console read "0 yrs ·
+     Beginner" beside imported ones that had both. */
+  dateOfBirth: string;
+  level: string;
   school: string;
   fideId: string;
   fideRating: string;
@@ -876,6 +901,8 @@ type Draft = {
 const EMPTY_DRAFT: Draft = {
   name: "",
   className: "Group Class",
+  dateOfBirth: "",
+  level: LEVEL_OPTIONS[0],
   school: "",
   fideId: "",
   fideRating: "",
@@ -1075,6 +1102,24 @@ function AddStudentWizard({
                 <select id="w-class" value={draft.className} onChange={(e) => set("className", e.target.value)} style={selectStyle}>
                   {classOptions.map((c) => (
                     <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle} htmlFor="w-dob">{t("dateOfBirth")}</label>
+                <input
+                  id="w-dob"
+                  type="date"
+                  value={draft.dateOfBirth}
+                  onChange={(e) => set("dateOfBirth", e.target.value)}
+                  style={fieldStyle}
+                />
+              </div>
+              <div>
+                <label style={labelStyle} htmlFor="w-level">{t("level")}</label>
+                <select id="w-level" value={draft.level} onChange={(e) => set("level", e.target.value)} style={selectStyle}>
+                  {LEVEL_OPTIONS.map((l) => (
+                    <option key={l} value={l}>{l}</option>
                   ))}
                 </select>
               </div>
@@ -1335,7 +1380,8 @@ export function StudentsPage({
         const created = await create("students", {
           user_account_id: studentAccount.user_account_id,
           name: draft.name,
-          current_level: "Beginner",
+          date_of_birth: draft.dateOfBirth || null,
+          current_level: draft.level || "Beginner",
           fide_rating: draft.fideRating ? Number(draft.fideRating) : null,
         });
 
@@ -1405,7 +1451,10 @@ export function StudentsPage({
     if (student)
       return (
         <StudentDetail
+          key={view.id}
           student={student}
+          startEditing={view.edit}
+          startDeleting={view.remove}
           guardianOptions={parentOptions}
           onLinkGuardian={(parentId, relation) =>
             create("student-parents", {
@@ -1424,7 +1473,11 @@ export function StudentsPage({
           onBack={() => setView({ kind: "list" })}
           onSave={async (next) => {
             try {
-              await update("students", next.id, { name: next.name, current_level: next.level });
+              await update("students", next.id, {
+                name: next.name,
+                date_of_birth: next.dateOfBirth || null,
+                current_level: next.level,
+              });
             } catch (e) {
               window.alert(e instanceof Error ? e.message : "save failed");
             }
@@ -1558,6 +1611,13 @@ export function StudentsPage({
                   onClick={() => setView({ kind: "detail", id: s.id })}
                   avatar={<Avatar initials={initialsOf(s.name)} size={44} />}
                   title={s.name}
+                  actions={
+                    <RowActions
+                      label={s.name}
+                      onEdit={() => setView({ kind: "detail", id: s.id, edit: true })}
+                      onDelete={() => setView({ kind: "detail", id: s.id, remove: true })}
+                    />
+                  }
                   subtitle={
                     <span style={{ display: "inline-flex", alignItems: "center" }}>
                       <ClassDot color={classDotColor(s.className)} />

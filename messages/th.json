@@ -104,7 +104,8 @@
     "switchView": "สลับมุมมอง",
     "list": "มุมมองตาราง",
     "card": "มุมมองการ์ด",
-    "calendar": "มุมมองปฏิทิน"
+    "calendar": "มุมมองปฏิทิน",
+    "openCard": "เปิด {what}"
   },
   "shell": {
     "dashboard": "แดชบอร์ด",
@@ -391,7 +392,8 @@
     "noPayer": "ไม่ได้บันทึก",
     "browseStudents": "แสดงนักเรียนทั้งหมด",
     "colPaidBy": "ผู้ชำระเงิน",
-    "studentRemoved": "นักเรียนถูกลบแล้ว"
+    "studentRemoved": "นักเรียนถูกลบแล้ว",
+    "detailTitle": "รายการชำระเงิน"
   },
   "classHistory": {
     "title": "ประวัติคลาสเรียน",
@@ -426,7 +428,8 @@
     "dayWithSessions": "{date} — {count, plural, =0 {ไม่มีคาบเรียน} other {# คาบเรียน}}",
     "pickADay": "เลือกวันเพื่อดูคาบเรียนและผู้เข้าเรียน",
     "noSessionsOn": "ไม่มีคาบเรียนวันที่ {date}",
-    "weekdayHidden": "{count, plural, other {# รายการในวันธรรมดา}}"
+    "weekdayHidden": "{count, plural, other {# รายการในวันธรรมดา}}",
+    "sessionDetail": "คาบเรียน"
   },
   "tournament": {
     "title": "การแข่งขัน",

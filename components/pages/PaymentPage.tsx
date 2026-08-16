@@ -20,7 +20,9 @@ import {
   ExportButton,
   fieldStyle,
   FilterBar,
+  InfoGrid,
   labelStyle,
+  Modal,
   PageHeader,
   paginate,
   Pagination,
@@ -33,6 +35,7 @@ import {
   TableRow,
 } from "../page-kit";
 import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
+import { DeleteButton, DetailHeader, EditButton } from "../detail";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 
@@ -423,6 +426,79 @@ function RecordPaymentForm({
   );
 }
 
+/**
+ * One payment, in full. A row can only show six columns; this is where the
+ * reference number, the discount and the guardian who paid actually live.
+ */
+function PaymentDetail({
+  payment,
+  onClose,
+  onEdit,
+  onDelete,
+}: {
+  payment: Payment;
+  onClose: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const t = useTranslations("payment");
+  const tCommon = useTranslations("common");
+  return (
+    <Modal title={t("detailTitle")} onClose={onClose} width={560}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <DetailHeader
+          avatar={<Avatar initials={initialsOf(payment.name)} size={52} />}
+          title={payment.name}
+          subtitle={
+            <span style={{ display: "inline-flex", alignItems: "center" }}>
+              <ClassDot color={classDotColor(payment.className)} />
+              {payment.className}
+            </span>
+          }
+          badges={
+            <>
+              <span style={{ fontFamily: FONT, fontSize: 19, fontWeight: 700, color: COLORS.text }}>
+                {payment.amount}
+              </span>
+              {payment.credits !== "—" && (
+                <Badge color={COLORS.success} bg={COLORS.successBg}>
+                  {payment.credits} {tCommon("credits")}
+                </Badge>
+              )}
+              {payment.detached && (
+                <Badge color={COLORS.textSecondary} bg={COLORS.neutralBg}>
+                  {t("studentRemoved")}
+                </Badge>
+              )}
+            </>
+          }
+          actions={
+            payment.id ? (
+              <>
+                <EditButton onClick={onEdit} />
+                <DeleteButton onClick={onDelete} />
+              </>
+            ) : undefined
+          }
+        />
+        <InfoGrid
+          rows={[
+            { label: t("colPaidBy"), value: payment.payer || "—" },
+            { label: tCommon("class"), value: payment.className },
+            { label: t("credits"), value: payment.credits },
+            { label: t("amount"), value: payment.gross ?? payment.amount },
+            { label: t("discount"), value: payment.discount ?? "—" },
+            { label: t("finalAmount"), value: payment.amount },
+            { label: tCommon("method"), value: payment.method },
+            { label: tCommon("date"), value: payment.date },
+            { label: t("reference"), value: payment.reference || "—" },
+          ]}
+        />
+      </div>
+    </Modal>
+  );
+}
+
 /* The API's own spelling of the method column; the filter bar shows the spaced
    labels above, which is why recording one strips the spaces. */
 const METHOD_VALUES = ["CreditCard", "BankTransfer", "PromptPay", "Cash"];
@@ -443,6 +519,7 @@ export function PaymentPage({ startStudentId }: { startStudentId?: string }) {
   const [to, setTo] = useState("");
   const [page, setPage] = useState(0);
 
+  const [detail, setDetail] = useState<Payment | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [values, setValues] = useState<CrudValues>({});
   const [deleting, setDeleting] = useState<Payment | null>(null);
@@ -549,6 +626,15 @@ export function PaymentPage({ startStudentId }: { startStudentId?: string }) {
         />
       )}
 
+      {detail && (
+        <PaymentDetail
+          payment={detail}
+          onClose={() => setDetail(null)}
+          onEdit={() => { openEdit(detail); setDetail(null); }}
+          onDelete={() => { setDeleting(detail); setDetail(null); }}
+        />
+      )}
+
       {deleting && (
         <ConfirmDeleteModal
           what={t("paymentFor", { name: deleting.name, amount: deleting.amount })}
@@ -623,6 +709,7 @@ export function PaymentPage({ startStudentId }: { startStudentId?: string }) {
             {pageRows.map((p, i) => (
               <EntityCard
                 key={p.id ?? `${p.name}-${p.date}-${i}`}
+                onClick={() => setDetail(p)}
                 avatar={<Avatar initials={initialsOf(p.name)} size={44} />}
                 title={p.name}
                 subtitle={
@@ -675,7 +762,7 @@ export function PaymentPage({ startStudentId }: { startStudentId?: string }) {
           {pageRows.length === 0 && <EmptyRow>{t("empty")}</EmptyRow>}
           {pageRows.map((p, i) => {
             return (
-              <TableRow key={p.id ?? `${p.name}-${p.date}-${i}`} template={TEMPLATE}>
+              <TableRow key={p.id ?? `${p.name}-${p.date}-${i}`} template={TEMPLATE} onClick={() => setDetail(p)}>
                 <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                   <Avatar initials={initialsOf(p.name)} size={30} />
                   <span style={{ minWidth: 0 }}>

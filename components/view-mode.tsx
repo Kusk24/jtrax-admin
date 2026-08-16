@@ -151,6 +151,7 @@ export function EntityCard({
   footer?: ReactNode;
   onClick?: () => void;
 }) {
+  const t = useTranslations("view");
   /* A card that opens something is a button; without that, keyboard users can
      reach every row of the table view and none of the card view. */
   const activate = (e: KeyboardEvent<HTMLElement>) => {
@@ -172,6 +173,10 @@ export function EntityCard({
       <div
         role={onClick ? "button" : undefined}
         tabIndex={onClick ? 0 : undefined}
+        /* Named explicitly. Without it the accessible name is the whole card,
+           which reads as a paragraph to a screen reader and collides with the
+           row's own "Edit {name}" button. */
+        aria-label={onClick ? t("openCard", { what: title }) : undefined}
         onClick={onClick}
         onKeyDown={activate}
         style={{ display: "flex", alignItems: "flex-start", gap: 11, outlineOffset: 3 }}
