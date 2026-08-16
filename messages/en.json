@@ -388,7 +388,19 @@
     "sessionDeleteNote": "Its attendance records are removed with it.",
     "noAttendees": "Nobody was checked in to this session.",
     "addAttendee": "Add student",
-    "removeAttendee": "Remove {name} from this session"
+    "removeAttendee": "Remove {name} from this session",
+    "calendarTitle": "Sessions by day",
+    "weekendOnly": "Weekend days",
+    "allDays": "Every day",
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month",
+    "thisMonth": "This month",
+    "sessionsInMonth": "{count, plural, =0 {No sessions this month} one {# session this month} other {# sessions this month}}",
+    "moreSessions": "+{count} more",
+    "dayWithSessions": "{date} — {count, plural, =0 {no sessions} one {# session} other {# sessions}}",
+    "pickADay": "Pick a day to see its sessions and who attended.",
+    "noSessionsOn": "No sessions on {date}.",
+    "weekdayHidden": "{count, plural, one {# on a weekday} other {# on weekdays}}"
   },
   "tournament": {
     "title": "Tournament",

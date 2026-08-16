@@ -36,13 +36,14 @@ import {
   TableRow,
 } from "../page-kit";
 import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
+import { MonthCalendar, type CalendarEntry } from "../calendar";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 
 /* The chevron is the one column that is not data, so it keeps a fixed
    width; the five data columns share the rest equally. */
 const TEMPLATE = `${equalTemplate(5, 100)} 44px`;
-const VIEWS = ["list", "card"] as const;
+const VIEWS = ["list", "card", "calendar"] as const;
 
 const SESSION_STATUSES = ["Scheduled", "Ongoing", "Completed"];
 
@@ -53,6 +54,8 @@ type HistoryRow = {
   id: string;
   classId: string;
   dateObj: Date;
+  /** The raw `YYYY-MM-DD` the calendar buckets on; `date` is it formatted. */
+  iso: string;
   date: string;
   className: string;
   time: string;
@@ -256,12 +259,73 @@ function AttendeeChips({
   );
 }
 
+/** One session as a card: what it was, who was in it, and how to change both.
+    The card view lists these; the calendar shows the ones on the chosen day. */
+function SessionCard({
+  row,
+  onEdit,
+  onDelete,
+  onViewAttendee,
+  onRemoveAttendee,
+  onAddAttendee,
+}: {
+  row: HistoryRow;
+  onEdit: () => void;
+  onDelete: () => void;
+  onViewAttendee: (name: string) => void;
+  onRemoveAttendee: (attendanceId: string) => void;
+  onAddAttendee: () => void;
+}) {
+  const t = useTranslations("classHistory");
+  const tStatus = useTranslations("status");
+  const chip = statusChipColors(row.status);
+  return (
+    <EntityCard
+      title={row.className}
+      subtitle={`${row.date} · ${row.time}`}
+      badges={
+        <>
+          <Badge color={chip.color} bg={chip.bg}>{tStatus(row.status)}</Badge>
+          <Badge color={COLORS.blue} bg={COLORS.light}>
+            {t("presentCount", { count: row.attendees.length })}
+          </Badge>
+        </>
+      }
+      actions={
+        <RowActions
+          label={t("sessionOn", { className: row.className, date: row.date })}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
+      }
+      footer={
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <AttendeeChips
+            row={row}
+            onView={onViewAttendee}
+            onRemove={onRemoveAttendee}
+            onAdd={onAddAttendee}
+          />
+        </div>
+      }
+    />
+  );
+}
+
 export function ClassHistoryPage() {
   const t = useTranslations("classHistory");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
   const { raw, students, create, update, remove } = useData();
   const [mode, setMode] = useViewMode("classhistory", VIEWS);
+  /* The calendar opens on the current month; `weekendOnly` starts on because
+     the timetable is a weekend one. */
+  const [month, setMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+  const [weekendOnly, setWeekendOnly] = useState(true);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("");
   const [from, setFrom] = useState("");
@@ -299,6 +363,7 @@ export function ClassHistoryPage() {
           id,
           classId: String(session["class_id"] ?? ""),
           dateObj: new Date(date),
+          iso: date,
           date: fmtDate(date),
           className: cls ? String(cls["name"] ?? "") : "—",
           time: start && end ? `${start} – ${end}` : start,
@@ -382,6 +447,25 @@ export function ClassHistoryPage() {
 
   const { pageRows, totalPages, page: current } = paginate(filtered, page);
 
+  /* The calendar shows whatever the filter bar has narrowed to, so a class
+     filter applies to the month grid exactly as it does to the table. */
+  const calendarEntries: CalendarEntry[] = useMemo(
+    () =>
+      filtered.map((row) => ({
+        key: row.key,
+        day: row.iso,
+        label: row.className,
+        sub: row.time,
+        tone: classDotColor(row.className),
+      })),
+    [filtered],
+  );
+
+  const daySessions = useMemo(
+    () => (selectedDay ? filtered.filter((row) => row.iso === selectedDay) : []),
+    [filtered, selectedDay],
+  );
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <PageHeader
@@ -442,45 +526,94 @@ export function ClassHistoryPage() {
         <ViewToggle value={mode} onChange={setMode} options={VIEWS} style={{ marginLeft: "auto" }} />
       </FilterBar>
 
-      {mode === "card" ? (
+      {mode === "calendar" ? (
+        <Card style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <SectionTitle>{t("calendarTitle")}</SectionTitle>
+            {/* Weekend-only is the default: the timetable is a weekend one, and
+                five empty weekday columns push the two that matter into a
+                quarter of the width. */}
+            <span style={{ marginLeft: "auto", display: "inline-flex", gap: 2, padding: 3, borderRadius: 999, border: `1px solid ${COLORS.border}`, background: COLORS.surface }}>
+              {([
+                { value: true, label: t("weekendOnly") },
+                { value: false, label: t("allDays") },
+              ] as const).map((option) => (
+                <button
+                  key={String(option.value)}
+                  type="button"
+                  aria-pressed={weekendOnly === option.value}
+                  onClick={() => setWeekendOnly(option.value)}
+                  style={{
+                    padding: "6px 14px",
+                    borderRadius: 999,
+                    border: "none",
+                    background: weekendOnly === option.value ? COLORS.light : "transparent",
+                    color: weekendOnly === option.value ? COLORS.blue : COLORS.textSecondary,
+                    fontFamily: FONT,
+                    fontSize: 13.5,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </span>
+          </div>
+
+          <MonthCalendar
+            month={month}
+            onMonthChange={(next) => {
+              setMonth(next);
+              setSelectedDay(null);
+            }}
+            entries={calendarEntries}
+            weekendOnly={weekendOnly}
+            selected={selectedDay}
+            onSelectDay={setSelectedDay}
+          />
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {selectedDay === null ? (
+              <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
+                {t("pickADay")}
+              </p>
+            ) : daySessions.length === 0 ? (
+              <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
+                {t("noSessionsOn", { date: fmtDate(selectedDay) })}
+              </p>
+            ) : (
+              <CardGrid min={300}>
+                {daySessions.map((row) => (
+                  <SessionCard
+                    key={row.key}
+                    row={row}
+                    onEdit={() => openSessionModal(row)}
+                    onDelete={() => setDeletingSession(row)}
+                    onViewAttendee={(name) => setAttendee({ name, session: row })}
+                    onRemoveAttendee={(id) => remove("attendance", id)}
+                    onAddAttendee={() => { setAddingTo(row); setAddStudentId(""); }}
+                  />
+                ))}
+              </CardGrid>
+            )}
+          </div>
+        </Card>
+      ) : mode === "card" ? (
         <>
           <CardGrid min={300}>
             {pageRows.length === 0 && <EmptyCards>{t("empty")}</EmptyCards>}
-            {pageRows.map((row) => {
-              const chip = statusChipColors(row.status);
-              return (
-                <EntityCard
-                  key={row.key}
-                  title={row.className}
-                  subtitle={`${row.date} · ${row.time}`}
-                  badges={
-                    <>
-                      <Badge color={chip.color} bg={chip.bg}>{tStatus(row.status)}</Badge>
-                      <Badge color={COLORS.blue} bg={COLORS.light}>
-                        {t("presentCount", { count: row.attendees.length })}
-                      </Badge>
-                    </>
-                  }
-                  actions={
-                    <RowActions
-                      label={t("sessionOn", { className: row.className, date: row.date })}
-                      onEdit={() => openSessionModal(row)}
-                      onDelete={() => setDeletingSession(row)}
-                    />
-                  }
-                  footer={
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                      <AttendeeChips
-                        row={row}
-                        onView={(name) => setAttendee({ name, session: row })}
-                        onRemove={(id) => remove("attendance", id)}
-                        onAdd={() => { setAddingTo(row); setAddStudentId(""); }}
-                      />
-                    </div>
-                  }
-                />
-              );
-            })}
+            {pageRows.map((row) => (
+              <SessionCard
+                key={row.key}
+                row={row}
+                onEdit={() => openSessionModal(row)}
+                onDelete={() => setDeletingSession(row)}
+                onViewAttendee={(name) => setAttendee({ name, session: row })}
+                onRemoveAttendee={(id) => remove("attendance", id)}
+                onAddAttendee={() => { setAddingTo(row); setAddStudentId(""); }}
+              />
+            ))}
           </CardGrid>
           <Pagination page={current} totalPages={totalPages} onChange={setPage} />
         </>
