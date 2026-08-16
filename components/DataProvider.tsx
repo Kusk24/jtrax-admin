@@ -10,14 +10,14 @@ import {
 } from "react";
 import { api } from "@/lib/api";
 import {
-  monthRevenue, toAdmins, toAnnouncements, toCheckins, toParents, toPayments,
+  creditRulesOf, monthRevenue, toAdmins, toAnnouncements, toCheckins, toParents, toPayments,
   toRevenueTrend, toStudents, toTodaysClasses, toTournaments,
   type LiveCollections, type Row, type TrendPoint,
 } from "@/lib/live";
 import type {
   AdminPerson, Announcement, CheckinDef, ClassDef, ParentPerson, Payment, Student, Tournament,
 } from "@/lib/data";
-import { DEFAULT_CREDIT_RULES, type CreditRules } from "@/lib/derive";
+import { RULE_KEYS, type CreditRules } from "@/lib/derive";
 
 const EMPTY: LiveCollections = {
   students: [], parents: [], parentContacts: [], studentParents: [], classes: [],
@@ -75,12 +75,6 @@ type DataContextValue = {
   remove: (path: string, id: string) => Promise<void>;
   /** Writes one system_configuration key, inserting it the first time. */
   setConfig: (key: string, value: string) => Promise<void>;
-};
-
-const RULE_KEYS: Record<keyof CreditRules, string> = {
-  lowCredit: "credit_rule_low_credit",
-  expiringDays: "credit_rule_expiring_days",
-  inactiveDays: "credit_rule_inactive_days",
 };
 
 const DataContext = createContext<DataContextValue | null>(null);
@@ -163,18 +157,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await refresh();
   }, [raw.systemConfig, refresh]);
 
-  const creditRules = useMemo<CreditRules>(() => {
-    const read = (key: string, fallback: number) => {
-      const row = raw.systemConfig.find((r) => r["config_key"] === key);
-      const n = Number(row?.["config_value"]);
-      return Number.isFinite(n) ? n : fallback;
-    };
-    return {
-      lowCredit: read(RULE_KEYS.lowCredit, DEFAULT_CREDIT_RULES.lowCredit),
-      expiringDays: read(RULE_KEYS.expiringDays, DEFAULT_CREDIT_RULES.expiringDays),
-      inactiveDays: read(RULE_KEYS.inactiveDays, DEFAULT_CREDIT_RULES.inactiveDays),
-    };
-  }, [raw.systemConfig]);
+  /* Same reader `toStudents` uses, so a threshold saved in Settings moves the
+     status chips and the dashboard counts together. */
+  const creditRules = useMemo<CreditRules>(() => creditRulesOf(raw), [raw]);
 
   const saveCreditRules = useCallback(async (rules: CreditRules) => {
     /* Sequential, not Promise.all: each one decides insert-or-update from the
