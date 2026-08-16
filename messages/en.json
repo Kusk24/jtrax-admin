@@ -393,7 +393,8 @@
     "browseStudents": "Show all students",
     "colPaidBy": "Paid by",
     "studentRemoved": "student removed",
-    "detailTitle": "Payment record"
+    "detailTitle": "Payment record",
+    "moreStudents": "{count} more — type to narrow the list"
   },
   "classHistory": {
     "title": "Class History",

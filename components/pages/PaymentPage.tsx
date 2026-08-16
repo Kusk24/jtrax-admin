@@ -132,11 +132,14 @@ function RecordPaymentForm({
   const [ref, setRef] = useState("");
 
   /* An empty box lists everyone rather than nothing: the field is a dropdown
-     that also filters, not a search that hides its options until you guess. */
-  const matches = useMemo(() => {
+     that also filters, not a search that hides its options until you guess.
+     Capped at eight so the list stays a list — `hidden` is how many the cap is
+     holding back, which the dropdown says out loud rather than pretending the
+     academy has eight students. */
+  const { matches, hidden } = useMemo(() => {
     const q = studentQuery.trim().toLowerCase();
     const pool = q ? students.filter((s) => s.name.toLowerCase().includes(q)) : students;
-    return pool.slice(0, 8);
+    return { matches: pool.slice(0, 8), hidden: Math.max(0, pool.length - 8) };
   }, [studentQuery, students]);
 
   /** Picking a student re-points the package at their class and the payer at
@@ -254,6 +257,19 @@ function RecordPaymentForm({
                 overflowY: "auto",
               }}
             >
+              {hidden > 0 && (
+                <p
+                  style={{
+                    margin: 0,
+                    padding: "6px 10px",
+                    fontFamily: FONT,
+                    fontSize: 12.5,
+                    color: COLORS.textSecondary,
+                  }}
+                >
+                  {t("moreStudents", { count: hidden })}
+                </p>
+              )}
               {matches.map((s) => (
                 <button
                   key={s.id}
