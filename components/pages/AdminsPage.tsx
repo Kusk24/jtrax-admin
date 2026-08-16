@@ -51,7 +51,7 @@ export function AdminsPage() {
   const t = useTranslations("admins");
   const tCommon = useTranslations("common");
   const tRole = useTranslations("roles");
-  const { admins, raw, create, update, remove } = useData();
+  const { admins, raw, batch, create, update, remove } = useData();
   const [mode, setMode] = useViewMode("admins", VIEWS);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [resetShown, setResetShown] = useState(false);
@@ -63,6 +63,10 @@ export function AdminsPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [created, setCreated] = useState<{ email: string; password: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  /* Creating an admin is an account and an admin row; the button has to stop
+     taking clicks between them, or the second press fails on the unique email
+     with the first one already written. */
+  const [saving, setSaving] = useState(false);
 
   const detail = admins.find((a) => a.id === detailId) ?? null;
 
@@ -298,9 +302,10 @@ export function AdminsPage() {
                     style={{ ...primaryButtonStyle, background: COLORS.danger }}
                     onClick={() => {
                       const row = raw.admins.find((a) => String(a.admin_id) === detail.id);
-                      remove("admins", detail.id)
-                        .then(() => (row?.user_account_id ? remove("user-accounts", String(row.user_account_id)) : undefined))
-                        .catch((e) => window.alert(e instanceof Error ? e.message : "delete failed"));
+                      batch(async () => {
+                        await remove("admins", detail.id);
+                        if (row?.user_account_id) await remove("user-accounts", String(row.user_account_id));
+                      }).catch((e) => window.alert(e instanceof Error ? e.message : "delete failed"));
                       closeDetail();
                     }}
                   >
@@ -327,52 +332,52 @@ export function AdminsPage() {
                 className="jt-btn-primary"
                 style={{
                   ...primaryButtonStyle,
-                  opacity: form.fullName && form.email ? 1 : 0.5,
-                  cursor: form.fullName && form.email ? "pointer" : "not-allowed",
+                  opacity: form.fullName && form.email && !saving ? 1 : 0.5,
+                  cursor: !form.fullName || !form.email ? "not-allowed" : saving ? "wait" : "pointer",
                 }}
-                disabled={!form.fullName || !form.email}
+                disabled={!form.fullName || !form.email || saving}
                 onClick={async () => {
-                  if (adminModal !== "new") {
-                    try {
+                  setSaving(true);
+                  try {
+                    if (adminModal !== "new") {
                       await update("admins", adminModal.id, {
                         name: form.fullName,
                         phone: form.phone,
                         email: form.email,
                         line_id: form.lineId,
                       });
-                    } catch (e) {
-                      window.alert(e instanceof Error ? e.message : "save failed");
+                      setAdminModal(null);
+                      return;
                     }
-                    setAdminModal(null);
-                    return;
-                  }
 
-                  const password = generateTempPassword();
-                  try {
-                    const acct = await create("user-accounts", {
-                      email: form.email,
-                      password,
-                      role: form.role,
-                      display_name: form.fullName,
+                    const password = generateTempPassword();
+                    await batch(async () => {
+                      const acct = await create("user-accounts", {
+                        email: form.email,
+                        password,
+                        role: form.role,
+                        display_name: form.fullName,
+                      });
+                      await create("admins", {
+                        user_account_id: acct.user_account_id,
+                        name: form.fullName,
+                        phone: form.phone,
+                        email: form.email,
+                        line_id: form.lineId,
+                      });
                     });
-                    await create("admins", {
-                      user_account_id: acct.user_account_id,
-                      name: form.fullName,
-                      phone: form.phone,
-                      email: form.email,
-                      line_id: form.lineId,
-                    });
-                  } catch (e) {
-                    window.alert(e instanceof Error ? e.message : "create failed");
                     setAdminModal(null);
-                    return;
+                    setCopied(false);
+                    setCreated({ email: form.email, password });
+                  } catch (e) {
+                    window.alert(e instanceof Error ? e.message : "save failed");
+                    setAdminModal(null);
+                  } finally {
+                    setSaving(false);
                   }
-                  setAdminModal(null);
-                  setCopied(false);
-                  setCreated({ email: form.email, password });
                 }}
               >
-                {adminModal === "new" ? t("create") : tCommon("save")}
+                {saving ? tCommon("saving") : adminModal === "new" ? t("create") : tCommon("save")}
               </button>
             </>
           }

@@ -5,7 +5,9 @@
  * (via lib/live.ts adapters) plus CRUD mutations. Mutations write through the
  * API and then refetch, so derived joins (credits, class names) stay correct.
  */
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode,
+} from "react";
 import { api } from "@/lib/api";
 import {
   monthRevenue, toAdmins, toAnnouncements, toCheckins, toParents, toPayments,
@@ -58,6 +60,16 @@ type DataContextValue = {
   creditRules: CreditRules;
   saveCreditRules: (rules: CreditRules) => Promise<void>;
   refresh: () => Promise<void>;
+  /**
+   * Runs several writes as one unit: the refetch every mutation would trigger
+   * is held until the last one lands, then done once.
+   *
+   * Registering a student is nine writes — an account, the student, an
+   * enrolment, a parent account, the parent, three contacts, the link — and
+   * each of them refetched all twenty-two collections. 189 requests for one
+   * registration, which on a free-tier backend reads as the screen hanging.
+   */
+  batch: <T>(job: () => Promise<T>) => Promise<T>;
   create: (path: string, body: Row) => Promise<Row>;
   update: (path: string, id: string, body: Row) => Promise<Row>;
   remove: (path: string, id: string) => Promise<void>;
@@ -78,8 +90,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [meAccountId, setMeAccountId] = useState("");
+  /* Depth rather than a flag, so a batch nested inside another (a cascade
+     delete called from a flow that is already batching) does not refetch when
+     the inner one finishes. */
+  const held = useRef(0);
+  const missed = useRef(false);
 
   const refresh = useCallback(async () => {
+    if (held.current > 0) {
+      missed.current = true;
+      return;
+    }
     try {
       const keys = Object.keys(PATHS) as (keyof LiveCollections)[];
       const results = await Promise.all(keys.map((k) => api.get<Row[]>(PATHS[k])));
@@ -99,6 +120,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     refresh();
     api.get<{ userAccountId: string }>("auth/me").then((m) => setMeAccountId(m.userAccountId)).catch(() => {});
+  }, [refresh]);
+
+  const batch = useCallback(async <T,>(job: () => Promise<T>): Promise<T> => {
+    held.current += 1;
+    try {
+      return await job();
+    } finally {
+      held.current -= 1;
+      /* Refetch even when the job threw: a flow that failed halfway has still
+         written some of its rows, and the screen has to show them. */
+      if (held.current === 0 && missed.current) {
+        missed.current = false;
+        await refresh();
+      }
+    }
   }, [refresh]);
 
   const create = useCallback(async (path: string, body: Row) => {
@@ -141,12 +177,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [raw.systemConfig]);
 
   const saveCreditRules = useCallback(async (rules: CreditRules) => {
-    /* Sequential, not Promise.all: each write refetches, and three refetches
-       racing each other is how one of the three ends up losing its value. */
-    for (const [field, key] of Object.entries(RULE_KEYS) as [keyof CreditRules, string][]) {
-      await setConfig(key, String(rules[field]));
-    }
-  }, [setConfig]);
+    /* Sequential, not Promise.all: each one decides insert-or-update from the
+       collection it read, and three of those racing is how one loses its
+       value. Batched, so the three writes cost one refetch rather than three. */
+    await batch(async () => {
+      for (const [field, key] of Object.entries(RULE_KEYS) as [keyof CreditRules, string][]) {
+        await setConfig(key, String(rules[field]));
+      }
+    });
+  }, [batch, setConfig]);
 
   const value = useMemo<DataContextValue>(() => ({
     loading,
@@ -169,11 +208,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     creditRules,
     saveCreditRules,
     refresh,
+    batch,
     create,
     update,
     remove,
     setConfig,
-  }), [loading, error, raw, meAccountId, creditRules, saveCreditRules, refresh, create, update, remove, setConfig]);
+  }), [loading, error, raw, meAccountId, creditRules, saveCreditRules, refresh, batch, create, update, remove, setConfig]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }

@@ -94,7 +94,7 @@ export function AcademyPage() {
   const t = useTranslations("academy");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
-  const { raw, create, update, remove } = useData();
+  const { raw, batch, create, update, remove } = useData();
   const courses: Course[] = raw.classes.map((c) => ({
     id: String(c.class_id),
     name: String(c.name ?? ""),
@@ -166,6 +166,9 @@ export function AcademyPage() {
   const [courseDetail, setCourseDetail] = useState<Course | null>(null);
   const [teacherDetail, setTeacherDetail] = useState<Teacher | null>(null);
   const [teacherDeleteConfirm, setTeacherDeleteConfirm] = useState(false);
+  /* Adding a teacher is an account then a teacher row; the button stops taking
+     clicks between the two. */
+  const [savingTeacher, setSavingTeacher] = useState(false);
 
   const [courseDraft, setCourseDraft] = useState<Omit<Course, "id">>({
     name: "",
@@ -702,25 +705,28 @@ export function AcademyPage() {
                 className="jt-btn-primary"
                 style={{
                   ...primaryButtonStyle,
-                  opacity: teacherDraft.name ? 1 : 0.5,
-                  cursor: teacherDraft.name ? "pointer" : "not-allowed",
+                  opacity: teacherDraft.name && !savingTeacher ? 1 : 0.5,
+                  cursor: !teacherDraft.name ? "not-allowed" : savingTeacher ? "wait" : "pointer",
                 }}
-                disabled={!teacherDraft.name}
+                disabled={!teacherDraft.name || savingTeacher}
                 onClick={async () => {
+                  setSavingTeacher(true);
                   try {
                     if (teacherModal === "new") {
-                      const acct = await create("user-accounts", {
-                        email: teacherDraft.email || `${teacherDraft.name.toLowerCase().replace(/\s+/g, ".")}@jca.ac.th`,
-                        password: `teach-${Math.random().toString(36).slice(2, 10)}`,
-                        role: "Teacher",
-                        display_name: teacherDraft.name,
-                      });
-                      await create("teachers", {
-                        user_account_id: acct.user_account_id,
-                        name: teacherDraft.name,
-                        email: teacherDraft.email,
-                        phone: teacherDraft.phone,
-                        line_id: teacherDraft.lineId,
+                      await batch(async () => {
+                        const acct = await create("user-accounts", {
+                          email: teacherDraft.email || `${teacherDraft.name.toLowerCase().replace(/\s+/g, ".")}@jca.ac.th`,
+                          password: `teach-${Math.random().toString(36).slice(2, 10)}`,
+                          role: "Teacher",
+                          display_name: teacherDraft.name,
+                        });
+                        await create("teachers", {
+                          user_account_id: acct.user_account_id,
+                          name: teacherDraft.name,
+                          email: teacherDraft.email,
+                          phone: teacherDraft.phone,
+                          line_id: teacherDraft.lineId,
+                        });
                       });
                     } else {
                       await update("teachers", teacherModal.id, {
@@ -732,11 +738,13 @@ export function AcademyPage() {
                     }
                   } catch (e) {
                     window.alert(e instanceof Error ? e.message : "save failed");
+                  } finally {
+                    setSavingTeacher(false);
                   }
                   setTeacherModal(null);
                 }}
               >
-                {tCommon("save")}
+                {savingTeacher ? tCommon("saving") : tCommon("save")}
               </button>
             </>
           }

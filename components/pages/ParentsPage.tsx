@@ -325,7 +325,7 @@ const contactPillStyle = {
 export function ParentsPage() {
   const t = useTranslations("parents");
   const tCommon = useTranslations("common");
-  const { parents, students, raw, loading, error, create, update, remove } = useData();
+  const { parents, students, raw, loading, error, batch, create, update, remove } = useData();
   const [view, setView] = useState<View>({ kind: "list" });
   const [mode, setMode] = useViewMode("parents", VIEWS);
   const [search, setSearch] = useState("");
@@ -371,44 +371,51 @@ export function ParentsPage() {
     else await create("parent-contacts", { parent_id: parentId, contact_type: kind, value: trimmed });
   }
 
+  /* Six writes — account, parent, three contacts, notification preferences —
+     as one unit, so the screen refetches once at the end rather than six
+     times over. */
   async function createParent(payload: Record<string, unknown>) {
     const password = generateTempPassword();
     const loginEmail = String(payload.loginEmail ?? "").trim();
     const name = String(payload.name ?? "").trim();
 
-    const account = await create("user-accounts", {
-      email: loginEmail,
-      password,
-      role: "Parent",
-      display_name: name,
+    await batch(async () => {
+      const account = await create("user-accounts", {
+        email: loginEmail,
+        password,
+        role: "Parent",
+        display_name: name,
+      });
+      const parent = await create("parents", {
+        user_account_id: account.user_account_id,
+        name,
+      });
+      const parentId = String(parent.parent_id);
+      await saveContact(parentId, "phone", String(payload.phone ?? ""));
+      await saveContact(parentId, "email", String(payload.email ?? ""));
+      await saveContact(parentId, "line_id", String(payload.lineId ?? ""));
+      /* Alerts default to on, matching what the seed gives a parent. */
+      await create("notification-preferences", { parent_id: parentId }).catch(() => {});
+      setCreated({ email: loginEmail, password });
+      setCopied(false);
     });
-    const parent = await create("parents", {
-      user_account_id: account.user_account_id,
-      name,
-    });
-    const parentId = String(parent.parent_id);
-    await saveContact(parentId, "phone", String(payload.phone ?? ""));
-    await saveContact(parentId, "email", String(payload.email ?? ""));
-    await saveContact(parentId, "line_id", String(payload.lineId ?? ""));
-    /* Alerts default to on, matching what the seed gives a parent. */
-    await create("notification-preferences", { parent_id: parentId }).catch(() => {});
-    setCreated({ email: loginEmail, password });
-    setCopied(false);
   }
 
   async function editParent(parent: ParentPerson, payload: Record<string, unknown>) {
     const name = String(payload.name ?? "").trim();
-    await update("parents", parent.id, { name });
-    const accountId = accountIdOf(parent.id);
-    if (accountId) {
-      await update("user-accounts", accountId, {
-        email: String(payload.loginEmail ?? "").trim(),
-        display_name: name,
-      });
-    }
-    await saveContact(parent.id, "phone", String(payload.phone ?? ""));
-    await saveContact(parent.id, "email", String(payload.email ?? ""));
-    await saveContact(parent.id, "line_id", String(payload.lineId ?? ""));
+    await batch(async () => {
+      await update("parents", parent.id, { name });
+      const accountId = accountIdOf(parent.id);
+      if (accountId) {
+        await update("user-accounts", accountId, {
+          email: String(payload.loginEmail ?? "").trim(),
+          display_name: name,
+        });
+      }
+      await saveContact(parent.id, "phone", String(payload.phone ?? ""));
+      await saveContact(parent.id, "email", String(payload.email ?? ""));
+      await saveContact(parent.id, "line_id", String(payload.lineId ?? ""));
+    });
   }
 
   /* Order matters: everything that references the parent goes first, then the

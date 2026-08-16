@@ -938,7 +938,7 @@ export function TournamentPage() {
   const t = useTranslations("tournament");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
-  const { tournaments, raw, create, update, remove } = useData();
+  const { tournaments, raw, batch, create, update, remove } = useData();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [mode, setMode] = useViewMode("tournaments", CARD_FIRST);
@@ -993,13 +993,15 @@ export function TournamentPage() {
   /* Registrations and categories point at the tournament, so they go first —
      the backend answers a referenced row with a 409 rather than cascading. */
   async function deleteTournament(tournament: Tournament) {
-    for (const p of tournament.participants) {
-      if (p.id) await removeIfPresent(remove, "tournament-registrations", p.id);
-    }
-    for (const c of tournament.categoryRows ?? []) {
-      await removeIfPresent(remove, "tournament-categories", c.id);
-    }
-    await remove("tournaments", tournament.id);
+    await batch(async () => {
+      for (const p of tournament.participants) {
+        if (p.id) await removeIfPresent(remove, "tournament-registrations", p.id);
+      }
+      for (const c of tournament.categoryRows ?? []) {
+        await removeIfPresent(remove, "tournament-categories", c.id);
+      }
+      await remove("tournaments", tournament.id);
+    });
     setSelectedId(null);
   }
 
