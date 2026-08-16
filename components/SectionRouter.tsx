@@ -23,15 +23,15 @@ import { TournamentPage } from "./pages/TournamentPage";
 export function SectionRouter({
   section,
   newStudentName,
-  followUp,
+  status,
   studentId,
 }: {
   section: string;
   /* Threaded from the server component rather than read with useSearchParams,
      which would bail the whole route out of server rendering. */
   newStudentName?: string;
-  /* Which follow-up bucket the dashboard sent us to look at. */
-  followUp?: string;
+  /* Which condition the dashboard sent us to look at — a student status. */
+  status?: string;
   /* The student a payment is about to be recorded for, straight off the end of
      the registration wizard. */
   studentId?: string;
@@ -48,9 +48,9 @@ export function SectionRouter({
          rather than keeping the state of the previous visit. */
       return (
         <StudentsPage
-          key={`${newStudentName ?? ""}|${followUp ?? ""}`}
+          key={`${newStudentName ?? ""}|${status ?? ""}`}
           startWizard={newStudentName}
-          startFollowUp={followUp}
+          startStatus={status}
         />
       );
     case "parents":

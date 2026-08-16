@@ -6,7 +6,6 @@ import { useTranslations } from "next-intl";
 import { generateTempPassword } from "@/lib/credentials";
 import { type Student } from "@/lib/data";
 import { useData } from "@/components/DataProvider";
-import { buildFollowUps, type FollowUpBucket } from "@/lib/derive";
 import { fmtDate, fmtTHB, practiceStrip } from "@/lib/live";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
@@ -44,16 +43,6 @@ import { useViewMode } from "@/lib/view-mode";
 
 const TEMPLATE = equalTemplate(5, 90);
 const VIEWS = ["list", "card"] as const;
-
-/* The dashboard's three follow-up cards, and the label each one carries here.
-   `?followUp=` is validated against this list so a hand-typed value cannot
-   silently empty the screen. */
-const FOLLOW_UP_BUCKETS: FollowUpBucket[] = ["low", "expiring", "inactive"];
-const FOLLOW_UP_LABEL: Record<FollowUpBucket, string> = {
-  low: "followUpLow",
-  expiring: "followUpExpiring",
-  inactive: "followUpInactive",
-};
 const ATTENDANCE_TEMPLATE = equalTemplate(2, 120);
 const CLASS_OPTIONS = ["Group Class", "Private Class", "Master Class", "Weekend Class"];
 const STATUS_VALUES = ["Normal", "Low Credit", "Expiring", "Expired", "Inactive"] as const;
@@ -1087,17 +1076,17 @@ function AddStudentWizard({
 
 export function StudentsPage({
   startWizard,
-  startFollowUp,
+  startStatus,
 }: {
   startWizard?: string;
-  /* The bucket the dashboard's follow-up card was clicked on, if we got here
-     from one. */
-  startFollowUp?: string;
+  /* The condition the dashboard's follow-up card was clicked on, if we got
+     here from one. */
+  startStatus?: string;
 }) {
   const t = useTranslations("students");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
-  const { students, raw, batch, create, update, remove, creditRules, loading, error } = useData();
+  const { students, raw, batch, create, update, remove, loading, error } = useData();
   const [view, setView] = useState<View>(startWizard ? { kind: "wizard" } : { kind: "list" });
   const [mode, setMode] = useViewMode("students", VIEWS);
   const router = useRouter();
@@ -1107,31 +1096,16 @@ export function StudentsPage({
     parent: { email: string; password: string } | null;
   } | null>(null);
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
+  /* One control for the student's condition. There used to be two — a raw
+     status picker and a follow-up bucket picker — which offered the same
+     thing twice under different names. The dashboard links here with
+     `?status=`; anything the list does not know is ignored rather than
+     silently emptying the screen. */
+  const [status, setStatus] = useState(
+    STATUS_VALUES.includes(startStatus as (typeof STATUS_VALUES)[number]) ? startStatus! : "",
+  );
   const [branch, setBranch] = useState("");
-  const [followUp, setFollowUp] = useState(
-    FOLLOW_UP_BUCKETS.includes(startFollowUp as FollowUpBucket) ? startFollowUp! : "",
-  );
   const [page, setPage] = useState(0);
-
-  /* The same bucketing the dashboard card counted, so the number on the card
-     and the number of rows here cannot disagree. */
-  const followUps = useMemo(() => buildFollowUps(creditRules, students), [creditRules, students]);
-  const followUpIds = useMemo(() => {
-    const bucket = followUps.find((f) => f.key === followUp);
-    return bucket ? new Set(bucket.students.map((s) => s.id)) : null;
-  }, [followUps, followUp]);
-
-  const followUpOptions = useMemo(
-    () => [
-      { value: "", label: t("followUpAll") },
-      ...followUps.map((f) => ({
-        value: f.key,
-        label: `${t(FOLLOW_UP_LABEL[f.key])} (${f.count})`,
-      })),
-    ],
-    [followUps, t],
-  );
 
   /* Filter values stay "" for "all" so the label can be localised without
      changing what the filter compares against. */
@@ -1142,24 +1116,28 @@ export function StudentsPage({
     ],
     [tCommon, students],
   );
+  /* Each option carries its own count, so the number on a dashboard card can
+     be checked against the list it links to without counting rows. */
   const statusOptions = useMemo(
     () => [
       { value: "", label: tCommon("allStatuses") },
-      ...STATUS_VALUES.map((v) => ({ value: v, label: tStatus(v) })),
+      ...STATUS_VALUES.map((v) => ({
+        value: v,
+        label: `${tStatus(v)} (${students.filter((s) => s.status === v).length})`,
+      })),
     ],
-    [tCommon, tStatus],
+    [tCommon, tStatus, students],
   );
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return students.filter((s) => {
-      if (followUpIds && !followUpIds.has(s.id)) return false;
       if (status && s.status !== status) return false;
       if (branch && s.branch !== branch) return false;
       if (q && !s.name.toLowerCase().includes(q) && !s.parentPhone.includes(q)) return false;
       return true;
     });
-  }, [students, search, status, branch, followUpIds]);
+  }, [students, search, status, branch]);
 
   const { pageRows, totalPages, page: current } = paginate(filtered, page);
 
@@ -1380,12 +1358,6 @@ export function StudentsPage({
         />
         <SelectFilter value={branch} onChange={(v) => { setBranch(v); setPage(0); }} options={branchOptions} label={tCommon("branch")} />
         <SelectFilter value={status} onChange={(v) => { setStatus(v); setPage(0); }} options={statusOptions} label={tCommon("status")} />
-        <SelectFilter
-          value={followUp}
-          onChange={(v) => { setFollowUp(v); setPage(0); }}
-          options={followUpOptions}
-          label={t("followUpFilter")}
-        />
         <ViewToggle value={mode} onChange={setMode} options={VIEWS} style={{ marginLeft: "auto" }} />
       </FilterBar>
 

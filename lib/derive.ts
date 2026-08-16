@@ -23,7 +23,23 @@ export const DEFAULT_CREDIT_RULES: CreditRules = {
   inactiveDays: 30,
 };
 
-export type FollowUpBucket = "low" | "expiring" | "inactive";
+/** Where the thresholds live in `system_configuration`. */
+export const RULE_KEYS: Record<keyof CreditRules, string> = {
+  lowCredit: "credit_rule_low_credit",
+  expiringDays: "credit_rule_expiring_days",
+  inactiveDays: "credit_rule_inactive_days",
+};
+
+export type FollowUpBucket = "low" | "expiring" | "expired" | "inactive";
+
+/** The status each bucket collects. A student has exactly one status, so the
+    buckets partition the roster and their counts cannot double-count. */
+export const BUCKET_STATUS: Record<FollowUpBucket, Student["status"]> = {
+  low: "Low Credit",
+  expiring: "Expiring",
+  expired: "Expired",
+  inactive: "Inactive",
+};
 
 /* Copy lives in the message catalogues, keyed off `key` — this layer only
    decides who lands in which bucket. */
@@ -36,60 +52,27 @@ export type FollowUp = {
   students: Student[];
 };
 
-/** Days from today to a formatted date like "30 Jun 2026", or null if unparseable. */
-function daysUntil(value: string): number | null {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return Math.round((date.getTime() - Date.now()) / 86_400_000);
-}
+const BUCKET_STYLE: Record<FollowUpBucket, { icon: IconName; color: string; bg: string }> = {
+  low: { icon: "alertTriangle", color: COLORS.warning, bg: COLORS.warningBg },
+  expiring: { icon: "clockSmall", color: COLORS.warning, bg: COLORS.warningBg },
+  expired: { icon: "alertTriangle", color: COLORS.danger, bg: COLORS.dangerBg },
+  inactive: { icon: "userX", color: COLORS.textSecondary, bg: COLORS.neutralBg },
+};
 
 /**
- * Buckets are assigned by priority (inactive → expiring → low)
- * so a student appears in exactly one row and the counts sum to the number of
- * students actually needing attention.
+ * Groups the roster by the status `lib/live.ts` already worked out.
+ *
+ * This used to re-derive the buckets from credits and dates with its own
+ * priority order, which disagreed with the status chip on the student's own
+ * row — the same student could be "Expiring" on the list and counted under
+ * "Low Credit" on the dashboard. One rule, applied once, in `studentStatus`.
  */
-export function buildFollowUps(rules: CreditRules, students: Student[]): FollowUp[] {
-  const low: Student[] = [];
-  const expiring: Student[] = [];
-  const inactive: Student[] = [];
-
-  for (const student of students) {
-    const remaining = daysUntil(student.expires);
-    const isExpiring =
-      student.status === "Expiring" ||
-      (remaining !== null && remaining >= 0 && remaining <= rules.expiringDays);
-
-    if (student.status === "Inactive") inactive.push(student);
-    else if (isExpiring) expiring.push(student);
-    else if (student.credit <= rules.lowCredit) low.push(student);
-  }
-
-  return [
-    {
-      key: "low",
-      count: low.length,
-      icon: "alertTriangle",
-      color: COLORS.danger,
-      bg: COLORS.dangerBg,
-      students: low,
-    },
-    {
-      key: "expiring",
-      count: expiring.length,
-      icon: "clockSmall",
-      color: COLORS.warning,
-      bg: COLORS.warningBg,
-      students: expiring,
-    },
-    {
-      key: "inactive",
-      count: inactive.length,
-      icon: "userX",
-      color: COLORS.textSecondary,
-      bg: COLORS.neutralBg,
-      students: inactive,
-    },
-  ];
+export function buildFollowUps(students: Student[]): FollowUp[] {
+  const keys = Object.keys(BUCKET_STATUS) as FollowUpBucket[];
+  return keys.map((key) => {
+    const inBucket = students.filter((s) => s.status === BUCKET_STATUS[key]);
+    return { key, count: inBucket.length, students: inBucket, ...BUCKET_STYLE[key] };
+  });
 }
 
 export type TrendPoint = { month: string; value: number };

@@ -8,7 +8,7 @@ import type {
   Student, Tournament, Participant,
 } from "./data";
 import { MONTH_SHORT } from "./theme";
-import type { TrendPoint } from "./derive";
+import { DEFAULT_CREDIT_RULES, RULE_KEYS, type CreditRules, type TrendPoint } from "./derive";
 import type { JtraxRole } from "./theme";
 
 /* ---- raw backend row shapes (only the fields we read) ---- */
@@ -59,21 +59,51 @@ function age(dobISO: string): number {
   return a;
 }
 
-/* Status thresholds mirror lib/derive.ts DEFAULT_CREDIT_RULES. */
-function studentStatus(credit: number, expiresISO: string, lastAttended: string): Student["status"] {
+/** The thresholds the academy saved, or the defaults until it saves any.
+    Read from the same collection everything else is, so the status on a row,
+    the dashboard's counts and the Settings screen cannot drift apart. */
+export function creditRulesOf(c: LiveCollections): CreditRules {
+  const read = (key: string, fallback: number) => {
+    const row = c.systemConfig.find((r) => r["config_key"] === key);
+    const value = Number(row?.["config_value"]);
+    return Number.isFinite(value) ? value : fallback;
+  };
+  return {
+    lowCredit: read(RULE_KEYS.lowCredit, DEFAULT_CREDIT_RULES.lowCredit),
+    expiringDays: read(RULE_KEYS.expiringDays, DEFAULT_CREDIT_RULES.expiringDays),
+    inactiveDays: read(RULE_KEYS.inactiveDays, DEFAULT_CREDIT_RULES.inactiveDays),
+  };
+}
+
+/**
+ * The one place a student's condition is decided. Ordered worst-first, so a
+ * student has exactly one status and the dashboard's buckets can simply group
+ * by it. The thresholds used to be hard-coded here (3, 7, 30) while the
+ * dashboard read the saved ones — editing them in Settings moved the counts
+ * and left the chips alone.
+ */
+function studentStatus(
+  credit: number,
+  expiresISO: string,
+  lastAttended: string,
+  rules: CreditRules,
+): Student["status"] {
   const today = new Date();
   if (expiresISO) {
     const exp = new Date(expiresISO);
     if (exp < today) return "Expired";
-    if (exp.getTime() - today.getTime() < 7 * 86400_000) return "Expiring";
+    if (exp.getTime() - today.getTime() < rules.expiringDays * 86400_000) return "Expiring";
   }
-  if (credit <= 3) return "Low Credit";
-  if (lastAttended && today.getTime() - new Date(lastAttended).getTime() > 30 * 86400_000) return "Inactive";
+  if (lastAttended && today.getTime() - new Date(lastAttended).getTime() > rules.inactiveDays * 86400_000) {
+    return "Inactive";
+  }
+  if (credit <= rules.lowCredit) return "Low Credit";
   return "Normal";
 }
 
 /** One student row joined across enrollment, class, credits and parent info. */
 export function toStudents(c: LiveCollections): Student[] {
+  const rules = creditRulesOf(c);
   return c.students.map((st) => {
     const sid = s(st, "student_id");
     const enr = c.enrollments.find((e) => s(e, "student_id") === sid && s(e, "status") === "Active")
@@ -94,7 +124,7 @@ export function toStudents(c: LiveCollections): Student[] {
       className: cls ? s(cls, "name") : "—",
       credit,
       expires: fmtDate(expiry),
-      status: studentStatus(credit, expiry, s(st, "last_attended_date")),
+      status: studentStatus(credit, expiry, s(st, "last_attended_date"), rules),
       age: age(s(st, "date_of_birth")),
       level: s(st, "current_level") || "—",
       parentName: parent ? s(parent, "name") : "—",
