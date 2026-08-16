@@ -24,6 +24,7 @@ export function SectionRouter({
   section,
   newStudentName,
   followUp,
+  studentId,
 }: {
   section: string;
   /* Threaded from the server component rather than read with useSearchParams,
@@ -31,6 +32,9 @@ export function SectionRouter({
   newStudentName?: string;
   /* Which follow-up bucket the dashboard sent us to look at. */
   followUp?: string;
+  /* The student a payment is about to be recorded for, straight off the end of
+     the registration wizard. */
+  studentId?: string;
 }) {
   const { role } = useJtrax();
 
@@ -52,7 +56,9 @@ export function SectionRouter({
     case "parents":
       return <ParentsPage />;
     case "payment":
-      return <PaymentPage />;
+      /* Keyed so arriving for a second student opens the form for them rather
+         than keeping the first one's draft. */
+      return <PaymentPage key={studentId ?? "list"} startStudentId={studentId} />;
     case "classhistory":
       return <ClassHistoryPage />;
     case "games":

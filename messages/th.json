@@ -306,7 +306,8 @@
     "followUpAll": "นักเรียนทั้งหมด",
     "followUpLow": "เครดิตเหลือน้อย",
     "followUpExpiring": "ใกล้หมดอายุ",
-    "followUpInactive": "ไม่ได้เข้าเรียน"
+    "followUpInactive": "ไม่ได้เข้าเรียน",
+    "continueToPayment": "บันทึกการชำระเงิน"
   },
   "parents": {
     "title": "ผู้ปกครอง",
@@ -370,7 +371,10 @@
     "discount": "ส่วนลด",
     "reference": "เลขที่อ้างอิง",
     "amount": "จำนวนเงิน",
-    "paymentFor": "การชำระเงิน {amount} จาก {name}"
+    "paymentFor": "การชำระเงิน {amount} จาก {name}",
+    "prefilledFor": "กำลังบันทึกการชำระเงินครั้งแรกของ {name} · {className}",
+    "packageOption": "{className} — {credits} เครดิต",
+    "noPackages": "ยังไม่ได้ตั้งค่าแพ็กเกจเครดิต"
   },
   "classHistory": {
     "title": "ประวัติคลาสเรียน",

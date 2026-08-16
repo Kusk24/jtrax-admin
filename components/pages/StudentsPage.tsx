@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { generateTempPassword } from "@/lib/credentials";
 import { type Student } from "@/lib/data";
@@ -813,17 +814,27 @@ const EMPTY_DRAFT: Draft = {
 
 function AddStudentWizard({
   initialName,
+  classOptions,
   onCancel,
   onCreate,
 }: {
   initialName: string;
+  /* The academy's real classes. The picker used to offer a fixed four that no
+     longer match what the school teaches, so registering someone silently
+     enrolled them in nothing — and nothing is what the payment form then had
+     to price. */
+  classOptions: string[];
   onCancel: () => void;
   onCreate: (draft: Draft) => void;
 }) {
   const t = useTranslations("students");
   const tCommon = useTranslations("common");
   const [stage, setStage] = useState<"choice" | "upload" | "form">(initialName ? "form" : "choice");
-  const [draft, setDraft] = useState<Draft>({ ...EMPTY_DRAFT, name: initialName });
+  const [draft, setDraft] = useState<Draft>({
+    ...EMPTY_DRAFT,
+    name: initialName,
+    className: classOptions[0] ?? "",
+  });
   const [docName, setDocName] = useState("");
   const [extracting, setExtracting] = useState(false);
 
@@ -995,7 +1006,7 @@ function AddStudentWizard({
               <div>
                 <label style={labelStyle} htmlFor="w-class">{tCommon("class")}</label>
                 <select id="w-class" value={draft.className} onChange={(e) => set("className", e.target.value)} style={selectStyle}>
-                  {CLASS_OPTIONS.map((c) => (
+                  {classOptions.map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
@@ -1074,7 +1085,9 @@ export function StudentsPage({
   const { students, raw, create, update, remove, creditRules, loading, error } = useData();
   const [view, setView] = useState<View>(startWizard ? { kind: "wizard" } : { kind: "list" });
   const [mode, setMode] = useViewMode("students", VIEWS);
+  const router = useRouter();
   const [createdLogins, setCreatedLogins] = useState<{
+    studentId: string;
     student: { email: string; password: string };
     parent: { email: string; password: string } | null;
   } | null>(null);
@@ -1135,6 +1148,18 @@ export function StudentsPage({
 
   const { pageRows, totalPages, page: current } = paginate(filtered, page);
 
+  /* Falls back to the design's list only while the classes are still loading,
+     so the picker is never empty. */
+  const classNames = useMemo(() => {
+    const live = raw.classes.map((c) => String(c["name"] ?? "")).filter(Boolean);
+    return live.length > 0 ? live : CLASS_OPTIONS;
+  }, [raw.classes]);
+
+  function toPayment(studentId: string) {
+    setCreatedLogins(null);
+    router.push(`/payment?student=${encodeURIComponent(studentId)}`);
+  }
+
   if (view.kind === "detail") {
     const student = students.find((s) => s.id === view.id);
     if (student)
@@ -1161,6 +1186,7 @@ export function StudentsPage({
     return (
       <AddStudentWizard
         initialName={startWizard ?? ""}
+        classOptions={classNames}
         onCancel={() => setView({ kind: "list" })}
         onCreate={async (draft) => {
           try {
@@ -1228,6 +1254,7 @@ export function StudentsPage({
             }
 
             setCreatedLogins({
+              studentId: String(created.student_id),
               student: { email: studentEmailFor(draft.name), password: studentPassword },
               parent: parentCredentials,
             });
@@ -1243,7 +1270,24 @@ export function StudentsPage({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {createdLogins && (
-        <Modal title={t("loginsTitle")} width={460} onClose={() => setCreatedLogins(null)}>
+        /* Registering someone is the first half of enrolling them; the second
+           is taking the payment. Closing this dialog — by the button, the X or
+           Escape — carries on to the payment form with them already chosen. */
+        <Modal
+          title={t("loginsTitle")}
+          width={460}
+          onClose={() => toPayment(createdLogins.studentId)}
+          footer={
+            <button
+              type="button"
+              className="jt-btn-primary"
+              style={primaryButtonStyle}
+              onClick={() => toPayment(createdLogins.studentId)}
+            >
+              <Icon name="wallet" size={14} color="#fff" /> {t("continueToPayment")}
+            </button>
+          }
+        >
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
               {t("loginsHint")}
