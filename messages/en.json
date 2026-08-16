@@ -373,7 +373,8 @@
     "paymentFor": "the {amount} payment from {name}",
     "prefilledFor": "Recording the first payment for {name} · {className}",
     "packageOption": "{className} — {credits} credits",
-    "noPackages": "No credit packages set up yet"
+    "noPackages": "No credit packages set up yet",
+    "clearDates": "Clear dates"
   },
   "classHistory": {
     "title": "Class History",
