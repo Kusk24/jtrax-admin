@@ -97,7 +97,8 @@
     "optional": "Optional",
     "saved": "Saved",
     "creditsCount": "{count, plural, one {# credit} other {# credits}}",
-    "saving": "Saving…"
+    "saving": "Saving…",
+    "deleting": "Deleting…"
   },
   "view": {
     "switchView": "Switch view",
@@ -306,7 +307,11 @@
     "tabCredits": "Credits",
     "parentLabel": "Parent",
     "continueToPayment": "Record payment",
-    "registering": "Registering…"
+    "registering": "Registering…",
+    "alsoDeleteParent": "Also delete {name}, who has no other children",
+    "newGuardian": "New guardian",
+    "existingGuardian": "Existing guardian",
+    "chooseGuardian": "Guardian"
   },
   "parents": {
     "title": "Parents",
@@ -331,7 +336,7 @@
     "emailAction": "Email",
     "add": "Add Parent",
     "editParent": "Edit Parent",
-    "deleteNote": "The parent's login, contact details and links to their children are removed. The children themselves are kept.",
+    "deleteNote": "Their login, contact details and links to their children are removed. The children are kept unless you ask for them too.",
     "linkChild": "Link a child",
     "linkChildLabel": "Choose a student to link",
     "unlinkChild": "Unlink {name}",
@@ -344,7 +349,9 @@
     "createdHint": "Copy the temporary password now — it is not shown again.",
     "copy": "Copy",
     "copied": "Copied",
-    "manageChildren": "Manage children"
+    "manageChildren": "Manage children",
+    "alsoDeleteChildren": "{count, plural, one {Also delete their child, {names}} other {Also delete their # children: {names}}}",
+    "linkChildOnCreate": "Link a child (optional)"
   },
   "payment": {
     "title": "Payment",

@@ -39,6 +39,17 @@ const PATHS: Record<keyof LiveCollections, string> = {
   systemConfig: "system-configuration",
 };
 
+/** What the backend's cascade reports back, so the console can say what went. */
+export type PersonRemoved = {
+  status: string;
+  student?: string;
+  parent?: string;
+  children?: string[];
+  accounts_kept: number;
+  attendance_rows: number;
+  payment_rows: number;
+};
+
 type DataContextValue = {
   loading: boolean;
   error: string | null;
@@ -73,6 +84,20 @@ type DataContextValue = {
   create: (path: string, body: Row) => Promise<Row>;
   update: (path: string, id: string, body: Row) => Promise<Row>;
   remove: (path: string, id: string) => Promise<void>;
+  /**
+   * Deletes a person together with everything referencing them — attendance,
+   * credits, payments, enrolments, the link to their family — in one
+   * transaction on the backend.
+   *
+   * The plain `remove` cannot: it is a bare DELETE, and the database refuses a
+   * row anything points at. Unpicking that from here meant a dozen ordered
+   * requests with nothing to undo a half-finished attempt.
+   */
+  removePerson: (
+    kind: "students" | "parents",
+    id: string,
+    also?: { parent?: boolean; children?: boolean },
+  ) => Promise<PersonRemoved>;
   /** Writes one system_configuration key, inserting it the first time. */
   setConfig: (key: string, value: string) => Promise<void>;
 };
@@ -148,6 +173,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await refresh();
   }, [refresh]);
 
+  const removePerson = useCallback(async (
+    kind: "students" | "parents",
+    id: string,
+    also?: { parent?: boolean; children?: boolean },
+  ) => {
+    const query = also?.parent ? "?parent=orphan" : also?.children ? "?children=delete" : "";
+    const result = await api.del<PersonRemoved>(`${kind}/${id}/cascade${query}`);
+    await refresh();
+    return result;
+  }, [refresh]);
+
   /* config_key is the primary key, so there is no generated id to PATCH
      against until the row exists — hence insert-or-update rather than update. */
   const setConfig = useCallback(async (key: string, value: string) => {
@@ -197,8 +233,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     create,
     update,
     remove,
+    removePerson,
     setConfig,
-  }), [loading, error, raw, meAccountId, creditRules, saveCreditRules, refresh, batch, create, update, remove, setConfig]);
+  }), [loading, error, raw, meAccountId, creditRules, saveCreditRules, refresh, batch, create, update, remove, removePerson, setConfig]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }
