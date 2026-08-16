@@ -26,6 +26,7 @@ import {
   ExportButton,
   FilterBar,
   InfoGrid,
+  labelStyle,
   Modal,
   PageHeader,
   paginate,
@@ -325,7 +326,7 @@ const contactPillStyle = {
 export function ParentsPage() {
   const t = useTranslations("parents");
   const tCommon = useTranslations("common");
-  const { parents, students, raw, loading, error, batch, create, update, remove } = useData();
+  const { parents, students, raw, loading, error, batch, create, update, remove, removePerson } = useData();
   const [view, setView] = useState<View>({ kind: "list" });
   const [mode, setMode] = useViewMode("parents", VIEWS);
   const [search, setSearch] = useState("");
@@ -334,9 +335,17 @@ export function ParentsPage() {
   const [page, setPage] = useState(0);
 
   const fields = parentFields(t, tCommon);
+  /* A guardian created from this screen can be attached to a child straight
+     away. Only unclaimed students are offered: a child has one guardian, and
+     linking one who already has a parent would silently move them. */
+  const [linkChildId, setLinkChildId] = useState("");
+  const [linkRelation, setLinkRelation] = useState("Mother");
   const [editing, setEditing] = useState<{ mode: "create" } | { mode: "edit"; parent: ParentPerson } | null>(null);
   const [values, setValues] = useState<CrudValues>({});
   const [deleting, setDeleting] = useState<ParentPerson | null>(null);
+  /* Off by default: a parent leaving does not mean the children are leaving.
+     Usually another guardian is linked to them afterwards. */
+  const [deleteChildren, setDeleteChildren] = useState(false);
   const [created, setCreated] = useState<{ email: string; password: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -396,6 +405,13 @@ export function ParentsPage() {
       await saveContact(parentId, "line_id", String(payload.lineId ?? ""));
       /* Alerts default to on, matching what the seed gives a parent. */
       await create("notification-preferences", { parent_id: parentId }).catch(() => {});
+      if (linkChildId) {
+        await create("student-parents", {
+          student_id: linkChildId,
+          parent_id: parentId,
+          relationship_type: linkRelation,
+        });
+      }
       setCreated({ email: loginEmail, password });
       setCopied(false);
     });
@@ -418,26 +434,25 @@ export function ParentsPage() {
     });
   }
 
-  /* Order matters: everything that references the parent goes first, then the
-     parent, then the account it signed in with. */
+  /* One request. The backend removes the contacts, alert preferences, family
+     links, the parent and their login in a transaction — and, when asked, each
+     child with everything referencing them. Doing it from here meant a dozen
+     ordered deletes and nothing to undo a half-finished attempt. */
   async function deleteParent(parent: ParentPerson) {
-    for (const child of parent.children) {
-      await removeIfPresent(remove, "student-parents", child.id);
-    }
-    for (const kind of ["phone", "email", "line_id"]) {
-      const id = contactId(parent.id, kind);
-      if (id) await removeIfPresent(remove, "parent-contacts", id);
-    }
-    await removeIfPresent(remove, "notification-preferences", parent.id);
-    const accountId = accountIdOf(parent.id);
-    await remove("parents", parent.id);
-    if (accountId) await removeIfPresent(remove, "user-accounts", accountId);
+    await removePerson("parents", parent.id, { children: deleteChildren });
     setView({ kind: "list" });
   }
 
   function openCreate() {
     setValues({ name: "", loginEmail: "", phone: "", email: "", lineId: "" });
+    setLinkChildId("");
+    setLinkRelation("Mother");
     setEditing({ mode: "create" });
+  }
+
+  function openDelete(parent: ParentPerson) {
+    setDeleteChildren(false);
+    setDeleting(parent);
   }
 
   function openEdit(parent: ParentPerson) {
@@ -492,14 +507,75 @@ export function ParentsPage() {
           onSubmit={(payload) =>
             editing.mode === "create" ? createParent(payload) : editParent(editing.parent, payload)
           }
+          extra={
+            editing.mode === "create" && unlinkedStudents.length > 0 ? (
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+                <div style={{ flex: "1 1 180px" }}>
+                  <label htmlFor="parent-link-child" style={labelStyle}>{t("linkChildOnCreate")}</label>
+                  <select
+                    id="parent-link-child"
+                    value={linkChildId}
+                    onChange={(e) => setLinkChildId(e.target.value)}
+                    style={selectStyle}
+                  >
+                    <option value="">{tCommon("none")}</option>
+                    {unlinkedStudents.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+                {linkChildId && (
+                  <div style={{ flex: "0 1 150px" }}>
+                    <label htmlFor="parent-link-relation" style={labelStyle}>{t("relation")}</label>
+                    <select
+                      id="parent-link-relation"
+                      value={linkRelation}
+                      onChange={(e) => setLinkRelation(e.target.value)}
+                      style={selectStyle}
+                    >
+                      <option value="Mother">{t("relationMother")}</option>
+                      <option value="Father">{t("relationFather")}</option>
+                      <option value="Guardian">{t("relationGuardian")}</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+            ) : undefined
+          }
         />
       )}
 
       {deleting && (
         <ConfirmDeleteModal
           what={deleting.name}
-          note={t("deleteNote")}
-          onClose={() => setDeleting(null)}
+          note={deleting.children.length > 0 ? t("deleteNote") : undefined}
+          extra={
+            deleting.children.length > 0 ? (
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 9,
+                  fontFamily: FONT,
+                  fontSize: 13.5,
+                  color: COLORS.text,
+                  cursor: "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={deleteChildren}
+                  onChange={(e) => setDeleteChildren(e.target.checked)}
+                  style={{ width: 16, height: 16, accentColor: COLORS.danger, cursor: "pointer" }}
+                />
+                {t("alsoDeleteChildren", {
+                  count: deleting.children.length,
+                  names: deleting.children.map((c) => c.name).join(", "),
+                })}
+              </label>
+            ) : undefined
+          }
+          onClose={() => { setDeleting(null); setDeleteChildren(false); }}
           onConfirm={() => deleteParent(deleting)}
         />
       )}
@@ -545,7 +621,7 @@ export function ParentsPage() {
             parent={parent}
             onBack={() => setView({ kind: "list" })}
             onEdit={() => openEdit(parent)}
-            onDelete={() => setDeleting(parent)}
+            onDelete={() => openDelete(parent)}
             unlinkedStudents={unlinkedStudents}
             onLinkChild={(studentId, relation) =>
               create("student-parents", {
@@ -618,7 +694,7 @@ export function ParentsPage() {
                 avatar={<Avatar initials={initialsOf(p.name)} size={44} />}
                 title={p.name}
                 subtitle={t("childCount", { count: p.children.length })}
-                actions={<RowActions label={p.name} onEdit={() => openEdit(p)} onDelete={() => setDeleting(p)} />}
+                actions={<RowActions label={p.name} onEdit={() => openEdit(p)} onDelete={() => openDelete(p)} />}
                 rows={[
                   { label: t("loginEmail"), value: p.loginEmail || p.email || "—" },
                   { label: tCommon("phone"), value: p.phone || "—" },
@@ -727,7 +803,7 @@ export function ParentsPage() {
               ) : (
                 <span style={{ color: COLORS.textSecondary }}>—</span>
               )}
-              <RowActions label={p.name} onEdit={() => openEdit(p)} onDelete={() => setDeleting(p)} />
+              <RowActions label={p.name} onEdit={() => openEdit(p)} onDelete={() => openDelete(p)} />
             </TableRow>
           ))}
         </Table>

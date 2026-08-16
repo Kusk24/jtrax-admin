@@ -93,7 +93,9 @@ function StudentDetail({
   student: Student;
   onBack: () => void;
   onSave: (student: Student) => void;
-  onDelete: (id: string) => void;
+  /* `alsoParent` is only ever offered when this is the guardian's last child;
+     a guardian with other children is never touched. */
+  onDelete: (id: string, alsoParent: boolean) => void;
 }) {
   const t = useTranslations("students");
   const tCommon = useTranslations("common");
@@ -102,6 +104,8 @@ function StudentDetail({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Student>(student);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [alsoParent, setAlsoParent] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   function setField<K extends keyof Student>(key: K, value: Student[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
@@ -304,6 +308,20 @@ function StudentDetail({
     [raw.payments, raw.enrollments, raw.classes, raw.creditPackages, student.id],
   );
 
+  /* The guardian's name when this student is their only child, so the delete
+     panel can offer to take them too — otherwise null and nothing is asked. */
+  const onlyChildOf = useMemo(() => {
+    const link = raw.studentParents.find((sp) => String(sp["student_id"]) === student.id);
+    if (!link) return null;
+    const parentId = String(link["parent_id"]);
+    const siblings = raw.studentParents.filter(
+      (sp) => String(sp["parent_id"]) === parentId && String(sp["student_id"]) !== student.id,
+    );
+    if (siblings.length > 0) return null;
+    const parent = raw.parents.find((p) => String(p["parent_id"]) === parentId);
+    return parent ? String(parent["name"] ?? "") : null;
+  }, [raw.studentParents, raw.parents, student.id]);
+
   const chip = statusChipColors(student.status);
   /* Every attendance row is a session the student was checked in to, so the
      count of them is the count present. */
@@ -394,16 +412,48 @@ function StudentDetail({
             {t("deleteTitle", { name: student.name })}
           </div>
           <p style={{ margin: "5px 0 12px", fontFamily: FONT, fontSize: 13.5 }}>{t("deleteBody")}</p>
+          {/* Only when this is the guardian's last child. With siblings left
+              the guardian is simply kept, and there is nothing to ask. */}
+          {onlyChildOf && (
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 9,
+                margin: "0 0 12px",
+                fontFamily: FONT,
+                fontSize: 13.5,
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={alsoParent}
+                onChange={(e) => setAlsoParent(e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: COLORS.danger, cursor: "pointer" }}
+              />
+              {t("alsoDeleteParent", { name: onlyChildOf })}
+            </label>
+          )}
           <div style={{ display: "flex", gap: 9 }}>
             <button type="button" style={secondaryButtonStyle} onClick={() => setDeleteConfirm(false)}>
               {tCommon("cancel")}
             </button>
             <button
               type="button"
-              style={{ ...primaryButtonStyle, background: COLORS.danger }}
-              onClick={() => onDelete(student.id)}
+              style={{
+                ...primaryButtonStyle,
+                background: COLORS.danger,
+                opacity: deleting ? 0.6 : 1,
+                cursor: deleting ? "wait" : "pointer",
+              }}
+              disabled={deleting}
+              onClick={() => {
+                setDeleting(true);
+                onDelete(student.id, alsoParent);
+              }}
             >
-              {t("deleteConfirm")}
+              {deleting ? tCommon("deleting") : t("deleteConfirm")}
             </button>
           </div>
         </div>
@@ -781,6 +831,10 @@ type Draft = {
   school: string;
   fideId: string;
   fideRating: string;
+  /* Set when the guardian already exists: the wizard then links to them
+     instead of making a second account for the same person. A child has one
+     guardian; a guardian can have any number of children. */
+  parentId: string;
   parentName: string;
   parentRelation: string;
   parentPhone: string;
@@ -794,6 +848,7 @@ const EMPTY_DRAFT: Draft = {
   school: "",
   fideId: "",
   fideRating: "",
+  parentId: "",
   parentName: "",
   parentRelation: "Mother",
   parentPhone: "",
@@ -804,6 +859,7 @@ const EMPTY_DRAFT: Draft = {
 function AddStudentWizard({
   initialName,
   classOptions,
+  parentOptions,
   onCancel,
   onCreate,
 }: {
@@ -813,6 +869,9 @@ function AddStudentWizard({
      enrolled them in nothing — and nothing is what the payment form then had
      to price. */
   classOptions: string[];
+  /* Every guardian already on file, so a second child joins the first one's
+     parent rather than getting a duplicate account. */
+  parentOptions: Array<{ id: string; name: string }>;
   onCancel: () => void;
   onCreate: (draft: Draft) => Promise<void>;
 }) {
@@ -852,7 +911,10 @@ function AddStudentWizard({
     }, 900);
   }
 
-  const canSubmit = draft.name.trim() !== "" && draft.parentPhone.trim() !== "";
+  /* An existing guardian already has a phone number on file; only a new one
+     has to be given here. */
+  const canSubmit =
+    draft.name.trim() !== "" && (draft.parentId !== "" || draft.parentPhone.trim() !== "");
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 820 }}>
@@ -1016,29 +1078,106 @@ function AddStudentWizard({
           </Card>
 
           <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <SectionTitle>{t("parentSection")}</SectionTitle>
-            <div className="jt-duo">
-              <div>
-                <label style={labelStyle} htmlFor="w-pname">{tCommon("name")}</label>
-                <input id="w-pname" value={draft.parentName} onChange={(e) => set("parentName", e.target.value)} style={fieldStyle} />
-              </div>
-              <div>
-                <label style={labelStyle} htmlFor="w-prel">{t("relation")}</label>
-                <select id="w-prel" value={draft.parentRelation} onChange={(e) => set("parentRelation", e.target.value)} style={selectStyle}>
-                  {["Mother", "Father", "Guardian"].map((r) => (
-                    <option key={r} value={r}>{r}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label style={labelStyle} htmlFor="w-pphone">{tCommon("phone")}</label>
-                <input id="w-pphone" value={draft.parentPhone} onChange={(e) => set("parentPhone", e.target.value)} style={fieldStyle} />
-              </div>
-              <div>
-                <label style={labelStyle} htmlFor="w-pmail">{tCommon("email")}</label>
-                <input id="w-pmail" type="email" value={draft.parentEmail} onChange={(e) => set("parentEmail", e.target.value)} style={fieldStyle} />
-              </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <SectionTitle>{t("parentSection")}</SectionTitle>
+              {parentOptions.length > 0 && (
+                <span
+                  style={{
+                    marginLeft: "auto",
+                    display: "inline-flex",
+                    gap: 2,
+                    padding: 3,
+                    borderRadius: 999,
+                    border: `1px solid ${COLORS.border}`,
+                    background: COLORS.surface,
+                  }}
+                >
+                  {([
+                    { existing: false, label: t("newGuardian") },
+                    { existing: true, label: t("existingGuardian") },
+                  ] as const).map((option) => {
+                    const active = (draft.parentId !== "") === option.existing;
+                    return (
+                      <button
+                        key={option.label}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() =>
+                          set("parentId", option.existing ? parentOptions[0].id : "")
+                        }
+                        style={{
+                          padding: "6px 14px",
+                          borderRadius: 999,
+                          border: "none",
+                          background: active ? COLORS.light : "transparent",
+                          color: active ? COLORS.blue : COLORS.textSecondary,
+                          fontFamily: FONT,
+                          fontSize: 13.5,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </span>
+              )}
             </div>
+
+            {draft.parentId ? (
+              <div className="jt-duo">
+                <div>
+                  <label style={labelStyle} htmlFor="w-pexisting">{t("chooseGuardian")}</label>
+                  <select
+                    id="w-pexisting"
+                    value={draft.parentId}
+                    onChange={(e) => set("parentId", e.target.value)}
+                    style={selectStyle}
+                  >
+                    {parentOptions.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle} htmlFor="w-prel-existing">{t("relation")}</label>
+                  <select
+                    id="w-prel-existing"
+                    value={draft.parentRelation}
+                    onChange={(e) => set("parentRelation", e.target.value)}
+                    style={selectStyle}
+                  >
+                    {RELATION_OPTIONS.map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            ) : (
+              <div className="jt-duo">
+                <div>
+                  <label style={labelStyle} htmlFor="w-pname">{tCommon("name")}</label>
+                  <input id="w-pname" value={draft.parentName} onChange={(e) => set("parentName", e.target.value)} style={fieldStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle} htmlFor="w-prel">{t("relation")}</label>
+                  <select id="w-prel" value={draft.parentRelation} onChange={(e) => set("parentRelation", e.target.value)} style={selectStyle}>
+                    {RELATION_OPTIONS.map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle} htmlFor="w-pphone">{tCommon("phone")}</label>
+                  <input id="w-pphone" value={draft.parentPhone} onChange={(e) => set("parentPhone", e.target.value)} style={fieldStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle} htmlFor="w-pmail">{tCommon("email")}</label>
+                  <input id="w-pmail" type="email" value={draft.parentEmail} onChange={(e) => set("parentEmail", e.target.value)} style={fieldStyle} />
+                </div>
+              </div>
+            )}
           </Card>
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
@@ -1086,7 +1225,7 @@ export function StudentsPage({
   const t = useTranslations("students");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
-  const { students, raw, batch, create, update, remove, loading, error } = useData();
+  const { students, raw, batch, create, update, removePerson, loading, error } = useData();
   const [view, setView] = useState<View>(startWizard ? { kind: "wizard" } : { kind: "list" });
   const [mode, setMode] = useViewMode("students", VIEWS);
   const router = useRouter();
@@ -1141,6 +1280,11 @@ export function StudentsPage({
 
   const { pageRows, totalPages, page: current } = paginate(filtered, page);
 
+  const parentOptions = useMemo(
+    () => raw.parents.map((p) => ({ id: String(p["parent_id"]), name: String(p["name"] ?? "") })),
+    [raw.parents],
+  );
+
   /* Falls back to the design's list only while the classes are still loading,
      so the picker is never empty. */
   const classNames = useMemo(() => {
@@ -1194,7 +1338,14 @@ export function StudentsPage({
         }
 
         let parentCredentials: { email: string; password: string } | null = null;
-        if (draft.parentName.trim() && draft.parentEmail.trim()) {
+        if (draft.parentId) {
+          /* An existing guardian: link, and leave their account alone. */
+          await create("student-parents", {
+            student_id: created.student_id,
+            parent_id: draft.parentId,
+            relationship_type: draft.parentRelation || "Guardian",
+          });
+        } else if (draft.parentName.trim() && draft.parentEmail.trim()) {
           const parentPassword = generateTempPassword();
           const parentAccount = await create("user-accounts", {
             email: draft.parentEmail.trim(),
@@ -1249,11 +1400,12 @@ export function StudentsPage({
               window.alert(e instanceof Error ? e.message : "save failed"),
             );
           }}
-          onDelete={(id) => {
-            remove("students", id).catch((e) =>
-              window.alert(e instanceof Error ? e.message : "delete failed — remove enrollments and payments first"),
-            );
-            setView({ kind: "list" });
+          onDelete={(id, alsoParent) => {
+            /* One request: the backend removes the attendance, credits,
+               payments, enrolments and family link in a transaction. */
+            removePerson("students", id, { parent: alsoParent })
+              .then(() => setView({ kind: "list" }))
+              .catch((e) => window.alert(e instanceof Error ? e.message : "delete failed"));
           }}
         />
       );
@@ -1264,6 +1416,7 @@ export function StudentsPage({
       <AddStudentWizard
         initialName={startWizard ?? ""}
         classOptions={classNames}
+        parentOptions={parentOptions}
         onCancel={() => setView({ kind: "list" })}
         onCreate={registerStudent}
       />

@@ -285,11 +285,15 @@ export function CrudFormModal({
 export function ConfirmDeleteModal({
   what,
   note,
+  extra,
   onClose,
   onConfirm,
 }: {
   what: string;
   note?: string;
+  /* A choice the delete depends on — "take the children too" — rendered under
+     the note, so the decision is made in the same dialog that confirms it. */
+  extra?: ReactNode;
   onClose: () => void;
   onConfirm: () => Promise<void>;
 }) {
@@ -344,6 +348,7 @@ export function ConfirmDeleteModal({
             {note}
           </p>
         )}
+        {extra}
       </div>
     </Modal>
   );
