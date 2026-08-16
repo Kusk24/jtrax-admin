@@ -88,17 +88,25 @@ type DetailTab = (typeof DETAIL_TABS)[number];
 
 function StudentDetail({
   student,
+  guardianOptions,
   onBack,
   onSave,
   onDelete,
+  onLinkGuardian,
+  onUnlinkGuardian,
 }: {
   student: Student;
+  /* Every guardian on file. A child has one, so this is a picker rather than
+     a create form — making a new guardian is the Parents screen's job. */
+  guardianOptions: Array<{ id: string; name: string }>;
   onBack: () => void;
   /* Awaited by the Save button, which stays disabled until it resolves. */
   onSave: (student: Student) => Promise<void>;
   /* `alsoParent` is only ever offered when this is the guardian's last child;
      a guardian with other children is never touched. */
   onDelete: (id: string, alsoParent: boolean) => void;
+  onLinkGuardian: (parentId: string, relation: string) => Promise<void>;
+  onUnlinkGuardian: () => void;
 }) {
   const t = useTranslations("students");
   const tCommon = useTranslations("common");
@@ -109,6 +117,8 @@ function StudentDetail({
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [alsoParent, setAlsoParent] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [guardianId, setGuardianId] = useState("");
+  const [guardianRelation, setGuardianRelation] = useState(RELATION_OPTIONS[0]);
 
   function setField<K extends keyof Student>(key: K, value: Student[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
@@ -324,6 +334,9 @@ function StudentDetail({
     const parent = raw.parents.find((p) => String(p["parent_id"]) === parentId);
     return parent ? String(parent["name"] ?? "") : null;
   }, [raw.studentParents, raw.parents, student.id]);
+
+  /* `toStudents` writes "—" when there is no link at all. */
+  const hasGuardian = student.parentName !== "" && student.parentName !== "—";
 
   const chip = statusChipColors(student.status);
   /* Every attendance row is a session the student was checked in to, so the
@@ -608,16 +621,83 @@ function StudentDetail({
             />
           </Card>
           <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <SectionTitle>{t("parentSection")}</SectionTitle>
-            <InfoGrid
-              rows={[
-                { label: tCommon("name"), value: student.parentName },
-                { label: t("relation"), value: student.parentRelation },
-                { label: tCommon("phone"), value: student.parentPhone },
-                { label: tCommon("email"), value: student.parentEmail },
-                { label: tCommon("lineId"), value: student.parentLineId },
-              ]}
-            />
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <SectionTitle>{t("parentSection")}</SectionTitle>
+              {hasGuardian && (
+                <button
+                  type="button"
+                  className="jt-btn-ghost"
+                  style={{ ...secondaryButtonStyle, padding: "6px 12px", fontSize: 13 }}
+                  onClick={() => onUnlinkGuardian()}
+                >
+                  {t("unlinkGuardian")}
+                </button>
+              )}
+            </div>
+            {hasGuardian ? (
+              <InfoGrid
+                rows={[
+                  { label: tCommon("name"), value: student.parentName },
+                  { label: t("relation"), value: student.parentRelation },
+                  { label: tCommon("phone"), value: student.parentPhone },
+                  { label: tCommon("email"), value: student.parentEmail },
+                  { label: tCommon("lineId"), value: student.parentLineId },
+                ]}
+              />
+            ) : (
+              /* A child can end up here by being registered without one, or by
+                 having their guardian deleted. Either way the fix belongs on
+                 this page — the office is already looking at the child. */
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <p style={{ margin: 0, fontFamily: FONT, fontSize: 14, color: COLORS.textSecondary }}>
+                  {t("noGuardian")}
+                </p>
+                {guardianOptions.length === 0 ? (
+                  <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
+                    {t("noGuardiansYet")}
+                  </p>
+                ) : (
+                  <div style={{ display: "flex", gap: 9, flexWrap: "wrap", alignItems: "flex-end" }}>
+                    <div style={{ flex: "1 1 170px" }}>
+                      <label style={labelStyle} htmlFor="sd-guardian">{t("chooseGuardian")}</label>
+                      <select
+                        id="sd-guardian"
+                        value={guardianId}
+                        onChange={(e) => setGuardianId(e.target.value)}
+                        style={selectStyle}
+                      >
+                        <option value="">—</option>
+                        {guardianOptions.map((p) => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ flex: "0 1 140px" }}>
+                      <label style={labelStyle} htmlFor="sd-relation">{t("relation")}</label>
+                      <select
+                        id="sd-relation"
+                        value={guardianRelation}
+                        onChange={(e) => setGuardianRelation(e.target.value)}
+                        style={selectStyle}
+                      >
+                        {RELATION_OPTIONS.map((r) => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <ActionButton
+                      className="jt-btn-primary"
+                      style={primaryButtonStyle}
+                      disabled={!guardianId}
+                      busyLabel={tCommon("saving")}
+                      onClick={() => onLinkGuardian(guardianId, guardianRelation)}
+                    >
+                      {t("linkGuardian")}
+                    </ActionButton>
+                  </div>
+                )}
+              </div>
+            )}
           </Card>
         </div>
       )}
@@ -1224,7 +1304,7 @@ export function StudentsPage({
   const t = useTranslations("students");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
-  const { students, raw, batch, create, update, removePerson, loading, error } = useData();
+  const { students, raw, batch, create, update, remove, removePerson, loading, error } = useData();
   const [view, setView] = useState<View>(startWizard ? { kind: "wizard" } : { kind: "list" });
   const [mode, setMode] = useViewMode("students", VIEWS);
   const router = useRouter();
@@ -1393,6 +1473,21 @@ export function StudentsPage({
       return (
         <StudentDetail
           student={student}
+          guardianOptions={parentOptions}
+          onLinkGuardian={(parentId, relation) =>
+            create("student-parents", {
+              student_id: student.id,
+              parent_id: parentId,
+              relationship_type: relation,
+            }).then(() => undefined)
+          }
+          onUnlinkGuardian={() => {
+            /* The link is keyed by student, so this detaches only this child —
+               the guardian and their other children are untouched. */
+            remove("student-parents", student.id).catch((e) =>
+              window.alert(e instanceof Error ? e.message : "could not unlink"),
+            );
+          }}
           onBack={() => setView({ kind: "list" })}
           onSave={async (next) => {
             try {

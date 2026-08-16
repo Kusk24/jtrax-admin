@@ -311,7 +311,11 @@
     "alsoDeleteParent": "ลบ {name} ด้วย เนื่องจากไม่มีบุตรหลานคนอื่น",
     "newGuardian": "ผู้ปกครองใหม่",
     "existingGuardian": "ผู้ปกครองที่มีอยู่",
-    "chooseGuardian": "ผู้ปกครอง"
+    "chooseGuardian": "ผู้ปกครอง",
+    "noGuardian": "ยังไม่มีผู้ปกครองที่เชื่อมโยงกับนักเรียนคนนี้",
+    "noGuardiansYet": "ยังไม่มีผู้ปกครองในระบบ กรุณาเพิ่มที่หน้าผู้ปกครองก่อน",
+    "linkGuardian": "เชื่อมโยงผู้ปกครอง",
+    "unlinkGuardian": "ยกเลิกการเชื่อมโยง"
   },
   "parents": {
     "title": "ผู้ปกครอง",

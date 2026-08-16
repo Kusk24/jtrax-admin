@@ -311,7 +311,11 @@
     "alsoDeleteParent": "Also delete {name}, who has no other children",
     "newGuardian": "New guardian",
     "existingGuardian": "Existing guardian",
-    "chooseGuardian": "Guardian"
+    "chooseGuardian": "Guardian",
+    "noGuardian": "No guardian is linked to this student yet.",
+    "noGuardiansYet": "No guardians on file. Add one on the Parents screen first.",
+    "linkGuardian": "Link guardian",
+    "unlinkGuardian": "Unlink"
   },
   "parents": {
     "title": "Parents",
