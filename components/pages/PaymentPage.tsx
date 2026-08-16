@@ -7,6 +7,7 @@ import { useData } from "@/components/DataProvider";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf } from "@/lib/theme";
 import {
+  ActionButton,
   ConfirmDeleteModal,
   CrudFormModal,
   RowActions,
@@ -64,7 +65,9 @@ function RecordPaymentForm({
      that already knows who it is for. */
   initialStudentId?: string;
   onCancel: () => void;
-  onSave: (p: PaymentDraft) => void;
+  /* Returns a promise, and the caller must await it: the save button stays
+     disabled for exactly as long as this takes. */
+  onSave: (p: PaymentDraft) => Promise<void>;
 }) {
   const { students, raw } = useData();
   const t = useTranslations("payment");
@@ -321,11 +324,14 @@ function RecordPaymentForm({
           <button type="button" className="jt-btn-ghost" style={secondaryButtonStyle} onClick={onCancel}>
             {tCommon("cancel")}
           </button>
-          <button
-            type="button"
+          {/* One payment per press. Saving takes long enough on the deployed
+              backend that a second click feels reasonable, and a second click
+              used to be a second payment. */}
+          <ActionButton
             className="jt-btn-primary"
-            style={{ ...primaryButtonStyle, opacity: canSave ? 1 : 0.5, cursor: canSave ? "pointer" : "not-allowed" }}
+            style={primaryButtonStyle}
             disabled={!canSave}
+            busyLabel={tCommon("saving")}
             onClick={() =>
               onSave({
                 studentId: selected?.id ?? "",
@@ -337,7 +343,7 @@ function RecordPaymentForm({
             }
           >
             {t("savePayment")}
-          </button>
+          </ActionButton>
         </div>
       </Card>
     </div>

@@ -8,6 +8,7 @@ import { Icon } from "@/lib/icons";
 import { COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
 /* Shared with the rest of the forms so the panel's fields keep the same box —
    this file used to carry its own near-identical copies. */
+import { ActionButton } from "../crud";
 import { useData } from "../DataProvider";
 import { fieldStyle, labelStyle, selectStyle } from "../page-kit";
 import { Avatar } from "../ui";
@@ -473,16 +474,15 @@ function ViewClass({ def, onClose }: { def: ClassDef; onClose: () => void }) {
             <Avatar initials={initialsOf(name)} size={28} />
             <span style={{ flex: 1, fontFamily: FONT, fontSize: 14, color: COLORS.text }}>{name}</span>
             {editable && (
-              <button
-                type="button"
-                onClick={() => {
+              <ActionButton
+                onClick={async () => {
                   const student = students.find((s) => s.name === name);
                   const row = raw.attendance.find(
                     (a) => String(a.session_id) === def.id && String(a.student_id) === student?.id,
                   );
-                  if (row) remove("attendance", String(row.attendance_id)).catch(() => {});
+                  if (row) await remove("attendance", String(row.attendance_id)).catch(() => {});
                 }}
-                aria-label={t("removeFromRoster", { name })}
+                ariaLabel={t("removeFromRoster", { name })}
                 style={{
                   display: "inline-flex",
                   border: "none",
@@ -493,7 +493,7 @@ function ViewClass({ def, onClose }: { def: ClassDef; onClose: () => void }) {
                 }}
               >
                 <Icon name="x" size={14} />
-              </button>
+              </ActionButton>
             )}
           </div>
         ))}
@@ -541,16 +541,19 @@ function ViewClass({ def, onClose }: { def: ClassDef; onClose: () => void }) {
                   </span>
                 )}
                 {addable.map((student) => (
-                  <button
+                  <ActionButton
                     key={student.id}
-                    type="button"
                     className="jt-find-row"
-                    onClick={() => {
-                      create("attendance", {
-                        student_id: student.id,
-                        session_id: def.id,
-                        check_in_time: new Date().toISOString(),
-                      }).catch(() => {});
+                    onClick={async () => {
+                      try {
+                        await create("attendance", {
+                          student_id: student.id,
+                          session_id: def.id,
+                          check_in_time: new Date().toISOString(),
+                        });
+                      } catch {
+                        /* Already added, most likely — the list refreshes. */
+                      }
                       setSearch("");
                     }}
                     style={{
@@ -570,7 +573,7 @@ function ViewClass({ def, onClose }: { def: ClassDef; onClose: () => void }) {
                       {student.name}
                     </span>
                     <Icon name="plus" size={15} color={COLORS.blue} />
-                  </button>
+                  </ActionButton>
                 ))}
               </div>
             </div>

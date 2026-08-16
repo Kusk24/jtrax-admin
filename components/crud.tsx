@@ -9,7 +9,7 @@
  * screen and not the next, an error swallowed here and alerted there.
  */
 
-import { useState, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { ApiError } from "@/lib/api";
 import { Icon } from "@/lib/icons";
@@ -410,6 +410,68 @@ export function RowActions({
         </button>
       )}
     </div>
+  );
+}
+
+/**
+ * A button that runs an async job and refuses every click until it finishes.
+ *
+ * Any button that writes needs this. A save against the deployed backend takes
+ * long enough that a second press feels reasonable, and the second press is a
+ * second record — a duplicate payment, a duplicate account. The label changes
+ * too, so the screen says it is working rather than looking dead.
+ */
+export function ActionButton({
+  onClick,
+  children,
+  busyLabel,
+  disabled = false,
+  style,
+  className,
+  title,
+  ariaLabel,
+}: {
+  onClick: () => Promise<unknown> | void;
+  children: ReactNode;
+  /* What the button says while the write is in flight. Falls back to the
+     label, which still reads correctly because the button is disabled. */
+  busyLabel?: ReactNode;
+  disabled?: boolean;
+  style?: CSSProperties;
+  className?: string;
+  title?: string;
+  ariaLabel?: string;
+}) {
+  const [busy, setBusy] = useState(false);
+  const blocked = busy || disabled;
+  return (
+    <button
+      type="button"
+      className={className}
+      title={title}
+      aria-label={ariaLabel}
+      aria-busy={busy || undefined}
+      disabled={blocked}
+      onClick={async () => {
+        if (blocked) return;
+        setBusy(true);
+        try {
+          await onClick();
+        } finally {
+          /* The dialog this button lives in is often gone by now; setting
+             state on an unmounted component is a no-op in React 19, and the
+             alternative — tracking mountedness — is more code than it saves. */
+          setBusy(false);
+        }
+      }}
+      style={{
+        ...style,
+        opacity: blocked ? 0.6 : 1,
+        cursor: disabled ? "not-allowed" : busy ? "wait" : "pointer",
+      }}
+    >
+      {busy ? busyLabel ?? children : children}
+    </button>
   );
 }
 
