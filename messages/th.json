@@ -96,7 +96,8 @@
     "none": "ไม่มี",
     "optional": "ไม่บังคับ",
     "saved": "บันทึกแล้ว",
-    "creditsCount": "{count, plural, other {# เครดิต}}"
+    "creditsCount": "{count, plural, other {# เครดิต}}",
+    "saving": "กำลังบันทึก…"
   },
   "view": {
     "switchView": "สลับมุมมอง",
@@ -307,7 +308,8 @@
     "followUpLow": "เครดิตเหลือน้อย",
     "followUpExpiring": "ใกล้หมดอายุ",
     "followUpInactive": "ไม่ได้เข้าเรียน",
-    "continueToPayment": "บันทึกการชำระเงิน"
+    "continueToPayment": "บันทึกการชำระเงิน",
+    "registering": "กำลังลงทะเบียน…"
   },
   "parents": {
     "title": "ผู้ปกครอง",

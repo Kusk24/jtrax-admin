@@ -96,7 +96,8 @@
     "none": "None",
     "optional": "Optional",
     "saved": "Saved",
-    "creditsCount": "{count, plural, one {# credit} other {# credits}}"
+    "creditsCount": "{count, plural, one {# credit} other {# credits}}",
+    "saving": "Saving…"
   },
   "view": {
     "switchView": "Switch view",
@@ -307,7 +308,8 @@
     "followUpLow": "Low credit",
     "followUpExpiring": "Expiring soon",
     "followUpInactive": "Inactive",
-    "continueToPayment": "Record payment"
+    "continueToPayment": "Record payment",
+    "registering": "Registering…"
   },
   "parents": {
     "title": "Parents",

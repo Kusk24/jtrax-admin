@@ -316,7 +316,7 @@ export function ClassHistoryPage() {
   const t = useTranslations("classHistory");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
-  const { raw, students, create, update, remove } = useData();
+  const { raw, students, batch, create, update, remove } = useData();
   const [mode, setMode] = useViewMode("classhistory", VIEWS);
   /* The calendar opens on the current month; `weekendOnly` starts on because
      the timetable is a weekend one. */
@@ -424,10 +424,13 @@ export function ClassHistoryPage() {
     );
   }
 
-  /* Attendance rows reference the session, so they go before it. */
+  /* Attendance rows reference the session, so they go before it — batched, so
+     a session with twenty attendees costs one refetch rather than twenty-one. */
   async function deleteSession(row: HistoryRow) {
-    for (const a of row.attendees) await remove("attendance", a.attendanceId);
-    await remove("class-sessions", row.id);
+    await batch(async () => {
+      for (const a of row.attendees) await remove("attendance", a.attendanceId);
+      await remove("class-sessions", row.id);
+    });
   }
 
   const filtered = useMemo(() => {

@@ -825,7 +825,7 @@ function AddStudentWizard({
      to price. */
   classOptions: string[];
   onCancel: () => void;
-  onCreate: (draft: Draft) => void;
+  onCreate: (draft: Draft) => Promise<void>;
 }) {
   const t = useTranslations("students");
   const tCommon = useTranslations("common");
@@ -837,6 +837,10 @@ function AddStudentWizard({
   });
   const [docName, setDocName] = useState("");
   const [extracting, setExtracting] = useState(false);
+  /* Registering writes nine rows. Until they all land the button has to stop
+     accepting clicks, or a second press starts the whole thing again and the
+     only sign of it is "email must be unique". */
+  const [saving, setSaving] = useState(false);
 
   function set<K extends keyof Draft>(key: K, value: Draft[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
@@ -1055,11 +1059,22 @@ function AddStudentWizard({
             <button
               type="button"
               className="jt-btn-primary"
-              style={{ ...primaryButtonStyle, opacity: canSubmit ? 1 : 0.5, cursor: canSubmit ? "pointer" : "not-allowed" }}
-              disabled={!canSubmit}
-              onClick={() => onCreate(draft)}
+              style={{
+                ...primaryButtonStyle,
+                opacity: canSubmit && !saving ? 1 : 0.5,
+                cursor: !canSubmit ? "not-allowed" : saving ? "wait" : "pointer",
+              }}
+              disabled={!canSubmit || saving}
+              onClick={async () => {
+                setSaving(true);
+                try {
+                  await onCreate(draft);
+                } finally {
+                  setSaving(false);
+                }
+              }}
             >
-              {t("registerTitle")}
+              {saving ? t("registering") : t("registerTitle")}
             </button>
           </div>
         </>
@@ -1082,7 +1097,7 @@ export function StudentsPage({
   const t = useTranslations("students");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
-  const { students, raw, create, update, remove, creditRules, loading, error } = useData();
+  const { students, raw, batch, create, update, remove, creditRules, loading, error } = useData();
   const [view, setView] = useState<View>(startWizard ? { kind: "wizard" } : { kind: "list" });
   const [mode, setMode] = useViewMode("students", VIEWS);
   const router = useRouter();
@@ -1160,6 +1175,90 @@ export function StudentsPage({
     router.push(`/payment?student=${encodeURIComponent(studentId)}`);
   }
 
+  /**
+   * Registers a student: their login, their row, an enrolment in the class the
+   * form chose, and — when the form named one — a guardian with their own
+   * login, contacts and the link to this child.
+   *
+   * All of it inside one `batch`. Each write used to refetch all twenty-two
+   * collections on its own, so nine writes cost 189 requests and the wizard
+   * sat there looking hung while they ran.
+   */
+  async function registerStudent(draft: Draft) {
+    const today = new Date().toISOString().slice(0, 10);
+    try {
+      await batch(async () => {
+        /* A student who can sign in to the portal, not just a row on a list.
+           The address follows the roster convention so the office can predict
+           it; the password is shown once, at the end. */
+        const studentPassword = generateTempPassword();
+        const studentAccount = await create("user-accounts", {
+          email: studentEmailFor(draft.name),
+          password: studentPassword,
+          role: "Student",
+          display_name: draft.name,
+        });
+        const created = await create("students", {
+          user_account_id: studentAccount.user_account_id,
+          name: draft.name,
+          current_level: "Beginner",
+          fide_rating: draft.fideRating ? Number(draft.fideRating) : null,
+        });
+
+        const cls = raw.classes.find((c) => String(c.name) === draft.className);
+        if (cls) {
+          await create("enrollments", {
+            student_id: created.student_id,
+            class_id: cls.class_id,
+            enrolled_date: today,
+            status: "Active",
+          });
+        }
+
+        let parentCredentials: { email: string; password: string } | null = null;
+        if (draft.parentName.trim() && draft.parentEmail.trim()) {
+          const parentPassword = generateTempPassword();
+          const parentAccount = await create("user-accounts", {
+            email: draft.parentEmail.trim(),
+            password: parentPassword,
+            role: "Parent",
+            display_name: draft.parentName.trim(),
+          });
+          const parent = await create("parents", {
+            user_account_id: parentAccount.user_account_id,
+            name: draft.parentName.trim(),
+          });
+          const parentId = String(parent.parent_id);
+          for (const [kind, value] of [
+            ["phone", draft.parentPhone],
+            ["email", draft.parentEmail],
+            ["line_id", draft.parentLineId],
+          ] as const) {
+            if (value.trim()) {
+              await create("parent-contacts", { parent_id: parentId, contact_type: kind, value: value.trim() });
+            }
+          }
+          await create("notification-preferences", { parent_id: parentId }).catch(() => {});
+          await create("student-parents", {
+            student_id: created.student_id,
+            parent_id: parentId,
+            relationship_type: draft.parentRelation || "Guardian",
+          });
+          parentCredentials = { email: draft.parentEmail.trim(), password: parentPassword };
+        }
+
+        setCreatedLogins({
+          studentId: String(created.student_id),
+          student: { email: studentEmailFor(draft.name), password: studentPassword },
+          parent: parentCredentials,
+        });
+      });
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : "create failed");
+    }
+    setView({ kind: "list" });
+  }
+
   if (view.kind === "detail") {
     const student = students.find((s) => s.id === view.id);
     if (student)
@@ -1188,81 +1287,7 @@ export function StudentsPage({
         initialName={startWizard ?? ""}
         classOptions={classNames}
         onCancel={() => setView({ kind: "list" })}
-        onCreate={async (draft) => {
-          try {
-            const today = new Date().toISOString().slice(0, 10);
-
-            /* A student who can sign in to the portal, not just a row on a
-               list. The address follows the roster convention so the office can
-               predict it; the password is shown once, at the end. */
-            const studentPassword = generateTempPassword();
-            const studentAccount = await create("user-accounts", {
-              email: studentEmailFor(draft.name),
-              password: studentPassword,
-              role: "Student",
-              display_name: draft.name,
-            });
-            const created = await create("students", {
-              user_account_id: studentAccount.user_account_id,
-              name: draft.name,
-              current_level: "Beginner",
-              fide_rating: draft.fideRating ? Number(draft.fideRating) : null,
-            });
-
-            const cls = raw.classes.find((c) => String(c.name) === draft.className);
-            if (cls) {
-              await create("enrollments", {
-                student_id: created.student_id,
-                class_id: cls.class_id,
-                enrolled_date: today,
-                status: "Active",
-              });
-            }
-
-            /* The wizard asks for a guardian, so make one — an account, a
-               parent row, their contacts and the link to this child. */
-            let parentCredentials: { email: string; password: string } | null = null;
-            if (draft.parentName.trim() && draft.parentEmail.trim()) {
-              const parentPassword = generateTempPassword();
-              const parentAccount = await create("user-accounts", {
-                email: draft.parentEmail.trim(),
-                password: parentPassword,
-                role: "Parent",
-                display_name: draft.parentName.trim(),
-              });
-              const parent = await create("parents", {
-                user_account_id: parentAccount.user_account_id,
-                name: draft.parentName.trim(),
-              });
-              const parentId = String(parent.parent_id);
-              for (const [kind, value] of [
-                ["phone", draft.parentPhone],
-                ["email", draft.parentEmail],
-                ["line_id", draft.parentLineId],
-              ] as const) {
-                if (value.trim()) {
-                  await create("parent-contacts", { parent_id: parentId, contact_type: kind, value: value.trim() });
-                }
-              }
-              await create("notification-preferences", { parent_id: parentId }).catch(() => {});
-              await create("student-parents", {
-                student_id: created.student_id,
-                parent_id: parentId,
-                relationship_type: draft.parentRelation || "Guardian",
-              });
-              parentCredentials = { email: draft.parentEmail.trim(), password: parentPassword };
-            }
-
-            setCreatedLogins({
-              studentId: String(created.student_id),
-              student: { email: studentEmailFor(draft.name), password: studentPassword },
-              parent: parentCredentials,
-            });
-          } catch (e) {
-            window.alert(e instanceof Error ? e.message : "create failed");
-          }
-          setView({ kind: "list" });
-        }}
+        onCreate={registerStudent}
       />
     );
   }
