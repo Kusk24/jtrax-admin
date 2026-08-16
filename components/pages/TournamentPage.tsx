@@ -8,6 +8,7 @@ import { useData } from "@/components/DataProvider";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
 import {
+  ActionButton,
   AddButton,
   ConfirmDeleteModal,
   CrudFormModal,
@@ -126,7 +127,14 @@ function QrCode({ seed }: { seed: string }) {
 
 const WIZARD_STEP_KEYS = ["stepUpload", "stepReview", "stepPublish"];
 
-function CreateWizard({ onCancel, onPublish }: { onCancel: () => void; onPublish: (t: Tournament) => void }) {
+function CreateWizard({
+  onCancel,
+  onPublish,
+}: {
+  onCancel: () => void;
+  /* Awaited by Publish, so a second press cannot open a second tournament. */
+  onPublish: (t: Tournament) => Promise<void>;
+}) {
   const t = useTranslations("tournament");
   const tCommon = useTranslations("common");
   const [step, setStep] = useState(1);
@@ -349,10 +357,10 @@ function CreateWizard({ onCancel, onPublish }: { onCancel: () => void; onPublish
           <code style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, color: COLORS.blue, wordBreak: "break-all" }}>
             {REGISTRATION_LINK}
           </code>
-          <button
-            type="button"
+          <ActionButton
             className="jt-btn-primary"
             style={primaryButtonStyle}
+            busyLabel={tCommon("saving")}
             onClick={() =>
               onPublish({
                 id: `t-${Date.now()}`,
@@ -380,7 +388,7 @@ function CreateWizard({ onCancel, onPublish }: { onCancel: () => void; onPublish
             }
           >
             {t("viewTournament")}
-          </button>
+          </ActionButton>
         </Card>
       )}
     </div>
@@ -742,10 +750,9 @@ function TournamentDetail({
                 aria-label={t("categoryPlaceholder")}
                 style={{ ...fieldStyle, flex: "1 1 180px", width: "auto" }}
               />
-              <button
-                type="button"
+              <ActionButton
                 className="jt-btn-ghost"
-                style={{ ...secondaryButtonStyle, opacity: categoryDraft.trim() ? 1 : 0.5 }}
+                style={secondaryButtonStyle}
                 disabled={!categoryDraft.trim()}
                 onClick={() =>
                   guarded(async () => {
@@ -758,7 +765,7 @@ function TournamentDetail({
                 }
               >
                 <Icon name="plus" size={13} /> {tCommon("add")}
-              </button>
+              </ActionButton>
             </div>
           </Card>
         </>

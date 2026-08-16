@@ -10,6 +10,7 @@ import { fmtDate, fmtTHB, practiceStrip } from "@/lib/live";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
 import {
+  ActionButton,
   AddButton,
   ConfirmDeleteModal,
   CrudFormModal,
@@ -92,7 +93,8 @@ function StudentDetail({
 }: {
   student: Student;
   onBack: () => void;
-  onSave: (student: Student) => void;
+  /* Awaited by the Save button, which stays disabled until it resolves. */
+  onSave: (student: Student) => Promise<void>;
   /* `alsoParent` is only ever offered when this is the guardian's last child;
      a guardian with other children is never touched. */
   onDelete: (id: string, alsoParent: boolean) => void;
@@ -571,22 +573,18 @@ function StudentDetail({
             <button type="button" className="jt-btn-ghost" style={secondaryButtonStyle} onClick={() => setEditing(false)}>
               {tCommon("cancel")}
             </button>
-            <button
-              type="button"
+            <ActionButton
               className="jt-btn-primary"
-              style={{
-                ...primaryButtonStyle,
-                opacity: draft.name.trim() ? 1 : 0.5,
-                cursor: draft.name.trim() ? "pointer" : "not-allowed",
-              }}
+              style={primaryButtonStyle}
               disabled={!draft.name.trim()}
-              onClick={() => {
-                onSave(draft);
+              busyLabel={tCommon("saving")}
+              onClick={async () => {
+                await onSave(draft);
                 setEditing(false);
               }}
             >
               {tCommon("save")}
-            </button>
+            </ActionButton>
           </div>
         </>
       )}
@@ -1395,10 +1393,12 @@ export function StudentsPage({
         <StudentDetail
           student={student}
           onBack={() => setView({ kind: "list" })}
-          onSave={(next) => {
-            update("students", next.id, { name: next.name, current_level: next.level }).catch((e) =>
-              window.alert(e instanceof Error ? e.message : "save failed"),
-            );
+          onSave={async (next) => {
+            try {
+              await update("students", next.id, { name: next.name, current_level: next.level });
+            } catch (e) {
+              window.alert(e instanceof Error ? e.message : "save failed");
+            }
           }}
           onDelete={(id, alsoParent) => {
             /* One request: the backend removes the attendance, credits,

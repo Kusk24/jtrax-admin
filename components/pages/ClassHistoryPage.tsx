@@ -8,6 +8,7 @@ import { fmtDate } from "@/lib/live";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
 import {
+  ActionButton,
   AddButton,
   ConfirmDeleteModal,
   CrudFormModal,
@@ -723,11 +724,11 @@ export function ClassHistoryPage() {
           width={420}
           onClose={() => setAddingTo(null)}
           footer={
-            <button
-              type="button"
+            <ActionButton
               className="jt-btn-primary"
-              style={{ ...primaryButtonStyle, opacity: addStudentId ? 1 : 0.5 }}
+              style={primaryButtonStyle}
               disabled={!addStudentId}
+              busyLabel={tCommon("saving")}
               onClick={async () => {
                 /* check_in_time is what marks them present; the session's own
                    date carries the when, so the clock only needs the time. */
@@ -740,7 +741,7 @@ export function ClassHistoryPage() {
               }}
             >
               {tCommon("add")}
-            </button>
+            </ActionButton>
           }
         >
           <label htmlFor="ch-add-student" style={labelStyle}>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { ActionButton } from "../crud";
 import { generateTempPassword } from "@/lib/credentials";
 import { type AdminPerson } from "@/lib/data";
 import { useData } from "@/components/DataProvider";
@@ -297,20 +298,24 @@ export function AdminsPage() {
                   <button type="button" style={secondaryButtonStyle} onClick={() => setDeleteConfirm(false)}>
                     {tCommon("cancel")}
                   </button>
-                  <button
-                    type="button"
+                  <ActionButton
                     style={{ ...primaryButtonStyle, background: COLORS.danger }}
-                    onClick={() => {
+                    busyLabel={tCommon("deleting")}
+                    onClick={async () => {
                       const row = raw.admins.find((a) => String(a.admin_id) === detail.id);
-                      batch(async () => {
-                        await remove("admins", detail.id);
-                        if (row?.user_account_id) await remove("user-accounts", String(row.user_account_id));
-                      }).catch((e) => window.alert(e instanceof Error ? e.message : "delete failed"));
+                      try {
+                        await batch(async () => {
+                          await remove("admins", detail.id);
+                          if (row?.user_account_id) await remove("user-accounts", String(row.user_account_id));
+                        });
+                      } catch (e) {
+                        window.alert(e instanceof Error ? e.message : "delete failed");
+                      }
                       closeDetail();
                     }}
                   >
                     {t("deleteConfirm")}
-                  </button>
+                  </ActionButton>
                 </div>
               </div>
             )}

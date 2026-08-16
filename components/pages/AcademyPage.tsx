@@ -7,6 +7,7 @@ import { fmtTHB } from "@/lib/live";
 import { Icon, type IconName } from "@/lib/icons";
 import { COLORS, FONT, initialsOf } from "@/lib/theme";
 import {
+  ActionButton,
   AddButton,
   ConfirmDeleteModal,
   CrudFormModal,
@@ -606,18 +607,20 @@ export function AcademyPage() {
                   >
                     {tCommon("cancel")}
                   </button>
-                  <button
-                    type="button"
+                  <ActionButton
                     style={{ ...primaryButtonStyle, background: COLORS.danger }}
-                    onClick={() => {
-                      remove("teachers", teacherDetail.id).catch((e) =>
-                        window.alert(e instanceof Error ? e.message : "delete failed"),
-                      );
-                      closeTeacherDetail();
+                    busyLabel={tCommon("deleting")}
+                    onClick={async () => {
+                      try {
+                        await remove("teachers", teacherDetail.id);
+                        closeTeacherDetail();
+                      } catch (e) {
+                        window.alert(e instanceof Error ? e.message : "delete failed");
+                      }
                     }}
                   >
                     {t("deleteTeacher")}
-                  </button>
+                  </ActionButton>
                 </div>
               </div>
             )}
@@ -634,33 +637,33 @@ export function AcademyPage() {
               <button type="button" className="jt-btn-ghost" style={secondaryButtonStyle} onClick={() => setCourseModal(null)}>
                 {tCommon("cancel")}
               </button>
-              <button
-                type="button"
+              <ActionButton
                 className="jt-btn-primary"
-                style={{
-                  ...primaryButtonStyle,
-                  opacity: courseDraft.name ? 1 : 0.5,
-                  cursor: courseDraft.name ? "pointer" : "not-allowed",
-                }}
+                style={primaryButtonStyle}
                 disabled={!courseDraft.name}
-                onClick={() => {
-                  if (courseModal === "new") {
-                    create("classes", {
-                      name: courseDraft.name,
-                      description: courseDraft.desc,
-                      class_type: ["Private", "Group", "Master"].includes(courseDraft.category) ? courseDraft.category : "Group",
-                    }).catch((e) => window.alert(e instanceof Error ? e.message : "create failed"));
-                  } else {
-                    update("classes", courseModal.id, {
-                      name: courseDraft.name,
-                      description: courseDraft.desc,
-                    }).catch((e) => window.alert(e instanceof Error ? e.message : "save failed"));
+                busyLabel={tCommon("saving")}
+                onClick={async () => {
+                  try {
+                    if (courseModal === "new") {
+                      await create("classes", {
+                        name: courseDraft.name,
+                        description: courseDraft.desc,
+                        class_type: ["Private", "Group", "Master"].includes(courseDraft.category) ? courseDraft.category : "Group",
+                      });
+                    } else {
+                      await update("classes", courseModal.id, {
+                        name: courseDraft.name,
+                        description: courseDraft.desc,
+                      });
+                    }
+                  } catch (e) {
+                    window.alert(e instanceof Error ? e.message : "save failed");
                   }
                   setCourseModal(null);
                 }}
               >
                 {tCommon("save")}
-              </button>
+              </ActionButton>
             </>
           }
         >
