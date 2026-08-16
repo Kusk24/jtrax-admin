@@ -104,7 +104,8 @@
     "switchView": "Switch view",
     "list": "List view",
     "card": "Card view",
-    "calendar": "Calendar view"
+    "calendar": "Calendar view",
+    "openCard": "Open {what}"
   },
   "shell": {
     "dashboard": "Dashboard",
@@ -391,7 +392,8 @@
     "noPayer": "Not recorded",
     "browseStudents": "Show all students",
     "colPaidBy": "Paid by",
-    "studentRemoved": "student removed"
+    "studentRemoved": "student removed",
+    "detailTitle": "Payment record"
   },
   "classHistory": {
     "title": "Class History",
@@ -426,7 +428,8 @@
     "dayWithSessions": "{date} — {count, plural, =0 {no sessions} one {# session} other {# sessions}}",
     "pickADay": "Pick a day to see its sessions and who attended.",
     "noSessionsOn": "No sessions on {date}.",
-    "weekdayHidden": "{count, plural, one {# on a weekday} other {# on weekdays}}"
+    "weekdayHidden": "{count, plural, one {# on a weekday} other {# on weekdays}}",
+    "sessionDetail": "Class session"
   },
   "tournament": {
     "title": "Tournament",

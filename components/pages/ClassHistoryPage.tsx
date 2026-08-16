@@ -38,6 +38,7 @@ import {
 } from "../page-kit";
 import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
 import { MonthCalendar, type CalendarEntry } from "../calendar";
+import { DeleteButton, DetailHeader, EditButton } from "../detail";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 
@@ -264,24 +265,21 @@ function AttendeeChips({
     The card view lists these; the calendar shows the ones on the chosen day. */
 function SessionCard({
   row,
+  onOpen,
   onEdit,
   onDelete,
-  onViewAttendee,
-  onRemoveAttendee,
-  onAddAttendee,
 }: {
   row: HistoryRow;
+  onOpen: () => void;
   onEdit: () => void;
   onDelete: () => void;
-  onViewAttendee: (name: string) => void;
-  onRemoveAttendee: (attendanceId: string) => void;
-  onAddAttendee: () => void;
 }) {
   const t = useTranslations("classHistory");
   const tStatus = useTranslations("status");
   const chip = statusChipColors(row.status);
   return (
     <EntityCard
+      onClick={onOpen}
       title={row.className}
       subtitle={`${row.date} · ${row.time}`}
       badges={
@@ -299,17 +297,86 @@ function SessionCard({
           onDelete={onDelete}
         />
       }
-      footer={
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          <AttendeeChips
-            row={row}
-            onView={onViewAttendee}
-            onRemove={onRemoveAttendee}
-            onAdd={onAddAttendee}
-          />
-        </div>
-      }
     />
+  );
+}
+
+/**
+ * One session, in full: who attended, and the way to change that.
+ *
+ * The roster editor used to sit open on every card, which made a page of cards
+ * a wall of chips and put a destructive control (remove from session) one
+ * stray click away on a list you were only scanning.
+ */
+function SessionDetail({
+  row,
+  onClose,
+  onEdit,
+  onDelete,
+  onViewAttendee,
+  onRemoveAttendee,
+  onAddAttendee,
+}: {
+  row: HistoryRow;
+  onClose: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  onViewAttendee: (name: string) => void;
+  onRemoveAttendee: (attendanceId: string) => void;
+  onAddAttendee: () => void;
+}) {
+  const t = useTranslations("classHistory");
+  const tStatus = useTranslations("status");
+  const chip = statusChipColors(row.status);
+  return (
+    <Modal title={t("sessionDetail")} onClose={onClose} width={560}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <DetailHeader
+          avatar={
+            <span
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 46,
+                height: 46,
+                borderRadius: 12,
+                background: COLORS.light,
+              }}
+            >
+              <Icon name="history" size={22} color={classDotColor(row.className)} />
+            </span>
+          }
+          title={row.className}
+          subtitle={`${row.date} · ${row.time}`}
+          badges={
+            <>
+              <Badge color={chip.color} bg={chip.bg}>{tStatus(row.status)}</Badge>
+              <Badge color={COLORS.blue} bg={COLORS.light}>
+                {t("presentCount", { count: row.attendees.length })}
+              </Badge>
+            </>
+          }
+          actions={
+            <>
+              <EditButton onClick={onEdit} />
+              <DeleteButton onClick={onDelete} />
+            </>
+          }
+        />
+        <div>
+          <SectionTitle>{t("attendance")}</SectionTitle>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+            <AttendeeChips
+              row={row}
+              onView={onViewAttendee}
+              onRemove={onRemoveAttendee}
+              onAdd={onAddAttendee}
+            />
+          </div>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -332,8 +399,8 @@ export function ClassHistoryPage() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [page, setPage] = useState(0);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [attendee, setAttendee] = useState<{ name: string; session: HistoryRow } | null>(null);
+  const [sessionDetail, setSessionDetail] = useState<HistoryRow | null>(null);
   const [sessionModal, setSessionModal] = useState<HistoryRow | "new" | null>(null);
   const [sessionValues, setSessionValues] = useState<CrudValues>({});
   const [deletingSession, setDeletingSession] = useState<HistoryRow | null>(null);
@@ -592,11 +659,9 @@ export function ClassHistoryPage() {
                   <SessionCard
                     key={row.key}
                     row={row}
+                    onOpen={() => setSessionDetail(row)}
                     onEdit={() => openSessionModal(row)}
                     onDelete={() => setDeletingSession(row)}
-                    onViewAttendee={(name) => setAttendee({ name, session: row })}
-                    onRemoveAttendee={(id) => remove("attendance", id)}
-                    onAddAttendee={() => { setAddingTo(row); setAddStudentId(""); }}
                   />
                 ))}
               </CardGrid>
@@ -611,11 +676,9 @@ export function ClassHistoryPage() {
               <SessionCard
                 key={row.key}
                 row={row}
+                onOpen={() => setSessionDetail(row)}
                 onEdit={() => openSessionModal(row)}
                 onDelete={() => setDeletingSession(row)}
-                onViewAttendee={(name) => setAttendee({ name, session: row })}
-                onRemoveAttendee={(id) => remove("attendance", id)}
-                onAddAttendee={() => { setAddingTo(row); setAddStudentId(""); }}
               />
             ))}
           </CardGrid>
@@ -625,66 +688,47 @@ export function ClassHistoryPage() {
       <Card style={{ padding: 0, overflow: "hidden" }}>
         <Table columns={[tCommon("date"), tCommon("class"), t("time"), t("attendance"), tCommon("action"), ""]} template={TEMPLATE} minWidth={880}>
           {pageRows.length === 0 && <EmptyRow>{t("empty")}</EmptyRow>}
-          {pageRows.map((row) => {
-            const open = expanded[row.key] ?? false;
-            return (
-              <div key={row.key}>
-                <TableRow
-                  template={TEMPLATE}
-                  onClick={() => setExpanded({ ...expanded, [row.key]: !open })}
-                >
-                  <span style={{ color: COLORS.textSecondary }}>{row.date}</span>
-                  <span style={{ display: "flex", alignItems: "center", fontWeight: 600 }}>
-                    <ClassDot color={classDotColor(row.className)} />
-                    {row.className}
-                  </span>
-                  <span style={{ color: COLORS.textSecondary }}>{row.time}</span>
-                  <span style={{ color: COLORS.textSecondary }}>
-                    {t("presentCount", { count: row.attendees.length })}
-                  </span>
-                  <RowActions
-                    label={t("sessionOn", { className: row.className, date: row.date })}
-                    onEdit={() => openSessionModal(row)}
-                    onDelete={() => setDeletingSession(row)}
-                  />
-                  <span
-                    style={{
-                      display: "inline-flex",
-                      justifySelf: "end",
-                      color: COLORS.textSecondary,
-                      transform: open ? "rotate(90deg)" : "none",
-                      transition: "transform 160ms ease",
-                    }}
-                  >
-                    <Icon name="chevronRight" size={16} />
-                  </span>
-                </TableRow>
-                {open && (
-                  <div
-                    className="jtrax-fade-in-up"
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: 8,
-                      padding: "12px 16px 16px",
-                      background: COLORS.bg,
-                      borderBottom: `1px solid ${COLORS.border}`,
-                    }}
-                  >
-                    <AttendeeChips
-                      row={row}
-                      onView={(name) => setAttendee({ name, session: row })}
-                      onRemove={(id) => remove("attendance", id)}
-                      onAdd={() => { setAddingTo(row); setAddStudentId(""); }}
-                    />
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          {/* The row opens the session rather than unfolding underneath it: the
+              roster is an editor, and an editor belongs on a screen you chose
+              to open, not under a row you were scanning past. */}
+          {pageRows.map((row) => (
+            <TableRow key={row.key} template={TEMPLATE} onClick={() => setSessionDetail(row)}>
+              <span style={{ color: COLORS.textSecondary }}>{row.date}</span>
+              <span style={{ display: "flex", alignItems: "center", fontWeight: 600 }}>
+                <ClassDot color={classDotColor(row.className)} />
+                {row.className}
+              </span>
+              <span style={{ color: COLORS.textSecondary }}>{row.time}</span>
+              <span style={{ color: COLORS.textSecondary }}>
+                {t("presentCount", { count: row.attendees.length })}
+              </span>
+              <RowActions
+                label={t("sessionOn", { className: row.className, date: row.date })}
+                onEdit={() => openSessionModal(row)}
+                onDelete={() => setDeletingSession(row)}
+              />
+              <span style={{ display: "inline-flex", justifySelf: "end", color: COLORS.textSecondary }}>
+                <Icon name="chevronRight" size={16} />
+              </span>
+            </TableRow>
+          ))}
         </Table>
         <Pagination page={current} totalPages={totalPages} onChange={setPage} />
       </Card>
+      )}
+
+      {/* Read from `all`, not the captured row: adding or removing an attendee
+          refetches, and the dialog has to show what is there now. */}
+      {sessionDetail && (
+        <SessionDetail
+          row={all.find((r) => r.key === sessionDetail.key) ?? sessionDetail}
+          onClose={() => setSessionDetail(null)}
+          onEdit={() => { openSessionModal(sessionDetail); setSessionDetail(null); }}
+          onDelete={() => { setDeletingSession(sessionDetail); setSessionDetail(null); }}
+          onViewAttendee={(name) => setAttendee({ name, session: sessionDetail })}
+          onRemoveAttendee={(id) => remove("attendance", id)}
+          onAddAttendee={() => { setAddingTo(sessionDetail); setAddStudentId(""); }}
+        />
       )}
 
       {attendee && (

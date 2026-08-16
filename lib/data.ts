@@ -21,6 +21,9 @@ export type Student = {
   expires: string;
   status: 'Normal' | 'Low Credit' | 'Expiring' | 'Expired' | 'Inactive';
   age: number;
+  /** The raw `YYYY-MM-DD`, so the edit form has something to bind to; `age` is
+      it worked out. */
+  dateOfBirth: string;
   level: string;
   parentName: string;
   parentRelation: string;
@@ -60,6 +63,11 @@ export type Payment = {
   method: string;
   /** The guardian recorded as paying, when one was. */
   payer?: string;
+  /* What the row shows only when opened: the amount before any discount, the
+     discount itself, and the reference the office wrote down. */
+  gross?: string;
+  discount?: string;
+  reference?: string;
   /** True once the student this was for has been deleted: the names on the
       row are all that is left of who it was about. */
   detached?: boolean;
