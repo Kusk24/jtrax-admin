@@ -58,6 +58,11 @@ export type Payment = {
   date: string;
   isoDate?: string;
   method: string;
+  /** The guardian recorded as paying, when one was. */
+  payer?: string;
+  /** True once the student this was for has been deleted: the names on the
+      row are all that is left of who it was about. */
+  detached?: boolean;
   status: 'Paid' | 'Pending' | 'Refunded';
 };
 

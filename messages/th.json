@@ -385,7 +385,13 @@
     "prefilledFor": "กำลังบันทึกการชำระเงินครั้งแรกของ {name} · {className}",
     "packageOption": "{className} — {credits} เครดิต",
     "noPackages": "ยังไม่ได้ตั้งค่าแพ็กเกจเครดิต",
-    "clearDates": "ล้างช่วงวันที่"
+    "clearDates": "ล้างช่วงวันที่",
+    "payer": "ผู้ชำระเงิน",
+    "payerHelp": "ค่าเริ่มต้นคือผู้ปกครองของนักเรียน และจะถูกบันทึกไว้ในใบเสร็จ",
+    "noPayer": "ไม่ได้บันทึก",
+    "browseStudents": "แสดงนักเรียนทั้งหมด",
+    "colPaidBy": "ผู้ชำระเงิน",
+    "studentRemoved": "นักเรียนถูกลบแล้ว"
   },
   "classHistory": {
     "title": "ประวัติคลาสเรียน",
