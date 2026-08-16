@@ -393,7 +393,8 @@
     "browseStudents": "แสดงนักเรียนทั้งหมด",
     "colPaidBy": "ผู้ชำระเงิน",
     "studentRemoved": "นักเรียนถูกลบแล้ว",
-    "detailTitle": "รายการชำระเงิน"
+    "detailTitle": "รายการชำระเงิน",
+    "moreStudents": "อีก {count} รายการ — พิมพ์เพื่อค้นหา"
   },
   "classHistory": {
     "title": "ประวัติคลาสเรียน",
