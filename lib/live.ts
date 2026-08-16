@@ -186,10 +186,15 @@ export function toPayments(c: LiveCollections): Payment[] {
       const enr = c.enrollments.find((e) => s(e, "enrollment_id") === s(p, "enrollment_id"));
       const cls = enr ? c.classes.find((k) => s(k, "class_id") === s(enr, "class_id")) : undefined;
       const pkg = c.creditPackages.find((k) => s(k, "credit_package_id") === s(p, "credit_package_id"));
+      /* The snapshot on the row wins over the join. A payment outlives the
+         student it was for, so a detached one has only these names — and even
+         while the student exists, the snapshot is what the till recorded. */
       return {
         id: s(p, "payment_id"),
-        name: st ? s(st, "name") : s(p, "student_id"),
-        className: cls ? s(cls, "name") : "—",
+        name: s(p, "student_name") || (st ? s(st, "name") : s(p, "student_id")),
+        className: s(p, "class_name") || (cls ? s(cls, "name") : "—"),
+        payer: s(p, "parent_name"),
+        detached: !s(p, "student_id"),
         credits: pkg ? `+${n(pkg, "credit_amount")}` : "—",
         amount: fmtTHB(n(p, "final_amount")),
         date: fmtDate(s(p, "payment_date")),

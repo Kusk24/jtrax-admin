@@ -385,7 +385,13 @@
     "prefilledFor": "Recording the first payment for {name} · {className}",
     "packageOption": "{className} — {credits} credits",
     "noPackages": "No credit packages set up yet",
-    "clearDates": "Clear dates"
+    "clearDates": "Clear dates",
+    "payer": "Paid by",
+    "payerHelp": "Defaults to the student's guardian. Recorded on the receipt.",
+    "noPayer": "Not recorded",
+    "browseStudents": "Show all students",
+    "colPaidBy": "Paid by",
+    "studentRemoved": "student removed"
   },
   "classHistory": {
     "title": "Class History",

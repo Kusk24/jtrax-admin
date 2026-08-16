@@ -37,7 +37,7 @@ import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 
-const TEMPLATE = equalTemplate(7, 80);
+const TEMPLATE = equalTemplate(8, 76);
 const VIEWS = ["list", "card"] as const;
 const METHODS = ["Credit Card", "Bank Transfer", "PromptPay", "Cash"];
 
@@ -55,6 +55,12 @@ type PaymentDraft = {
   amount: number;
   discount: number;
   method: string;
+  /* Snapshots written with the payment: what was true at the till. A payment
+     outlives the student it was for, and these are what a detached row has
+     left to say who it was about. */
+  studentName: string;
+  className: string;
+  payerName: string;
 };
 
 function RecordPaymentForm({
@@ -93,6 +99,17 @@ function RecordPaymentForm({
     [raw.creditPackages, raw.classes],
   );
 
+  const guardians = useMemo(
+    () => raw.parents.map((p) => ({ id: String(p["parent_id"]), name: String(p["name"] ?? "") })),
+    [raw.parents],
+  );
+
+  /** The guardian linked to a child, or "" when nobody is. */
+  function guardianIdOf(studentId: string): string {
+    const link = raw.studentParents.find((sp) => String(sp["student_id"]) === studentId);
+    return link ? String(link["parent_id"]) : "";
+  }
+
   const prefilled = initialStudentId ? students.find((s) => s.id === initialStudentId) : undefined;
   /* The package for the student's own class, which is the one the desk is
      about to sell them. */
@@ -102,6 +119,9 @@ function RecordPaymentForm({
   const [studentName, setStudentName] = useState(prefilled?.name ?? "");
   const [studentQuery, setStudentQuery] = useState(prefilled?.name ?? "");
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  /* Who is paying. Defaults to the child's own guardian and can be changed —
+     a grandparent settles the bill often enough to be worth recording. */
+  const [payerId, setPayerId] = useState(prefilled ? guardianIdOf(prefilled.id) : "");
   const [packageId, setPackageId] = useState(initialPackage?.id ?? "");
   const [amount, setAmount] = useState(initialPackage?.price ?? 0);
   const [discount, setDiscount] = useState(0);
@@ -109,17 +129,21 @@ function RecordPaymentForm({
   const [status, setStatus] = useState<Payment["status"]>("Paid");
   const [ref, setRef] = useState("");
 
+  /* An empty box lists everyone rather than nothing: the field is a dropdown
+     that also filters, not a search that hides its options until you guess. */
   const matches = useMemo(() => {
     const q = studentQuery.trim().toLowerCase();
-    if (!q) return [];
-    return students.filter((s) => s.name.toLowerCase().includes(q)).slice(0, 6);
+    const pool = q ? students.filter((s) => s.name.toLowerCase().includes(q)) : students;
+    return pool.slice(0, 8);
   }, [studentQuery, students]);
 
-  /** Picking a student re-points the package at their class and its price. */
-  function chooseStudent(name: string, className: string) {
+  /** Picking a student re-points the package at their class and the payer at
+      their own guardian. */
+  function chooseStudent(id: string, name: string, className: string) {
     setStudentName(name);
     setStudentQuery(name);
     setDropdownOpen(false);
+    setPayerId(guardianIdOf(id));
     const pkg = packageFor(className);
     if (pkg) {
       setPackageId(pkg.id);
@@ -170,8 +194,14 @@ function RecordPaymentForm({
 
         <div style={{ position: "relative" }}>
           <label style={labelStyle} htmlFor="pay-student">{tCommon("student")}</label>
+          {/* A combobox, not a bare search box: the caret says there is a list
+              behind it, and clicking opens the whole list rather than waiting
+              for the right guess. */}
           <input
             id="pay-student"
+            role="combobox"
+            aria-expanded={dropdownOpen}
+            aria-controls="pay-student-list"
             value={studentName || studentQuery}
             onChange={(e) => {
               setStudentQuery(e.target.value);
@@ -180,11 +210,31 @@ function RecordPaymentForm({
             }}
             onFocus={() => setDropdownOpen(true)}
             placeholder={t("studentPlaceholder")}
-            style={fieldStyle}
+            style={{ ...selectStyle, cursor: "text" }}
             autoComplete="off"
           />
-          {dropdownOpen && matches.length > 0 && !studentName && (
+          <button
+            type="button"
+            aria-label={t("browseStudents")}
+            onClick={() => {
+              setDropdownOpen((open) => !open);
+              if (studentName) setStudentQuery("");
+            }}
+            style={{
+              position: "absolute",
+              right: 0,
+              bottom: 0,
+              height: 40,
+              width: 34,
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              padding: 0,
+            }}
+          />
+          {dropdownOpen && matches.length > 0 && (
             <div
+              id="pay-student-list"
               className="jtrax-fade-in-up"
               style={{
                 position: "absolute",
@@ -198,6 +248,8 @@ function RecordPaymentForm({
                 boxShadow: "0 12px 28px rgb(36 59 99 / 0.14)",
                 padding: 5,
                 zIndex: 10,
+                maxHeight: 260,
+                overflowY: "auto",
               }}
             >
               {matches.map((s) => (
@@ -205,7 +257,7 @@ function RecordPaymentForm({
                   key={s.id}
                   type="button"
                   className="jt-find-row"
-                  onClick={() => chooseStudent(s.name, s.className)}
+                  onClick={() => chooseStudent(s.id, s.name, s.className)}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -233,6 +285,24 @@ function RecordPaymentForm({
               {t("noMatch", { query: studentQuery })}
             </p>
           )}
+        </div>
+
+        <div>
+          <label style={labelStyle} htmlFor="pay-payer">{t("payer")}</label>
+          <select
+            id="pay-payer"
+            value={payerId}
+            onChange={(e) => setPayerId(e.target.value)}
+            style={selectStyle}
+          >
+            <option value="">{t("noPayer")}</option>
+            {guardians.map((g) => (
+              <option key={g.id} value={g.id}>{g.name}</option>
+            ))}
+          </select>
+          <p style={{ margin: "5px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+            {t("payerHelp")}
+          </p>
         </div>
 
         <div className="jt-duo">
@@ -340,6 +410,9 @@ function RecordPaymentForm({
                 amount,
                 discount,
                 method,
+                studentName: selected?.name ?? studentName,
+                className: selected?.className ?? "",
+                payerName: guardians.find((g) => g.id === payerId)?.name ?? "",
               })
             }
           >
@@ -444,6 +517,9 @@ export function PaymentPage({ startStudentId }: { startStudentId?: string }) {
                  credits column to show and the ledger cannot say what was
                  bought. */
               credit_package_id: p.creditPackageId || null,
+              student_name: p.studentName,
+              class_name: p.className,
+              parent_name: p.payerName,
               amount: p.amount,
               discount_amount: p.discount,
               final_amount: Math.max(0, p.amount - p.discount),
@@ -489,8 +565,8 @@ export function PaymentPage({ startStudentId }: { startStudentId?: string }) {
           <>
             <ExportButton
               filename="payments"
-              columns={[tCommon("student"), tCommon("class"), t("credits"), tCommon("amount"), tCommon("date"), tCommon("method")]}
-              rows={() => filtered.map((p) => [p.name, p.className, p.credits, p.amount, p.date, p.method])}
+              columns={[tCommon("student"), t("colPaidBy"), tCommon("class"), t("credits"), tCommon("amount"), tCommon("date"), tCommon("method")]}
+              rows={() => filtered.map((p) => [p.name, p.payer ?? "", p.className, p.credits, p.amount, p.date, p.method])}
             />
             <button type="button" className="jt-btn-primary" style={primaryButtonStyle} onClick={() => setFormOpen(true)}>
               <Icon name="wallet" size={15} color="#fff" />
@@ -554,6 +630,7 @@ export function PaymentPage({ startStudentId }: { startStudentId?: string }) {
                   <span style={{ display: "inline-flex", alignItems: "center" }}>
                     <ClassDot color={classDotColor(p.className)} />
                     {p.className}
+                    {p.detached && ` · ${t("studentRemoved")}`}
                   </span>
                 }
                 badges={
@@ -580,6 +657,7 @@ export function PaymentPage({ startStudentId }: { startStudentId?: string }) {
                 rows={[
                   { label: tCommon("date"), value: p.date },
                   { label: tCommon("method"), value: p.method },
+                  { label: t("colPaidBy"), value: p.payer || "—" },
                 ]}
               />
             ))}
@@ -591,9 +669,9 @@ export function PaymentPage({ startStudentId }: { startStudentId?: string }) {
         <Table
           /* No status column — a recorded payment is a paid one, so the
              column was "Paid" on every row. */
-          columns={[tCommon("student"), tCommon("class"), t("credits"), tCommon("amount"), tCommon("date"), tCommon("method"), tCommon("action")]}
+          columns={[tCommon("student"), t("colPaidBy"), tCommon("class"), t("credits"), tCommon("amount"), tCommon("date"), tCommon("method"), tCommon("action")]}
           template={TEMPLATE}
-          minWidth={960}
+          minWidth={1060}
         >
           {pageRows.length === 0 && <EmptyRow>{t("empty")}</EmptyRow>}
           {pageRows.map((p, i) => {
@@ -601,9 +679,21 @@ export function PaymentPage({ startStudentId }: { startStudentId?: string }) {
               <TableRow key={p.id ?? `${p.name}-${p.date}-${i}`} template={TEMPLATE}>
                 <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                   <Avatar initials={initialsOf(p.name)} size={30} />
-                  <span style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {p.name}
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ display: "block", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {p.name}
+                    </span>
+                    {/* The student is gone; this row is the only record of
+                        them, so it says so rather than looking like a live one. */}
+                    {p.detached && (
+                      <span style={{ fontFamily: FONT, fontSize: 11.5, color: COLORS.textSecondary }}>
+                        {t("studentRemoved")}
+                      </span>
+                    )}
                   </span>
+                </span>
+                <span style={{ color: COLORS.textSecondary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {p.payer || "—"}
                 </span>
                 <span style={{ display: "flex", alignItems: "center", color: COLORS.textSecondary }}>
                   <ClassDot color={classDotColor(p.className)} />
