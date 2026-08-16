@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { buildFollowUps, type FollowUpBucket } from "@/lib/derive";
+import { BUCKET_STATUS, buildFollowUps, type FollowUpBucket } from "@/lib/derive";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT } from "@/lib/theme";
 import { useData } from "../DataProvider";
@@ -11,12 +11,14 @@ import { Card, SectionTitle } from "../ui";
 const ROW_CLASS: Record<FollowUpBucket, string> = {
   low: "jt-follow-low",
   expiring: "jt-follow-exp",
+  expired: "jt-follow-low",
   inactive: "jt-follow-inactive",
 };
 
 const LABEL_KEY: Record<FollowUpBucket, string> = {
   low: "lowCredit",
   expiring: "expiringSoon",
+  expired: "expiredCredits",
   inactive: "inactiveStudents",
 };
 
@@ -24,16 +26,18 @@ export function FollowUps({ style, wide = false }: { style?: React.CSSProperties
   const router = useRouter();
   const { creditRules, students } = useData();
   const t = useTranslations("dashboard");
-  /* Real students against the saved thresholds — this card used to count the
-     design fixtures, so the numbers never moved when the roster did. */
-  const followUps = buildFollowUps(creditRules, students);
+  /* Grouped by the status on each student's own row, so a count here and the
+     rows behind it are the same set. */
+  const followUps = buildFollowUps(students);
 
   const description = (key: FollowUpBucket) =>
     key === "low"
       ? t("lowCreditDesc", { count: creditRules.lowCredit })
       : key === "expiring"
         ? t("expiringSoonDesc", { days: creditRules.expiringDays })
-        : t("inactiveStudentsDesc", { days: creditRules.inactiveDays });
+        : key === "expired"
+          ? t("expiredCreditsDesc")
+          : t("inactiveStudentsDesc", { days: creditRules.inactiveDays });
 
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 12, ...style }}>
@@ -52,7 +56,7 @@ export function FollowUps({ style, wide = false }: { style?: React.CSSProperties
             /* Straight to the students who are in this bucket, not to the
                whole roster — the count is the point of the card, and landing
                on 33 unfiltered students throws it away. */
-            onClick={() => router.push(`/students?followUp=${fu.key}`)}
+            onClick={() => router.push(`/students?status=${encodeURIComponent(BUCKET_STATUS[fu.key])}`)}
             style={{
               display: "flex",
               alignItems: "center",

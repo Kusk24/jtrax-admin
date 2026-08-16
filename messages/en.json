@@ -191,7 +191,9 @@
     "checkedInToday": "Checked In Today",
     "checkedInSub": "Students at the academy today",
     "classesToday": "Classes Today",
-    "classesTodaySub": "Ongoing of today's sessions"
+    "classesTodaySub": "Ongoing of today's sessions",
+    "expiredCredits": "Expired Credits",
+    "expiredCreditsDesc": "Credits have already run out"
   },
   "find": {
     "title": "Find a Student",
@@ -303,11 +305,6 @@
     "tempPassword": "Temporary password",
     "tabCredits": "Credits",
     "parentLabel": "Parent",
-    "followUpFilter": "Follow-up",
-    "followUpAll": "All students",
-    "followUpLow": "Low credit",
-    "followUpExpiring": "Expiring soon",
-    "followUpInactive": "Inactive",
     "continueToPayment": "Record payment",
     "registering": "Registering…"
   },
