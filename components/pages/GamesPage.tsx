@@ -32,8 +32,11 @@ import {
   TableRow,
 } from "../page-kit";
 import { Avatar, Badge, Card, SectionTitle } from "../ui";
+import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
+import { useViewMode } from "@/lib/view-mode";
 
 const TEMPLATE = equalTemplate(5, 90);
+const VIEWS = ["list", "card"] as const;
 
 const STATUS_TONE: Record<GameRoom["status"], { color: string; bg: string }> = {
   Active: { color: COLORS.success, bg: COLORS.successBg },
@@ -172,6 +175,7 @@ export function GamesPage() {
 
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
+  const [mode, setMode] = useViewMode("games", VIEWS);
   const [page, setPage] = useState(1);
   const [openId, setOpenId] = useState<string | null>(null);
   const [minted, setMinted] = useState<GameRoom | null>(null);
@@ -251,8 +255,43 @@ export function GamesPage() {
           ]}
           label={t("col.status")}
         />
+        <ViewToggle value={mode} onChange={setMode} options={VIEWS} style={{ marginLeft: "auto" }} />
       </FilterBar>
 
+      {mode === "card" ? (
+        <CardGrid min={250}>
+          {loading ? (
+            <EmptyCards>{tc("loading")}</EmptyCards>
+          ) : pageRows.length === 0 ? (
+            <EmptyCards>{t("empty")}</EmptyCards>
+          ) : (
+            pageRows.map((room: GameRoom) => (
+              <EntityCard
+                key={room.gameRoomId}
+                onClick={() => setOpenId(room.gameRoomId)}
+                title={playersOf(room, t("waiting"))}
+                badges={
+                  <Badge color={STATUS_TONE[room.status].color} bg={STATUS_TONE[room.status].bg}>
+                    {t(`status.${room.status}`)}
+                  </Badge>
+                }
+                rows={[
+                  {
+                    label: t("col.code"),
+                    value: (
+                      <span style={{ fontFamily: "ui-monospace, monospace", letterSpacing: "0.1em" }}>
+                        {room.status === "Open" ? room.code : "—"}
+                      </span>
+                    ),
+                  },
+                  { label: t("col.moves"), value: room.moveCount },
+                  { label: t("col.result"), value: room.result ?? "—" },
+                ]}
+              />
+            ))
+          )}
+        </CardGrid>
+      ) : (
       <Table
         template={TEMPLATE}
         columns={[t("col.players"), t("col.status"), t("col.code"), t("col.moves"), t("col.result")]}
@@ -282,6 +321,7 @@ export function GamesPage() {
           ))
         )}
       </Table>
+      )}
 
       <Pagination page={page} totalPages={totalPages} onChange={setPage} />
 

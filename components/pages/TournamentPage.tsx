@@ -35,9 +35,14 @@ import {
   TableRow,
 } from "../page-kit";
 import { Avatar, Badge, Card, SectionTitle } from "../ui";
+import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
+import { useViewMode } from "@/lib/view-mode";
 
 const REGISTRATION_LINK = "https://jca-demo-registration-site.vercel.app/";
 const PARTICIPANT_TEMPLATE = equalTemplate(6, 70);
+const TOURNAMENT_TEMPLATE = equalTemplate(5, 100);
+const CARD_FIRST = ["card", "list"] as const;
+const LIST_FIRST = ["list", "card"] as const;
 
 /* Ported from buildQrCells: a deterministic pseudo-QR with real finder blocks,
    so the "registration website" card looks like a scannable code without
@@ -468,6 +473,7 @@ function TournamentDetail({
 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
+  const [mode, setMode] = useViewMode("participants", LIST_FIRST);
   const [drawer, setDrawer] = useState<Participant | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -766,10 +772,50 @@ function TournamentDetail({
               label={t("searchParticipants")}
               style={{ maxWidth: 340 }}
             />
-            <span style={{ marginLeft: "auto" }}>
+            <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 9 }}>
+              <ViewToggle value={mode} onChange={setMode} options={LIST_FIRST} />
               <AddButton label={t("addParticipant")} onClick={() => openParticipant("new")} />
             </span>
           </div>
+          {mode === "card" ? (
+            <div style={{ padding: "0 14px 14px" }}>
+              <CardGrid min={240}>
+                {pageRows.length === 0 && <EmptyCards>{t("noParticipants")}</EmptyCards>}
+                {pageRows.map((p) => {
+                  const badge = rankBadge(p.rank);
+                  return (
+                    <EntityCard
+                      key={p.name}
+                      onClick={() => setDrawer(p)}
+                      avatar={<Avatar initials={initialsOf(p.name)} size={44} />}
+                      title={p.name}
+                      subtitle={
+                        badge ? (
+                          <span style={{ fontWeight: 700, color: badge.color }}>{t(badge.labelKey)}</span>
+                        ) : (
+                          `#${p.rank}`
+                        )
+                      }
+                      badges={<Badge color={COLORS.blue} bg={COLORS.light}>{p.category}</Badge>}
+                      actions={
+                        p.id ? (
+                          <RowActions
+                            label={p.name}
+                            onEdit={() => openParticipant(p)}
+                            onDelete={() => setDeletingParticipant(p)}
+                          />
+                        ) : undefined
+                      }
+                      rows={[
+                        { label: t("rating"), value: p.rating },
+                        { label: t("score"), value: p.score },
+                      ]}
+                    />
+                  );
+                })}
+              </CardGrid>
+            </div>
+          ) : (
           <Table
             /* No payment column — registration fees are tracked on the
                Payment page, not per participant row. */
@@ -812,6 +858,7 @@ function TournamentDetail({
               );
             })}
           </Table>
+          )}
           <Pagination page={current} totalPages={totalPages} onChange={setPage} />
         </Card>
       )}
@@ -894,6 +941,7 @@ export function TournamentPage() {
   const { tournaments, raw, create, update, remove } = useData();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [mode, setMode] = useViewMode("tournaments", CARD_FIRST);
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [values, setValues] = useState<CrudValues>({});
@@ -1050,8 +1098,55 @@ export function TournamentPage() {
           <Card>
             <EmptyRow>{t("empty")}</EmptyRow>
           </Card>
+        ) : mode === "list" ? (
+          <Card style={{ padding: 0, overflow: "hidden" }}>
+            <Table
+              columns={[t("fieldName"), t("fieldDate"), t("fieldVenue"), t("participants"), tCommon("action")]}
+              template={TOURNAMENT_TEMPLATE}
+              minWidth={820}
+            >
+              {list.map((item) => {
+                const status = statusChipColors(item.status);
+                return (
+                  <TableRow key={item.id} template={TOURNAMENT_TEMPLATE} onClick={() => setSelectedId(item.id)}>
+                    <span style={{ minWidth: 0 }}>
+                      <span
+                        style={{
+                          display: "block",
+                          fontWeight: 600,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {item.name}
+                      </span>
+                      <Badge color={status.color} bg={status.bg}>
+                        {tStatus(item.status)}
+                      </Badge>
+                    </span>
+                    <span style={{ color: COLORS.textSecondary }}>{item.date}</span>
+                    <span
+                      style={{
+                        color: COLORS.textSecondary,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {item.venue}
+                    </span>
+                    <span style={{ color: COLORS.textSecondary }}>
+                      {t("participantCount", { count: item.currentParticipants })}
+                    </span>
+                    <RowActions label={item.name} onEdit={() => openEdit(item)} onDelete={() => setDeleting(item)} />
+                  </TableRow>
+                );
+              })}
+            </Table>
+          </Card>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
+          <CardGrid min={260}>
             {list.map((item) => {
               const status = statusChipColors(item.status);
               return (
@@ -1083,7 +1178,7 @@ export function TournamentPage() {
                 </Card>
               );
             })}
-          </div>
+          </CardGrid>
         )}
       </div>
     );
@@ -1097,6 +1192,7 @@ export function TournamentPage() {
         sub={t("sub")}
         action={
           <>
+            <ViewToggle value={mode} onChange={setMode} options={CARD_FIRST} />
             <ExportButton
               filename="tournaments"
               columns={[t("fieldName"), t("fieldDate"), t("format"), t("participants")]}

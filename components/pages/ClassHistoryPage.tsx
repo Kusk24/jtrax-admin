@@ -36,10 +36,13 @@ import {
   TableRow,
 } from "../page-kit";
 import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
+import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
+import { useViewMode } from "@/lib/view-mode";
 
 /* The chevron is the one column that is not data, so it keeps a fixed
    width; the five data columns share the rest equally. */
 const TEMPLATE = `${equalTemplate(5, 100)} 44px`;
+const VIEWS = ["list", "card"] as const;
 
 const SESSION_STATUSES = ["Scheduled", "Ongoing", "Completed"];
 
@@ -91,7 +94,7 @@ function AttendeeModal({
                 <>
                   <Badge color={chip.color} bg={chip.bg}>{tStatus(student.status)}</Badge>
                   <Badge color={COLORS.blue} bg={COLORS.light}>
-                    {student.credit} {tCommon("credits")}
+                    {tCommon("creditsCount", { count: student.credit })}
                   </Badge>
                 </>
               )}
@@ -152,11 +155,113 @@ function AttendeeModal({
   );
 }
 
+/** Who was in the session, as removable chips, plus the way to add one more.
+    Shared by the table's expanded row and the card view, which shows it
+    open — a card has the room for it, a table row does not. */
+function AttendeeChips({
+  row,
+  onView,
+  onRemove,
+  onAdd,
+}: {
+  row: HistoryRow;
+  onView: (name: string) => void;
+  onRemove: (attendanceId: string) => void;
+  onAdd: () => void;
+}) {
+  const t = useTranslations("classHistory");
+  return (
+    <>
+      {row.attendees.length === 0 && (
+        <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
+          {t("noAttendees")}
+        </span>
+      )}
+      {row.attendees.map((a) => (
+        <span
+          key={a.attendanceId}
+          className="jt-pick-chip"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 7,
+            padding: "5px 7px 5px 5px",
+            borderRadius: 999,
+            background: COLORS.surface,
+            border: `1px solid ${COLORS.border}`,
+            fontFamily: FONT,
+            fontSize: 13.5,
+            color: COLORS.text,
+          }}
+        >
+          <button
+            type="button"
+            title={t("viewAttendee", { name: a.name })}
+            onClick={() => onView(a.name)}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 7,
+              border: "none",
+              background: "transparent",
+              padding: 0,
+              cursor: "pointer",
+              fontFamily: FONT,
+              fontSize: 13.5,
+              color: COLORS.text,
+            }}
+          >
+            <Avatar initials={initialsOf(a.name)} size={20} />
+            {a.name}
+          </button>
+          <button
+            type="button"
+            aria-label={t("removeAttendee", { name: a.name })}
+            onClick={() => onRemove(a.attendanceId)}
+            style={{
+              display: "inline-flex",
+              border: "none",
+              background: "transparent",
+              padding: 0,
+              cursor: "pointer",
+              color: COLORS.textSecondary,
+            }}
+          >
+            <Icon name="x" size={12} />
+          </button>
+        </span>
+      ))}
+      <button
+        type="button"
+        className="jt-pick-chip"
+        onClick={onAdd}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "6px 12px",
+          borderRadius: 999,
+          background: COLORS.surface,
+          border: `1px dashed ${COLORS.border}`,
+          fontFamily: FONT,
+          fontSize: 13.5,
+          fontWeight: 600,
+          color: COLORS.blue,
+          cursor: "pointer",
+        }}
+      >
+        <Icon name="plus" size={12} color={COLORS.blue} /> {t("addAttendee")}
+      </button>
+    </>
+  );
+}
+
 export function ClassHistoryPage() {
   const t = useTranslations("classHistory");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
   const { raw, students, create, update, remove } = useData();
+  const [mode, setMode] = useViewMode("classhistory", VIEWS);
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("");
   const [from, setFrom] = useState("");
@@ -334,8 +439,52 @@ export function ClassHistoryPage() {
           aria-label={tCommon("toDate")}
           style={{ ...fieldStyle, width: "auto", borderRadius: 999, padding: "9px 14px" }}
         />
+        <ViewToggle value={mode} onChange={setMode} options={VIEWS} style={{ marginLeft: "auto" }} />
       </FilterBar>
 
+      {mode === "card" ? (
+        <>
+          <CardGrid min={300}>
+            {pageRows.length === 0 && <EmptyCards>{t("empty")}</EmptyCards>}
+            {pageRows.map((row) => {
+              const chip = statusChipColors(row.status);
+              return (
+                <EntityCard
+                  key={row.key}
+                  title={row.className}
+                  subtitle={`${row.date} · ${row.time}`}
+                  badges={
+                    <>
+                      <Badge color={chip.color} bg={chip.bg}>{tStatus(row.status)}</Badge>
+                      <Badge color={COLORS.blue} bg={COLORS.light}>
+                        {t("presentCount", { count: row.attendees.length })}
+                      </Badge>
+                    </>
+                  }
+                  actions={
+                    <RowActions
+                      label={t("sessionOn", { className: row.className, date: row.date })}
+                      onEdit={() => openSessionModal(row)}
+                      onDelete={() => setDeletingSession(row)}
+                    />
+                  }
+                  footer={
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      <AttendeeChips
+                        row={row}
+                        onView={(name) => setAttendee({ name, session: row })}
+                        onRemove={(id) => remove("attendance", id)}
+                        onAdd={() => { setAddingTo(row); setAddStudentId(""); }}
+                      />
+                    </div>
+                  }
+                />
+              );
+            })}
+          </CardGrid>
+          <Pagination page={current} totalPages={totalPages} onChange={setPage} />
+        </>
+      ) : (
       <Card style={{ padding: 0, overflow: "hidden" }}>
         <Table columns={[tCommon("date"), tCommon("class"), t("time"), t("attendance"), tCommon("action"), ""]} template={TEMPLATE} minWidth={880}>
           {pageRows.length === 0 && <EmptyRow>{t("empty")}</EmptyRow>}
@@ -385,86 +534,12 @@ export function ClassHistoryPage() {
                       borderBottom: `1px solid ${COLORS.border}`,
                     }}
                   >
-                    {row.attendees.length === 0 && (
-                      <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
-                        {t("noAttendees")}
-                      </span>
-                    )}
-                    {row.attendees.map((a) => (
-                      <span
-                        key={a.attendanceId}
-                        className="jt-pick-chip"
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 7,
-                          padding: "5px 7px 5px 5px",
-                          borderRadius: 999,
-                          background: COLORS.surface,
-                          border: `1px solid ${COLORS.border}`,
-                          fontFamily: FONT,
-                          fontSize: 13.5,
-                          color: COLORS.text,
-                        }}
-                      >
-                        <button
-                          type="button"
-                          title={t("viewAttendee", { name: a.name })}
-                          onClick={() => setAttendee({ name: a.name, session: row })}
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 7,
-                            border: "none",
-                            background: "transparent",
-                            padding: 0,
-                            cursor: "pointer",
-                            fontFamily: FONT,
-                            fontSize: 13.5,
-                            color: COLORS.text,
-                          }}
-                        >
-                          <Avatar initials={initialsOf(a.name)} size={20} />
-                          {a.name}
-                        </button>
-                        <button
-                          type="button"
-                          aria-label={t("removeAttendee", { name: a.name })}
-                          onClick={() => remove("attendance", a.attendanceId)}
-                          style={{
-                            display: "inline-flex",
-                            border: "none",
-                            background: "transparent",
-                            padding: 0,
-                            cursor: "pointer",
-                            color: COLORS.textSecondary,
-                          }}
-                        >
-                          <Icon name="x" size={12} />
-                        </button>
-                      </span>
-                    ))}
-                    <button
-                      type="button"
-                      className="jt-pick-chip"
-                      onClick={() => { setAddingTo(row); setAddStudentId(""); }}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 6,
-                        padding: "6px 12px",
-                        borderRadius: 999,
-                        background: COLORS.surface,
-                        border: `1px dashed ${COLORS.border}`,
-                        fontFamily: FONT,
-                        fontSize: 13.5,
-                        fontWeight: 600,
-                        color: COLORS.blue,
-                        cursor: "pointer",
-                      }}
-                    >
-                      <Icon name="plus" size={12} color={COLORS.blue} /> {t("addAttendee")}
-                    </button>
+                    <AttendeeChips
+                      row={row}
+                      onView={(name) => setAttendee({ name, session: row })}
+                      onRemove={(id) => remove("attendance", id)}
+                      onAdd={() => { setAddingTo(row); setAddStudentId(""); }}
+                    />
                   </div>
                 )}
               </div>
@@ -473,6 +548,7 @@ export function ClassHistoryPage() {
         </Table>
         <Pagination page={current} totalPages={totalPages} onChange={setPage} />
       </Card>
+      )}
 
       {attendee && (
         <AttendeeModal

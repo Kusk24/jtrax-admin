@@ -31,9 +31,12 @@ import {
   Table,
   TableRow,
 } from "../page-kit";
-import { Avatar, Card, ClassDot, SectionTitle } from "../ui";
+import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
+import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
+import { useViewMode } from "@/lib/view-mode";
 
 const TEMPLATE = equalTemplate(7, 80);
+const VIEWS = ["list", "card"] as const;
 const METHODS = ["Credit Card", "Bank Transfer", "PromptPay", "Cash"];
 
 /* Credit packages snap the amount, ported from the design's lookup table. */
@@ -292,6 +295,7 @@ export function PaymentPage() {
   const tCommon = useTranslations("common");
   const { payments, raw, create, update, remove } = useData();
   const [formOpen, setFormOpen] = useState(false);
+  const [mode, setMode] = useViewMode("payments", VIEWS);
   const [search, setSearch] = useState("");
   const [method, setMethod] = useState("");
   const [page, setPage] = useState(0);
@@ -430,8 +434,55 @@ export function PaymentPage() {
           options={[{ value: "", label: tCommon("allMethods") }, ...METHODS.map((m) => ({ value: m, label: m }))]}
           label={t("paymentMethod")}
         />
+        <ViewToggle value={mode} onChange={setMode} options={VIEWS} style={{ marginLeft: "auto" }} />
       </FilterBar>
 
+      {mode === "card" ? (
+        <>
+          <CardGrid>
+            {pageRows.length === 0 && <EmptyCards>{t("empty")}</EmptyCards>}
+            {pageRows.map((p, i) => (
+              <EntityCard
+                key={p.id ?? `${p.name}-${p.date}-${i}`}
+                avatar={<Avatar initials={initialsOf(p.name)} size={44} />}
+                title={p.name}
+                subtitle={
+                  <span style={{ display: "inline-flex", alignItems: "center" }}>
+                    <ClassDot color={classDotColor(p.className)} />
+                    {p.className}
+                  </span>
+                }
+                badges={
+                  <>
+                    <span style={{ fontFamily: FONT, fontSize: 17, fontWeight: 700, color: COLORS.text }}>
+                      {p.amount}
+                    </span>
+                    {p.credits !== "—" && (
+                      <Badge color={COLORS.success} bg={COLORS.successBg}>
+                        {p.credits} {tCommon("credits")}
+                      </Badge>
+                    )}
+                  </>
+                }
+                actions={
+                  p.id ? (
+                    <RowActions
+                      label={t("paymentFor", { name: p.name, amount: p.amount })}
+                      onEdit={() => openEdit(p)}
+                      onDelete={() => setDeleting(p)}
+                    />
+                  ) : undefined
+                }
+                rows={[
+                  { label: tCommon("date"), value: p.date },
+                  { label: tCommon("method"), value: p.method },
+                ]}
+              />
+            ))}
+          </CardGrid>
+          <Pagination page={current} totalPages={totalPages} onChange={setPage} />
+        </>
+      ) : (
       <Card style={{ padding: 0, overflow: "hidden" }}>
         <Table
           /* No status column — a recorded payment is a paid one, so the
@@ -473,6 +524,7 @@ export function PaymentPage() {
         </Table>
         <Pagination page={current} totalPages={totalPages} onChange={setPage} />
       </Card>
+      )}
     </div>
   );
 }

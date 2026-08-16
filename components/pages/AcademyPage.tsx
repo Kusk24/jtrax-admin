@@ -31,10 +31,19 @@ import {
   TableRow,
 } from "../page-kit";
 import { Avatar, Badge, Card } from "../ui";
+import { CardGrid, EntityCard, ViewToggle } from "../view-mode";
+import { useViewMode } from "@/lib/view-mode";
 
 /* The design's icon picker offers the six chess pieces plus the trophy the
    Master Class seed uses. */
 const PIECE_OPTIONS: IconName[] = ["king", "queen", "rook", "knight", "bishop", "pawn", "trophy"];
+
+/* Three lists on one screen, each remembered separately: the office tends to
+   want courses as cards and packages as a table at the same time. */
+const CARD_FIRST = ["card", "list"] as const;
+const LIST_FIRST = ["list", "card"] as const;
+const COURSE_TEMPLATE = equalTemplate(4, 110);
+const TEACHER_TEMPLATE = equalTemplate(4, 110);
 
 type Course = { id: string; name: string; desc: string; badge: string; icon: IconName; category: string };
 type Teacher = { id: string; name: string; email: string; phone: string; lineId: string; status: string };
@@ -115,6 +124,10 @@ export function AcademyPage() {
       validityDays: Number(p.validity_days ?? 0),
     };
   });
+
+  const [courseMode, setCourseMode] = useViewMode("courses", CARD_FIRST);
+  const [packageMode, setPackageMode] = useViewMode("packages", LIST_FIRST);
+  const [teacherMode, setTeacherMode] = useViewMode("teachers", CARD_FIRST);
 
   const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
   const [packageModal, setPackageModal] = useState<CreditPackage | "new" | null>(null);
@@ -237,6 +250,7 @@ export function AcademyPage() {
         sub={t("coursesSub")}
         action={
           <>
+            <ViewToggle value={courseMode} onChange={setCourseMode} options={CARD_FIRST} />
             <ExportButton
               filename="courses"
               columns={[t("courseName"), t("badge"), t("category"), t("description")]}
@@ -249,75 +263,147 @@ export function AcademyPage() {
         }
       />
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
-        {courses.map((c) => (
-          <Card
-            key={c.id}
-            className="jt-course-card"
-            style={{ display: "flex", flexDirection: "column", gap: 11, cursor: "pointer" }}
+      {courseMode === "card" ? (
+        <CardGrid>
+          {courses.map((c) => (
+            <Card
+              key={c.id}
+              className="jt-course-card"
+              style={{ display: "flex", flexDirection: "column", gap: 11, cursor: "pointer" }}
+            >
+              <div onClick={() => setCourseDetail(c)} style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                  <span
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 42,
+                      height: 42,
+                      borderRadius: 12,
+                      background: COLORS.light,
+                    }}
+                  >
+                    <Icon name={c.icon} size={21} color={COLORS.blue} />
+                  </span>
+                  <Badge color={COLORS.blue} bg={COLORS.light}>
+                    {c.badge}
+                  </Badge>
+                </div>
+                <div style={{ fontFamily: FONT, fontSize: 16, fontWeight: 700, color: COLORS.text }}>{c.name}</div>
+                <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, lineHeight: 1.55, color: COLORS.textSecondary }}>
+                  {c.desc}
+                </p>
+              </div>
+              <RowActions
+                label={c.name}
+                onEdit={() => openCourseModal(c)}
+                onDelete={() => setDeletingCourse(c)}
+              />
+            </Card>
+          ))}
+        </CardGrid>
+      ) : (
+        <Card style={{ padding: 0, overflow: "hidden" }}>
+          <Table
+            columns={[t("courseName"), t("badge"), t("description"), tCommon("action")]}
+            template={COURSE_TEMPLATE}
+            minWidth={760}
           >
-            <div onClick={() => setCourseDetail(c)} style={{ display: "flex", flexDirection: "column", gap: 11 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                <span
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: 42,
-                    height: 42,
-                    borderRadius: 12,
-                    background: COLORS.light,
-                  }}
-                >
-                  <Icon name={c.icon} size={21} color={COLORS.blue} />
+            {courses.length === 0 && <EmptyRow>{t("noCourses")}</EmptyRow>}
+            {courses.map((c) => (
+              <TableRow key={c.id} template={COURSE_TEMPLATE} onClick={() => setCourseDetail(c)}>
+                <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                  <Icon name={c.icon} size={18} color={COLORS.blue} />
+                  <span style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {c.name}
+                  </span>
                 </span>
-                <Badge color={COLORS.blue} bg={COLORS.light}>
+                <Badge color={COLORS.blue} bg={COLORS.light} style={{ justifySelf: "start" }}>
                   {c.badge}
                 </Badge>
-              </div>
-              <div style={{ fontFamily: FONT, fontSize: 16, fontWeight: 700, color: COLORS.text }}>{c.name}</div>
-              <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, lineHeight: 1.55, color: COLORS.textSecondary }}>
-                {c.desc}
-              </p>
-            </div>
-            <RowActions
-              label={c.name}
-              onEdit={() => openCourseModal(c)}
-              onDelete={() => setDeletingCourse(c)}
-            />
-          </Card>
-        ))}
-      </div>
+                <span
+                  style={{
+                    color: COLORS.textSecondary,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {c.desc}
+                </span>
+                <RowActions label={c.name} onEdit={() => openCourseModal(c)} onDelete={() => setDeletingCourse(c)} />
+              </TableRow>
+            ))}
+          </Table>
+        </Card>
+      )}
 
       <div>
         <PageHeader
           level={2}
           title={t("packagesTitle")}
           sub={t("packagesSub")}
-          action={<AddButton label={t("addPackage")} onClick={() => openPackageModal("new")} />}
+          action={
+            <>
+              <ViewToggle value={packageMode} onChange={setPackageMode} options={LIST_FIRST} />
+              <AddButton label={t("addPackage")} onClick={() => openPackageModal("new")} />
+            </>
+          }
         />
-        <Card style={{ padding: 0, overflow: "hidden", marginTop: 12 }}>
-          <Table
-            columns={[tCommon("class"), t("creditAmount"), t("price"), t("validity"), tCommon("action")]}
-            template={PACKAGE_TEMPLATE}
-            minWidth={720}
-          >
-            {packages.length === 0 && <EmptyRow>{t("noPackages")}</EmptyRow>}
-            {packages.map((p) => (
-              <TableRow key={p.id} template={PACKAGE_TEMPLATE}>
-                <span style={{ fontWeight: 600 }}>{p.className}</span>
-                <span style={{ color: COLORS.success, fontWeight: 600 }}>+{p.creditAmount}</span>
-                <span>{fmtTHB(p.price)}</span>
-                <span style={{ color: COLORS.textSecondary }}>{t("validityDays", { days: p.validityDays })}</span>
-                <RowActions
-                  label={t("packageFor", { className: p.className, credits: p.creditAmount })}
-                  onEdit={() => openPackageModal(p)}
-                  onDelete={() => setDeletingPackage(p)}
+        {packageMode === "card" ? (
+          <div style={{ marginTop: 12 }}>
+            <CardGrid>
+              {packages.map((p) => (
+                <EntityCard
+                  key={p.id}
+                  title={p.className}
+                  subtitle={t("validityDays", { days: p.validityDays })}
+                  badges={
+                    <>
+                      <span style={{ fontFamily: FONT, fontSize: 17, fontWeight: 700, color: COLORS.text }}>
+                        {fmtTHB(p.price)}
+                      </span>
+                      <Badge color={COLORS.success} bg={COLORS.successBg}>
+                        +{p.creditAmount}
+                      </Badge>
+                    </>
+                  }
+                  actions={
+                    <RowActions
+                      label={t("packageFor", { className: p.className, credits: p.creditAmount })}
+                      onEdit={() => openPackageModal(p)}
+                      onDelete={() => setDeletingPackage(p)}
+                    />
+                  }
                 />
-              </TableRow>
-            ))}
-          </Table>
-        </Card>
+              ))}
+            </CardGrid>
+          </div>
+        ) : (
+          <Card style={{ padding: 0, overflow: "hidden", marginTop: 12 }}>
+            <Table
+              columns={[tCommon("class"), t("creditAmount"), t("price"), t("validity"), tCommon("action")]}
+              template={PACKAGE_TEMPLATE}
+              minWidth={720}
+            >
+              {packages.length === 0 && <EmptyRow>{t("noPackages")}</EmptyRow>}
+              {packages.map((p) => (
+                <TableRow key={p.id} template={PACKAGE_TEMPLATE}>
+                  <span style={{ fontWeight: 600 }}>{p.className}</span>
+                  <span style={{ color: COLORS.success, fontWeight: 600 }}>+{p.creditAmount}</span>
+                  <span>{fmtTHB(p.price)}</span>
+                  <span style={{ color: COLORS.textSecondary }}>{t("validityDays", { days: p.validityDays })}</span>
+                  <RowActions
+                    label={t("packageFor", { className: p.className, credits: p.creditAmount })}
+                    onEdit={() => openPackageModal(p)}
+                    onDelete={() => setDeletingPackage(p)}
+                  />
+                </TableRow>
+              ))}
+            </Table>
+          </Card>
+        )}
       </div>
 
       <PageHeader
@@ -326,6 +412,7 @@ export function AcademyPage() {
         sub={t("teachersSub")}
         action={
           <>
+            <ViewToggle value={teacherMode} onChange={setTeacherMode} options={CARD_FIRST} />
             <ExportButton
               filename="teachers"
               columns={[tCommon("name"), tCommon("email"), tCommon("phone"), tCommon("lineId"), tCommon("status")]}
@@ -338,14 +425,16 @@ export function AcademyPage() {
         }
       />
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
-        {teachers.map((teacher) => (
-          <Card key={teacher.id} className="jt-adm-card" style={{ display: "flex", flexDirection: "column", gap: 13, cursor: "pointer" }}>
-            <div onClick={() => setTeacherDetail(teacher)} style={{ display: "flex", alignItems: "center", gap: 11 }}>
-              <Avatar initials={initialsOf(teacher.name)} size={44} />
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontFamily: FONT, fontSize: 15.5, fontWeight: 700, color: COLORS.text }}>{teacher.name}</div>
-                <div style={{ marginTop: 3, display: "flex", alignItems: "center", gap: 6 }}>
+      {teacherMode === "card" ? (
+        <CardGrid>
+          {teachers.map((teacher) => (
+            <EntityCard
+              key={teacher.id}
+              onClick={() => setTeacherDetail(teacher)}
+              avatar={<Avatar initials={initialsOf(teacher.name)} size={44} />}
+              title={teacher.name}
+              badges={
+                <>
                   <span
                     style={{
                       display: "inline-block",
@@ -355,18 +444,45 @@ export function AcademyPage() {
                       background: teacher.status === "Active" ? COLORS.success : COLORS.textSecondary,
                     }}
                   />
-                  <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>{tStatus(teacher.status)}</span>
-                </div>
-              </div>
-            </div>
-            <div style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary, lineHeight: 1.6 }}>
-              <div style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{teacher.email}</div>
-              <div>{teacher.phone}</div>
-            </div>
-            <ContactActions phone={teacher.phone} lineId={teacher.lineId} email={teacher.email} />
-          </Card>
-        ))}
-      </div>
+                  <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
+                    {tStatus(teacher.status)}
+                  </span>
+                </>
+              }
+              rows={[
+                { label: tCommon("email"), value: teacher.email },
+                { label: tCommon("phone"), value: teacher.phone },
+              ]}
+              footer={<ContactActions phone={teacher.phone} lineId={teacher.lineId} email={teacher.email} />}
+            />
+          ))}
+        </CardGrid>
+      ) : (
+        <Card style={{ padding: 0, overflow: "hidden" }}>
+          <Table
+            columns={[tCommon("name"), tCommon("email"), tCommon("phone"), tCommon("status")]}
+            template={TEACHER_TEMPLATE}
+            minWidth={760}
+          >
+            {teachers.length === 0 && <EmptyRow>{t("noTeachers")}</EmptyRow>}
+            {teachers.map((teacher) => (
+              <TableRow key={teacher.id} template={TEACHER_TEMPLATE} onClick={() => setTeacherDetail(teacher)}>
+                <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                  <Avatar initials={initialsOf(teacher.name)} size={30} />
+                  <span style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {teacher.name}
+                  </span>
+                </span>
+                <span style={{ color: COLORS.textSecondary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {teacher.email}
+                </span>
+                <span style={{ color: COLORS.textSecondary }}>{teacher.phone}</span>
+                <span style={{ color: COLORS.textSecondary }}>{tStatus(teacher.status)}</span>
+              </TableRow>
+            ))}
+          </Table>
+        </Card>
+      )}
 
       {courseDetail && (
         <Modal
