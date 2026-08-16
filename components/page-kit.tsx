@@ -12,18 +12,29 @@ import { COLORS, FONT, FONT_DISPLAY } from "@/lib/theme";
 
 export const TABLE_PAGE_SIZE = 10;
 
+/* The card grid lays out three or four to a row, so ten leaves a ragged last
+   row on every screen width the console supports. Twelve divides by both. */
+export const CARD_PAGE_SIZE = 12;
+
 /** One row height for every table — tall enough to clear the tallest cell any
     of them puts in a row (the Contact chip on the student list). */
 const ROW_HEIGHT = 54;
 
-export function paginate<T>(rows: T[], page: number) {
-  const totalPages = Math.max(1, Math.ceil(rows.length / TABLE_PAGE_SIZE));
+export function paginate<T>(rows: T[], page: number, size: number = TABLE_PAGE_SIZE) {
+  const totalPages = Math.max(1, Math.ceil(rows.length / size));
+  /* Clamped, so switching to the roomier card view while on the last page
+     lands on a page that exists rather than an empty one. */
   const current = Math.max(0, Math.min(page, totalPages - 1));
   return {
-    pageRows: rows.slice(current * TABLE_PAGE_SIZE, current * TABLE_PAGE_SIZE + TABLE_PAGE_SIZE),
+    pageRows: rows.slice(current * size, current * size + size),
     totalPages,
     page: current,
   };
+}
+
+/** How many rows a screen shows in the view it is currently in. */
+export function pageSizeFor(mode: string): number {
+  return mode === "card" ? CARD_PAGE_SIZE : TABLE_PAGE_SIZE;
 }
 
 export const fieldStyle: CSSProperties = {

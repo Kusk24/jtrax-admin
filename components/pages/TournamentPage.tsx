@@ -28,6 +28,7 @@ import {
   equalTemplate,
   PageHeader,
   paginate,
+  pageSizeFor,
   Pagination,
   primaryButtonStyle,
   SearchInput,
@@ -498,7 +499,7 @@ function TournamentDetail({
     );
   }, [tournament.participants, search]);
 
-  const { pageRows, totalPages, page: current } = paginate(filteredParticipants, page);
+  const { pageRows, totalPages, page: current } = paginate(filteredParticipants, page, pageSizeFor(mode));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>

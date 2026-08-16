@@ -29,6 +29,7 @@ import {
   ExportButton,
   PageHeader,
   paginate,
+  pageSizeFor,
   Pagination,
   primaryButtonStyle,
   SearchInput,
@@ -1276,7 +1277,7 @@ export function StudentsPage({
     });
   }, [students, search, status, branch]);
 
-  const { pageRows, totalPages, page: current } = paginate(filtered, page);
+  const { pageRows, totalPages, page: current } = paginate(filtered, page, pageSizeFor(mode));
 
   const parentOptions = useMemo(
     () => raw.parents.map((p) => ({ id: String(p["parent_id"]), name: String(p["name"] ?? "") })),

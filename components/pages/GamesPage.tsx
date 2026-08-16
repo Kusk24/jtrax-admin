@@ -23,6 +23,7 @@ import {
   Modal,
   PageHeader,
   paginate,
+  pageSizeFor,
   Pagination,
   primaryButtonStyle,
   SearchInput,
@@ -192,7 +193,7 @@ export function GamesPage() {
       }),
     [rooms, query, status],
   );
-  const { pageRows, totalPages } = paginate(filtered, page);
+  const { pageRows, totalPages } = paginate(filtered, page, pageSizeFor(mode));
 
   async function mint() {
     setBusy(true);
