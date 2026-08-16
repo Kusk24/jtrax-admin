@@ -12,16 +12,18 @@ export default async function SectionPage({
   searchParams,
 }: {
   params: Promise<{ section: string }>;
-  searchParams: Promise<{ new?: string }>;
+  searchParams: Promise<{ new?: string; followUp?: string }>;
 }) {
   const { section } = await params;
   const known = NAV_STRUCTURE.some((item) => item.id === section && item.id !== "home");
   if (!known) notFound();
 
   /* "Register Student" links carry ?new=<typed name> so the wizard opens
-     pre-filled. Read here rather than with useSearchParams in the client
-     component, which would bail the whole route out of server rendering. */
-  const { new: newStudentName } = await searchParams;
+     pre-filled, and the dashboard's follow-up cards carry ?followUp=<bucket>
+     so the list opens narrowed to what was clicked. Read here rather than with
+     useSearchParams in the client component, which would bail the whole route
+     out of server rendering. */
+  const { new: newStudentName, followUp } = await searchParams;
 
-  return <SectionRouter section={section} newStudentName={newStudentName} />;
+  return <SectionRouter section={section} newStudentName={newStudentName} followUp={followUp} />;
 }

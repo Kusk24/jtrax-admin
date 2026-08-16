@@ -49,7 +49,10 @@ export function FollowUps({ style, wide = false }: { style?: React.CSSProperties
             key={fu.key}
             type="button"
             className={`jt-follow ${ROW_CLASS[fu.key]}`}
-            onClick={() => router.push("/students")}
+            /* Straight to the students who are in this bucket, not to the
+               whole roster — the count is the point of the card, and landing
+               on 33 unfiltered students throws it away. */
+            onClick={() => router.push(`/students?followUp=${fu.key}`)}
             style={{
               display: "flex",
               alignItems: "center",
