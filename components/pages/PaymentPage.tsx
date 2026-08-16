@@ -358,6 +358,10 @@ export function PaymentPage({ startStudentId }: { startStudentId?: string }) {
   const [mode, setMode] = useViewMode("payments", VIEWS);
   const [search, setSearch] = useState("");
   const [method, setMethod] = useState("");
+  /* A payment list is read by period far more often than by name — "what did
+     we take in March" — so it filters by date the way class history does. */
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [page, setPage] = useState(0);
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -402,10 +406,14 @@ export function PaymentPage({ startStudentId }: { startStudentId?: string }) {
     const q = search.trim().toLowerCase();
     return payments.filter((p) => {
       if (method && p.method !== method) return false;
+      /* Both bounds are inclusive, and both are plain YYYY-MM-DD, so the
+         comparison is a string one — no timezone to shift the boundary day. */
+      if (from && (!p.isoDate || p.isoDate < from)) return false;
+      if (to && (!p.isoDate || p.isoDate > to)) return false;
       if (q && !p.name.toLowerCase().includes(q) && !p.className.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [payments, search, method]);
+  }, [payments, search, method, from, to]);
 
   const { pageRows, totalPages, page: current } = paginate(filtered, page);
   const totalPaid = filtered
@@ -499,6 +507,30 @@ export function PaymentPage({ startStudentId }: { startStudentId?: string }) {
           options={[{ value: "", label: tCommon("allMethods") }, ...METHODS.map((m) => ({ value: m, label: m }))]}
           label={t("paymentMethod")}
         />
+        <input
+          type="date"
+          value={from}
+          onChange={(e) => { setFrom(e.target.value); setPage(0); }}
+          aria-label={tCommon("fromDate")}
+          style={{ ...fieldStyle, width: "auto", borderRadius: 999, padding: "9px 14px" }}
+        />
+        <input
+          type="date"
+          value={to}
+          onChange={(e) => { setTo(e.target.value); setPage(0); }}
+          aria-label={tCommon("toDate")}
+          style={{ ...fieldStyle, width: "auto", borderRadius: 999, padding: "9px 14px" }}
+        />
+        {(from || to) && (
+          <button
+            type="button"
+            className="jt-btn-ghost"
+            style={{ ...secondaryButtonStyle, padding: "8px 14px" }}
+            onClick={() => { setFrom(""); setTo(""); setPage(0); }}
+          >
+            {t("clearDates")}
+          </button>
+        )}
         <ViewToggle value={mode} onChange={setMode} options={VIEWS} style={{ marginLeft: "auto" }} />
       </FilterBar>
 

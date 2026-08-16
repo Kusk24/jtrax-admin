@@ -193,6 +193,7 @@ export function toPayments(c: LiveCollections): Payment[] {
         credits: pkg ? `+${n(pkg, "credit_amount")}` : "—",
         amount: fmtTHB(n(p, "final_amount")),
         date: fmtDate(s(p, "payment_date")),
+        isoDate: s(p, "payment_date"),
         method: s(p, "payment_method"),
         status: "Paid",
       };

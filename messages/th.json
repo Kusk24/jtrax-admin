@@ -373,7 +373,8 @@
     "paymentFor": "การชำระเงิน {amount} จาก {name}",
     "prefilledFor": "กำลังบันทึกการชำระเงินครั้งแรกของ {name} · {className}",
     "packageOption": "{className} — {credits} เครดิต",
-    "noPackages": "ยังไม่ได้ตั้งค่าแพ็กเกจเครดิต"
+    "noPackages": "ยังไม่ได้ตั้งค่าแพ็กเกจเครดิต",
+    "clearDates": "ล้างช่วงวันที่"
   },
   "classHistory": {
     "title": "ประวัติคลาสเรียน",

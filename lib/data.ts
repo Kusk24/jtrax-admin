@@ -53,7 +53,10 @@ export type Payment = {
   className: string;
   credits: string;
   amount: string;
+  /** Formatted for display. `isoDate` is the same day unformatted, which is
+      what a date range can actually be compared against. */
   date: string;
+  isoDate?: string;
   method: string;
   status: 'Paid' | 'Pending' | 'Refunded';
 };
