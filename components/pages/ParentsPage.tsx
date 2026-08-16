@@ -30,6 +30,7 @@ import {
   Modal,
   PageHeader,
   paginate,
+  pageSizeFor,
   Pagination,
   SearchInput,
   SelectFilter,
@@ -491,7 +492,7 @@ export function ParentsPage() {
     });
   }, [parents, search, linked]);
 
-  const { pageRows, totalPages, page: current } = paginate(filtered, page);
+  const { pageRows, totalPages, page: current } = paginate(filtered, page, pageSizeFor(mode));
 
   /* Rendered from both the list and the detail branch, so opening a dialog from
      a parent's own screen does not depend on the list being mounted. */
