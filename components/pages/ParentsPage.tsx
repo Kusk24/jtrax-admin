@@ -38,8 +38,11 @@ import {
   TableRow,
 } from "../page-kit";
 import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
+import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
+import { useViewMode } from "@/lib/view-mode";
 
 const TEMPLATE = equalTemplate(5, 90);
+const VIEWS = ["list", "card"] as const;
 
 type View = { kind: "list" } | { kind: "detail"; id: string };
 
@@ -324,6 +327,7 @@ export function ParentsPage() {
   const tCommon = useTranslations("common");
   const { parents, students, raw, loading, error, create, update, remove } = useData();
   const [view, setView] = useState<View>({ kind: "list" });
+  const [mode, setMode] = useViewMode("parents", VIEWS);
   const [search, setSearch] = useState("");
   /* "" is "all", so the label can be localised without changing the compare. */
   const [linked, setLinked] = useState("");
@@ -591,8 +595,75 @@ export function ParentsPage() {
           options={linkedOptions}
           label={t("colChildren")}
         />
+        <ViewToggle value={mode} onChange={setMode} options={VIEWS} style={{ marginLeft: "auto" }} />
       </FilterBar>
 
+      {mode === "card" ? (
+        <>
+          <CardGrid>
+            {pageRows.length === 0 && (
+              <EmptyCards>{loading ? tCommon("loading") : error ? error : t("empty")}</EmptyCards>
+            )}
+            {pageRows.map((p) => (
+              <EntityCard
+                key={p.id}
+                onClick={() => setView({ kind: "detail", id: p.id })}
+                avatar={<Avatar initials={initialsOf(p.name)} size={44} />}
+                title={p.name}
+                subtitle={t("childCount", { count: p.children.length })}
+                actions={<RowActions label={p.name} onEdit={() => openEdit(p)} onDelete={() => setDeleting(p)} />}
+                rows={[
+                  { label: t("loginEmail"), value: p.loginEmail || p.email || "—" },
+                  { label: tCommon("phone"), value: p.phone || "—" },
+                  {
+                    label: t("colChildren"),
+                    value:
+                      p.children.length === 0 ? (
+                        "—"
+                      ) : (
+                        <span style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                          {p.children.map((c) => (
+                            <span key={c.id} style={{ display: "inline-flex", alignItems: "center" }}>
+                              <ClassDot color={classDotColor(c.className)} />
+                              {c.name}
+                            </span>
+                          ))}
+                        </span>
+                      ),
+                  },
+                ]}
+                footer={
+                  p.phone || p.email ? (
+                    <span style={{ display: "flex", gap: 7 }}>
+                      {p.phone && (
+                        <a
+                          href={`tel:${p.phone.replace(/\s/g, "")}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="jt-qa-call"
+                          style={{ ...contactPillStyle, flex: 1, justifyContent: "center" }}
+                        >
+                          <Icon name="phone" size={12} /> {t("call")}
+                        </a>
+                      )}
+                      {p.email && (
+                        <a
+                          href={`mailto:${p.email}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="jt-qa-call"
+                          style={{ ...contactPillStyle, flex: 1, justifyContent: "center" }}
+                        >
+                          <Icon name="mail" size={12} /> {t("emailAction")}
+                        </a>
+                      )}
+                    </span>
+                  ) : undefined
+                }
+              />
+            ))}
+          </CardGrid>
+          <Pagination page={current} totalPages={totalPages} onChange={setPage} />
+        </>
+      ) : (
       <Card style={{ padding: 0, overflow: "hidden" }}>
         <Table
           columns={[t("colParent"), tCommon("email"), t("colChildren"), tCommon("phone"), tCommon("action")]}
@@ -655,6 +726,7 @@ export function ParentsPage() {
         </Table>
         <Pagination page={current} totalPages={totalPages} onChange={setPage} />
       </Card>
+      )}
     </div>
   );
 }

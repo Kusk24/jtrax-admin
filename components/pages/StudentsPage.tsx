@@ -37,8 +37,11 @@ import {
   TableRow,
 } from "../page-kit";
 import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
+import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
+import { useViewMode } from "@/lib/view-mode";
 
 const TEMPLATE = equalTemplate(5, 90);
+const VIEWS = ["list", "card"] as const;
 const ATTENDANCE_TEMPLATE = equalTemplate(2, 120);
 const CLASS_OPTIONS = ["Group Class", "Private Class", "Master Class", "Weekend Class"];
 const STATUS_VALUES = ["Normal", "Low Credit", "Expiring", "Expired", "Inactive"] as const;
@@ -50,6 +53,14 @@ const RELATION_OPTIONS = ["Mother", "Father", "Guardian"];
    would show a picker that doesn't contain their own class and silently move
    them to the first option on save. */
 const BRANCH_OPTIONS = ["Bangkok"];
+
+/* Credit reads as a warning before it reads as a number, so the chip is
+   coloured by how close to empty the balance is — shared by both views. */
+function creditChipFor(credit: number): { color: string; bg: string } {
+  if (credit <= 0) return { color: COLORS.danger, bg: COLORS.dangerBg };
+  if (credit <= 3) return { color: COLORS.warning, bg: COLORS.warningBg };
+  return { color: COLORS.success, bg: COLORS.successBg };
+}
 
 /* Same convention the roster import uses, so an address created here and one
    imported in bulk look alike: first.last@student.jca.ac.th. */
@@ -337,7 +348,7 @@ function StudentDetail({
             {tStatus(student.status)}
           </Badge>
           <Badge color={COLORS.blue} bg={COLORS.light}>
-            {student.credit} {tCommon("credits")}
+            {tCommon("creditsCount", { count: student.credit })}
           </Badge>
           {!editing && (
             <>
@@ -1043,6 +1054,7 @@ export function StudentsPage({ startWizard }: { startWizard?: string }) {
   const tStatus = useTranslations("status");
   const { students, raw, create, update, remove, loading, error } = useData();
   const [view, setView] = useState<View>(startWizard ? { kind: "wizard" } : { kind: "list" });
+  const [mode, setMode] = useViewMode("students", VIEWS);
   const [createdLogins, setCreatedLogins] = useState<{
     student: { email: string; password: string };
     parent: { email: string; password: string } | null;
@@ -1257,65 +1269,129 @@ export function StudentsPage({ startWizard }: { startWizard?: string }) {
         />
         <SelectFilter value={branch} onChange={(v) => { setBranch(v); setPage(0); }} options={branchOptions} label={tCommon("branch")} />
         <SelectFilter value={status} onChange={(v) => { setStatus(v); setPage(0); }} options={statusOptions} label={tCommon("status")} />
+        <ViewToggle value={mode} onChange={setMode} options={VIEWS} style={{ marginLeft: "auto" }} />
       </FilterBar>
 
-      <Card style={{ padding: 0, overflow: "hidden" }}>
-        <Table columns={[tCommon("student"), tCommon("class"), t("colCredit"), tCommon("status"), tCommon("action")]} template={TEMPLATE} minWidth={760}>
-          {pageRows.length === 0 && <EmptyRow>{t("empty")}</EmptyRow>}
-          {pageRows.map((s) => {
-            const chip = statusChipColors(s.status);
-            const creditChip =
-              s.credit <= 0
-                ? { color: COLORS.danger, bg: COLORS.dangerBg }
-                : s.credit <= 3
-                  ? { color: COLORS.warning, bg: COLORS.warningBg }
-                  : { color: COLORS.success, bg: COLORS.successBg };
-            return (
-              <TableRow key={s.id} template={TEMPLATE} onClick={() => setView({ kind: "detail", id: s.id })}>
-                <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                  <Avatar initials={initialsOf(s.name)} size={30} />
-                  <span style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {s.name}
+      {mode === "card" ? (
+        <>
+          <CardGrid>
+            {pageRows.length === 0 && (
+              <EmptyCards>{loading ? tCommon("loading") : error ? error : t("empty")}</EmptyCards>
+            )}
+            {pageRows.map((s) => {
+              const chip = statusChipColors(s.status);
+              const creditChip = creditChipFor(s.credit);
+              return (
+                <EntityCard
+                  key={s.id}
+                  onClick={() => setView({ kind: "detail", id: s.id })}
+                  avatar={<Avatar initials={initialsOf(s.name)} size={44} />}
+                  title={s.name}
+                  subtitle={
+                    <span style={{ display: "inline-flex", alignItems: "center" }}>
+                      <ClassDot color={classDotColor(s.className)} />
+                      {s.className}
+                    </span>
+                  }
+                  badges={
+                    <>
+                      <Badge color={chip.color} bg={chip.bg}>{tStatus(s.status)}</Badge>
+                      <Badge color={creditChip.color} bg={creditChip.bg}>
+                        {tCommon("creditsCount", { count: s.credit })}
+                      </Badge>
+                    </>
+                  }
+                  rows={[
+                    { label: t("level"), value: s.level },
+                    { label: t("creditsExpire"), value: s.expires || "—" },
+                    { label: t("parentLabel"), value: s.parentName },
+                  ]}
+                  footer={
+                    s.parentPhone ? (
+                      <ContactPill
+                        phone={s.parentPhone}
+                        label={t("contact")}
+                        style={{ justifyContent: "center" }}
+                      />
+                    ) : undefined
+                  }
+                />
+              );
+            })}
+          </CardGrid>
+          <Pagination page={current} totalPages={totalPages} onChange={setPage} />
+        </>
+      ) : (
+        <Card style={{ padding: 0, overflow: "hidden" }}>
+          <Table columns={[tCommon("student"), tCommon("class"), t("colCredit"), tCommon("status"), tCommon("action")]} template={TEMPLATE} minWidth={760}>
+            {pageRows.length === 0 && (
+              <EmptyRow>{loading ? tCommon("loading") : error ? error : t("empty")}</EmptyRow>
+            )}
+            {pageRows.map((s) => {
+              const chip = statusChipColors(s.status);
+              const creditChip = creditChipFor(s.credit);
+              return (
+                <TableRow key={s.id} template={TEMPLATE} onClick={() => setView({ kind: "detail", id: s.id })}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                    <Avatar initials={initialsOf(s.name)} size={30} />
+                    <span style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {s.name}
+                    </span>
                   </span>
-                </span>
-                <span style={{ display: "flex", alignItems: "center", color: COLORS.textSecondary }}>
-                  <ClassDot color={classDotColor(s.className)} />
-                  {s.className}
-                </span>
-                <Badge color={creditChip.color} bg={creditChip.bg} style={{ justifySelf: "start" }}>
-                  {s.credit}
-                </Badge>
-                <Badge color={chip.color} bg={chip.bg} style={{ justifySelf: "start" }}>
-                  {tStatus(s.status)}
-                </Badge>
-                <a
-                  href={`tel:${s.parentPhone.replace(/\s/g, "")}`}
-                  onClick={(e) => e.stopPropagation()}
-                  className="jt-qa-call"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
-                    justifySelf: "start",
-                    padding: "6px 12px",
-                    borderRadius: 999,
-                    border: `1px solid ${COLORS.border}`,
-                    fontFamily: FONT,
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: COLORS.text,
-                    textDecoration: "none",
-                    transition: "all 160ms ease",
-                  }}
-                >
-                  <Icon name="phone" size={12} /> {t("contact")}
-                </a>
-              </TableRow>
-            );
-          })}
-        </Table>
-        <Pagination page={current} totalPages={totalPages} onChange={setPage} />
-      </Card>
+                  <span style={{ display: "flex", alignItems: "center", color: COLORS.textSecondary }}>
+                    <ClassDot color={classDotColor(s.className)} />
+                    {s.className}
+                  </span>
+                  <Badge color={creditChip.color} bg={creditChip.bg} style={{ justifySelf: "start" }}>
+                    {s.credit}
+                  </Badge>
+                  <Badge color={chip.color} bg={chip.bg} style={{ justifySelf: "start" }}>
+                    {tStatus(s.status)}
+                  </Badge>
+                  <ContactPill phone={s.parentPhone} label={t("contact")} style={{ justifySelf: "start" }} />
+                </TableRow>
+              );
+            })}
+          </Table>
+          <Pagination page={current} totalPages={totalPages} onChange={setPage} />
+        </Card>
+      )}
     </div>
+  );
+}
+
+/** Tel link styled as a pill. Its click never reaches the row behind it. */
+function ContactPill({
+  phone,
+  label,
+  style,
+}: {
+  phone: string;
+  label: string;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <a
+      href={`tel:${phone.replace(/\s/g, "")}`}
+      onClick={(e) => e.stopPropagation()}
+      className="jt-qa-call"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        padding: "6px 12px",
+        borderRadius: 999,
+        border: `1px solid ${COLORS.border}`,
+        fontFamily: FONT,
+        fontSize: 13,
+        fontWeight: 600,
+        color: COLORS.text,
+        textDecoration: "none",
+        transition: "all 160ms ease",
+        ...style,
+      }}
+    >
+      <Icon name="phone" size={12} /> {label}
+    </a>
   );
 }

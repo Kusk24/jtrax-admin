@@ -9,6 +9,8 @@ import { Icon } from "@/lib/icons";
 import { COLORS, FONT, ROLE_COLORS, type JtraxRole } from "@/lib/theme";
 import {
   ContactActions,
+  EmptyRow,
+  equalTemplate,
   fieldStyle,
   InfoGrid,
   labelStyle,
@@ -18,10 +20,18 @@ import {
   primaryButtonStyle,
   secondaryButtonStyle,
   selectStyle,
+  Table,
+  TableRow,
 } from "../page-kit";
 import { Avatar, Badge, Card, SectionTitle } from "../ui";
+import { CardGrid, EntityCard, ViewToggle } from "../view-mode";
+import { useViewMode } from "@/lib/view-mode";
 
 const ROLES: JtraxRole[] = ["Admin", "Receptionist"];
+/* Card first here: this screen was cards from the start, and staff are
+   recognised by face-and-role rather than scanned down a column. */
+const VIEWS = ["card", "list"] as const;
+const TEMPLATE = equalTemplate(5, 100);
 
 const EMPTY_FORM = { fullName: "", phone: "", email: "", lineId: "", role: "Admin" as JtraxRole };
 
@@ -42,6 +52,7 @@ export function AdminsPage() {
   const tCommon = useTranslations("common");
   const tRole = useTranslations("roles");
   const { admins, raw, create, update, remove } = useData();
+  const [mode, setMode] = useViewMode("admins", VIEWS);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [resetShown, setResetShown] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -83,6 +94,7 @@ export function AdminsPage() {
         sub={t("sub")}
         action={
           <>
+            <ViewToggle value={mode} onChange={setMode} options={VIEWS} />
             <ExportButton
               filename="admins"
               columns={[tCommon("name"), t("role"), tCommon("email"), tCommon("phone"), tCommon("branch"), tCommon("status")]}
@@ -101,25 +113,18 @@ export function AdminsPage() {
         }
       />
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
-        {admins.map((a) => {
-          const roleColor = ROLE_COLORS[a.role];
-          return (
-            <Card
-              key={a.id}
-              className="jt-adm-card"
-              style={{ display: "flex", flexDirection: "column", gap: 13, cursor: "pointer" }}
-            >
-              <div
+      {mode === "card" ? (
+        <CardGrid>
+          {admins.map((a) => {
+            const roleColor = ROLE_COLORS[a.role];
+            return (
+              <EntityCard
+                key={a.id}
                 onClick={() => setDetailId(a.id)}
-                style={{ display: "flex", alignItems: "center", gap: 11 }}
-              >
-                <Avatar initials={a.initials} size={44} color={roleColor.color} bg={roleColor.bg} />
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontFamily: FONT, fontSize: 15.5, fontWeight: 700, color: COLORS.text }}>
-                    {a.name}
-                  </div>
-                  <div style={{ marginTop: 3, display: "flex", alignItems: "center", gap: 7 }}>
+                avatar={<Avatar initials={a.initials} size={44} color={roleColor.color} bg={roleColor.bg} />}
+                title={a.name}
+                badges={
+                  <>
                     <Badge color={roleColor.color} bg={roleColor.bg}>
                       {tRole(a.role)}
                     </Badge>
@@ -133,21 +138,50 @@ export function AdminsPage() {
                       }}
                       title={a.status}
                     />
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary, lineHeight: 1.6 }}>
-                <div style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{a.email}</div>
-                <div>{a.phone}</div>
-                <div>{t("lastLogin", { value: a.lastLogin })}</div>
-              </div>
-
-              <ContactActions phone={a.phone} lineId={a.lineId} email={a.email} />
-            </Card>
-          );
-        })}
-      </div>
+                  </>
+                }
+                rows={[
+                  { label: tCommon("email"), value: a.email },
+                  { label: tCommon("phone"), value: a.phone },
+                  { label: t("lastLoginLabel"), value: a.lastLogin },
+                ]}
+                footer={<ContactActions phone={a.phone} lineId={a.lineId} email={a.email} />}
+              />
+            );
+          })}
+        </CardGrid>
+      ) : (
+        <Card style={{ padding: 0, overflow: "hidden" }}>
+          <Table
+            columns={[tCommon("name"), t("role"), tCommon("email"), tCommon("phone"), tCommon("status")]}
+            template={TEMPLATE}
+            minWidth={820}
+          >
+            {admins.length === 0 && <EmptyRow>{tCommon("loading")}</EmptyRow>}
+            {admins.map((a) => {
+              const roleColor = ROLE_COLORS[a.role];
+              return (
+                <TableRow key={a.id} template={TEMPLATE} onClick={() => setDetailId(a.id)}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                    <Avatar initials={a.initials} size={30} color={roleColor.color} bg={roleColor.bg} />
+                    <span style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {a.name}
+                    </span>
+                  </span>
+                  <Badge color={roleColor.color} bg={roleColor.bg} style={{ justifySelf: "start" }}>
+                    {tRole(a.role)}
+                  </Badge>
+                  <span style={{ color: COLORS.textSecondary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {a.email}
+                  </span>
+                  <span style={{ color: COLORS.textSecondary }}>{a.phone}</span>
+                  <span style={{ color: COLORS.textSecondary }}>{a.status}</span>
+                </TableRow>
+              );
+            })}
+          </Table>
+        </Card>
+      )}
 
       {detail && (
         <Modal

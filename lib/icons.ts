@@ -300,6 +300,24 @@ const ICON_DATA = {
   "lock": [
     ["rect", { "x": 5, "y": 11, "width": 14, "height": 9, "rx": 1.5 }],
     ["path", { "d": "M8 11V7.5a4 4 0 0 1 8 0V11" }],
+  ],
+  /* The two list-view switches. `grid` is the card view, `list` the table —
+     the same pair Teams and Drive use, so the control needs no label. */
+  "grid": [
+    ["rect", { "x": 4, "y": 4, "width": 7, "height": 7, "rx": 1.6 }],
+    ["rect", { "x": 13, "y": 4, "width": 7, "height": 7, "rx": 1.6 }],
+    ["rect", { "x": 4, "y": 13, "width": 7, "height": 7, "rx": 1.6 }],
+    ["rect", { "x": 13, "y": 13, "width": 7, "height": 7, "rx": 1.6 }],
+  ],
+  /* The bullets are zero-length lines: round caps draw them as dots, which
+     keeps the whole set stroke-only. */
+  "list": [
+    ["line", { "x1": 4.5, "y1": 6.5, "x2": 4.51, "y2": 6.5 }],
+    ["line", { "x1": 9, "y1": 6.5, "x2": 20, "y2": 6.5 }],
+    ["line", { "x1": 4.5, "y1": 12, "x2": 4.51, "y2": 12 }],
+    ["line", { "x1": 9, "y1": 12, "x2": 20, "y2": 12 }],
+    ["line", { "x1": 4.5, "y1": 17.5, "x2": 4.51, "y2": 17.5 }],
+    ["line", { "x1": 9, "y1": 17.5, "x2": 20, "y2": 17.5 }],
   ],} satisfies Record<string, IconPart[]>;
 
 export type IconName = keyof typeof ICON_DATA;

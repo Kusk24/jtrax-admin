@@ -95,7 +95,14 @@
     "deleteThing": "Delete {what}",
     "none": "None",
     "optional": "Optional",
-    "saved": "Saved"
+    "saved": "Saved",
+    "creditsCount": "{count, plural, one {# credit} other {# credits}}"
+  },
+  "view": {
+    "switchView": "Switch view",
+    "list": "List view",
+    "card": "Card view",
+    "calendar": "Calendar view"
   },
   "shell": {
     "dashboard": "Dashboard",
@@ -293,7 +300,8 @@
     "studentLogin": "Student login",
     "parentLogin": "Parent login",
     "tempPassword": "Temporary password",
-    "tabCredits": "Credits"
+    "tabCredits": "Credits",
+    "parentLabel": "Parent"
   },
   "parents": {
     "title": "Parents",
@@ -518,7 +526,6 @@
     "title": "Admins",
     "sub": "Manage admin and receptionist accounts",
     "create": "Create Admin",
-    "lastLogin": "Last login: {value}",
     "lastLoginLabel": "Last login",
     "resetPassword": "Reset Password",
     "resetSent": "A password reset link has been sent to {email}.",
@@ -562,7 +569,9 @@
     "validityDays": "{days} days",
     "noPackages": "No credit packages yet.",
     "packageFor": "the {credits}-credit package for {className}",
-    "courseDeleteNote": "A class that still has enrolments, sessions or packages cannot be deleted."
+    "courseDeleteNote": "A class that still has enrolments, sessions or packages cannot be deleted.",
+    "noCourses": "No courses yet.",
+    "noTeachers": "No teachers yet."
   },
   "settings": {
     "title": "Credit Rules",

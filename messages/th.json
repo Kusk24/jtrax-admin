@@ -95,7 +95,14 @@
     "deleteThing": "ลบ{what}",
     "none": "ไม่มี",
     "optional": "ไม่บังคับ",
-    "saved": "บันทึกแล้ว"
+    "saved": "บันทึกแล้ว",
+    "creditsCount": "{count, plural, other {# เครดิต}}"
+  },
+  "view": {
+    "switchView": "สลับมุมมอง",
+    "list": "มุมมองตาราง",
+    "card": "มุมมองการ์ด",
+    "calendar": "มุมมองปฏิทิน"
   },
   "shell": {
     "dashboard": "แดชบอร์ด",
@@ -293,7 +300,8 @@
     "studentLogin": "บัญชีนักเรียน",
     "parentLogin": "บัญชีผู้ปกครอง",
     "tempPassword": "รหัสผ่านชั่วคราว",
-    "tabCredits": "เครดิต"
+    "tabCredits": "เครดิต",
+    "parentLabel": "ผู้ปกครอง"
   },
   "parents": {
     "title": "ผู้ปกครอง",
@@ -518,7 +526,6 @@
     "title": "ผู้ดูแลระบบ",
     "sub": "จัดการบัญชีผู้ดูแลและพนักงานต้อนรับ",
     "create": "สร้างผู้ดูแล",
-    "lastLogin": "เข้าสู่ระบบล่าสุด: {value}",
     "lastLoginLabel": "เข้าสู่ระบบล่าสุด",
     "resetPassword": "รีเซ็ตรหัสผ่าน",
     "resetSent": "ส่งลิงก์รีเซ็ตรหัสผ่านไปที่ {email} แล้ว",
@@ -562,7 +569,9 @@
     "validityDays": "{days} วัน",
     "noPackages": "ยังไม่มีแพ็กเกจเครดิต",
     "packageFor": "แพ็กเกจ {credits} เครดิตของ {className}",
-    "courseDeleteNote": "ไม่สามารถลบคลาสที่ยังมีการลงทะเบียน คาบเรียน หรือแพ็กเกจอยู่"
+    "courseDeleteNote": "ไม่สามารถลบคลาสที่ยังมีการลงทะเบียน คาบเรียน หรือแพ็กเกจอยู่",
+    "noCourses": "ยังไม่มีคอร์ส",
+    "noTeachers": "ยังไม่มีครูผู้สอน"
   },
   "settings": {
     "title": "กฎเกณฑ์เครดิต",
