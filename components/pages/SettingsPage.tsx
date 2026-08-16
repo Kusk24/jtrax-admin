@@ -8,6 +8,7 @@ import { COLORS, FONT } from "@/lib/theme";
 import { useData } from "../DataProvider";
 import { ErrorNote, errorText } from "../crud";
 import { PageHeader, primaryButtonStyle, secondaryButtonStyle } from "../page-kit";
+import { LineChannelCard } from "../settings/LineChannelCard";
 import { Card } from "../ui";
 
 type RuleKey = keyof CreditRules;
@@ -181,6 +182,8 @@ export function SettingsPage() {
           </div>
         </div>
       </Card>
+
+      <LineChannelCard />
     </div>
   );
 }
