@@ -39,31 +39,67 @@ const TEMPLATE = equalTemplate(7, 80);
 const VIEWS = ["list", "card"] as const;
 const METHODS = ["Credit Card", "Bank Transfer", "PromptPay", "Cash"];
 
-/* Credit packages snap the amount, ported from the design's lookup table. */
-const PACKAGES: Record<string, number> = {
-  "5 Sessions": 1800,
-  "10 Sessions": 3500,
-  "20 Sessions": 6500,
-  "30 Sessions": 9000,
+type PackageOption = {
+  id: string;
+  classId: string;
+  className: string;
+  credits: number;
+  price: number;
 };
 
 type PaymentDraft = {
   studentId: string;
+  creditPackageId: string;
   amount: number;
   discount: number;
   method: string;
 };
 
-function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave: (p: PaymentDraft) => void }) {
-  const { students } = useData();
+function RecordPaymentForm({
+  initialStudentId,
+  onCancel,
+  onSave,
+}: {
+  /* Set when the registration wizard sent us here, so the desk lands on a form
+     that already knows who it is for. */
+  initialStudentId?: string;
+  onCancel: () => void;
+  onSave: (p: PaymentDraft) => void;
+}) {
+  const { students, raw } = useData();
   const t = useTranslations("payment");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
-  const [studentName, setStudentName] = useState("");
-  const [studentQuery, setStudentQuery] = useState("");
+
+  /* The academy's own packages, priced per class — the form used to carry a
+     hard-coded price list, so a package the office edited on the Academy page
+     never reached the till. */
+  const packages: PackageOption[] = useMemo(
+    () =>
+      raw.creditPackages.map((p) => {
+        const cls = raw.classes.find((c) => String(c["class_id"]) === String(p["class_id"]));
+        return {
+          id: String(p["credit_package_id"]),
+          classId: String(p["class_id"] ?? ""),
+          className: cls ? String(cls["name"] ?? "") : "—",
+          credits: Number(p["credit_amount"] ?? 0),
+          price: Number(p["standard_price"] ?? 0),
+        };
+      }),
+    [raw.creditPackages, raw.classes],
+  );
+
+  const prefilled = initialStudentId ? students.find((s) => s.id === initialStudentId) : undefined;
+  /* The package for the student's own class, which is the one the desk is
+     about to sell them. */
+  const packageFor = (className: string) => packages.find((p) => p.className === className);
+  const initialPackage = prefilled ? packageFor(prefilled.className) ?? packages[0] : packages[0];
+
+  const [studentName, setStudentName] = useState(prefilled?.name ?? "");
+  const [studentQuery, setStudentQuery] = useState(prefilled?.name ?? "");
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [creditPackage, setCreditPackage] = useState("10 Sessions");
-  const [amount, setAmount] = useState(PACKAGES["10 Sessions"]);
+  const [packageId, setPackageId] = useState(initialPackage?.id ?? "");
+  const [amount, setAmount] = useState(initialPackage?.price ?? 0);
   const [discount, setDiscount] = useState(0);
   const [method, setMethod] = useState(METHODS[0]);
   const [status, setStatus] = useState<Payment["status"]>("Paid");
@@ -74,6 +110,18 @@ function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave:
     if (!q) return [];
     return students.filter((s) => s.name.toLowerCase().includes(q)).slice(0, 6);
   }, [studentQuery, students]);
+
+  /** Picking a student re-points the package at their class and its price. */
+  function chooseStudent(name: string, className: string) {
+    setStudentName(name);
+    setStudentQuery(name);
+    setDropdownOpen(false);
+    const pkg = packageFor(className);
+    if (pkg) {
+      setPackageId(pkg.id);
+      setAmount(pkg.price);
+    }
+  }
 
   const selected = students.find((s) => s.name === studentName);
   const finalAmount = Math.max(0, amount - discount);
@@ -103,6 +151,15 @@ function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave:
       </button>
 
       <PageHeader title={t("recordTitle")} sub={t("recordSub")} />
+
+      {prefilled && (
+        <Card style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px" }}>
+          <Icon name="check" size={16} color={COLORS.success} />
+          <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.text }}>
+            {t("prefilledFor", { name: prefilled.name, className: prefilled.className })}
+          </span>
+        </Card>
+      )}
 
       <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <SectionTitle>{t("details")}</SectionTitle>
@@ -144,11 +201,7 @@ function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave:
                   key={s.id}
                   type="button"
                   className="jt-find-row"
-                  onClick={() => {
-                    setStudentName(s.name);
-                    setStudentQuery(s.name);
-                    setDropdownOpen(false);
-                  }}
+                  onClick={() => chooseStudent(s.name, s.className)}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -183,15 +236,19 @@ function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave:
             <label style={labelStyle} htmlFor="pay-package">{t("creditPackage")}</label>
             <select
               id="pay-package"
-              value={creditPackage}
+              value={packageId}
               onChange={(e) => {
-                setCreditPackage(e.target.value);
-                setAmount(PACKAGES[e.target.value] ?? amount);
+                setPackageId(e.target.value);
+                const pkg = packages.find((p) => p.id === e.target.value);
+                if (pkg) setAmount(pkg.price);
               }}
               style={selectStyle}
             >
-              {Object.keys(PACKAGES).map((p) => (
-                <option key={p} value={p}>{p}</option>
+              {packages.length === 0 && <option value="">{t("noPackages")}</option>}
+              {packages.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {t("packageOption", { className: p.className, credits: p.credits })}
+                </option>
               ))}
             </select>
           </div>
@@ -272,6 +329,7 @@ function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave:
             onClick={() =>
               onSave({
                 studentId: selected?.id ?? "",
+                creditPackageId: packageId,
                 amount,
                 discount,
                 method,
@@ -290,11 +348,13 @@ function RecordPaymentForm({ onCancel, onSave }: { onCancel: () => void; onSave:
    labels above, which is why recording one strips the spaces. */
 const METHOD_VALUES = ["CreditCard", "BankTransfer", "PromptPay", "Cash"];
 
-export function PaymentPage() {
+export function PaymentPage({ startStudentId }: { startStudentId?: string }) {
   const t = useTranslations("payment");
   const tCommon = useTranslations("common");
   const { payments, raw, create, update, remove } = useData();
-  const [formOpen, setFormOpen] = useState(false);
+  /* Arriving with a student means the wizard just registered them and the next
+     thing the desk does is take their money. */
+  const [formOpen, setFormOpen] = useState(Boolean(startStudentId));
   const [mode, setMode] = useViewMode("payments", VIEWS);
   const [search, setSearch] = useState("");
   const [method, setMethod] = useState("");
@@ -355,6 +415,7 @@ export function PaymentPage() {
   if (formOpen) {
     return (
       <RecordPaymentForm
+        initialStudentId={startStudentId}
         onCancel={() => setFormOpen(false)}
         onSave={async (p) => {
           try {
@@ -364,6 +425,10 @@ export function PaymentPage() {
             await create("payments", {
               student_id: p.studentId,
               enrollment_id: enr ? enr.enrollment_id : null,
+              /* Recorded, not just priced: without it the payment list has no
+                 credits column to show and the ledger cannot say what was
+                 bought. */
+              credit_package_id: p.creditPackageId || null,
               amount: p.amount,
               discount_amount: p.discount,
               final_amount: Math.max(0, p.amount - p.discount),
