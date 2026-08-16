@@ -13,7 +13,8 @@
     "settings": "ตั้งค่า",
     "logout": "ออกจากระบบ",
     "brandSub": "โรงเรียนหมากรุก",
-    "language": "ภาษา"
+    "language": "ภาษา",
+    "games": "เกม"
   },
   "roles": {
     "Admin": "ผู้ดูแล",
@@ -577,5 +578,64 @@
     "saved": "บันทึกแล้ว",
     "reset": "คืนค่าเริ่มต้น",
     "save": "บันทึกการเปลี่ยนแปลง"
+  },
+  "games": {
+    "title": "เกม",
+    "subtitle": "เปิดกระดานให้นักเรียนสองคน ดูสด และเก็บบันทึกไว้",
+    "openRoom": "เปิดห้อง",
+    "roomReady": "เปิดห้องแล้ว",
+    "readOutCode": "อ่านรหัสนี้ให้ผู้เล่นฟัง",
+    "firstTwo": "นักเรียนสองคนแรกที่ใส่รหัสจะได้ที่นั่ง",
+    "watchGame": "ดูกระดาน",
+    "gameTitle": "เกม",
+    "search": "ค้นหาผู้เล่น รหัส หรือชื่อห้อง",
+    "empty": "ยังไม่มีเกม เปิดห้องเพื่อเริ่มเกมแรก",
+    "waiting": "รออยู่",
+    "moves": "ตาเดิน",
+    "noMoves": "ยังไม่มีการเดิน",
+    "stopGame": "หยุดเกมนี้",
+    "lasted": "ใช้เวลา {time}",
+    "status": {
+      "all": "ทุกเกม",
+      "Open": "รอผู้เล่น",
+      "Active": "กำลังเล่น",
+      "Finished": "จบแล้ว",
+      "Cancelled": "หยุดแล้ว"
+    },
+    "connection": {
+      "connecting": "กำลังเชื่อมต่อ",
+      "live": "สด",
+      "offline": "กำลังเชื่อมต่อใหม่"
+    },
+    "side": {
+      "white": "ฝ่ายขาว",
+      "black": "ฝ่ายดำ"
+    },
+    "result": {
+      "white": "ฝ่ายขาวชนะ",
+      "black": "ฝ่ายดำชนะ",
+      "draw": "เสมอ"
+    },
+    "reason": {
+      "Checkmate": "รุกจน",
+      "Stalemate": "อับ",
+      "Resignation": "การยอมแพ้",
+      "ThreefoldRepetition": "เดินซ้ำสามครั้ง",
+      "FiftyMoveRule": "กฎ 50 ตาเดิน",
+      "InsufficientMaterial": "หมากไม่พอที่จะรุกจน",
+      "FivefoldRepetition": "เดินซ้ำห้าครั้ง",
+      "SeventyFiveMoveRule": "กฎ 75 ตาเดิน"
+    },
+    "col": {
+      "players": "ผู้เล่น",
+      "status": "สถานะ",
+      "code": "รหัส",
+      "moves": "ตาเดิน",
+      "result": "ผลการแข่ง",
+      "label": "ชื่อห้อง",
+      "started": "เริ่มเมื่อ",
+      "duration": "ระยะเวลา"
+    },
+    "failed": "เกิดข้อผิดพลาด กรุณาลองใหม่"
   }
 }

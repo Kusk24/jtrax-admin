@@ -16,6 +16,7 @@ export const NAV_STRUCTURE: NavItem[] = [
   { id: "admins", label: "Admins", icon: "userCheck", adminOnly: true },
   { id: "academy", label: "Academy", icon: "book", hideForReceptionist: true },
   { id: "classhistory", label: "Class History", icon: "history" },
+  { id: "games", label: "Games", icon: "knight" },
   { id: "students", label: "Students", icon: "students" },
   { id: "parents", label: "Parents", icon: "parents" },
   { id: "payment", label: "Payment", icon: "payment" },
