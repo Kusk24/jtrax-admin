@@ -16,6 +16,7 @@ import {
   InfoGrid,
   labelStyle,
   Modal,
+  dangerSolidButtonStyle,
   ExportButton,
   PageHeader,
   primaryButtonStyle,
@@ -25,6 +26,7 @@ import {
   TableRow,
 } from "../page-kit";
 import { Avatar, Badge, Card, SectionTitle } from "../ui";
+import { DangerPanel, DeleteButton, DetailHeader, EditButton } from "../detail";
 import { CardGrid, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 
@@ -35,18 +37,6 @@ const VIEWS = ["card", "list"] as const;
 const TEMPLATE = equalTemplate(5, 100);
 
 const EMPTY_FORM = { fullName: "", phone: "", email: "", lineId: "", role: "Admin" as JtraxRole };
-
-/* Admin names carry an honorific, so the shared `initialsOf` (first two words)
-   would badge Ms. Chloe Claire "MC". The seed takes the last two words —
-   Mr. Jirapak MJ, Ms. Chloe Claire CC — and renaming has to keep matching it. */
-function adminInitials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  return words
-    .slice(-2)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase();
-}
 
 export function AdminsPage() {
   const t = useTranslations("admins");
@@ -189,60 +179,45 @@ export function AdminsPage() {
       )}
 
       {detail && (
-        <Modal
-          title={detail.name}
-          onClose={closeDetail}
-          footer={
-            <>
-              {/* Delete carries the auto margin so it sits apart from the two
-                  routine actions — the footer justifies to the end. */}
-              <button
-                type="button"
-                className="jt-act-danger"
-                style={{ ...secondaryButtonStyle, marginRight: "auto" }}
-                onClick={() => setDeleteConfirm(true)}
-              >
-                {tCommon("delete")}
-              </button>
-              <button
-                type="button"
-                className="jt-act-reset"
-                style={secondaryButtonStyle}
-                onClick={() => setResetShown(true)}
-              >
-                {t("resetPassword")}
-              </button>
-              <button
-                type="button"
-                className="jt-act-edit"
-                style={secondaryButtonStyle}
-                onClick={() => {
-                  openAdminModal(detail);
-                  closeDetail();
-                }}
-              >
-                <Icon name="edit" size={13} /> {tCommon("edit")}
-              </button>
-            </>
-          }
-        >
+        <Modal title={detail.name} onClose={closeDetail} width={600}>
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <Avatar
-                initials={detail.initials}
-                size={54}
-                color={ROLE_COLORS[detail.role].color}
-                bg={ROLE_COLORS[detail.role].bg}
-              />
-              <div>
-                <div style={{ fontFamily: FONT, fontSize: 17, fontWeight: 700, color: COLORS.text }}>
-                  {detail.name}
-                </div>
+            {/* Same block as every other detail view: who, what they are under
+                the name, and the actions written out. */}
+            <DetailHeader
+              avatar={
+                <Avatar
+                  initials={detail.initials}
+                  size={54}
+                  color={ROLE_COLORS[detail.role].color}
+                  bg={ROLE_COLORS[detail.role].bg}
+                />
+              }
+              title={detail.name}
+              badges={
                 <Badge color={ROLE_COLORS[detail.role].color} bg={ROLE_COLORS[detail.role].bg}>
                   {tRole(detail.role)}
                 </Badge>
-              </div>
-            </div>
+              }
+              actions={
+                <>
+                  <button
+                    type="button"
+                    className="jt-act-reset"
+                    style={secondaryButtonStyle}
+                    onClick={() => setResetShown(true)}
+                  >
+                    {t("resetPassword")}
+                  </button>
+                  <EditButton
+                    onClick={() => {
+                      openAdminModal(detail);
+                      closeDetail();
+                    }}
+                  />
+                  <DeleteButton onClick={() => setDeleteConfirm(true)} />
+                </>
+              }
+            />
 
             <InfoGrid
               rows={[
@@ -278,28 +253,13 @@ export function AdminsPage() {
             )}
 
             {deleteConfirm && (
-              <div
-                className="jtrax-fade-in-up"
-                style={{
-                  padding: 14,
-                  borderRadius: 12,
-                  border: "1px solid #B13F3F",
-                  background: "#FAE2E2",
-                  color: "#541111",
-                }}
-              >
-                <div style={{ fontFamily: FONT, fontSize: 14.5, fontWeight: 700 }}>
-                  {t("deleteTitle", { name: detail.name })}
-                </div>
-                <p style={{ margin: "5px 0 12px", fontFamily: FONT, fontSize: 13.5 }}>
-                  {t("deleteBody")}
-                </p>
+              <DangerPanel title={t("deleteTitle", { name: detail.name })} body={t("deleteBody")}>
                 <div style={{ display: "flex", gap: 9 }}>
                   <button type="button" style={secondaryButtonStyle} onClick={() => setDeleteConfirm(false)}>
                     {tCommon("cancel")}
                   </button>
                   <ActionButton
-                    style={{ ...primaryButtonStyle, background: COLORS.danger }}
+                    style={dangerSolidButtonStyle}
                     busyLabel={tCommon("deleting")}
                     onClick={async () => {
                       const row = raw.admins.find((a) => String(a.admin_id) === detail.id);
@@ -317,7 +277,7 @@ export function AdminsPage() {
                     {t("deleteConfirm")}
                   </ActionButton>
                 </div>
-              </div>
+              </DangerPanel>
             )}
           </div>
         </Modal>

@@ -22,6 +22,11 @@ const MODE_ICON: Record<ViewMode, IconName> = {
   calendar: "calendar",
 };
 
+/* The switch always reads left to right in this order, whatever a screen's
+   default happens to be. Ordering the buttons by which view a screen opens in
+   meant the same control moved between screens. */
+const MODE_ORDER: ViewMode[] = ["list", "card", "calendar"];
+
 /**
  * Segmented control, sized to the 40px box the filter bar's pills and selects
  * sit on. Icon-only — the accessible name carries the meaning.
@@ -54,7 +59,7 @@ export function ViewToggle({
         ...style,
       }}
     >
-      {options.map((mode) => {
+      {MODE_ORDER.filter((mode) => options.includes(mode)).map((mode) => {
         const active = mode === value;
         return (
           <button

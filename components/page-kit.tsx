@@ -10,11 +10,11 @@ import { COLORS, FONT, FONT_DISPLAY } from "@/lib/theme";
    set of table, filter-bar, pagination and modal treatments across all of them,
    so they live here rather than being re-declared per page. */
 
-export const TABLE_PAGE_SIZE = 10;
-
-/* The card grid lays out three or four to a row, so ten leaves a ragged last
-   row on every screen width the console supports. Twelve divides by both. */
-export const CARD_PAGE_SIZE = 12;
+/* Twelve, in both views. The card grid lays out three or four to a row, so
+   twelve divides by both and never leaves a ragged last row — and a table that
+   paged at ten while the cards paged at twelve meant switching view silently
+   changed how much of the list you were looking at. */
+export const TABLE_PAGE_SIZE = 12;
 
 /** One row height for every table — tall enough to clear the tallest cell any
     of them puts in a row (the Contact chip on the student list). */
@@ -30,11 +30,6 @@ export function paginate<T>(rows: T[], page: number, size: number = TABLE_PAGE_S
     totalPages,
     page: current,
   };
-}
-
-/** How many rows a screen shows in the view it is currently in. */
-export function pageSizeFor(mode: string): number {
-  return mode === "card" ? CARD_PAGE_SIZE : TABLE_PAGE_SIZE;
 }
 
 export const fieldStyle: CSSProperties = {
@@ -97,6 +92,34 @@ export const primaryButtonStyle: CSSProperties = {
   fontWeight: 600,
   cursor: "pointer",
   whiteSpace: "nowrap",
+};
+
+/**
+ * The destructive twin of `secondaryButtonStyle`. Delete reads as red
+ * everywhere it appears — the row icon was already red, the text buttons were
+ * not, and a delete that looks like Cancel is a delete waiting to be misclicked.
+ */
+export const dangerButtonStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 7,
+  padding: "9px 16px",
+  borderRadius: 999,
+  border: `1px solid ${COLORS.dangerFill}`,
+  background: COLORS.dangerBg,
+  color: COLORS.danger,
+  fontFamily: FONT,
+  fontSize: 14,
+  fontWeight: 600,
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+};
+
+/** Filled red, for the button that actually carries out a delete. */
+export const dangerSolidButtonStyle: CSSProperties = {
+  ...primaryButtonStyle,
+  background: COLORS.danger,
 };
 
 export const secondaryButtonStyle: CSSProperties = {
@@ -317,7 +340,9 @@ export function Table({
             gap: 12,
             padding: "10px 16px",
             borderBottom: `1px solid ${COLORS.border}`,
-            background: COLORS.bg,
+            /* Not COLORS.bg: that is the page behind the card, so the header
+               row read as a gap in the table rather than its heading. */
+            background: COLORS.light,
           }}
         >
           {columns.map((c) => (

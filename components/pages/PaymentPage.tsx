@@ -23,7 +23,6 @@ import {
   labelStyle,
   PageHeader,
   paginate,
-  pageSizeFor,
   Pagination,
   primaryButtonStyle,
   SearchInput,
@@ -495,7 +494,7 @@ export function PaymentPage({ startStudentId }: { startStudentId?: string }) {
     });
   }, [payments, search, method, from, to]);
 
-  const { pageRows, totalPages, page: current } = paginate(filtered, page, pageSizeFor(mode));
+  const { pageRows, totalPages, page: current } = paginate(filtered, page);
   const totalPaid = filtered
     .filter((p) => p.status === "Paid")
     .reduce((sum, p) => sum + parseInt(p.amount.replace(/[^0-9]/g, ""), 10), 0);

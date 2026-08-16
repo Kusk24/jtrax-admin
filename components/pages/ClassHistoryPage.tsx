@@ -29,7 +29,6 @@ import {
   PageHeader,
   primaryButtonStyle,
   paginate,
-  pageSizeFor,
   Pagination,
   SearchInput,
   SelectFilter,
@@ -450,7 +449,7 @@ export function ClassHistoryPage() {
     });
   }, [all, search, classFilter, from, to]);
 
-  const { pageRows, totalPages, page: current } = paginate(filtered, page, pageSizeFor(mode));
+  const { pageRows, totalPages, page: current } = paginate(filtered, page);
 
   /* The calendar shows whatever the filter bar has narrowed to, so a class
      filter applies to the month grid exactly as it does to the table. */

@@ -30,7 +30,6 @@ import {
   Modal,
   PageHeader,
   paginate,
-  pageSizeFor,
   Pagination,
   SearchInput,
   SelectFilter,
@@ -40,6 +39,7 @@ import {
   TableRow,
 } from "../page-kit";
 import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
+import { BackLink, DeleteButton, DetailHeader, EditButton } from "../detail";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 
@@ -111,47 +111,14 @@ function ParentDetail({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <button
-        type="button"
-        onClick={onBack}
-        style={{
-          alignSelf: "flex-start",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 5,
-          border: "none",
-          background: "transparent",
-          cursor: "pointer",
-          fontFamily: FONT,
-          fontSize: 14,
-          fontWeight: 600,
-          color: COLORS.textSecondary,
-          padding: 0,
-        }}
-      >
-        <Icon name="chevronLeft" size={16} color={COLORS.textSecondary} /> {t("backToParents")}
-      </button>
+      <BackLink label={t("backToParents")} onClick={onBack} />
 
-      <Card>
-        <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-          <Avatar initials={initialsOf(parent.name)} size={54} />
-          <div style={{ minWidth: 0 }}>
-            <h1
-              style={{
-                margin: 0,
-                fontFamily: FONT,
-                fontSize: 21,
-                fontWeight: 700,
-                color: COLORS.text,
-              }}
-            >
-              {parent.name}
-            </h1>
-            <p style={{ margin: "3px 0 0", fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
-              {t("childCount", { count: parent.children.length })}
-            </p>
-          </div>
-          <span style={{ marginLeft: "auto", display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <DetailHeader
+        avatar={<Avatar initials={initialsOf(parent.name)} size={54} />}
+        title={parent.name}
+        subtitle={t("childCount", { count: parent.children.length })}
+        badges={
+          <>
             {parent.phone && (
               <a href={`tel:${parent.phone.replace(/\s/g, "")}`} className="jt-qa-call" style={contactPillStyle}>
                 <Icon name="phone" size={12} /> {t("call")}
@@ -162,10 +129,15 @@ function ParentDetail({
                 <Icon name="mail" size={12} /> {t("emailAction")}
               </a>
             )}
-            <RowActions label={parent.name} onEdit={onEdit} onDelete={onDelete} />
-          </span>
-        </div>
-      </Card>
+          </>
+        }
+        actions={
+          <>
+            <EditButton onClick={onEdit} />
+            <DeleteButton onClick={onDelete} />
+          </>
+        }
+      />
 
       {error && <ErrorNote>{error}</ErrorNote>}
 
@@ -492,7 +464,7 @@ export function ParentsPage() {
     });
   }, [parents, search, linked]);
 
-  const { pageRows, totalPages, page: current } = paginate(filtered, page, pageSizeFor(mode));
+  const { pageRows, totalPages, page: current } = paginate(filtered, page);
 
   /* Rendered from both the list and the detail branch, so opening a dialog from
      a parent's own screen does not depend on the list being mounted. */

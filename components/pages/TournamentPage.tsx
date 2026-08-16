@@ -28,7 +28,6 @@ import {
   equalTemplate,
   PageHeader,
   paginate,
-  pageSizeFor,
   Pagination,
   primaryButtonStyle,
   SearchInput,
@@ -37,6 +36,7 @@ import {
   TableRow,
 } from "../page-kit";
 import { Avatar, Badge, Card, SectionTitle } from "../ui";
+import { BackLink, DeleteButton, DetailHeader, EditButton } from "../detail";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 
@@ -499,52 +499,32 @@ function TournamentDetail({
     );
   }, [tournament.participants, search]);
 
-  const { pageRows, totalPages, page: current } = paginate(filteredParticipants, page, pageSizeFor(mode));
+  const { pageRows, totalPages, page: current } = paginate(filteredParticipants, page);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <button
-        type="button"
-        onClick={onBack}
-        style={{
-          alignSelf: "flex-start",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 5,
-          border: "none",
-          background: "transparent",
-          cursor: "pointer",
-          fontFamily: FONT,
-          fontSize: 14,
-          fontWeight: 600,
-          color: COLORS.textSecondary,
-          padding: 0,
-        }}
-      >
-        <Icon name="chevronLeft" size={16} color={COLORS.textSecondary} /> {t("backToTournaments")}
-      </button>
+      <BackLink label={t("backToTournaments")} onClick={onBack} />
 
-      <Card style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
-        <div style={{ width: 120 }}>
-          <TournamentArt name={tournament.name} height={92} />
-        </div>
-        <div style={{ flex: "1 1 240px", minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
-            <h2 style={{ margin: 0, fontFamily: FONT, fontSize: 19, fontWeight: 700, color: COLORS.text }}>
-              {tournament.name}
-            </h2>
-            <Badge color={status.color} bg={status.bg}>
-              {tStatus(tournament.status)}
-            </Badge>
+      <DetailHeader
+        avatar={
+          <div style={{ width: 120 }}>
+            <TournamentArt name={tournament.name} height={92} />
           </div>
-          <p style={{ margin: "5px 0 0", fontFamily: FONT, fontSize: 14, color: COLORS.textSecondary }}>
-            {tournament.date} · {tournament.venue}
-          </p>
-        </div>
-        <span style={{ marginLeft: "auto" }}>
-          <RowActions label={tournament.name} onEdit={onEdit} onDelete={onDelete} />
-        </span>
-      </Card>
+        }
+        title={tournament.name}
+        subtitle={`${tournament.date} · ${tournament.venue}`}
+        badges={
+          <Badge color={status.color} bg={status.bg}>
+            {tStatus(tournament.status)}
+          </Badge>
+        }
+        actions={
+          <>
+            <EditButton onClick={onEdit} />
+            <DeleteButton onClick={onDelete} />
+          </>
+        }
+      />
 
       {rowError && <ErrorNote>{rowError}</ErrorNote>}
 

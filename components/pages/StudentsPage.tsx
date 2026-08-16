@@ -25,11 +25,11 @@ import {
   InfoGrid,
   labelStyle,
   Modal,
+  dangerSolidButtonStyle,
   equalTemplate,
   ExportButton,
   PageHeader,
   paginate,
-  pageSizeFor,
   Pagination,
   primaryButtonStyle,
   SearchInput,
@@ -40,6 +40,7 @@ import {
   TableRow,
 } from "../page-kit";
 import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
+import { BackLink, DangerPanel, DeleteButton, DetailHeader, EditButton } from "../detail";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 
@@ -345,89 +346,41 @@ function StudentDetail({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <button
-        type="button"
-        onClick={onBack}
-        style={{
-          alignSelf: "flex-start",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 5,
-          border: "none",
-          background: "transparent",
-          cursor: "pointer",
-          fontFamily: FONT,
-          fontSize: 14,
-          fontWeight: 600,
-          color: COLORS.textSecondary,
-          padding: 0,
-        }}
-      >
-        <Icon name="chevronLeft" size={16} color={COLORS.textSecondary} /> {t("backToStudents")}
-      </button>
+      <BackLink label={t("backToStudents")} onClick={onBack} />
 
-      <Card style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-        <Avatar initials={initialsOf(student.name)} size={54} />
-        <div style={{ flex: "1 1 220px", minWidth: 0 }}>
-          <div style={{ fontFamily: FONT, fontSize: 19, fontWeight: 700, color: COLORS.text }}>
-            {student.name}
-          </div>
-          <div style={{ marginTop: 3, fontFamily: FONT, fontSize: 14, color: COLORS.textSecondary }}>
-{/* The STU-xxxx id is an internal key — the desk identifies students by
-                name, so it isn't shown. */}
-            {t("yrs", { age: student.age })} · {student.level}
-          </div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
-          <Badge color={chip.color} bg={chip.bg}>
-            {tStatus(student.status)}
-          </Badge>
-          <Badge color={COLORS.blue} bg={COLORS.light}>
-            {tCommon("creditsCount", { count: student.credit })}
-          </Badge>
-          {!editing && (
+      <DetailHeader
+        avatar={<Avatar initials={initialsOf(student.name)} size={54} />}
+        title={student.name}
+        /* The STU-xxxx id is an internal key — the desk identifies students by
+           name, so it isn't shown. */
+        subtitle={`${t("yrs", { age: student.age })} · ${student.level}`}
+        badges={
+          <>
+            <Badge color={chip.color} bg={chip.bg}>{tStatus(student.status)}</Badge>
+            <Badge color={COLORS.blue} bg={COLORS.light}>
+              {tCommon("creditsCount", { count: student.credit })}
+            </Badge>
+          </>
+        }
+        actions={
+          !editing && (
             <>
-              <button
-                type="button"
-                className="jt-act-edit"
-                style={secondaryButtonStyle}
+              <EditButton
                 onClick={() => {
                   setDraft(student);
                   setDeleteConfirm(false);
                   setTab("Overview");
                   setEditing(true);
                 }}
-              >
-                <Icon name="edit" size={13} /> {tCommon("edit")}
-              </button>
-              <button
-                type="button"
-                className="jt-act-danger"
-                style={secondaryButtonStyle}
-                onClick={() => setDeleteConfirm(true)}
-              >
-                {tCommon("delete")}
-              </button>
+              />
+              <DeleteButton onClick={() => setDeleteConfirm(true)} />
             </>
-          )}
-        </div>
-      </Card>
+          )
+        }
+      />
 
       {deleteConfirm && (
-        <div
-          className="jtrax-fade-in-up"
-          style={{
-            padding: 16,
-            borderRadius: 12,
-            border: "1px solid #B13F3F",
-            background: "#FAE2E2",
-            color: "#541111",
-          }}
-        >
-          <div style={{ fontFamily: FONT, fontSize: 14.5, fontWeight: 700 }}>
-            {t("deleteTitle", { name: student.name })}
-          </div>
-          <p style={{ margin: "5px 0 12px", fontFamily: FONT, fontSize: 13.5 }}>{t("deleteBody")}</p>
+        <DangerPanel title={t("deleteTitle", { name: student.name })} body={t("deleteBody")}>
           {/* Only when this is the guardian's last child. With siblings left
               the guardian is simply kept, and there is nothing to ask. */}
           {onlyChildOf && (
@@ -458,8 +411,7 @@ function StudentDetail({
             <button
               type="button"
               style={{
-                ...primaryButtonStyle,
-                background: COLORS.danger,
+                ...dangerSolidButtonStyle,
                 opacity: deleting ? 0.6 : 1,
                 cursor: deleting ? "wait" : "pointer",
               }}
@@ -472,7 +424,7 @@ function StudentDetail({
               {deleting ? tCommon("deleting") : t("deleteConfirm")}
             </button>
           </div>
-        </div>
+        </DangerPanel>
       )}
 
       {/* Hidden while editing: the form only covers Overview, and leaving the
@@ -997,26 +949,7 @@ function AddStudentWizard({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 820 }}>
-      <button
-        type="button"
-        onClick={onCancel}
-        style={{
-          alignSelf: "flex-start",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 5,
-          border: "none",
-          background: "transparent",
-          cursor: "pointer",
-          fontFamily: FONT,
-          fontSize: 14,
-          fontWeight: 600,
-          color: COLORS.textSecondary,
-          padding: 0,
-        }}
-      >
-        <Icon name="chevronLeft" size={16} color={COLORS.textSecondary} /> {t("backToStudents")}
-      </button>
+      <BackLink label={t("backToStudents")} onClick={onCancel} />
 
       <PageHeader title={t("registerTitle")} sub={t("registerSub")} />
 
@@ -1357,7 +1290,7 @@ export function StudentsPage({
     });
   }, [students, search, status, branch]);
 
-  const { pageRows, totalPages, page: current } = paginate(filtered, page, pageSizeFor(mode));
+  const { pageRows, totalPages, page: current } = paginate(filtered, page);
 
   const parentOptions = useMemo(
     () => raw.parents.map((p) => ({ id: String(p["parent_id"]), name: String(p["name"] ?? "") })),
