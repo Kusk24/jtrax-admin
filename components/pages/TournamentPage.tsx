@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ResultsTab } from "../tournament/ResultsTab";
 import { useTranslations } from "next-intl";
 import { removeIfPresent } from "@/lib/credentials";
 import { type Participant, type Tournament } from "@/lib/data";
@@ -413,7 +414,7 @@ function TournamentDetail({
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
   const { students, create, update, remove } = useData();
-  const [tab, setTab] = useState<"overview" | "participants">("overview");
+  const [tab, setTab] = useState<"overview" | "participants" | "results">("overview");
   const [categoryDraft, setCategoryDraft] = useState("");
   const [rowError, setRowError] = useState<string | null>(null);
   const [participantModal, setParticipantModal] = useState<"new" | Participant | null>(null);
@@ -604,7 +605,7 @@ function TournamentDetail({
       )}
 
       <div style={{ display: "flex", gap: 18, borderBottom: `1px solid ${COLORS.border}` }}>
-        {(["overview", "participants"] as const).map((tab_) => (
+        {(["overview", "participants", "results"] as const).map((tab_) => (
           <button
             key={tab_}
             type="button"
@@ -621,7 +622,7 @@ function TournamentDetail({
               borderBottom: `2px solid ${tab === tab_ ? COLORS.blue : "transparent"}`,
             }}
           >
-            {tab_ === "overview" ? t("tabOverview") : t("tabParticipants")}
+            {tab_ === "overview" ? t("tabOverview") : tab_ === "participants" ? t("tabParticipants") : t("tabResults")}
           </button>
         ))}
       </div>
@@ -750,7 +751,7 @@ function TournamentDetail({
             </div>
           </Card>
         </>
-      ) : (
+      ) : tab === "participants" ? (
         <Card style={{ padding: 0, overflow: "hidden" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: 14, flexWrap: "wrap" }}>
             <SearchInput
@@ -849,6 +850,14 @@ function TournamentDetail({
           )}
           <Pagination page={current} totalPages={totalPages} onChange={setPage} />
         </Card>
+      ) : (
+        <ResultsTab
+          tournamentId={tournament.id}
+          resultsPublic={tournament.published}
+          onPublishChange={async (next) => {
+            await update("tournaments", tournament.id, { results_public: next });
+          }}
+        />
       )}
 
       {drawer && (

@@ -516,7 +516,8 @@
     "feeCharged": "Fee charged",
     "noCategories": "No categories yet.",
     "categoryPlaceholder": "Category name, e.g. Under 10",
-    "categoryDeleteNote": "Participants registered in this category keep their registration, but lose the category."
+    "categoryDeleteNote": "Participants registered in this category keep their registration, but lose the category.",
+    "tabResults": "results"
   },
   "announcement": {
     "title": "Announcement",
@@ -722,5 +723,42 @@
       "duration": "Duration"
     },
     "failed": "Something went wrong. Try again."
+  },
+  "results": {
+    "publicTitle": "Public results",
+    "publicBody": "Publishing makes the standings readable by anyone with the link — no sign-in. Only names, categories and scores are shared: what is already on the wall at a tournament. Nothing else about a student is included.",
+    "published": "Published",
+    "notPublished": "Not published",
+    "publish": "Publish results",
+    "unpublish": "Stop publishing",
+    "copyLink": "Copy public link",
+    "standings": "Standings",
+    "rank": "#",
+    "points": "Points",
+    "wdl": "W/D/L",
+    "buchholz": "Buchholz",
+    "noPlayers": "Add participants before running rounds.",
+    "rounds": "Rounds",
+    "addRound": "Add round",
+    "round": "Round {n}",
+    "noRounds": "No rounds yet. Adding one pairs it automatically.",
+    "needPlayers": "At least two participants are needed to pair a round.",
+    "noBoards": "No boards in this round.",
+    "bye": "bye",
+    "byeScored": "Bye · 1 point",
+    "showForfeits": "Forfeits",
+    "hideForfeits": "Hide forfeits",
+    "status": {
+      "Pending": "Not started",
+      "Playing": "Playing",
+      "Completed": "Finished"
+    },
+    "resultName": {
+      "1-0": "White wins",
+      "0-1": "Black wins",
+      "1/2-1/2": "Draw",
+      "+/-": "White wins by forfeit",
+      "-/+": "Black wins by forfeit"
+    }
   }
 }
