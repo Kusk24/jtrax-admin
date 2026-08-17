@@ -761,5 +761,24 @@
       "+/-": "White wins by forfeit",
       "-/+": "Black wins by forfeit"
     }
+  },
+  "lichessAdmin": {
+    "title": "Lichess at home",
+    "sync": "Sync now",
+    "syncing": "Syncing…",
+    "account": "Lichess account",
+    "unverified": "unverified",
+    "unlink": "Disconnect",
+    "verifiedCount": "{verified} of {total} verified",
+    "emptyTitle": "No students have connected Lichess yet",
+    "emptyBody": "A student connects their own account from their profile and proves it with a code in their Lichess bio. You can also add a username for them, which stays marked unverified until they confirm it.",
+    "footnote": "A ? marks a provisional rating — too few games for the number to mean much yet.",
+    "perf": {
+      "bullet": "Bullet",
+      "blitz": "Blitz",
+      "rapid": "Rapid",
+      "classical": "Classical",
+      "puzzle": "Puzzles"
+    }
   }
 }
