@@ -135,7 +135,8 @@
     "errorInvalid": "That email and password don't match an admin account.",
     "footer": "JCA Chess School · Admin console",
     "errorUnreachable": "Cannot reach the JTrax backend — is it running?",
-    "resetDone": "Password changed. Sign in with your new one."
+    "resetDone": "Password changed. Sign in with your new one.",
+    "errorTooMany": "Too many sign-in attempts for this account. Please wait a minute and try again — your password may well be correct."
   },
   "reset": {
     "requestTitle": "Reset your password",

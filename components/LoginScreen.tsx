@@ -200,7 +200,18 @@ export function LoginScreen({ justReset }: { justReset?: boolean }) {
               }}
             >
               <Icon name="alertTriangle" size={17} color={COLORS.danger} />
-              {t(state.error === "missing" ? "errorMissing" : state.error === "unreachable" ? "errorUnreachable" : "errorInvalid")}
+              {t(
+                state.error === "missing"
+                  ? "errorMissing"
+                  : state.error === "unreachable"
+                    ? "errorUnreachable"
+                    /* Being briefly over the sign-in budget is not a wrong
+                       password, and telling someone it is sends them off to
+                       reset a password that was correct. */
+                    : state.error === "tooMany"
+                      ? "errorTooMany"
+                      : "errorInvalid",
+              )}
             </div>
           )}
 
