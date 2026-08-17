@@ -280,7 +280,10 @@ export function toTournaments(c: LiveCollections): Tournament[] {
       date: fmtDate(s(t, "start_date")),
       venue: s(t, "venue_name"),
       format: "Swiss",
-      published: true,
+      /* Whether the standings are readable without signing in. It was
+         hard-coded true while nothing was published at all; it is now the
+         real column, so the Results tab reports the actual state. */
+      published: n(t, "results_public") === 1,
       categories: cats.map((k) => s(k, "name")),
       categoryRows: cats.map((k) => ({ id: s(k, "tournament_category_id"), name: s(k, "name") })),
       organizer: s(t, "organizer_name"),
