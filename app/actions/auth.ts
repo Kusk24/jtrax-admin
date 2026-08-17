@@ -6,7 +6,7 @@ import { API_BASE, SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/auth";
 
 /* Errors come back as keys, not sentences — the sign-in screen translates
    them, so the server never has to know which locale is active. */
-export type SignInState = { error?: "missing" | "invalid" | "unreachable" };
+export type SignInState = { error?: "missing" | "invalid" | "tooMany" | "unreachable" };
 
 export async function signIn(_prev: SignInState, formData: FormData): Promise<SignInState> {
   const email = String(formData.get("email") ?? "").trim();
@@ -22,6 +22,10 @@ export async function signIn(_prev: SignInState, formData: FormData): Promise<Si
       body: JSON.stringify({ email, password }),
       cache: "no-store",
     });
+    // 429 is not a wrong password. Collapsing the two sent a member of staff
+    // who was briefly over the sign-in budget off to reset a password that was
+    // correct all along.
+    if (res.status === 429) return { error: "tooMany" };
     if (!res.ok) return { error: "invalid" };
     ({ token } = (await res.json()) as { token: string });
   } catch {
