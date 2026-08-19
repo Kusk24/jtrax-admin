@@ -723,7 +723,21 @@
       "started": "Started",
       "duration": "Duration"
     },
-    "failed": "Something went wrong. Try again."
+    "failed": "Something went wrong. Try again.",
+    "ratedLabel": "Rated on Lichess",
+    "clockLabel": "Time control",
+    "openRatedRoom": "Open rated room",
+    "ratedBadge": "Rated",
+    "detached": {
+      "noPlayAccess": "Not rated — Lichess not connected",
+      "tokenExpired": "Not rated — Lichess permission expired",
+      "challengeFailed": "Not rated — Lichess refused the pairing",
+      "opponentDeclined": "Not rated — pairing not accepted",
+      "moveRejected": "Not rated — the boards disagreed",
+      "unreachable": "Not rated — Lichess unreachable",
+      "notConfigured": "Not rated — not set up on this server",
+      "failed": "Not rated"
+    }
   },
   "results": {
     "publicTitle": "Public results",
