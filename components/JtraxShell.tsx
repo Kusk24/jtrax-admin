@@ -12,7 +12,6 @@ import { navItemsForRole } from "@/lib/nav";
 import { COLORS, FONT, FONT_DISPLAY, ROLE_COLORS } from "@/lib/theme";
 import { useJtrax } from "./JtraxContext";
 
-const SIDEBAR_WIDTH = 232;
 
 /** '/' -> 'home', '/students' -> 'students'. */
 function sectionFromPath(pathname: string): string {
@@ -26,20 +25,12 @@ function Sidebar({ section }: { section: string }) {
   const items = navItemsForRole(role);
 
   return (
+    /* Layout lives in `.jt-sidebar` in globals.css, not here: it changes with
+       the viewport, and an inline style cannot carry a media query — nor be
+       overridden by one, which is the trap. Only the colours stay inline. */
     <aside
-      style={{
-        position: "fixed",
-        insetBlock: 0,
-        left: 0,
-        width: SIDEBAR_WIDTH,
-        background: COLORS.surface,
-        borderRight: `1px solid ${COLORS.border}`,
-        display: "flex",
-        flexDirection: "column",
-        padding: "20px 14px",
-        gap: 24,
-        zIndex: 20,
-      }}
+      className="jt-sidebar"
+      style={{ background: COLORS.surface, zIndex: 20 }}
     >
       <Link
         href="/"
@@ -265,14 +256,8 @@ export function JtraxShell({ children }: { children: React.ReactNode }) {
     <>
       <Sidebar section={section} />
       <main
-        style={{
-          marginLeft: SIDEBAR_WIDTH,
-          minHeight: "100vh",
-          padding: "20px 24px 40px",
-          display: "flex",
-          flexDirection: "column",
-          gap: 18,
-        }}
+        className="jt-main"
+        style={{ minHeight: "100vh", display: "flex", flexDirection: "column", gap: 18 }}
       >
         <header
           style={{

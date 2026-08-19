@@ -511,3 +511,89 @@ textarea {
     transform: none !important;
   }
 }
+
+/* --- The shell at phone and tablet width ---
+
+   The sidebar was `position: fixed; width: 232px` with a matching `margin-left`
+   on <main>, unconditionally. Below about 1000px that left the content area
+   narrower than its own header, so *every* page in the console scrolled
+   sideways — the house rule is 390 / 768 / 1280, and none of it held at 390.
+
+   Below the sidebar breakpoint the nav becomes a horizontal strip that scrolls
+   within itself, the way a phone app's tab bar does, and <main> takes the full
+   width. At `lg` it returns to the fixed column it has always been. */
+.jt-main {
+  margin-left: 0;
+  padding: 16px 14px 40px;
+}
+
+.jt-sidebar {
+  position: sticky;
+  top: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e7ebf3;
+  overflow-x: auto;
+}
+
+/* The brand block is the one thing worth losing on a phone: the academy knows
+   whose console it is, and the strip is for getting somewhere. */
+.jt-sidebar > a:first-child {
+  flex-shrink: 0;
+}
+
+/* The nav strip scrolls rather than wrapping: a wrapped nav changes height as
+   the section name changes length, which shifts the whole page under a tap. */
+.jt-sidebar nav {
+  flex-direction: row !important;
+  overflow-y: visible !important;
+  overflow-x: auto;
+  gap: 2px !important;
+  scrollbar-width: none;
+}
+.jt-sidebar nav::-webkit-scrollbar { display: none; }
+
+.jt-sidebar .jt-nav-row {
+  white-space: nowrap;
+  /* 44px minimum: this is the one control on every screen, and it is tapped. */
+  min-height: 44px;
+}
+
+/* The logout control sits at the end of the strip rather than pinned to a
+   column bottom that no longer exists. */
+.jt-sidebar > form,
+.jt-sidebar > button {
+  margin-top: 0 !important;
+  flex-shrink: 0;
+}
+
+@media (width >= 1024px) {
+  .jt-main {
+    margin-left: 232px;
+    padding: 20px 24px 40px;
+  }
+
+  .jt-sidebar {
+    position: fixed;
+    inset-block: 0;
+    left: 0;
+    width: 232px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 24px;
+    padding: 20px 14px;
+    border-right: 1px solid #e7ebf3;
+    border-bottom: none;
+    overflow-x: visible;
+  }
+
+  .jt-sidebar nav {
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    gap: 4px !important;
+  }
+}
