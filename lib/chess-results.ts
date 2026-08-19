@@ -47,3 +47,38 @@ export const refreshExternal = (id: string) =>
   api.post<ExternalTournament>(`external-tournaments/${id}/refresh`, {});
 export const untrackExternal = (id: string) =>
   api.del<{ deleted: boolean }>(`external-tournaments/${id}`);
+
+/* ---- linking one of the academy's own tournaments to an event there ---- */
+
+/**
+ * A tournament's standings as read from chess-results.com.
+ *
+ * The academy does not author these. An arbiter pairs the event in
+ * Swiss-Manager and uploads; that upload is what players and federations treat
+ * as true. Linking a tournament to it means the console stops pretending to own
+ * the result and starts showing the real one.
+ */
+export type LinkedResults = {
+  source: "chess-results";
+  url: string;
+  stage?: string;
+  fetchedAt?: string;
+  chessResultsId: number;
+  standings: ExternalStanding[];
+};
+
+export const linkChessResults = (tournamentId: string, url: string) =>
+  api.post<LinkedResults>(`tournaments/${tournamentId}/chess-results`, { url });
+
+export const unlinkChessResults = (tournamentId: string) =>
+  api.del<{ linked: boolean }>(`tournaments/${tournamentId}/chess-results`);
+
+export const refreshLinkedResults = (tournamentId: string) =>
+  api.post<LinkedResults>(`tournaments/${tournamentId}/chess-results/refresh`, {});
+
+/** What a tournament is currently linked to, read without costing
+    chess-results.com a request. Null when it is not linked. */
+export const getChessResultsLink = (tournamentId: string) =>
+  api
+    .get<LinkedResults | { linked: false }>(`tournaments/${tournamentId}/chess-results`)
+    .then((r) => ("source" in r ? r : null));

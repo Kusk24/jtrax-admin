@@ -17,6 +17,8 @@ import {
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT } from "@/lib/theme";
 import { ErrorNote, errorText } from "../crud";
+import { LinkedResultsCard } from "./LinkedResultsCard";
+import { getChessResultsLink, type LinkedResults } from "@/lib/chess-results";
 import { primaryButtonStyle, secondaryButtonStyle } from "../page-kit";
 import { Badge, Card, SectionTitle } from "../ui";
 
@@ -51,6 +53,11 @@ export function ResultsTab({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  /* Loaded once, and kept apart from `data` because it comes from a different
+     endpoint and the card owns its own state after that. `linkLoaded` gates the
+     first render so the card does not flash its empty state on a linked event. */
+  const [linkedResults, setLinkedResults] = useState<LinkedResults | null>(null);
+  const [linkLoaded, setLinkLoaded] = useState(false);
 
   const reload = useCallback(async () => {
     try {
@@ -69,6 +76,15 @@ export function ResultsTab({
         if (!cancelled) setData(next);
       } catch {
         /* The empty state covers it; a failed first read is usually a cold API. */
+      }
+      try {
+        const link = await getChessResultsLink(tournamentId);
+        if (!cancelled) setLinkedResults(link);
+      } catch {
+        /* An older backend has no such route; the card then offers to link,
+           which is the correct thing to show when nothing is linked. */
+      } finally {
+        if (!cancelled) setLinkLoaded(true);
       }
     })();
     return () => {
@@ -136,6 +152,9 @@ export function ResultsTab({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {error && <ErrorNote>{error}</ErrorNote>}
+
+      {/* Above publishing, because it decides *what* gets published. */}
+      {linkLoaded && <LinkedResultsCard tournamentId={tournamentId} initial={linkedResults} />}
 
       {/* ---- publishing ---- */}
       <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>

@@ -813,7 +813,16 @@
     "colFed": "Fed",
     "colRating": "Rating",
     "colPoints": "Pts",
-    "ourStudent": "JCA · {name}"
+    "ourStudent": "JCA · {name}",
+    "linkTitle": "Results source",
+    "linkIntro": "If an arbiter publishes this event on chess-results.com, link it here and the public page will follow their standings instead of the rounds typed in below.",
+    "linkedIntro": "This tournament follows chess-results.com. The arbiter's table is what the public page shows.",
+    "linkedBadge": "Linked",
+    "link": "Link",
+    "unlink": "Unlink",
+    "linkFailed": "That link could not be used. Check it is a chess-results.com tournament address.",
+    "linkedPlayers": "{count} players · {ours} of ours",
+    "linkedOverridesNote": "While this is linked, the rounds and results below are not what the public sees."
   },
   "registration": {
     "title": "Public registration",
