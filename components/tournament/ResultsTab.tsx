@@ -18,6 +18,7 @@ import { Icon } from "@/lib/icons";
 import { COLORS, FONT } from "@/lib/theme";
 import { ErrorNote, errorText } from "../crud";
 import { LinkedResultsCard } from "./LinkedResultsCard";
+import { ShareLink } from "./ShareLink";
 import { getChessResultsLink, type LinkedResults } from "@/lib/chess-results";
 import { primaryButtonStyle, secondaryButtonStyle } from "../page-kit";
 import { Badge, Card, SectionTitle } from "../ui";
@@ -52,7 +53,6 @@ export function ResultsTab({
   const [data, setData] = useState<Results | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [copied, setCopied] = useState(false);
   /* Loaded once, and kept apart from `data` because it comes from a different
      endpoint and the card owns its own state after that. `linkLoaded` gates the
      first render so the card does not flash its empty state on a linked event. */
@@ -135,16 +135,6 @@ export function ResultsTab({
     ? `${PUBLIC_RESULTS_ORIGIN}/t/${tournamentId}`
     : "";
 
-  async function copyLink() {
-    try {
-      await navigator.clipboard.writeText(publicUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      /* Clipboard refused; the link is on screen either way. */
-    }
-  }
-
   const rounds = data?.rounds ?? [];
   const standings = data?.standings ?? [];
   const played = standings.some((s) => s.played > 0 || s.points > 0);
@@ -181,29 +171,11 @@ export function ResultsTab({
         )}
 
         {resultsPublic && publicUrl && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <code
-              style={{
-                flex: 1, minWidth: 0, padding: "8px 11px", borderRadius: 9,
-                background: COLORS.neutralBg, fontSize: 12.5, color: COLORS.textSecondary,
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-              }}
-            >
-              {publicUrl}
-            </code>
-            <button
-              type="button"
-              onClick={() => void copyLink()}
-              aria-label={t("copyLink")}
-              style={{
-                display: "inline-flex", alignItems: "center", justifyContent: "center",
-                width: 34, height: 34, borderRadius: 9, border: `1px solid ${COLORS.border}`,
-                background: COLORS.surface, cursor: "pointer", flexShrink: 0,
-              }}
-            >
-              <Icon name={copied ? "check" : "copy"} size={14} color={copied ? COLORS.success : COLORS.textSecondary} />
-            </button>
-          </div>
+          <ShareLink
+            url={publicUrl}
+            qrLabel={t("qrLabel")}
+            openLabel={t("openPage")}
+          />
         )}
 
         <button

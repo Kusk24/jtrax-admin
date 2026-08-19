@@ -17,7 +17,7 @@ import { registrationUrl, studentFee } from "@/lib/registration";
 import { ErrorNote, errorText } from "../crud";
 import { primaryButtonStyle, secondaryButtonStyle } from "../page-kit";
 import { Card, SectionTitle } from "../ui";
-import { QrCode } from "./QrCode";
+import { ShareLink } from "./ShareLink";
 
 export function RegistrationCard({
   tournamentId,
@@ -39,7 +39,6 @@ export function RegistrationCard({
   const tCommon = useTranslations("common");
 
   const [busy, setBusy] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draftDiscount, setDraftDiscount] = useState(String(discountPct));
 
@@ -150,39 +149,11 @@ export function RegistrationCard({
           }}
         >
           {url ? (
-            <>
-              <QrCode value={url} label={t("qrLabel", { name: tournamentName })} />
-              <div style={{ flex: "1 1 260px", minWidth: 0 }}>
-                <p style={{ margin: "0 0 9px", fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary, wordBreak: "break-all" }}>
-                  {url}
-                </p>
-                <div style={{ display: "flex", gap: 9, flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    className="jt-btn-ghost"
-                    style={secondaryButtonStyle}
-                    onClick={() => {
-                      void navigator.clipboard
-                        ?.writeText(url)
-                        .then(() => setCopied(true))
-                        .catch(() => setCopied(false));
-                    }}
-                  >
-                    <Icon name={copied ? "check" : "copy"} size={14} />
-                    {copied ? t("copied") : t("copyLink")}
-                  </button>
-                  <a
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="jt-btn-ghost"
-                    style={{ ...secondaryButtonStyle, textDecoration: "none" }}
-                  >
-                    <Icon name="globe" size={14} /> {t("openForm")}
-                  </a>
-                </div>
-              </div>
-            </>
+            <ShareLink
+              url={url}
+              qrLabel={t("qrLabel", { name: tournamentName })}
+              openLabel={t("openForm")}
+            />
           ) : (
             /* Registration is open but nobody can be sent anywhere. Said plainly
                rather than printing a link built from the console's own origin,
