@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import { ResultsTab } from "../tournament/ResultsTab";
 import { ExternalTournaments } from "../tournament/ExternalTournaments";
+import { RegistrationCard } from "../tournament/RegistrationCard";
+import { RegistrationQueue } from "../tournament/RegistrationQueue";
 import { useTranslations } from "next-intl";
 import { removeIfPresent } from "@/lib/credentials";
 import { type Participant, type Tournament } from "@/lib/data";
@@ -42,36 +44,10 @@ import { BackLink, DeleteButton, DetailHeader, EditButton } from "../detail";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 
-const REGISTRATION_LINK = "https://jca-demo-registration-site.vercel.app/";
 const PARTICIPANT_TEMPLATE = equalTemplate(6, 70);
 const TOURNAMENT_TEMPLATE = equalTemplate(5, 100);
 const CARD_FIRST = ["card", "list"] as const;
 const LIST_FIRST = ["list", "card"] as const;
-
-/* Ported from buildQrCells: a deterministic pseudo-QR with real finder blocks,
-   so the "registration website" card looks like a scannable code without
-   pulling in a QR library for what is decorative in the mockup. */
-function buildQrCells(seedStr: string, size = 11): boolean[] {
-  let seed = 0;
-  for (let i = 0; i < seedStr.length; i++) seed = (seed * 31 + seedStr.charCodeAt(i)) >>> 0;
-  const rand = () => {
-    seed = (seed * 1103515245 + 12345) >>> 0;
-    return (seed >>> 16) % 100 < 46;
-  };
-  const corners = [
-    [0, 0],
-    [0, size - 3],
-    [size - 3, 0],
-  ];
-  const inFinder = (r: number, c: number) =>
-    corners.some(([or, oc]) => r >= or && r < or + 3 && c >= oc && c < oc + 3);
-
-  const cells: boolean[] = [];
-  for (let r = 0; r < size; r++) {
-    for (let c = 0; c < size; c++) cells.push(inFinder(r, c) ? true : rand());
-  }
-  return cells;
-}
 
 function rankBadge(rank: number): { color: string; bg: string; labelKey: string } | null {
   if (rank === 1) return { color: "#8A6D00", bg: "#FCEFC2", labelKey: "champion" };
@@ -97,31 +73,6 @@ function TournamentArt({ name, height = 120 }: { name: string; height?: number }
       }}
     >
       <Icon name="trophy" size={height > 100 ? 34 : 24} color="rgba(255,255,255,0.9)" />
-    </div>
-  );
-}
-
-function QrCode({ seed }: { seed: string }) {
-  const cells = useMemo(() => buildQrCells(seed), [seed]);
-  return (
-    <div
-      aria-hidden
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(11, 1fr)",
-        gap: 1,
-        width: 104,
-        height: 104,
-        padding: 6,
-        background: "#fff",
-        border: `1px solid ${COLORS.border}`,
-        borderRadius: 9,
-        flexShrink: 0,
-      }}
-    >
-      {cells.map((on, i) => (
-        <span key={i} style={{ background: on ? COLORS.text : "transparent", borderRadius: 1 }} />
-      ))}
     </div>
   );
 }
@@ -356,10 +307,10 @@ function CreateWizard({
           <p style={{ margin: 0, fontFamily: FONT, fontSize: 14, color: COLORS.textSecondary }}>
             {t("liveSub")}
           </p>
-          <QrCode seed={draft.name} />
-          <code style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, color: COLORS.blue, wordBreak: "break-all" }}>
-            {REGISTRATION_LINK}
-          </code>
+          {/* No registration link here: the tournament does not have an id
+              until it is saved, and a link built before then could only be a
+              placeholder. It appears on the tournament's own screen, where it
+              is real and scannable. */}
           <ActionButton
             className="jt-btn-primary"
             style={primaryButtonStyle}
@@ -373,6 +324,9 @@ function CreateWizard({
                 venue: draft.venue || "TBC",
                 format: draft.format,
                 published: true,
+                publicRegistration: false,
+                studentDiscountPct: 0,
+                entryFeeAmount: 0,
                 categories: [],
                 organizer: "JCA Chess Academy",
                 chiefArbiter: draft.chiefArbiter,
@@ -414,7 +368,7 @@ function TournamentDetail({
   const t = useTranslations("tournament");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
-  const { students, create, update, remove } = useData();
+  const { students, create, update, remove, refresh } = useData();
   const [tab, setTab] = useState<"overview" | "participants" | "results">("overview");
   const [categoryDraft, setCategoryDraft] = useState("");
   const [rowError, setRowError] = useState<string | null>(null);
@@ -486,7 +440,6 @@ function TournamentDetail({
   const [page, setPage] = useState(0);
   const [mode, setMode] = useViewMode("participants", LIST_FIRST);
   const [drawer, setDrawer] = useState<Participant | null>(null);
-  const [copied, setCopied] = useState(false);
 
   const status = statusChipColors(tournament.status);
   const filled = tournament.maxParticipants
@@ -568,42 +521,16 @@ function TournamentDetail({
         />
       )}
 
-      {tournament.published && (
-        <Card style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-          <QrCode seed={tournament.name + tournament.id} />
-          <div style={{ flex: "1 1 240px", minWidth: 0 }}>
-            <SectionTitle>{t("registrationWebsite")}</SectionTitle>
-            <p style={{ margin: "5px 0 10px", fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary, wordBreak: "break-all" }}>
-              {REGISTRATION_LINK}
-            </p>
-            <div style={{ display: "flex", gap: 9, flexWrap: "wrap" }}>
-              <button
-                type="button"
-                className="jt-btn-ghost"
-                style={secondaryButtonStyle}
-                onClick={() => {
-                  void navigator.clipboard
-                    ?.writeText(REGISTRATION_LINK)
-                    .then(() => setCopied(true))
-                    .catch(() => setCopied(false));
-                }}
-              >
-                <Icon name={copied ? "check" : "copy"} size={14} />
-                {copied ? t("copied") : t("copyLink")}
-              </button>
-              <a
-                href={REGISTRATION_LINK}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="jt-btn-ghost"
-                style={{ ...secondaryButtonStyle, textDecoration: "none" }}
-              >
-                <Icon name="globe" size={14} /> {t("openSite")}
-              </a>
-            </div>
-          </div>
-        </Card>
-      )}
+      <RegistrationCard
+        tournamentId={tournament.id}
+        tournamentName={tournament.name}
+        open={tournament.publicRegistration}
+        fee={tournament.entryFeeAmount}
+        discountPct={tournament.studentDiscountPct}
+        onChange={async (patch) => {
+          await update("tournaments", tournament.id, patch);
+        }}
+      />
 
       <div style={{ display: "flex", gap: 18, borderBottom: `1px solid ${COLORS.border}` }}>
         {(["overview", "participants", "results"] as const).map((tab_) => (
@@ -753,6 +680,14 @@ function TournamentDetail({
           </Card>
         </>
       ) : tab === "participants" ? (
+        <>
+        {/* Above the roster: people waiting to be let in come before the people
+            already in. */}
+        <RegistrationQueue
+          tournamentId={tournament.id}
+          fullFee={tournament.entryFeeAmount}
+          onDecided={refresh}
+        />
         <Card style={{ padding: 0, overflow: "hidden" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: 14, flexWrap: "wrap" }}>
             <SearchInput
@@ -851,6 +786,7 @@ function TournamentDetail({
           )}
           <Pagination page={current} totalPages={totalPages} onChange={setPage} />
         </Card>
+        </>
       ) : (
         <ResultsTab
           tournamentId={tournament.id}

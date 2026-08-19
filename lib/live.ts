@@ -248,7 +248,15 @@ export function toTournaments(c: LiveCollections): Tournament[] {
   return c.tournaments.map((t) => {
     const tid = s(t, "tournament_id");
     const cats = c.tournamentCategories.filter((k) => s(k, "tournament_id") === tid);
-    const regs = c.tournamentRegistrations.filter((k) => s(k, "tournament_id") === tid);
+    /* Only people who are actually in the event. A public sign-up waiting for
+       approval is a request, not a participant — counting one would inflate the
+       roster, the revenue and the "registration filled" figure with people the
+       desk has not let in, and might yet turn away. They are shown separately,
+       in the approval queue. Rows predating public registration have no status
+       at all, so a missing one reads as in. */
+    const regs = c.tournamentRegistrations.filter(
+      (k) => s(k, "tournament_id") === tid && (s(k, "status") || "Approved") === "Approved",
+    );
     const participants: Participant[] = regs.map((r, i) => ({
       id: s(r, "tournament_registration_id"),
       studentId: s(r, "student_id"),
@@ -284,6 +292,9 @@ export function toTournaments(c: LiveCollections): Tournament[] {
          hard-coded true while nothing was published at all; it is now the
          real column, so the Results tab reports the actual state. */
       published: n(t, "results_public") === 1,
+      publicRegistration: n(t, "public_registration") === 1,
+      studentDiscountPct: n(t, "student_discount_pct"),
+      entryFeeAmount: t["regular_fee"] == null ? 0 : n(t, "regular_fee"),
       categories: cats.map((k) => s(k, "name")),
       categoryRows: cats.map((k) => ({ id: s(k, "tournament_category_id"), name: s(k, "name") })),
       organizer: s(t, "organizer_name"),
