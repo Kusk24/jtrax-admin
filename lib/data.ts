@@ -190,6 +190,13 @@ export type Tournament = {
   venue: string;
   format: string;
   published: boolean;
+  /** Whether anyone with the link may register, not just the front desk. */
+  publicRegistration: boolean;
+  /** Percent off the entry fee for one of the academy's own students. */
+  studentDiscountPct: number;
+  /** The entry fee as a number, for arithmetic. `entryFeeMember` is the same
+      value already formatted, and formatted strings do not divide. */
+  entryFeeAmount: number;
   categories: string[];
   /** The same categories with their ids, for the screens that manage them. */
   categoryRows?: Array<{ id: string; name: string }>;
