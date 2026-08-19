@@ -760,7 +760,8 @@
       "1/2-1/2": "Draw",
       "+/-": "White wins by forfeit",
       "-/+": "Black wins by forfeit"
-    }
+    },
+    "publicUrlMissing": "Published, but the public link is not configured on this deployment. Set NEXT_PUBLIC_PORTAL_URL to the portal's address."
   },
   "lichessAdmin": {
     "title": "Lichess at home",

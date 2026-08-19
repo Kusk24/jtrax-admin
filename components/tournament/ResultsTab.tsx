@@ -20,6 +20,16 @@ import { ErrorNote, errorText } from "../crud";
 import { primaryButtonStyle, secondaryButtonStyle } from "../page-kit";
 import { Badge, Card, SectionTitle } from "../ui";
 
+/* Where the public standings page lives.
+
+   It is a route in **jtrax-web-app**, not in this console, so the origin cannot
+   be derived from the browser's location — doing that produced a link on the
+   admin domain that 404'd for every parent who was sent it.
+
+   NEXT_PUBLIC_ because the value is used to render a link in the browser; it is
+   a public URL that parents are meant to be given, not a secret. */
+const PUBLIC_RESULTS_ORIGIN = (process.env.NEXT_PUBLIC_PORTAL_URL ?? "").replace(/\/$/, "");
+
 /* Only the results an arbiter types in normally. A bye is set when pairing, and
    "Pending" is what a board starts as — neither belongs on this row. */
 const QUICK: ResultCode[] = ["1-0", "1/2-1/2", "0-1"];
@@ -100,8 +110,14 @@ export function ResultsTab({
     });
   }
 
-  const publicUrl =
-    typeof window === "undefined" ? "" : `${window.location.origin}/t/${tournamentId}`;
+  /* The public standings page is served by **jtrax-web-app**, not by this
+     console — `/t/[id]` is a route in the portal. Building the link from
+     window.location.origin therefore produced an admin-domain URL that always
+     404'd, while the card above it said "Published". The portal's origin has to
+     be configured; there is nothing on this page that can infer it. */
+  const publicUrl = PUBLIC_RESULTS_ORIGIN
+    ? `${PUBLIC_RESULTS_ORIGIN}/t/${tournamentId}`
+    : "";
 
   async function copyLink() {
     try {
@@ -137,7 +153,15 @@ export function ResultsTab({
           {t("publicBody")}
         </p>
 
-        {resultsPublic && (
+        {/* Published but with nowhere to point: say so rather than render an
+            empty box beside a green "Published" badge. */}
+        {resultsPublic && !publicUrl && (
+          <p style={{ margin: 0, fontFamily: FONT, fontSize: 13, lineHeight: 1.5, color: COLORS.warning }}>
+            {t("publicUrlMissing")}
+          </p>
+        )}
+
+        {resultsPublic && publicUrl && (
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <code
               style={{
