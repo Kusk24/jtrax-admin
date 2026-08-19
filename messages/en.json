@@ -723,7 +723,21 @@
       "started": "Started",
       "duration": "Duration"
     },
-    "failed": "Something went wrong. Try again."
+    "failed": "Something went wrong. Try again.",
+    "ratedLabel": "Rated on Lichess",
+    "clockLabel": "Time control",
+    "openRatedRoom": "Open rated room",
+    "ratedBadge": "Rated",
+    "detached": {
+      "noPlayAccess": "Not rated — Lichess not connected",
+      "tokenExpired": "Not rated — Lichess permission expired",
+      "challengeFailed": "Not rated — Lichess refused the pairing",
+      "opponentDeclined": "Not rated — pairing not accepted",
+      "moveRejected": "Not rated — the boards disagreed",
+      "unreachable": "Not rated — Lichess unreachable",
+      "notConfigured": "Not rated — not set up on this server",
+      "failed": "Not rated"
+    }
   },
   "results": {
     "publicTitle": "Public results",
@@ -781,5 +795,24 @@
       "classical": "Classical",
       "puzzle": "Puzzles"
     }
+  },
+  "external": {
+    "title": "External tournaments (chess-results.com)",
+    "intro": "Follow a tournament our students play in elsewhere. Paste the chess-results.com link and the standings are pulled in as rounds land — our students are highlighted. chess-results.com cannot be written to; this reads what the arbiter publishes.",
+    "urlLabel": "chess-results.com tournament link",
+    "track": "Track",
+    "empty": "No external tournaments tracked yet.",
+    "notStarted": "Not started yet",
+    "fetched": "updated {at}",
+    "players": "{count} players",
+    "ours": "{count} of ours",
+    "refresh": "Refresh",
+    "openSource": "chess-results.com",
+    "untrack": "Stop tracking",
+    "colName": "Player",
+    "colFed": "Fed",
+    "colRating": "Rating",
+    "colPoints": "Pts",
+    "ourStudent": "JCA · {name}"
   }
 }

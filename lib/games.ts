@@ -24,7 +24,27 @@ export type GameRoom = {
   createdAt: string;
   startedAt?: string;
   endedAt?: string;
+
+  /** Whether this board is also a real rated game on lichess.org. */
+  lichessRated: boolean;
+  lichessGameId?: string;
+  lichessStatus?: string;
+  /** Why it stopped counting, when it did. Shown rather than swallowed: a game
+      that has quietly stopped being rated is worse than one that admits it. */
+  lichessDetachedReason?: string;
 };
+
+/** Clocks Lichess accepts, in the shapes a coach would actually pick.
+
+    Lichess takes 0/15/30/45/60/90 seconds or any multiple of 60 up to three
+    hours; offering a free-text box would mostly produce rejections, so the
+    console offers the sensible handful instead. */
+export const RATED_CLOCKS = [
+  { limit: 300, increment: 0, label: "5+0" },
+  { limit: 600, increment: 5, label: "10+5" },
+  { limit: 900, increment: 10, label: "15+10" },
+  { limit: 1800, increment: 20, label: "30+20" },
+];
 
 export type GameMove = { ply: number; san: string; uci: string; fenAfter: string; createdAt: string };
 
@@ -32,7 +52,14 @@ export type GameDetail = { room: GameRoom; moves: GameMove[]; seat: string; lega
 
 export const listRooms = () => api.get<GameRoom[]>("game-rooms");
 export const getRoom = (id: string) => api.get<GameDetail>(`game-rooms/${id}`);
-export const openRoom = (label: string) => api.post<GameRoom>("game-rooms", { label });
+export type OpenRoomOptions = {
+  lichessRated?: boolean;
+  clockLimit?: number;
+  clockIncrement?: number;
+};
+
+export const openRoom = (label: string, opts: OpenRoomOptions = {}) =>
+  api.post<GameRoom>("game-rooms", { label, ...opts });
 export const cancelRoom = (id: string) => api.del<{ status: string }>(`game-rooms/${id}`);
 
 /** Live boards first, then rooms still waiting for players, then the record —

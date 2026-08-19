@@ -10,7 +10,7 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT, initialsOf } from "@/lib/theme";
-import { cancelRoom, durationOf, openRoom, playersOf, type GameRoom } from "@/lib/games";
+import { RATED_CLOCKS, cancelRoom, durationOf, openRoom, playersOf, type GameRoom } from "@/lib/games";
 import { GameBoard } from "../games/GameBoard";
 import { useLiveRoom, useLiveRooms } from "../games/useLiveRooms";
 import { ErrorNote, errorText } from "../crud";
@@ -168,6 +168,28 @@ function RoomDrawer({ roomId, onClose, onChanged }: { roomId: string; onClose: (
 
 /* ----------------------------------------------------------------- page --- */
 
+/** Says whether a board counts on Lichess, and why it stopped if it did.
+
+    Detaching is deliberately loud: staff need to know a game they told two
+    pupils was rated has stopped being one, while the game is still on. */
+function RatedBadge({ room, t }: { room: GameRoom; t: (k: string) => string }) {
+  if (room.lichessRated) {
+    return (
+      <Badge color={COLORS.blue} bg={COLORS.neutralBg}>
+        {t("ratedBadge")}
+      </Badge>
+    );
+  }
+  if (room.lichessDetachedReason) {
+    return (
+      <Badge color={COLORS.warning} bg={COLORS.neutralBg}>
+        {t(`detached.${room.lichessDetachedReason}`)}
+      </Badge>
+    );
+  }
+  return null;
+}
+
 export function GamesPage() {
   const t = useTranslations("games");
   const tc = useTranslations("common");
@@ -181,6 +203,8 @@ export function GamesPage() {
   const [minted, setMinted] = useState<GameRoom | null>(null);
   const [busy, setBusy] = useState(false);
   const [mintError, setMintError] = useState("");
+  const [rated, setRated] = useState(false);
+  const [clockIndex, setClockIndex] = useState(2); // 15+10, a school-friendly rapid
 
   const filtered = useMemo(
     () =>
@@ -198,7 +222,10 @@ export function GamesPage() {
     setBusy(true);
     setMintError("");
     try {
-      const room = await openRoom("");
+      const clock = RATED_CLOCKS[clockIndex];
+      const room = await openRoom("", rated
+        ? { lichessRated: true, clockLimit: clock.limit, clockIncrement: clock.increment }
+        : {});
       setMinted(room);
       reload();
     } catch (e) {
@@ -231,9 +258,36 @@ export function GamesPage() {
                 ])
               }
             />
+            {/* Rated is opt-in per room: it needs both pupils to have granted
+                Lichess play access, and a lesson game should not move a child's
+                rating. */}
+            <label
+              style={{ display: "flex", alignItems: "center", gap: 7, fontFamily: FONT,
+                       fontSize: 13, color: COLORS.text, cursor: "pointer" }}
+            >
+              <input
+                type="checkbox"
+                checked={rated}
+                onChange={(e) => setRated(e.target.checked)}
+                style={{ cursor: "pointer" }}
+              />
+              {t("ratedLabel")}
+            </label>
+            {rated && (
+              <select
+                value={clockIndex}
+                onChange={(e) => setClockIndex(Number(e.target.value))}
+                aria-label={t("clockLabel")}
+                style={{ ...secondaryButtonStyle, cursor: "pointer", paddingRight: 8 }}
+              >
+                {RATED_CLOCKS.map((c, i) => (
+                  <option key={c.label} value={i}>{c.label}</option>
+                ))}
+              </select>
+            )}
             <button onClick={mint} disabled={busy} style={primaryButtonStyle}>
               <Icon name="plus" size={15} />
-              {t("openRoom")}
+              {rated ? t("openRatedRoom") : t("openRoom")}
             </button>
           </>
         }
@@ -271,9 +325,12 @@ export function GamesPage() {
                 onClick={() => setOpenId(room.gameRoomId)}
                 title={playersOf(room, t("waiting"))}
                 badges={
-                  <Badge color={STATUS_TONE[room.status].color} bg={STATUS_TONE[room.status].bg}>
-                    {t(`status.${room.status}`)}
-                  </Badge>
+                  <>
+                    <Badge color={STATUS_TONE[room.status].color} bg={STATUS_TONE[room.status].bg}>
+                      {t(`status.${room.status}`)}
+                    </Badge>
+                    <RatedBadge room={room} t={t} />
+                  </>
                 }
                 rows={[
                   {
@@ -306,9 +363,12 @@ export function GamesPage() {
               <span style={{ fontFamily: FONT, fontSize: 13.5, fontWeight: 600, color: COLORS.text }}>
                 {playersOf(room, t("waiting"))}
               </span>
-              <Badge color={STATUS_TONE[room.status].color} bg={STATUS_TONE[room.status].bg}>
-                {t(`status.${room.status}`)}
-              </Badge>
+              <span style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                <Badge color={STATUS_TONE[room.status].color} bg={STATUS_TONE[room.status].bg}>
+                  {t(`status.${room.status}`)}
+                </Badge>
+                <RatedBadge room={room} t={t} />
+              </span>
               <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, letterSpacing: "0.1em",
                              color: room.status === "Open" ? COLORS.navy : COLORS.textSecondary }}>
                 {room.status === "Open" ? room.code : "—"}

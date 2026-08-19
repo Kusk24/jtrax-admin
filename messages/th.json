@@ -723,7 +723,21 @@
       "started": "เริ่มเมื่อ",
       "duration": "ระยะเวลา"
     },
-    "failed": "เกิดข้อผิดพลาด กรุณาลองใหม่"
+    "failed": "เกิดข้อผิดพลาด กรุณาลองใหม่",
+    "ratedLabel": "จัดอันดับบน Lichess",
+    "clockLabel": "การควบคุมเวลา",
+    "openRatedRoom": "เปิดห้องจัดอันดับ",
+    "ratedBadge": "จัดอันดับ",
+    "detached": {
+      "noPlayAccess": "ไม่จัดอันดับ — ยังไม่ได้เชื่อมต่อ Lichess",
+      "tokenExpired": "ไม่จัดอันดับ — สิทธิ์ Lichess หมดอายุ",
+      "challengeFailed": "ไม่จัดอันดับ — Lichess ปฏิเสธการจับคู่",
+      "opponentDeclined": "ไม่จัดอันดับ — ไม่ได้ตอบรับการจับคู่",
+      "moveRejected": "ไม่จัดอันดับ — กระดานไม่ตรงกัน",
+      "unreachable": "ไม่จัดอันดับ — เชื่อมต่อ Lichess ไม่ได้",
+      "notConfigured": "ไม่จัดอันดับ — ยังไม่ได้ตั้งค่าบนเซิร์ฟเวอร์นี้",
+      "failed": "ไม่จัดอันดับ"
+    }
   },
   "results": {
     "publicTitle": "ผลการแข่งขันสาธารณะ",
@@ -781,5 +795,24 @@
       "classical": "คลาสสิก",
       "puzzle": "ปริศนา"
     }
+  },
+  "external": {
+    "title": "รายการแข่งขันภายนอก (chess-results.com)",
+    "intro": "ติดตามรายการแข่งขันที่นักเรียนของเราไปแข่งที่อื่น วางลิงก์จาก chess-results.com แล้วระบบจะดึงตารางคะแนนมาให้เมื่อแต่ละรอบจบ นักเรียนของเราจะถูกไฮไลต์ ทั้งนี้ chess-results.com ไม่สามารถเขียนข้อมูลกลับได้ ระบบอ่านสิ่งที่กรรมการเผยแพร่เท่านั้น",
+    "urlLabel": "ลิงก์รายการแข่งขันจาก chess-results.com",
+    "track": "ติดตาม",
+    "empty": "ยังไม่มีรายการแข่งขันภายนอกที่ติดตาม",
+    "notStarted": "ยังไม่เริ่มแข่ง",
+    "fetched": "อัปเดต {at}",
+    "players": "ผู้เล่น {count} คน",
+    "ours": "ของเรา {count} คน",
+    "refresh": "รีเฟรช",
+    "openSource": "chess-results.com",
+    "untrack": "เลิกติดตาม",
+    "colName": "ผู้เล่น",
+    "colFed": "ชาติ",
+    "colRating": "คะแนนสากล",
+    "colPoints": "แต้ม",
+    "ourStudent": "JCA · {name}"
   }
 }
