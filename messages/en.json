@@ -795,5 +795,24 @@
       "classical": "Classical",
       "puzzle": "Puzzles"
     }
+  },
+  "external": {
+    "title": "External tournaments (chess-results.com)",
+    "intro": "Follow a tournament our students play in elsewhere. Paste the chess-results.com link and the standings are pulled in as rounds land — our students are highlighted. chess-results.com cannot be written to; this reads what the arbiter publishes.",
+    "urlLabel": "chess-results.com tournament link",
+    "track": "Track",
+    "empty": "No external tournaments tracked yet.",
+    "notStarted": "Not started yet",
+    "fetched": "updated {at}",
+    "players": "{count} players",
+    "ours": "{count} of ours",
+    "refresh": "Refresh",
+    "openSource": "chess-results.com",
+    "untrack": "Stop tracking",
+    "colName": "Player",
+    "colFed": "Fed",
+    "colRating": "Rating",
+    "colPoints": "Pts",
+    "ourStudent": "JCA · {name}"
   }
 }

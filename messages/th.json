@@ -795,5 +795,24 @@
       "classical": "คลาสสิก",
       "puzzle": "ปริศนา"
     }
+  },
+  "external": {
+    "title": "รายการแข่งขันภายนอก (chess-results.com)",
+    "intro": "ติดตามรายการแข่งขันที่นักเรียนของเราไปแข่งที่อื่น วางลิงก์จาก chess-results.com แล้วระบบจะดึงตารางคะแนนมาให้เมื่อแต่ละรอบจบ นักเรียนของเราจะถูกไฮไลต์ ทั้งนี้ chess-results.com ไม่สามารถเขียนข้อมูลกลับได้ ระบบอ่านสิ่งที่กรรมการเผยแพร่เท่านั้น",
+    "urlLabel": "ลิงก์รายการแข่งขันจาก chess-results.com",
+    "track": "ติดตาม",
+    "empty": "ยังไม่มีรายการแข่งขันภายนอกที่ติดตาม",
+    "notStarted": "ยังไม่เริ่มแข่ง",
+    "fetched": "อัปเดต {at}",
+    "players": "ผู้เล่น {count} คน",
+    "ours": "ของเรา {count} คน",
+    "refresh": "รีเฟรช",
+    "openSource": "chess-results.com",
+    "untrack": "เลิกติดตาม",
+    "colName": "ผู้เล่น",
+    "colFed": "ชาติ",
+    "colRating": "คะแนนสากล",
+    "colPoints": "แต้ม",
+    "ourStudent": "JCA · {name}"
   }
 }

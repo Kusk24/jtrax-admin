@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ResultsTab } from "../tournament/ResultsTab";
+import { ExternalTournaments } from "../tournament/ExternalTournaments";
 import { useTranslations } from "next-intl";
 import { removeIfPresent } from "@/lib/credentials";
 import { type Participant, type Tournament } from "@/lib/data";
@@ -1214,6 +1215,10 @@ export function TournamentPage() {
 
       {section(t("ongoing"), ongoing)}
       {section(t("past"), past)}
+
+      {/* Other people's tournaments, read from chess-results.com. Below the
+          academy's own: the front desk's first job is the events it runs. */}
+      <ExternalTournaments />
     </div>
   );
 }
