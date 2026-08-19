@@ -101,6 +101,10 @@
     "deleting": "Deleting…",
     "loadFailed": "Could not load. Please try again."
   },
+  "share": {
+    "copy": "Copy link",
+    "copied": "Copied"
+  },
   "view": {
     "switchView": "Switch view",
     "list": "List view",
@@ -775,7 +779,9 @@
       "+/-": "White wins by forfeit",
       "-/+": "Black wins by forfeit"
     },
-    "publicUrlMissing": "Published, but the public link is not configured on this deployment. Set NEXT_PUBLIC_PORTAL_URL to the portal's address."
+    "publicUrlMissing": "Published, but the public link is not configured on this deployment. Set NEXT_PUBLIC_PORTAL_URL to the portal's address.",
+    "qrLabel": "QR code linking to the public results page for this tournament",
+    "openPage": "Open page"
   },
   "lichessAdmin": {
     "title": "Lichess at home",
