@@ -204,7 +204,7 @@ function ParentDetail({
                   <button
                     type="button"
                     className="jt-btn-primary"
-                    style={{ ...secondaryButtonStyle, opacity: !childId || busy ? 0.5 : 1 }}
+                    style={{ ...secondaryButtonStyle, opacity: !childId || busy ? 0.75 : 1 }}
                     disabled={!childId || busy}
                     onClick={() => run(() => onLinkChild(childId, relation))}
                   >

@@ -12,6 +12,7 @@ import { ActionButton } from "../crud";
 import { useData } from "../DataProvider";
 import { fieldStyle, labelStyle, selectStyle } from "../page-kit";
 import { Avatar } from "../ui";
+import { useErrorToast } from "../ErrorToast";
 
 export type PanelState = { mode: "create" } | { mode: "view"; def: ClassDef } | null;
 
@@ -168,6 +169,7 @@ const ghostBtn: React.CSSProperties = {
 function CreateSession({ onClose }: { onClose: () => void }) {
   const t = useTranslations("session");
   const tCommon = useTranslations("common");
+  const { showError } = useErrorToast();
   const { raw, students, create } = useData();
   const classes = raw.classes.map((c) => ({ id: String(c.class_id), name: String(c.name ?? "") }));
   const [className, setClassName] = useState(classes[0]?.name ?? "");
@@ -210,7 +212,7 @@ function CreateSession({ onClose }: { onClose: () => void }) {
       }
       onClose();
     } catch (e) {
-      window.alert(e instanceof Error ? e.message : "could not create the session");
+      showError(tCommon("sessionFailed"), e);
     } finally {
       setBusy(false);
     }
@@ -236,7 +238,7 @@ function CreateSession({ onClose }: { onClose: () => void }) {
             <button
               type="button"
               className="jt-btn-primary"
-              style={{ ...primaryBtn, opacity: canCreate ? 1 : 0.5, cursor: canCreate ? "pointer" : "not-allowed" }}
+              style={{ ...primaryBtn, opacity: canCreate ? 1 : 0.75, cursor: canCreate ? "pointer" : "not-allowed" }}
               disabled={!canCreate}
               onClick={createSession}
             >

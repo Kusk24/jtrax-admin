@@ -36,6 +36,7 @@ import { Avatar, Badge, Card } from "../ui";
 import { DangerPanel, DeleteButton, DetailHeader, EditButton } from "../detail";
 import { CardGrid, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
+import { useErrorToast } from "../ErrorToast";
 
 /* The design's icon picker offers the six chess pieces plus the trophy the
    Master Class seed uses. */
@@ -96,6 +97,7 @@ function IconPicker({ value, onChange }: { value: IconName; onChange: (i: IconNa
 export function AcademyPage() {
   const t = useTranslations("academy");
   const tCommon = useTranslations("common");
+  const { showError } = useErrorToast();
   const tStatus = useTranslations("status");
   const { raw, batch, create, update, remove } = useData();
   const courses: Course[] = raw.classes.map((c) => ({
@@ -590,7 +592,7 @@ export function AcademyPage() {
                         await remove("teachers", teacherDetail.id);
                         closeTeacherDetail();
                       } catch (e) {
-                        window.alert(e instanceof Error ? e.message : "delete failed");
+                        showError(tCommon("deleteFailed"), e);
                       }
                     }}
                   >
@@ -632,7 +634,7 @@ export function AcademyPage() {
                       });
                     }
                   } catch (e) {
-                    window.alert(e instanceof Error ? e.message : "save failed");
+                    showError(tCommon("saveFailed"), e);
                   }
                   setCourseModal(null);
                 }}
@@ -683,7 +685,7 @@ export function AcademyPage() {
                 className="jt-btn-primary"
                 style={{
                   ...primaryButtonStyle,
-                  opacity: teacherDraft.name && !savingTeacher ? 1 : 0.5,
+                  opacity: teacherDraft.name && !savingTeacher ? 1 : 0.75,
                   cursor: !teacherDraft.name ? "not-allowed" : savingTeacher ? "wait" : "pointer",
                 }}
                 disabled={!teacherDraft.name || savingTeacher}
@@ -715,7 +717,7 @@ export function AcademyPage() {
                       });
                     }
                   } catch (e) {
-                    window.alert(e instanceof Error ? e.message : "save failed");
+                    showError(tCommon("saveFailed"), e);
                   } finally {
                     setSavingTeacher(false);
                   }

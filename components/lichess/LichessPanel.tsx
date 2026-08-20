@@ -98,7 +98,7 @@ export function LichessPanel() {
         <button
           type="button"
           className="jt-btn-ghost"
-          style={{ ...secondaryButtonStyle, opacity: busy ? 0.6 : 1 }}
+          style={{ ...secondaryButtonStyle, opacity: busy ? 0.75 : 1 }}
           disabled={busy}
           onClick={() => void sync()}
         >

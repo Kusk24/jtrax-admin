@@ -145,7 +145,7 @@ export function ExternalTournaments() {
           <button
             type="button"
             className="jt-btn-primary"
-            style={{ ...primaryButtonStyle, opacity: busy || !url.trim() ? 0.6 : 1 }}
+            style={{ ...primaryButtonStyle, opacity: busy || !url.trim() ? 0.75 : 1 }}
             disabled={busy || !url.trim()}
             onClick={() => void track()}
           >
@@ -196,7 +196,7 @@ export function ExternalTournaments() {
                   <button
                     type="button"
                     className="jt-btn-ghost"
-                    style={{ ...secondaryButtonStyle, opacity: busy ? 0.6 : 1 }}
+                    style={{ ...secondaryButtonStyle, opacity: busy ? 0.75 : 1 }}
                     disabled={busy}
                     onClick={(e) => { e.stopPropagation(); void refresh(x.externalTournamentId); }}
                   >

@@ -184,7 +184,7 @@ export function ResultsTab({
           style={{
             ...(resultsPublic ? secondaryButtonStyle : primaryButtonStyle),
             alignSelf: "flex-start",
-            opacity: busy ? 0.6 : 1,
+            opacity: busy ? 0.75 : 1,
           }}
           disabled={busy}
           onClick={() => void guard(() => onPublishChange(!resultsPublic))}
@@ -247,7 +247,7 @@ export function ResultsTab({
         <button
           type="button"
           className="jt-btn-primary"
-          style={{ ...primaryButtonStyle, opacity: busy || standings.length < 2 ? 0.6 : 1 }}
+          style={{ ...primaryButtonStyle, opacity: busy || standings.length < 2 ? 0.75 : 1 }}
           disabled={busy || standings.length < 2}
           onClick={() => void addAndPair()}
         >

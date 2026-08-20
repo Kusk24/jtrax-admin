@@ -118,7 +118,7 @@ export function MessagesPage() {
             <SectionTitle>{t("conversations")}</SectionTitle>
             <Badge
               color={connection === "live" ? COLORS.line : COLORS.textSecondary}
-              bg={connection === "live" ? "#E8F9EE" : COLORS.neutralBg}
+              bg={connection === "live" ? COLORS.successBg : COLORS.neutralBg}
             >
               {t(connection === "live" ? "live" : "offline")}
             </Badge>

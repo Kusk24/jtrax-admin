@@ -1,9 +1,11 @@
 import type { IconName } from "./icons";
 import type { JtraxRole } from "./theme";
 
+/* No `label` here on purpose: the shell renders `t(item.id)`, so the visible
+   name comes from messages/{en,th}.json. A label field would be English text
+   that nothing renders — and the next person to add a breadcrumb would use it. */
 export type NavItem = {
   id: string;
-  label: string;
   icon: IconName;
   adminOnly?: boolean;
   hideForReceptionist?: boolean;
@@ -12,18 +14,18 @@ export type NavItem = {
 /* Ported from NAV_STRUCTURE. `id` doubles as the route segment — 'home' is the
    index route, everything else is /<id>. */
 export const NAV_STRUCTURE: NavItem[] = [
-  { id: "home", label: "Dashboard", icon: "home" },
-  { id: "admins", label: "Admins", icon: "userCheck", adminOnly: true },
-  { id: "academy", label: "Academy", icon: "book", hideForReceptionist: true },
-  { id: "classhistory", label: "Class History", icon: "history" },
-  { id: "games", label: "Games", icon: "knight" },
-  { id: "students", label: "Students", icon: "students" },
-  { id: "parents", label: "Parents", icon: "parents" },
-  { id: "payment", label: "Payment", icon: "payment" },
-  { id: "tournament", label: "Tournament", icon: "tournament" },
-  { id: "announcement", label: "Announcement", icon: "announcement" },
-  { id: "chat", label: "Messages", icon: "chat" },
-  { id: "settings", label: "Settings", icon: "settings", adminOnly: true, hideForReceptionist: true },
+  { id: "home", icon: "home" },
+  { id: "admins", icon: "userCheck", adminOnly: true },
+  { id: "academy", icon: "book", hideForReceptionist: true },
+  { id: "classhistory", icon: "history" },
+  { id: "games", icon: "knight" },
+  { id: "students", icon: "students" },
+  { id: "parents", icon: "parents" },
+  { id: "payment", icon: "payment" },
+  { id: "tournament", icon: "tournament" },
+  { id: "announcement", icon: "announcement" },
+  { id: "chat", icon: "chat" },
+  { id: "settings", icon: "settings", adminOnly: true, hideForReceptionist: true },
 ];
 
 export function navItemsForRole(role: JtraxRole): NavItem[] {

@@ -43,6 +43,7 @@ import { Avatar, Badge, Card, SectionTitle } from "../ui";
 import { BackLink, DeleteButton, DetailHeader, EditButton } from "../detail";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
+import { useErrorToast } from "../ErrorToast";
 
 const PARTICIPANT_TEMPLATE = equalTemplate(6, 70);
 const TOURNAMENT_TEMPLATE = equalTemplate(5, 100);
@@ -276,7 +277,7 @@ function CreateWizard({
               className="jt-btn-primary"
               style={{
                 ...primaryButtonStyle,
-                opacity: draft.name ? 1 : 0.5,
+                opacity: draft.name ? 1 : 0.75,
                 cursor: draft.name ? "pointer" : "not-allowed",
               }}
               disabled={!draft.name}
@@ -871,6 +872,7 @@ const TOURNAMENT_STATUSES = ["Upcoming", "Ongoing", "Completed"];
 export function TournamentPage() {
   const t = useTranslations("tournament");
   const tCommon = useTranslations("common");
+  const { showError } = useErrorToast();
   const tStatus = useTranslations("status");
   const { tournaments, raw, batch, create, update, remove } = useData();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -1004,7 +1006,7 @@ export function TournamentPage() {
             }
             setSelectedId(String(created.tournament_id));
           } catch (e) {
-            window.alert(e instanceof Error ? e.message : "publish failed");
+            showError(tCommon("publishFailed"), e);
           }
           setWizardOpen(false);
         }}

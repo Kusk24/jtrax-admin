@@ -29,6 +29,7 @@ import { Avatar, Badge, Card, SectionTitle } from "../ui";
 import { DangerPanel, DeleteButton, DetailHeader, EditButton } from "../detail";
 import { CardGrid, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
+import { useErrorToast } from "../ErrorToast";
 
 const ROLES: JtraxRole[] = ["Admin", "Receptionist"];
 /* Card first here: this screen was cards from the start, and staff are
@@ -41,6 +42,7 @@ const EMPTY_FORM = { fullName: "", phone: "", email: "", lineId: "", role: "Admi
 export function AdminsPage() {
   const t = useTranslations("admins");
   const tCommon = useTranslations("common");
+  const { showError } = useErrorToast();
   const tRole = useTranslations("roles");
   const { admins, raw, batch, create, update, remove } = useData();
   const [mode, setMode] = useViewMode("admins", VIEWS);
@@ -269,7 +271,7 @@ export function AdminsPage() {
                           if (row?.user_account_id) await remove("user-accounts", String(row.user_account_id));
                         });
                       } catch (e) {
-                        window.alert(e instanceof Error ? e.message : "delete failed");
+                        showError(tCommon("deleteFailed"), e);
                       }
                       closeDetail();
                     }}
@@ -297,7 +299,7 @@ export function AdminsPage() {
                 className="jt-btn-primary"
                 style={{
                   ...primaryButtonStyle,
-                  opacity: form.fullName && form.email && !saving ? 1 : 0.5,
+                  opacity: form.fullName && form.email && !saving ? 1 : 0.75,
                   cursor: !form.fullName || !form.email ? "not-allowed" : saving ? "wait" : "pointer",
                 }}
                 disabled={!form.fullName || !form.email || saving}
@@ -335,7 +337,7 @@ export function AdminsPage() {
                     setCopied(false);
                     setCreated({ email: form.email, password });
                   } catch (e) {
-                    window.alert(e instanceof Error ? e.message : "save failed");
+                    showError(tCommon("saveFailed"), e);
                     setAdminModal(null);
                   } finally {
                     setSaving(false);

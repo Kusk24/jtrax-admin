@@ -438,9 +438,8 @@ export function Pagination({
     borderRadius: 7,
     border: `1px solid ${COLORS.border}`,
     background: COLORS.surface,
-    color: disabled ? "#C7CFDB" : COLORS.textSecondary,
+    color: disabled ? COLORS.disabled : COLORS.textSecondary,
     cursor: disabled ? "default" : "pointer",
-    opacity: disabled ? 0.6 : 1,
   });
 
   return (

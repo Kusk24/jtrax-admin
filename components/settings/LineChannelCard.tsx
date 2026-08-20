@@ -123,7 +123,7 @@ export function LineChannelCard() {
         {channel && (
           <Badge
             color={channel.configured ? COLORS.line : COLORS.textSecondary}
-            bg={channel.configured ? "#E8F9EE" : COLORS.neutralBg}
+            bg={channel.configured ? COLORS.successBg : COLORS.neutralBg}
           >
             {t(channel.configured ? "lineConnected" : "lineNotConnected")}
           </Badge>
@@ -282,7 +282,7 @@ export function LineChannelCard() {
             <button
               type="button"
               className="jt-btn-ghost"
-              style={{ ...secondaryButtonStyle, opacity: busy ? 0.6 : 1 }}
+              style={{ ...secondaryButtonStyle, opacity: busy ? 0.75 : 1 }}
               disabled={busy}
               onClick={() => void disconnect()}
             >
@@ -292,7 +292,7 @@ export function LineChannelCard() {
           <button
             type="button"
             className="jt-btn-primary"
-            style={{ ...primaryButtonStyle, opacity: canSave ? 1 : 0.6, cursor: canSave ? "pointer" : "not-allowed" }}
+            style={{ ...primaryButtonStyle, opacity: canSave ? 1 : 0.75, cursor: canSave ? "pointer" : "not-allowed" }}
             disabled={!canSave}
             onClick={() => void save()}
           >

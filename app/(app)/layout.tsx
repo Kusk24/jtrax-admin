@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { JtraxProvider } from "@/components/JtraxContext";
+import { ErrorToastProvider } from "@/components/ErrorToast";
 import { DataProvider } from "@/components/DataProvider";
 import { JtraxShell } from "@/components/JtraxShell";
 import { SESSION_COOKIE, fetchMe } from "@/lib/auth";
@@ -19,9 +20,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <JtraxProvider person={person}>
-      <DataProvider>
-        <JtraxShell>{children}</JtraxShell>
-      </DataProvider>
+      <ErrorToastProvider>
+        <DataProvider>
+          <JtraxShell>{children}</JtraxShell>
+        </DataProvider>
+      </ErrorToastProvider>
     </JtraxProvider>
   );
 }
