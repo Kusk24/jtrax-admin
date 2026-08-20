@@ -765,6 +765,7 @@
     "noPlayers": "Add participants before running rounds.",
     "rounds": "Rounds",
     "addRound": "Add round",
+    "unlinkedNote": "No chess-results link yet — the public page lists registered players until the event is linked above.",
     "round": "Round {n}",
     "noRounds": "No rounds yet. Adding one pairs it automatically.",
     "needPlayers": "At least two participants are needed to pair a round.",
@@ -823,6 +824,8 @@
     "untrack": "Stop tracking",
     "colName": "Player",
     "colFed": "Fed",
+    "previewTitle": "What the public sees",
+    "previewSub": "first rows of {count} players — the full table is on the public page",
     "colRating": "Rating",
     "colPoints": "Pts",
     "ourStudent": "JCA · {name}",
@@ -835,7 +838,7 @@
     "linkFailed": "That link could not be used. Check it is a chess-results.com tournament address.",
     "linkedPlayers": "{count} players · {ours} of ours",
     "linkedRounds": "{count, plural, =1 {1 round mirrored} other {# rounds mirrored}}",
-    "linkedOverridesNote": "While this is linked, the public page shows the arbiter's standings and round pairings, and follows their uploads by itself while the event runs. The rounds typed below are not what anybody sees."
+    "linkedOverridesNote": "While this is linked, the public page shows the arbiter's standings and round pairings, and follows their uploads by itself while the event runs."
   },
   "registration": {
     "title": "Public registration",
