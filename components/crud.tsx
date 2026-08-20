@@ -249,7 +249,7 @@ export function CrudFormModal({
           <button
             type="button"
             className="jt-btn-primary"
-            style={{ ...primaryButtonStyle, opacity: busy ? 0.6 : 1, cursor: busy ? "wait" : "pointer" }}
+            style={{ ...primaryButtonStyle, opacity: busy ? 0.75 : 1, cursor: busy ? "wait" : "pointer" }}
             disabled={busy}
             onClick={submit}
           >
@@ -316,7 +316,7 @@ export function ConfirmDeleteModal({
             style={{
               ...primaryButtonStyle,
               background: COLORS.danger,
-              opacity: busy ? 0.6 : 1,
+              opacity: busy ? 0.75 : 1,
               cursor: busy ? "wait" : "pointer",
             }}
             disabled={busy}
@@ -466,7 +466,7 @@ export function ActionButton({
       }}
       style={{
         ...style,
-        opacity: blocked ? 0.6 : 1,
+        opacity: blocked ? 0.75 : 1,
         cursor: disabled ? "not-allowed" : busy ? "wait" : "pointer",
       }}
     >

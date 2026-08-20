@@ -37,6 +37,11 @@ export const COLORS = {
   dangerBg: "#FBEAEA",
   dangerFill: "#E0645F",
   neutralBg: "#EEF1F7",
+  /* Disabled controls. WCAG exempts them from 4.5:1, but a label nobody can
+     read is still a label nobody can read — the pagination arrows sat at
+     1.3:1, because a lightened colour and `opacity: 0.6` were multiplying.
+     Use this instead of fading, and never both. */
+  disabled: "#7D8CA6",
   /* LINE's brand green — a third-party mark, not ours to re-skin. */
   line: "#06C755",
 } as const;

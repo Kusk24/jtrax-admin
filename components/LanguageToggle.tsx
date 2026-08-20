@@ -41,7 +41,7 @@ export function LanguageToggle() {
         borderRadius: 999,
         border: `1px solid ${COLORS.border}`,
         background: COLORS.surface,
-        opacity: isPending ? 0.6 : 1,
+        opacity: isPending ? 0.75 : 1,
       }}
     >
       {LOCALES.map(({ code, label }) => {

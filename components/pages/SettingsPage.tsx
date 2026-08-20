@@ -164,7 +164,7 @@ export function SettingsPage() {
             <button
               type="button"
               className="jt-btn-ghost"
-              style={{ ...secondaryButtonStyle, opacity: busy ? 0.6 : 1 }}
+              style={{ ...secondaryButtonStyle, opacity: busy ? 0.75 : 1 }}
               disabled={busy}
               onClick={() => persist(DEFAULT_CREDIT_RULES)}
             >
@@ -173,7 +173,7 @@ export function SettingsPage() {
             <button
               type="button"
               className="jt-btn-primary"
-              style={{ ...primaryButtonStyle, opacity: busy ? 0.6 : 1, cursor: busy ? "wait" : "pointer" }}
+              style={{ ...primaryButtonStyle, opacity: busy ? 0.75 : 1, cursor: busy ? "wait" : "pointer" }}
               disabled={busy}
               onClick={() => persist(draft)}
             >

@@ -206,7 +206,7 @@ export function MonthCalendar({
                   borderRadius: 11,
                   border: `1.5px solid ${isSelected ? COLORS.blue : COLORS.border}`,
                   background: muted ? COLORS.bg : COLORS.surface,
-                  opacity: muted ? 0.55 : 1,
+                  opacity: muted ? 0.75 : 1,
                   cursor: "pointer",
                   textAlign: "left",
                   transition: "border-color 160ms ease",
