@@ -84,7 +84,7 @@ export function QrCode({
         height: size,
         padding: 6,
         flexShrink: 0,
-        background: "#fff",
+        background: COLORS.surface,
         border: `1px solid ${COLORS.border}`,
         borderRadius: 9,
         boxSizing: "border-box",

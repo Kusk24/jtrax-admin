@@ -44,6 +44,17 @@ export const COLORS = {
   disabled: "#7D8CA6",
   /* LINE's brand green — a third-party mark, not ours to re-skin. */
   line: "#06C755",
+  /* The replay board, matching the portals' board exactly (jtrax-web-app
+     `--color-sv-board-*`). A pupil's game should look the same to the pupil,
+     the parent and the office. The move highlight stays warm on purpose: a
+     blue highlight on a blue board is not a highlight. */
+  boardLight: "#EEF3FA",
+  boardDark: "#A3B6D2",
+  boardHighlight: "#F2D98C",
+  pieceWhite: "#FDFEFE",
+  pieceBlack: "#1B3260",
+  /* The dim behind a modal or drawer. Was copy-pasted into six files. */
+  scrim: "rgb(20 33 58 / 0.38)",
 } as const;
 
 /**

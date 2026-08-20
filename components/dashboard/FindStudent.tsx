@@ -123,14 +123,14 @@ export function FindStudent() {
                   borderRadius: 999,
                   border: "none",
                   background: COLORS.blue,
-                  color: "#fff",
+                  color: COLORS.surface,
                   fontFamily: FONT,
                   fontSize: 14,
                   fontWeight: 600,
                   cursor: "pointer",
                 }}
               >
-                <Icon name="usersPlus" size={16} color="#fff" />
+                <Icon name="usersPlus" size={16} color={COLORS.surface} />
                 {t("registerStudent")}
               </button>
             </div>
@@ -294,7 +294,7 @@ const primaryBtn: React.CSSProperties = {
   borderRadius: 999,
   border: "none",
   background: COLORS.blue,
-  color: "#fff",
+  color: COLORS.surface,
   fontFamily: FONT,
   fontSize: 13.5,
   fontWeight: 600,

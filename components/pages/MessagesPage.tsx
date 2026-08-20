@@ -159,7 +159,7 @@ export function MessagesPage() {
                         padding: "0 6px",
                         borderRadius: 999,
                         background: COLORS.danger,
-                        color: "#fff",
+                        color: COLORS.surface,
                         fontSize: 11.5,
                         fontWeight: 700,
                       }}
@@ -259,7 +259,7 @@ export function MessagesPage() {
                           padding: "1px 7px",
                           borderRadius: 999,
                           background: COLORS.danger,
-                          color: "#fff",
+                          color: COLORS.surface,
                           fontSize: 11.5,
                           fontWeight: 700,
                         }}
@@ -318,7 +318,7 @@ export function MessagesPage() {
                             borderBottomRightRadius: mine ? 4 : 14,
                             borderBottomLeftRadius: mine ? 14 : 4,
                             background: failed ? COLORS.dangerBg : mine ? COLORS.blue : COLORS.neutralBg,
-                            color: failed ? COLORS.danger : mine ? "#fff" : COLORS.text,
+                            color: failed ? COLORS.danger : mine ? COLORS.surface : COLORS.text,
                             border: failed ? `1px solid ${COLORS.danger}` : "none",
                             fontFamily: FONT,
                             fontSize: 14,
@@ -442,7 +442,7 @@ export function MessagesPage() {
                   flexShrink: 0,
                 }}
               >
-                <Icon name="send" size={17} color="#fff" />
+                <Icon name="send" size={17} color={COLORS.surface} />
               </button>
             </div>
           </>

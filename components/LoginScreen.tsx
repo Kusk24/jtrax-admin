@@ -47,7 +47,7 @@ export function BrandPanel() {
       {/* Oversized knight, clipped by the panel — the mockup's own icon set,
           not decoration imported from elsewhere. */}
       <span aria-hidden className="jt-login-motif">
-        <Icon name="knight" size={420} color="#fff" />
+        <Icon name="knight" size={420} color={COLORS.surface} />
       </span>
 
       <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 12 }}>
@@ -56,7 +56,7 @@ export function BrandPanel() {
           alt=""
           width={46}
           height={46}
-          style={{ borderRadius: 11, objectFit: "contain", background: "#fff", padding: 3 }}
+          style={{ borderRadius: 11, objectFit: "contain", background: COLORS.surface, padding: 3 }}
         />
         <span>
           <span
@@ -65,7 +65,7 @@ export function BrandPanel() {
               fontFamily: FONT,
               fontSize: 22,
               fontWeight: 700,
-              color: "#fff",
+              color: COLORS.surface,
               lineHeight: 1.15,
             }}
           >
@@ -90,7 +90,7 @@ export function BrandPanel() {
           fontWeight: 700,
           lineHeight: 1.32,
           letterSpacing: "-0.01em",
-          color: "#fff",
+          color: COLORS.surface,
         }}
       >
         {t("tagline")}
@@ -111,7 +111,7 @@ export function BrandPanel() {
                 flexShrink: 0,
               }}
             >
-              <Icon name={icon} size={17} color="#fff" />
+              <Icon name={icon} size={17} color={COLORS.surface} />
             </span>
             <span style={{ fontFamily: FONT, fontSize: 14.5, color: "rgb(255 255 255 / 0.88)" }}>
               {t(key)}
@@ -348,7 +348,7 @@ export function LoginScreen({ justReset }: { justReset?: boolean }) {
                 borderRadius: 999,
                 border: "none",
                 background: COLORS.blue,
-                color: "#fff",
+                color: COLORS.surface,
                 fontFamily: FONT,
                 fontSize: 15,
                 fontWeight: 600,
@@ -364,7 +364,7 @@ export function LoginScreen({ justReset }: { justReset?: boolean }) {
                     height: 15,
                     borderRadius: "50%",
                     border: "2px solid rgb(255 255 255 / 0.4)",
-                    borderTopColor: "#fff",
+                    borderTopColor: COLORS.surface,
                     animation: "jtrax-spin 0.8s linear infinite",
                   }}
                 />

@@ -672,7 +672,7 @@ export function PaymentPage({ startStudentId }: { startStudentId?: string }) {
               rows={() => filtered.map((p) => [p.name, p.payer ?? "", p.className, p.credits, p.amount, p.date, p.method])}
             />
             <button type="button" className="jt-btn-primary" style={primaryButtonStyle} onClick={() => setFormOpen(true)}>
-              <Icon name="wallet" size={15} color="#fff" />
+              <Icon name="wallet" size={15} color={COLORS.surface} />
               {t("recordTitle")}
             </button>
           </>

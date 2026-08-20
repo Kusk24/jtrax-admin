@@ -83,7 +83,7 @@ export function RegistrationCard({
           disabled={busy}
           onClick={() => void run({ public_registration: !open })}
         >
-          <Icon name={open ? "x" : "globe"} size={14} color={open ? undefined : "#fff"} />
+          <Icon name={open ? "x" : "globe"} size={14} color={open ? undefined : COLORS.surface} />
           {open ? t("close") : t("open")}
         </button>
       </div>

@@ -1525,7 +1525,7 @@ export function StudentsPage({
               style={primaryButtonStyle}
               onClick={() => toPayment(createdLogins.studentId)}
             >
-              <Icon name="wallet" size={14} color="#fff" /> {t("continueToPayment")}
+              <Icon name="wallet" size={14} color={COLORS.surface} /> {t("continueToPayment")}
             </button>
           }
         >
@@ -1579,7 +1579,7 @@ export function StudentsPage({
               style={primaryButtonStyle}
               onClick={() => setView({ kind: "wizard" })}
             >
-              <Icon name="usersPlus" size={15} color="#fff" />
+              <Icon name="usersPlus" size={15} color={COLORS.surface} />
               {t("registerTitle")}
             </button>
           </>

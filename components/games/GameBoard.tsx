@@ -13,9 +13,9 @@ const GLYPH: Record<string, string> = {
   bk: "♚", bq: "♛", br: "♜", bb: "♝", bn: "♞", bp: "♟",
 };
 
-const LIGHT = "#EEF1F7";
-const DARK = "#B9C6DE";
-const HIGHLIGHT = "#F5DFA6";
+const LIGHT = COLORS.boardLight;
+const DARK = COLORS.boardDark;
+const HIGHLIGHT = COLORS.boardHighlight;
 
 export function GameBoard({ fen, lastMove, size = 288 }: { fen: string; lastMove?: string; size?: number }) {
   let board;
@@ -59,8 +59,8 @@ export function GameBoard({ fen, lastMove, size = 288 }: { fen: string; lastMove
                 background: touched ? HIGHLIGHT : (r + c) % 2 === 0 ? LIGHT : DARK,
                 fontSize: cell * 0.74,
                 lineHeight: 1,
-                color: sq?.color === "w" ? "#FFFFFF" : "#2B3A55",
-                textShadow: sq?.color === "w" ? "0 1px 0 #6B7A96" : "none",
+                color: sq?.color === "w" ? COLORS.pieceWhite : COLORS.pieceBlack,
+                textShadow: sq?.color === "w" ? `0 1px 0 ${COLORS.navy}` : "none",
               }}
             >
               {sq ? GLYPH[sq.color + sq.type] : ""}

@@ -149,7 +149,7 @@ export function ExternalTournaments() {
             disabled={busy || !url.trim()}
             onClick={() => void track()}
           >
-            <Icon name="plus" size={15} color="#fff" /> {t("track")}
+            <Icon name="plus" size={15} color={COLORS.surface} /> {t("track")}
           </button>
         </div>
 

@@ -101,6 +101,7 @@
     "none": "ไม่มี",
     "optional": "ไม่บังคับ",
     "saved": "บันทึกแล้ว",
+    "tableRegion": "ตาราง — เลื่อนไปด้านข้างเพื่อดูคอลัมน์เพิ่มเติม",
     "creditsCount": "{count, plural, other {# เครดิต}}",
     "saving": "กำลังบันทึก…",
     "deleting": "กำลังลบ…",
