@@ -63,6 +63,8 @@ export type LinkedResults = {
   url: string;
   stage?: string;
   fetchedAt?: string;
+  /** The arbiter's per-round pairings, mirrored by the backend. */
+  rounds?: { round: number; played: boolean; pairings: unknown[] }[];
   chessResultsId: number;
   standings: ExternalStanding[];
 };
