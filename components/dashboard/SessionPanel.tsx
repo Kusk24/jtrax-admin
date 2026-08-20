@@ -23,7 +23,7 @@ function Scrim({ onClose }: { onClose: () => void }) {
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgb(20 33 58 / 0.38)",
+        background: COLORS.scrim,
         zIndex: 50,
       }}
     />
@@ -144,7 +144,7 @@ const primaryBtn: React.CSSProperties = {
   borderRadius: 999,
   border: "none",
   background: COLORS.blue,
-  color: "#fff",
+  color: COLORS.surface,
   fontFamily: FONT,
   fontSize: 14,
   fontWeight: 600,

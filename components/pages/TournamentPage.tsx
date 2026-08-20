@@ -73,7 +73,7 @@ function TournamentArt({ name, height = 120 }: { name: string; height?: number }
         flexShrink: 0,
       }}
     >
-      <Icon name="trophy" size={height > 100 ? 34 : 24} color="rgba(255,255,255,0.9)" />
+      <Icon name="trophy" size={height > 100 ? 34 : 24} color={COLORS.surface} />
     </div>
   );
 }
@@ -175,13 +175,13 @@ function CreateWizard({
                   height: 26,
                   borderRadius: "50%",
                   background: done || current ? COLORS.blue : COLORS.neutralBg,
-                  color: done || current ? "#fff" : COLORS.textSecondary,
+                  color: done || current ? COLORS.surface : COLORS.textSecondary,
                   fontFamily: FONT,
                   fontSize: 13,
                   fontWeight: 700,
                 }}
               >
-                {done ? <Icon name="check" size={13} color="#fff" /> : n}
+                {done ? <Icon name="check" size={13} color={COLORS.surface} /> : n}
               </span>
               <span
                 style={{
@@ -1137,7 +1137,7 @@ export function TournamentPage() {
               rows={() => filtered.map((x) => [x.name, x.date, x.venue, x.currentParticipants])}
             />
             <button type="button" className="jt-btn-primary" style={primaryButtonStyle} onClick={() => setWizardOpen(true)}>
-              <Icon name="plus" size={15} color="#fff" /> {t("create")}
+              <Icon name="plus" size={15} color={COLORS.surface} /> {t("create")}
             </button>
           </>
         }

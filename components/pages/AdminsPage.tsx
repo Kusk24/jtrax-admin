@@ -103,7 +103,7 @@ export function AdminsPage() {
               style={primaryButtonStyle}
               onClick={() => openAdminModal("new")}
             >
-              <Icon name="plus" size={15} color="#fff" />
+              <Icon name="plus" size={15} color={COLORS.surface} />
               {t("create")}
             </button>
           </>

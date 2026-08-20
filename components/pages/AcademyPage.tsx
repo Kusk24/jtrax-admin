@@ -265,7 +265,7 @@ export function AcademyPage() {
               rows={() => courses.map((c) => [c.name, c.badge, c.category, c.desc])}
             />
             <button type="button" className="jt-btn-primary" style={primaryButtonStyle} onClick={() => openCourseModal("new")}>
-              <Icon name="plus" size={15} color="#fff" /> {t("addCourse")}
+              <Icon name="plus" size={15} color={COLORS.surface} /> {t("addCourse")}
             </button>
           </>
         }
@@ -427,7 +427,7 @@ export function AcademyPage() {
               rows={() => teachers.map((x) => [x.name, x.email, x.phone, x.lineId, x.status])}
             />
             <button type="button" className="jt-btn-primary" style={primaryButtonStyle} onClick={() => openTeacherModal("new")}>
-              <Icon name="plus" size={15} color="#fff" /> {t("addTeacher")}
+              <Icon name="plus" size={15} color={COLORS.surface} /> {t("addTeacher")}
             </button>
           </>
         }

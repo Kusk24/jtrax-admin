@@ -221,7 +221,7 @@ export function MonthCalendar({
                     height: 22,
                     borderRadius: "50%",
                     background: iso === today ? COLORS.blue : "transparent",
-                    color: iso === today ? "#fff" : COLORS.text,
+                    color: iso === today ? COLORS.surface : COLORS.text,
                     fontFamily: FONT,
                     fontSize: 12.5,
                     fontWeight: 700,

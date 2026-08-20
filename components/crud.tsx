@@ -479,7 +479,7 @@ export function ActionButton({
 export function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <button type="button" className="jt-btn-primary" style={primaryButtonStyle} onClick={onClick}>
-      <Icon name="plus" size={14} color="#fff" /> {label}
+      <Icon name="plus" size={14} color={COLORS.surface} /> {label}
     </button>
   );
 }

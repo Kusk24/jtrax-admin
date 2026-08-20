@@ -58,7 +58,7 @@ export function LanguageToggle() {
               borderRadius: 999,
               border: "none",
               background: active ? COLORS.blue : "transparent",
-              color: active ? "#fff" : COLORS.textSecondary,
+              color: active ? COLORS.surface : COLORS.textSecondary,
               fontFamily: FONT,
               fontSize: 13,
               fontWeight: 600,

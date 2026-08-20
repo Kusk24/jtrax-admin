@@ -141,11 +141,11 @@ export function RegistrationQueue({
                 <button
                   type="button"
                   className="jt-btn-primary"
-                  style={{ ...secondaryButtonStyle, background: COLORS.success, color: "#fff", borderColor: COLORS.success }}
+                  style={{ ...secondaryButtonStyle, background: COLORS.success, color: COLORS.surface, borderColor: COLORS.success }}
                   disabled={busyId === entry.id}
                   onClick={() => void decide(entry, true)}
                 >
-                  <Icon name="check" size={14} color="#fff" /> {t("approve")}
+                  <Icon name="check" size={14} color={COLORS.surface} /> {t("approve")}
                 </button>
                 {/* Offered only where it is the judgement call: a claimed
                     discount our records cannot corroborate. */}

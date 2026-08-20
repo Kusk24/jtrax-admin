@@ -58,7 +58,7 @@ export function SectionPlaceholder({ section, noAccess }: { section: string; noA
           padding: "9px 18px",
           borderRadius: 999,
           background: COLORS.blue,
-          color: "#fff",
+          color: COLORS.surface,
           fontFamily: FONT,
           fontSize: 14,
           fontWeight: 600,

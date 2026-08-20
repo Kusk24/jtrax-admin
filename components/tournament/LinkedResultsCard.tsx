@@ -152,7 +152,7 @@ export function LinkedResultsCard({
               void run(async () => setLinked(await linkChessResults(tournamentId, url.trim())))
             }
           >
-            <Icon name="link" size={15} color="#fff" /> {busy ? tCommon("saving") : t("link")}
+            <Icon name="link" size={15} color={COLORS.surface} /> {busy ? tCommon("saving") : t("link")}
           </button>
         </div>
       )}
