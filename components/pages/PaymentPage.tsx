@@ -38,6 +38,7 @@ import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
 import { DeleteButton, DetailHeader, EditButton } from "../detail";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
+import { useErrorToast } from "../ErrorToast";
 
 const TEMPLATE = equalTemplate(8, 76);
 const VIEWS = ["list", "card"] as const;
@@ -522,6 +523,7 @@ const METHOD_VALUES = ["CreditCard", "BankTransfer", "PromptPay", "Cash"];
 export function PaymentPage({ startStudentId }: { startStudentId?: string }) {
   const t = useTranslations("payment");
   const tCommon = useTranslations("common");
+  const { showError } = useErrorToast();
   const { payments, raw, create, update, remove } = useData();
   /* Arriving with a student means the wizard just registered them and the next
      thing the desk does is take their money. */
@@ -620,7 +622,7 @@ export function PaymentPage({ startStudentId }: { startStudentId?: string }) {
               payment_date: new Date().toISOString().slice(0, 10),
             });
           } catch (e) {
-            window.alert(e instanceof Error ? e.message : "payment failed");
+            showError(tCommon("paymentFailed"), e);
           }
           setFormOpen(false);
           setPage(0);

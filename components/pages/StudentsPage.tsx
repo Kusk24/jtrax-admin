@@ -44,6 +44,7 @@ import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
 import { BackLink, DangerPanel, DeleteButton, DetailHeader, EditButton } from "../detail";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
+import { useErrorToast } from "../ErrorToast";
 
 const TEMPLATE = equalTemplate(5, 90);
 const VIEWS = ["list", "card"] as const;
@@ -423,7 +424,7 @@ function StudentDetail({
               type="button"
               style={{
                 ...dangerSolidButtonStyle,
-                opacity: deleting ? 0.6 : 1,
+                opacity: deleting ? 0.75 : 1,
                 cursor: deleting ? "wait" : "pointer",
               }}
               disabled={deleting}
@@ -1247,7 +1248,7 @@ function AddStudentWizard({
               className="jt-btn-primary"
               style={{
                 ...primaryButtonStyle,
-                opacity: canSubmit && !saving ? 1 : 0.5,
+                opacity: canSubmit && !saving ? 1 : 0.75,
                 cursor: !canSubmit ? "not-allowed" : saving ? "wait" : "pointer",
               }}
               disabled={!canSubmit || saving}
@@ -1282,6 +1283,7 @@ export function StudentsPage({
 }) {
   const t = useTranslations("students");
   const tCommon = useTranslations("common");
+  const { showError } = useErrorToast();
   const tStatus = useTranslations("status");
   const { students, raw, batch, create, update, remove, removePerson, loading, error } = useData();
   const [view, setView] = useState<View>(startWizard ? { kind: "wizard" } : { kind: "list" });
@@ -1442,7 +1444,7 @@ export function StudentsPage({
         });
       });
     } catch (e) {
-      window.alert(e instanceof Error ? e.message : "create failed");
+      showError(tCommon("createFailed"), e);
     }
     setView({ kind: "list" });
   }
@@ -1468,7 +1470,7 @@ export function StudentsPage({
             /* The link is keyed by student, so this detaches only this child —
                the guardian and their other children are untouched. */
             remove("student-parents", student.id).catch((e) =>
-              window.alert(e instanceof Error ? e.message : "could not unlink"),
+              showError(tCommon("unlinkFailed"), e),
             );
           }}
           onBack={() => setView({ kind: "list" })}
@@ -1480,7 +1482,7 @@ export function StudentsPage({
                 current_level: next.level,
               });
             } catch (e) {
-              window.alert(e instanceof Error ? e.message : "save failed");
+              showError(tCommon("saveFailed"), e);
             }
           }}
           onDelete={(id, alsoParent) => {
@@ -1488,7 +1490,7 @@ export function StudentsPage({
                payments, enrolments and family link in a transaction. */
             removePerson("students", id, { parent: alsoParent })
               .then(() => setView({ kind: "list" }))
-              .catch((e) => window.alert(e instanceof Error ? e.message : "delete failed"));
+              .catch((e) => showError(tCommon("deleteFailed"), e));
           }}
         />
       );
