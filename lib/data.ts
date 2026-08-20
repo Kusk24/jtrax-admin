@@ -192,6 +192,10 @@ export type Tournament = {
   published: boolean;
   /** Whether anyone with the link may register, not just the front desk. */
   publicRegistration: boolean;
+  /** The chess-results.com event this tournament is linked to, when it is —
+      the id in tnr{N}.aspx. Rows carry it so a list can offer the jump
+      straight to where results are actually updated. */
+  chessResultsId?: number;
   /** Percent off the entry fee for one of the academy's own students. */
   studentDiscountPct: number;
   /** The entry fee as a number, for arithmetic. `entryFeeMember` is the same

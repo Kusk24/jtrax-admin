@@ -293,6 +293,7 @@ export function toTournaments(c: LiveCollections): Tournament[] {
          real column, so the Results tab reports the actual state. */
       published: n(t, "results_public") === 1,
       publicRegistration: n(t, "public_registration") === 1,
+      chessResultsId: t["chess_results_id"] == null ? undefined : n(t, "chess_results_id"),
       studentDiscountPct: n(t, "student_discount_pct"),
       entryFeeAmount: t["regular_fee"] == null ? 0 : n(t, "regular_fee"),
       categories: cats.map((k) => s(k, "name")),
