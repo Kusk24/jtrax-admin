@@ -834,7 +834,8 @@
     "unlink": "Unlink",
     "linkFailed": "That link could not be used. Check it is a chess-results.com tournament address.",
     "linkedPlayers": "{count} players · {ours} of ours",
-    "linkedOverridesNote": "While this is linked, the rounds and results below are not what the public sees."
+    "linkedRounds": "{count, plural, =1 {1 round mirrored} other {# rounds mirrored}}",
+    "linkedOverridesNote": "While this is linked, the public page shows the arbiter's standings and round pairings, and follows their uploads by itself while the event runs. The rounds typed below are not what anybody sees."
   },
   "registration": {
     "title": "Public registration",

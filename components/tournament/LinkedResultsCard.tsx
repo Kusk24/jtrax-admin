@@ -76,6 +76,9 @@ export function LinkedResultsCard({
         <>
           <p style={{ margin: 0, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
             {t("linkedPlayers", { count: linked.standings.length, ours })}
+            {(linked.rounds?.length ?? 0) > 0
+              ? ` · ${t("linkedRounds", { count: linked.rounds!.length })}`
+              : ""}
             {linked.fetchedAt ? ` · ${t("fetched", { at: fetchedLabel(linked.fetchedAt) })}` : ""}
           </p>
           <div style={{ display: "flex", gap: 9, flexWrap: "wrap" }}>
