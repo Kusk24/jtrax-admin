@@ -101,6 +101,7 @@
     "none": "None",
     "optional": "Optional",
     "saved": "Saved",
+    "tableRegion": "Table — scroll sideways for more columns",
     "creditsCount": "{count, plural, one {# credit} other {# credits}}",
     "saving": "Saving…",
     "deleting": "Deleting…",

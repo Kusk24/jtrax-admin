@@ -70,7 +70,10 @@ function Sidebar({ section }: { section: string }) {
         </span>
       </Link>
 
-      <nav style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, overflowY: "auto" }}>
+      {/* Layout (direction, flex, overflow) lives in `.jt-sidebar nav` in
+          globals.css — it changes between the phone strip and the desktop
+          column, and an inline style would beat both media-query variants. */}
+      <nav style={{ display: "flex" }}>
         {items.map((item) => {
           const active = item.id === section;
           const href = item.id === "home" ? "/" : `/${item.id}`;

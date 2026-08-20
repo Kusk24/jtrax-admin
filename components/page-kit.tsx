@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type CSSProperties, type ReactNode } from "react";
+import { Children, isValidElement, useEffect, type CSSProperties, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { downloadCsv, type CsvCell } from "@/lib/export";
 import { Icon, type IconName } from "@/lib/icons";
@@ -86,7 +86,7 @@ export const primaryButtonStyle: CSSProperties = {
   borderRadius: 999,
   border: "none",
   background: COLORS.blue,
-  color: "#fff",
+  color: COLORS.surface,
   fontFamily: FONT,
   fontSize: 14,
   fontWeight: 600,
@@ -330,8 +330,24 @@ export function Table({
   children: ReactNode;
   minWidth?: number;
 }) {
+  const t = useTranslations("common");
+  /* An EmptyRow stays outside the scroller: inside it, the message centres in
+     the table's 820px min-width, which on a phone puts it half off-screen. */
+  const kids = Children.toArray(children);
+  const empties = kids.filter((k) => isValidElement(k) && k.type === EmptyRow);
+  const rows = kids.filter((k) => !(isValidElement(k) && k.type === EmptyRow));
   return (
-    <div style={{ overflowX: "auto" }}>
+    <>
+    {/* Focusable on purpose: these tables scroll sideways, and a keyboard user
+       with no focusable child inside the scroller cannot reach the columns that
+       are off-screen. `role="region"` + a name is what makes the stop
+       meaningful when a screen reader lands on it. */}
+    <div
+      style={{ overflowX: "auto" }}
+      tabIndex={0}
+      role="region"
+      aria-label={t("tableRegion")}
+    >
       <div style={{ minWidth }}>
         <div
           style={{
@@ -361,9 +377,11 @@ export function Table({
             </span>
           ))}
         </div>
-        {children}
+        {rows}
       </div>
     </div>
+    {empties}
+    </>
   );
 }
 
@@ -508,7 +526,7 @@ export function Modal({
 
   return (
     <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgb(20 33 58 / 0.38)", zIndex: 50 }} />
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: COLORS.scrim, zIndex: 50 }} />
       <div
         role="dialog"
         aria-modal="true"
@@ -605,7 +623,7 @@ export function Drawer({
 
   return (
     <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgb(20 33 58 / 0.38)", zIndex: 50 }} />
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: COLORS.scrim, zIndex: 50 }} />
       <aside
         role="dialog"
         aria-modal="true"

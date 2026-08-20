@@ -534,10 +534,13 @@ textarea {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 12px;
+  /* Wraps so the nav gets a full-width row of its own. Sharing one row with the
+     brand and Logout left it about 150px wide, which clipped the current
+     section mid-word — it read as broken rather than as scrollable. */
+  flex-wrap: wrap;
+  gap: 8px 12px;
   padding: 10px 12px;
   border-bottom: 1px solid #e7ebf3;
-  overflow-x: auto;
 }
 
 /* The brand block is the one thing worth losing on a phone: the academy knows
@@ -549,11 +552,17 @@ textarea {
 /* The nav strip scrolls rather than wrapping: a wrapped nav changes height as
    the section name changes length, which shifts the whole page under a tap. */
 .jt-sidebar nav {
-  flex-direction: row !important;
-  overflow-y: visible !important;
+  flex-direction: row;
+  /* Its own line, full width. */
+  flex: 1 0 100%;
+  order: 3;
+  overflow-y: visible;
   overflow-x: auto;
-  gap: 2px !important;
+  gap: 2px;
   scrollbar-width: none;
+  /* The last item fades out at the edge instead of being sliced through, which
+     is the only cue that the strip keeps going. */
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
 }
 .jt-sidebar nav::-webkit-scrollbar { display: none; }
 
@@ -583,6 +592,7 @@ textarea {
     left: 0;
     width: 232px;
     flex-direction: column;
+    flex-wrap: nowrap;
     align-items: stretch;
     gap: 24px;
     padding: 20px 14px;
@@ -592,8 +602,11 @@ textarea {
   }
 
   .jt-sidebar nav {
-    flex-direction: column !important;
-    overflow-y: auto !important;
-    gap: 4px !important;
+    flex-direction: column;
+    flex: 1 1 auto;
+    order: 0;
+    overflow-y: auto;
+    gap: 4px;
+    mask-image: none;
   }
 }
