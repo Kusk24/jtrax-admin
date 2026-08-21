@@ -298,6 +298,9 @@ const contactPillStyle = {
 
 export function ParentsPage() {
   const t = useTranslations("parents");
+  /* The temporary-password modal reuses the students namespace, which is where
+     that string already lives. */
+  const tStudents = useTranslations("students");
   const tCommon = useTranslations("common");
   const { parents, students, raw, loading, error, batch, create, update, remove, removePerson } = useData();
   const [view, setView] = useState<View>({ kind: "list" });
@@ -560,7 +563,7 @@ export function ParentsPage() {
               rows={[
                 { label: t("loginEmail"), value: created.email },
                 {
-                  label: tCommon("save"),
+                  label: tStudents("tempPassword"),
                   value: <strong style={{ letterSpacing: "0.04em" }}>{created.password}</strong>,
                 },
               ]}

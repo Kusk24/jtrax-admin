@@ -1259,7 +1259,7 @@ export function TournamentPage({
             <ViewToggle value={mode} onChange={setMode} options={CARD_FIRST} />
             <ExportButton
               filename="tournaments"
-              columns={[t("fieldName"), t("fieldDate"), t("format"), t("participants")]}
+              columns={[t("fieldName"), t("fieldDate"), t("fieldVenue"), t("participants")]}
               rows={() => filtered.map((x) => [x.name, x.date, x.venue, x.currentParticipants])}
             />
             <button type="button" className="jt-btn-primary" style={primaryButtonStyle} onClick={() => setWizardOpen(true)}>
