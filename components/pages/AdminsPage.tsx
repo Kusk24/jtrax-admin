@@ -30,6 +30,7 @@ import { DangerPanel, DeleteButton, DetailHeader, EditButton } from "../detail";
 import { CardGrid, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 import { useErrorToast } from "../ErrorToast";
+import { requestPasswordReset } from "@/app/actions/auth";
 
 const ROLES: JtraxRole[] = ["Admin", "Receptionist"];
 /* Card first here: this screen was cards from the start, and staff are
@@ -47,6 +48,7 @@ export function AdminsPage() {
   const { admins, raw, batch, create, update, remove } = useData();
   const [mode, setMode] = useViewMode("admins", VIEWS);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [resetting, setResetting] = useState(false);
   const [resetShown, setResetShown] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   /* One modal for both jobs, as on the Academy page: "new" creates, an admin
@@ -205,8 +207,23 @@ export function AdminsPage() {
                   <button
                     type="button"
                     className="jt-act-reset"
-                    style={secondaryButtonStyle}
-                    onClick={() => setResetShown(true)}
+                    style={{ ...secondaryButtonStyle, opacity: resetting ? 0.75 : 1 }}
+                    disabled={resetting}
+                    onClick={() => {
+                      /* This said "a reset link has been sent" while sending
+                         nothing. The server action behind the sign-in page's
+                         own Forgot-password link does send one, so it is what
+                         the button calls now. */
+                      setResetting(true);
+                      const body = new FormData();
+                      body.set("email", detail.email);
+                      void requestPasswordReset({}, body)
+                        .then((r) => {
+                          if (r.error) showError(tCommon("saveFailed"));
+                          else setResetShown(true);
+                        })
+                        .finally(() => setResetting(false));
+                    }}
                   >
                     {t("resetPassword")}
                   </button>
@@ -312,6 +329,9 @@ export function AdminsPage() {
                         phone: form.phone,
                         email: form.email,
                         line_id: form.lineId,
+                        /* The form has always offered Role; leaving it out of
+                           the payload meant a demotion silently did nothing. */
+                        role: form.role,
                       });
                       setAdminModal(null);
                       return;

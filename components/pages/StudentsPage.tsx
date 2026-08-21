@@ -117,7 +117,8 @@ function StudentDetail({
   onSave: (student: Student) => Promise<void>;
   /* `alsoParent` is only ever offered when this is the guardian's last child;
      a guardian with other children is never touched. */
-  onDelete: (id: string, alsoParent: boolean) => void;
+  /* Returns a promise so the confirm button can stop saying "Deleting…". */
+  onDelete: (id: string, alsoParent: boolean) => void | Promise<void>;
   onLinkGuardian: (parentId: string, relation: string) => Promise<void>;
   onUnlinkGuardian: () => void;
 }) {
@@ -430,7 +431,12 @@ function StudentDetail({
               disabled={deleting}
               onClick={() => {
                 setDeleting(true);
-                onDelete(student.id, alsoParent);
+                /* Released again on failure: the caller shows a toast, and
+                   without this the button stayed disabled reading "Deleting…"
+                   with no way to retry. */
+                void Promise.resolve(onDelete(student.id, alsoParent)).finally(() =>
+                  setDeleting(false),
+                );
               }}
             >
               {deleting ? tCommon("deleting") : t("deleteConfirm")}
@@ -1485,13 +1491,14 @@ export function StudentsPage({
               showError(tCommon("saveFailed"), e);
             }
           }}
-          onDelete={(id, alsoParent) => {
+          onDelete={(id, alsoParent) =>
             /* One request: the backend removes the attendance, credits,
-               payments, enrolments and family link in a transaction. */
+               payments, enrolments and family link in a transaction. Returned
+               so the confirm button knows when it is over. */
             removePerson("students", id, { parent: alsoParent })
               .then(() => setView({ kind: "list" }))
-              .catch((e) => showError(tCommon("deleteFailed"), e));
-          }}
+              .catch((e) => showError(tCommon("deleteFailed"), e))
+          }
         />
       );
   }

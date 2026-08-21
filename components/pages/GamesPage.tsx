@@ -198,7 +198,9 @@ export function GamesPage() {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [mode, setMode] = useViewMode("games", VIEWS);
-  const [page, setPage] = useState(1);
+  /* 0-indexed, like every other list here — starting at 1 opened the list on
+     page two and hid the first twelve rooms. */
+  const [page, setPage] = useState(0);
   const [openId, setOpenId] = useState<string | null>(null);
   const [minted, setMinted] = useState<GameRoom | null>(null);
   const [busy, setBusy] = useState(false);
