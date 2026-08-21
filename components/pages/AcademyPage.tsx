@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useData } from "@/components/DataProvider";
-import { fmtTHB, liveClasses } from "@/lib/live";
+import { fmtTHB, liveClasses, livePackages } from "@/lib/live";
 import { Icon, type IconName } from "@/lib/icons";
 import { COLORS, FONT, initialsOf } from "@/lib/theme";
 import {
@@ -121,7 +121,12 @@ export function AcademyPage() {
   }));
   /* A package is priced per class, so the list joins the class name in rather
      than showing a bare class id. */
-  const packages: CreditPackage[] = raw.creditPackages.map((p) => {
+  /* Retired packages, and the packages of retired classes, leave the price
+     list — the same way their class leaves the list above. */
+  const packages: CreditPackage[] = livePackages({
+    creditPackages: raw.creditPackages,
+    classes: raw.classes,
+  }).map((p) => {
     const cls = raw.classes.find((c) => String(c.class_id) === String(p.class_id));
     return {
       id: String(p.credit_package_id),
@@ -239,8 +244,17 @@ export function AcademyPage() {
       {deletingPackage && (
         <ConfirmDeleteModal
           what={t("packageFor", { className: deletingPackage.className, credits: deletingPackage.creditAmount })}
+          note={t("packageDeleteNote")}
           onClose={() => setDeletingPackage(null)}
-          onConfirm={() => remove("credit-packages", deletingPackage.id)}
+          /* Archived, not deleted. A payment points at the package and the
+             console reads it to say what that payment bought, so removing the
+             row stops old receipts adding up — and the database refuses it
+             outright the moment the package has been sold once. */
+          onConfirm={() =>
+            update("credit-packages", deletingPackage.id, {
+              archived_at: new Date().toISOString(),
+            }).then(() => undefined)
+          }
         />
       )}
 

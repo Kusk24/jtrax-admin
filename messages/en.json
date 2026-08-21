@@ -667,7 +667,8 @@
     "packageFor": "the {credits}-credit package for {className}",
     "courseDeleteNote": "The class is retired: it disappears from every list and nobody can be enrolled in it again. Its past sessions, enrolments and receipts keep its name.",
     "noCourses": "No courses yet.",
-    "noTeachers": "No teachers yet."
+    "noTeachers": "No teachers yet.",
+    "packageDeleteNote": "The package is retired: it leaves the price list and the till, and cannot be sold again. Payments that bought it keep saying what they bought."
   },
   "settings": {
     "title": "Credit Rules",

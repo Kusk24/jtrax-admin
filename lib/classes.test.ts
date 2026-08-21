@@ -7,7 +7,7 @@
  * from everywhere a class is *chosen*, still there everywhere one is *named*.
  */
 import { describe, expect, it } from "vitest";
-import { isArchived, liveClasses } from "./live";
+import { isArchived, liveClasses, livePackages } from "./live";
 
 const CLASSES = [
   { class_id: "cls_group", name: "Group Class" },
@@ -50,5 +50,40 @@ describe("naming a class, as opposed to choosing one", () => {
 
   it("is safe on a class that cannot be found at all", () => {
     expect(isArchived(undefined)).toBe(false);
+  });
+});
+
+/* A package cannot be deleted once it has been sold: a payment points at it,
+   and the console reads it to say what that payment bought. Retiring it takes
+   it off the price list and leaves the receipt adding up. */
+const PACKAGES = [
+  { credit_package_id: "pkg_now", class_id: "cls_group", credit_amount: 20 },
+  { credit_package_id: "pkg_old", class_id: "cls_group", credit_amount: 20, archived_at: "2026-08-21T10:00:00Z" },
+  { credit_package_id: "pkg_of_retired_class", class_id: "cls_old", credit_amount: 10 },
+];
+
+describe("the packages the till may sell", () => {
+  it("leaves out a retired package", () => {
+    const sellable = livePackages({ creditPackages: PACKAGES, classes: CLASSES });
+    expect(sellable.map((p) => p.credit_package_id)).not.toContain("pkg_old");
+  });
+
+  /* The class is not on offer, so neither is its price — without the package
+     itself having to be retired one by one. */
+  it("leaves out a package whose class was retired", () => {
+    const sellable = livePackages({ creditPackages: PACKAGES, classes: CLASSES });
+    expect(sellable.map((p) => p.credit_package_id)).not.toContain("pkg_of_retired_class");
+  });
+
+  it("keeps the one still on sale", () => {
+    const sellable = livePackages({ creditPackages: PACKAGES, classes: CLASSES });
+    expect(sellable.map((p) => p.credit_package_id)).toEqual(["pkg_now"]);
+  });
+
+  /* The whole reason the row is kept: a receipt has to keep adding up. */
+  it("still finds a retired package by id, to say what a payment bought", () => {
+    const bought = PACKAGES.find((p) => p.credit_package_id === "pkg_old");
+    expect(bought?.credit_amount).toBe(20);
+    expect(isArchived(bought)).toBe(true);
   });
 });
