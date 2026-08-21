@@ -3,31 +3,138 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { suggestedActions, type DeskAction, type DeskStatus } from "@/lib/desk-actions";
+import { suggestedActions, type DeskAction } from "@/lib/desk-actions";
+import {
+  checkInIntent,
+  candidateSessions,
+  deskStatusOf,
+  todaysAttendance,
+  type AttendanceRow,
+  type EnrolmentRow,
+  type SessionRow,
+} from "@/lib/desk-state";
 
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
 import { useData } from "../DataProvider";
+import { useErrorToast } from "../ErrorToast";
 import { Avatar, Badge, Card, SectionTitle } from "../ui";
 
 const CREDIT_TOP_UPS = [5, 10, 20];
-
-/** Per-student desk state: where a walk-in is in the check-in → class → dismiss cycle. */
-type DeskState = {
-  status: DeskStatus;
-  className?: string;
-  extraCredits: number;
-};
 
 type PopoverKind = "class" | "credit" | null;
 
 export function FindStudent() {
   const router = useRouter();
   const t = useTranslations("find");
-  const { students, todaysClasses } = useData();
+  const tCommon = useTranslations("common");
+  const { showError } = useErrorToast();
+  const { students, todaysClasses, raw, create, update } = useData();
   const [query, setQuery] = useState("");
-  const [desk, setDesk] = useState<Record<string, DeskState>>({});
   const [popover, setPopover] = useState<{ id: string; kind: PopoverKind }>({ id: "", kind: null });
+  /* The student whose row is mid-write. Every desk action is one request that
+     refetches, and a second press before it lands is a second attendance row —
+     or, on a unique index, an error the receptionist did not cause. */
+  const [busy, setBusy] = useState("");
+
+  /* Today's sessions, and the rows that say who is at them. The desk reads the
+     same attendance table the check-in list and the "Checked in today" tile
+     read, which is why pressing a button here now moves all three. */
+  const sessions: SessionRow[] = useMemo(
+    () =>
+      todaysClasses
+        .filter((c) => c.id)
+        .map((c) => ({ sessionId: String(c.id), classId: String(c.classId ?? "") })),
+    [todaysClasses],
+  );
+
+  const attendance: AttendanceRow[] = useMemo(
+    () =>
+      raw.attendance.map((a) => ({
+        attendanceId: String(a["attendance_id"]),
+        studentId: String(a["student_id"]),
+        sessionId: String(a["session_id"]),
+        checkedOut: Boolean(String(a["check_out_time"] ?? "")),
+      })),
+    [raw.attendance],
+  );
+
+  const enrolments: EnrolmentRow[] = useMemo(
+    () =>
+      raw.enrollments.map((e) => ({
+        studentId: String(e["student_id"]),
+        classId: String(e["class_id"] ?? ""),
+      })),
+    [raw.enrollments],
+  );
+
+  /** The class a student is sitting in right now, for the chip. */
+  function classNameOf(studentId: string): string {
+    const row = todaysAttendance(attendance, sessions, studentId);
+    return todaysClasses.find((c) => String(c.id) === row?.sessionId)?.name ?? "";
+  }
+
+  /** Writes the student into a session — moving them if the desk picked the
+      wrong one first, rather than leaving two rows for one afternoon. */
+  async function checkIn(studentId: string, sessionId: string) {
+    const existing = todaysAttendance(attendance, sessions, studentId);
+    setBusy(studentId);
+    try {
+      if (existing) {
+        await update("attendance", existing.attendanceId, {
+          session_id: sessionId,
+          check_out_time: null,
+        });
+      } else {
+        await create("attendance", {
+          student_id: studentId,
+          session_id: sessionId,
+          check_in_time: new Date().toISOString(),
+        });
+      }
+    } catch (e) {
+      showError(tCommon("saveFailed"), e);
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function dismiss(studentId: string) {
+    const row = todaysAttendance(attendance, sessions, studentId);
+    if (!row) return;
+    setBusy(studentId);
+    try {
+      await update("attendance", row.attendanceId, { check_out_time: new Date().toISOString() });
+    } catch (e) {
+      showError(tCommon("saveFailed"), e);
+    } finally {
+      setBusy("");
+    }
+  }
+
+  /** A manual adjustment, not a purchase: no money changed hands at the desk.
+      Money goes through Record Payment, which writes its own ledger entry. */
+  async function addCredits(studentId: string, amount: number) {
+    const enr = raw.enrollments.find((e) => String(e["student_id"]) === studentId);
+    if (!enr) {
+      showError(t("noEnrolment"));
+      return;
+    }
+    setBusy(studentId);
+    try {
+      await create("credit-transactions", {
+        enrollment_id: String(enr["enrollment_id"]),
+        transaction_type: "manual_adjustment",
+        amount,
+        transaction_date: new Date().toISOString().slice(0, 10),
+        notes: t("addedAtDesk"),
+      });
+    } catch (e) {
+      showError(tCommon("saveFailed"), e);
+    } finally {
+      setBusy("");
+    }
+  }
 
   /* Name or parent-phone, against the real roster. */
   const results = useMemo(() => {
@@ -40,14 +147,6 @@ export function FindStudent() {
     );
   }, [query, students]);
   const showResults = query.trim().length > 0;
-
-  function deskFor(id: string): DeskState {
-    return desk[id] ?? { status: "none", extraCredits: 0 };
-  }
-
-  function update(id: string, patch: Partial<DeskState>) {
-    setDesk((prev) => ({ ...prev, [id]: { ...deskFor(id), ...patch } }));
-  }
 
   function togglePopover(id: string, kind: PopoverKind) {
     setPopover((prev) => (prev.id === id && prev.kind === kind ? { id: "", kind: null } : { id, kind }));
@@ -136,20 +235,21 @@ export function FindStudent() {
             </div>
           ) : (
             results.map((student) => {
-              const state = deskFor(student.id);
-              const credit = student.credit + state.extraCredits;
+              /* Read, not remembered: the credit badge is the ledger's own
+                 total and the chip is today's attendance row. */
+              const credit = student.credit;
+              const status = deskStatusOf(attendance, sessions, student.id);
               const chip = statusChipColors(student.status);
               const open = popover.id === student.id ? popover.kind : null;
-              const actions: DeskAction[] = suggestedActions(state.status, student.status);
+              const actions: DeskAction[] = suggestedActions(status, student.status);
+              const writing = busy === student.id;
 
               const checkinLabel =
-                state.status === "in_class"
-                  ? t("inClass", { className: state.className ?? "" })
-                  : state.status === "checked_in"
-                    ? t("checkedIn")
-                    : state.status === "dismissed"
-                      ? t("dismissed")
-                      : t("notCheckedIn");
+                status === "in_class"
+                  ? t("inClass", { className: classNameOf(student.id) })
+                  : status === "dismissed"
+                    ? t("dismissed")
+                    : t("notCheckedIn");
 
               return (
                 <div key={student.id}>
@@ -204,6 +304,7 @@ export function FindStudent() {
                             key={action}
                             type="button"
                             className="jt-chip"
+                            disabled={writing}
                             onClick={() => togglePopover(student.id, "credit")}
                             style={ghostBtn}
                           >
@@ -217,7 +318,8 @@ export function FindStudent() {
                             key={action}
                             type="button"
                             className="jt-chip"
-                            onClick={() => update(student.id, { status: "dismissed" })}
+                            disabled={writing}
+                            onClick={() => dismiss(student.id)}
                             style={ghostBtn}
                           >
                             {t("dismiss")}
@@ -229,14 +331,26 @@ export function FindStudent() {
                           key={action}
                           type="button"
                           className="jt-btn-primary"
-                          onClick={() =>
-                            action === "checkIn"
-                              ? update(student.id, { status: "checked_in" })
-                              : togglePopover(student.id, "class")
-                          }
+                          disabled={writing}
+                          onClick={() => {
+                            if (action !== "checkIn") {
+                              togglePopover(student.id, "class");
+                              return;
+                            }
+                            /* One class today and there is nothing to ask;
+                               several and the desk must say which, because the
+                               wrong one is a wrong record for a real child. */
+                            const intent = checkInIntent(sessions, enrolments, student.id);
+                            if (intent.kind === "write") void checkIn(student.id, intent.sessionId);
+                            else togglePopover(student.id, "class");
+                          }}
                           style={primaryBtn}
                         >
-                          {action === "checkIn" ? t("checkIn") : t("assignClass")}
+                          {writing
+                            ? tCommon("saving")
+                            : action === "checkIn"
+                              ? t("checkIn")
+                              : t("assignClass")}
                         </button>
                       );
                     })}
@@ -244,20 +358,33 @@ export function FindStudent() {
 
                   {open === "class" && (
                     <div className="jtrax-fade-in-up" style={popoverStyle}>
-                      {todaysClasses.map((cls) => (
-                        <button
-                          key={cls.name}
-                          type="button"
-                          className="jt-chip"
-                          onClick={() => {
-                            update(student.id, { status: "in_class", className: cls.name });
-                            setPopover({ id: "", kind: null });
-                          }}
-                          style={chipBtn}
-                        >
-                          {cls.name}
-                        </button>
-                      ))}
+                      {/* Their own classes, or everything running today when
+                          they are enrolled in none — a child at the desk has
+                          to be recordable whatever the paperwork says. */}
+                      {candidateSessions(sessions, enrolments, student.id).map((session) => {
+                        const cls = todaysClasses.find((c) => String(c.id) === session.sessionId);
+                        return (
+                          <button
+                            key={session.sessionId}
+                            type="button"
+                            className="jt-chip"
+                            disabled={writing}
+                            onClick={() => {
+                              setPopover({ id: "", kind: null });
+                              void checkIn(student.id, session.sessionId);
+                            }}
+                            style={chipBtn}
+                          >
+                            {cls ? `${cls.name} · ${cls.time}` : session.sessionId}
+                          </button>
+                        );
+                      })}
+                      {/* Nothing is scheduled, so there is nothing to check
+                          anyone in to. Said out loud, with the screen that
+                          fixes it named. */}
+                      {sessions.length === 0 && (
+                        <p style={noteStyle}>{t("noSessionsToday")}</p>
+                      )}
                     </div>
                   )}
 
@@ -268,15 +395,21 @@ export function FindStudent() {
                           key={amount}
                           type="button"
                           className="jt-chip"
+                          disabled={writing}
                           onClick={() => {
-                            update(student.id, { extraCredits: state.extraCredits + amount });
                             setPopover({ id: "", kind: null });
+                            void addCredits(student.id, amount);
                           }}
                           style={chipBtn}
                         >
                           +{amount}
                         </button>
                       ))}
+                      {/* Credits hang off an enrolment; without one there is
+                          nowhere to put them. */}
+                      {!raw.enrollments.some((e) => String(e["student_id"]) === student.id) && (
+                        <p style={noteStyle}>{t("noEnrolment")}</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -327,6 +460,13 @@ const chipBtn: React.CSSProperties = {
   fontWeight: 600,
   cursor: "pointer",
   transition: "all 160ms ease",
+};
+
+const noteStyle: React.CSSProperties = {
+  margin: 0,
+  fontFamily: FONT,
+  fontSize: 13,
+  color: COLORS.textSecondary,
 };
 
 const popoverStyle: React.CSSProperties = {

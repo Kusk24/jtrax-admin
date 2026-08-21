@@ -31,7 +31,14 @@ function standingOf(studentStatus: string): Standing {
 
 /* The spec's table, verbatim. `checked_in` is not in it — it is the step
    between checking in and sitting in a class, so it carries the same
-   standing-driven follow-up plus the assignment that moves it along. */
+   standing-driven follow-up plus the assignment that moves it along.
+
+   Since the desk started writing to the database, no student reaches it.
+   `attendance` records a student *at a session*: there is no row for "here,
+   but not in a class yet", so checking in and being in a class are one act.
+   The row is kept because it is the client's table and costs nothing, and
+   because a session-less attendance row would be the wrong way to earn it
+   back — see lib/desk-state.ts. */
 const MATRIX: Record<DeskStatus, Record<Standing, DeskAction[]>> = {
   none: {
     normal: ["checkIn"],
