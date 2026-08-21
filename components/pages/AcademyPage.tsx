@@ -32,7 +32,7 @@ import {
   Table,
   TableRow,
 } from "../page-kit";
-import { Avatar, Badge, Card } from "../ui";
+import { Avatar, Badge, Card, SectionTitle } from "../ui";
 import { DangerPanel, DeleteButton, DetailHeader, EditButton } from "../detail";
 import { CardGrid, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
@@ -190,6 +190,20 @@ export function AcademyPage() {
     icon: "pawn",
     category: "Beginner",
   });
+  /* A class with no package cannot be sold, cannot be paid for and cannot give
+     anyone credits — so its first one is asked for here rather than left as a
+     second errand on another card. Prefilled with the commonest terms, which
+     makes it a glance and a Save rather than three more questions. */
+  const [firstPackage, setFirstPackage] = useState({ credits: "20", price: "12000", days: "90" });
+  /* Every one of the three is required and must be a real number. A package of
+     zero credits, or one that expires the day it is bought, is not a package —
+     and price is the only one allowed to be nothing, because a free trial
+     class is a real thing an academy runs. */
+  const firstPackageComplete =
+    Number(firstPackage.credits) > 0 &&
+    firstPackage.price.trim() !== "" &&
+    Number(firstPackage.price) >= 0 &&
+    Number(firstPackage.days) > 0;
   const [teacherDraft, setTeacherDraft] = useState<Omit<Teacher, "id">>({
     name: "",
     email: "",
@@ -642,15 +656,26 @@ export function AcademyPage() {
               <ActionButton
                 className="jt-btn-primary"
                 style={primaryButtonStyle}
-                disabled={!courseDraft.name}
+                disabled={!courseDraft.name || (courseModal === "new" && !firstPackageComplete)}
                 busyLabel={tCommon("saving")}
                 onClick={async () => {
                   try {
                     if (courseModal === "new") {
-                      await create("classes", {
-                        name: courseDraft.name,
-                        description: courseDraft.desc,
-                        class_type: ["Private", "Group", "Master"].includes(courseDraft.category) ? courseDraft.category : "Group",
+                      /* One act: a class and the package that makes it
+                         sellable, batched so the screen refetches once and
+                         neither is left behind if the other fails. */
+                      await batch(async () => {
+                        const cls = await create("classes", {
+                          name: courseDraft.name,
+                          description: courseDraft.desc,
+                          class_type: ["Private", "Group", "Master"].includes(courseDraft.category) ? courseDraft.category : "Group",
+                        });
+                        await create("credit-packages", {
+                          class_id: cls.class_id,
+                          credit_amount: Number(firstPackage.credits),
+                          standard_price: Number(firstPackage.price),
+                          validity_days: Number(firstPackage.days),
+                        });
                       });
                     } else {
                       await update("classes", courseModal.id, {
@@ -692,6 +717,61 @@ export function AcademyPage() {
               <span style={labelStyle}>{t("icon")}</span>
               <IconPicker value={courseDraft.icon} onChange={(icon) => setCourseDraft({ ...courseDraft, icon })} />
             </div>
+
+            {/* Only when creating. Editing a class must not quietly add a
+                second package to one that already has its prices. */}
+            {courseModal === "new" && (
+              <>
+                <div style={{ height: 1, background: COLORS.border, margin: "3px 0" }} />
+                <div>
+                  <SectionTitle>{t("firstPackageTitle")}</SectionTitle>
+                  <p style={{ margin: "5px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+                    {t("firstPackageHelp")}
+                  </p>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}>
+                  <div>
+                    <label style={labelStyle} htmlFor="co-credits">{t("creditAmount")}</label>
+                    <input
+                      id="co-credits"
+                      type="number"
+                      min={0}
+                      step={0.5}
+                      value={firstPackage.credits}
+                      onChange={(e) => setFirstPackage({ ...firstPackage, credits: e.target.value })}
+                      style={fieldStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle} htmlFor="co-price">{t("price")}</label>
+                    <input
+                      id="co-price"
+                      type="number"
+                      min={0}
+                      value={firstPackage.price}
+                      onChange={(e) => setFirstPackage({ ...firstPackage, price: e.target.value })}
+                      style={fieldStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle} htmlFor="co-days">{t("validity")}</label>
+                    <input
+                      id="co-days"
+                      type="number"
+                      min={1}
+                      value={firstPackage.days}
+                      onChange={(e) => setFirstPackage({ ...firstPackage, days: e.target.value })}
+                      style={fieldStyle}
+                    />
+                  </div>
+                </div>
+                {!firstPackageComplete && (
+                  <p style={{ margin: 0, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+                    {t("firstPackageIncomplete")}
+                  </p>
+                )}
+              </>
+            )}
           </div>
         </Modal>
       )}

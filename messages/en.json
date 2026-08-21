@@ -668,7 +668,10 @@
     "courseDeleteNote": "The class is retired: it disappears from every list and nobody can be enrolled in it again. Its past sessions, enrolments and receipts keep its name.",
     "noCourses": "No courses yet.",
     "noTeachers": "No teachers yet.",
-    "packageDeleteNote": "The package is retired: it leaves the price list and the till, and cannot be sold again. Payments that bought it keep saying what they bought."
+    "packageDeleteNote": "The package is retired: it leaves the price list and the till, and cannot be sold again. Payments that bought it keep saying what they bought.",
+    "firstPackageTitle": "Its first credit package",
+    "firstPackageHelp": "A class cannot be sold, paid for or attended until it has one. Change it or add more on the Credit Packages card below.",
+    "firstPackageIncomplete": "Credits and validity must be more than zero. A free class is fine — leave the price at 0."
   },
   "settings": {
     "title": "Credit Rules",
