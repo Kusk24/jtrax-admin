@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { generateTempPassword } from "@/lib/credentials";
 import { type Student } from "@/lib/data";
 import { useData } from "@/components/DataProvider";
-import { fmtDate, fmtTHB, practiceStrip } from "@/lib/live";
+import { fmtCredits, fmtDate, fmtTHB, practiceStrip } from "@/lib/live";
 import { Icon } from "@/lib/icons";
 import { LichessPanel } from "../lichess/LichessPanel";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
@@ -287,6 +287,10 @@ function StudentDetail({
         kind: "number",
         required: true,
         half: true,
+        /* One credit is an hour, so half a credit is a real half-hour lesson.
+           Without a step the spinner counts in whole hours and the browser
+           calls 13.5 a mistake. */
+        step: 0.5,
         help: t("creditAmountHelp"),
       },
       { name: "transaction_date", label: tCommon("date"), kind: "date", required: true, half: true },
@@ -1734,7 +1738,7 @@ export function StudentsPage({
                     {s.className}
                   </span>
                   <Badge color={creditChip.color} bg={creditChip.bg} style={{ justifySelf: "start" }}>
-                    {s.credit}
+                    {fmtCredits(s.credit)}
                   </Badge>
                   <Badge color={chip.color} bg={chip.bg} style={{ justifySelf: "start" }}>
                     {tStatus(s.status)}

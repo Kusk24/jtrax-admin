@@ -225,7 +225,10 @@
     "registerStudent": "Register Student",
     "dismiss": "Dismiss",
     "contact": "Contact",
-    "noAction": "No action needed"
+    "noAction": "No action needed",
+    "noSessionsToday": "No class is running today. Create one on Class History first.",
+    "noEnrolment": "No enrolment to add credits to. Enrol them on their student page first.",
+    "addedAtDesk": "Added at the front desk"
   },
   "session": {
     "createTitle": "Create Session",

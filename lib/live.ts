@@ -444,6 +444,20 @@ export function toRevenueTrend(c: LiveCollections, now = new Date()): TrendPoint
 }
 
 /** Revenue booked in the current calendar month, and how many payments made it. */
+/**
+ * A credit balance as a person would write it.
+ *
+ * One credit is an hour, so balances are fractional — half an hour is 0.5, and
+ * a twenty-minute make-up lesson is a third of a credit that no amount of
+ * arithmetic will make exact. Summing those in binary floating point produces
+ * 13.499999999999998, which is the right number and the wrong thing to put on
+ * a chip. Two decimal places, with trailing zeros dropped so a whole balance
+ * still reads "14" rather than "14.00".
+ */
+export function fmtCredits(credit: number): string {
+  return String(Math.round(credit * 100) / 100);
+}
+
 /* Revenue is money the academy has, not money it has been promised. A payment
    sitting Pending has not cleared and a Refunded one went back out, so neither
    belongs in a total — a row with no status at all predates the column and was

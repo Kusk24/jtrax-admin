@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { fmtCredits } from "@/lib/live";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
 import { useData } from "../DataProvider";
 import { equalTemplate, Table, TableRow } from "../page-kit";
@@ -102,7 +103,7 @@ export function CheckinTable() {
               </span>
 
               <Badge color={credit.color} bg={credit.bg} style={{ justifySelf: "start" }}>
-                {row.credit}
+                {fmtCredits(row.credit)}
               </Badge>
 
               <span style={{ display: "flex", alignItems: "center", color: COLORS.textSecondary }}>
