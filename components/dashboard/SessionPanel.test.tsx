@@ -7,7 +7,7 @@
  * life dead for a reason the screen never gave.
  */
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
@@ -138,6 +138,45 @@ describe("no classes at all", () => {
     } finally {
       state.raw.classes = saved;
     }
+  });
+});
+
+/* A time field reading "03:30" can still be empty to the code: `<input
+   type="time">` reports "" until every segment is filled, and a 12-hour
+   browser has an AM/PM segment as well. "Set a start and end time" in front of
+   two fields that both look filled is no help at all. */
+describe("a time that is only half entered", () => {
+  it("says so, instead of claiming the times are unset", async () => {
+    const user = userEvent.setup();
+    const { start, end } = renderPanel();
+    await user.type(start, "10:00");
+    await user.type(end, "11:30");
+    expect(screen.queryByText(/create the session/)).toBeNull();
+
+    /* Now the desk edits the start and leaves a segment blank. This is exactly
+       what the browser then reports: digits still on screen, value "", and
+       badInput admitting why. */
+    Object.defineProperty(start, "validity", { configurable: true, value: { badInput: true } });
+    fireEvent.change(start, { target: { value: "" } });
+
+    expect(screen.getByText(/only half entered/)).toBeTruthy();
+    expect(screen.queryByText("Set a start and end time to create the session.")).toBeNull();
+  });
+
+  it("names the one field that is missing", async () => {
+    const user = userEvent.setup();
+    const { end } = renderPanel();
+    await user.type(end, "11:30");
+
+    expect(screen.getByText("Set a start time to create the session.")).toBeTruthy();
+  });
+
+  it("names the end when that is the one left", async () => {
+    const user = userEvent.setup();
+    const { start } = renderPanel();
+    await user.type(start, "10:00");
+
+    expect(screen.getByText("Set an end time to create the session.")).toBeTruthy();
   });
 });
 

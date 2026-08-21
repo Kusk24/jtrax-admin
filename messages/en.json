@@ -250,7 +250,10 @@
     "addStudent": "Add Student",
     "allAdded": "Everyone is already on the roster.",
     "needTimes": "Set a start and end time to create the session.",
-    "noClasses": "No class exists yet — an admin adds classes on the Academy screen."
+    "noClasses": "No class exists yet — an admin adds classes on the Academy screen.",
+    "needStartTime": "Set a start time to create the session.",
+    "needEndTime": "Set an end time to create the session.",
+    "timeIncomplete": "One of the times is only half entered — finish it, including AM/PM if your browser asks for it."
   },
   "students": {
     "title": "Students",
