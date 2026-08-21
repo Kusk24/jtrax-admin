@@ -25,6 +25,8 @@ export function SectionRouter({
   newStudentName,
   status,
   studentId,
+  detailId,
+  detailTab,
 }: {
   section: string;
   /* Threaded from the server component rather than read with useSearchParams,
@@ -35,6 +37,10 @@ export function SectionRouter({
   /* The student a payment is about to be recorded for, straight off the end of
      the registration wizard. */
   studentId?: string;
+  /* Which row is open, and which of its tabs — so a refresh, a shared link and
+     the Back button all land where the person was. */
+  detailId?: string;
+  detailTab?: string;
 }) {
   const { role } = useJtrax();
 
@@ -74,7 +80,7 @@ export function SectionRouter({
     case "chat":
       return <MessagesPage />;
     case "tournament":
-      return <TournamentPage />;
+      return <TournamentPage detailId={detailId} detailTab={detailTab} />;
     default:
       return <SectionPlaceholder section={section} />;
   }

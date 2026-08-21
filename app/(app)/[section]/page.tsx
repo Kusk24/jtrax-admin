@@ -12,7 +12,7 @@ export default async function SectionPage({
   searchParams,
 }: {
   params: Promise<{ section: string }>;
-  searchParams: Promise<{ new?: string; status?: string; student?: string }>;
+  searchParams: Promise<{ new?: string; status?: string; student?: string; id?: string; tab?: string }>;
 }) {
   const { section } = await params;
   const known = NAV_STRUCTURE.some((item) => item.id === section && item.id !== "home");
@@ -24,7 +24,7 @@ export default async function SectionPage({
      on ?student=<id>, which opens the payment form for them. Read here rather
      than with useSearchParams in the client component, which would bail the
      whole route out of server rendering. */
-  const { new: newStudentName, status, student } = await searchParams;
+  const { new: newStudentName, status, student, id, tab } = await searchParams;
 
   return (
     <SectionRouter
@@ -32,6 +32,8 @@ export default async function SectionPage({
       newStudentName={newStudentName}
       status={status}
       studentId={student}
+      detailId={id}
+      detailTab={tab}
     />
   );
 }
