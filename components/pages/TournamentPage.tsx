@@ -371,6 +371,7 @@ function TournamentDetail({
   const t = useTranslations("tournament");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
+  const tExternal = useTranslations("external");
   const { students, create, update, remove, refresh } = useData();
   const [tab, setTab] = useState<"overview" | "participants" | "results">("overview");
   const [categoryDraft, setCategoryDraft] = useState("");
@@ -483,7 +484,19 @@ function TournamentDetail({
                 <ChessResultsJump id={tournament.chessResultsId} name={tournament.name} />
                 <UpdateResultsButton tournamentId={tournament.id} />
               </>
-            ) : null}
+            ) : (
+              /* Unlinked: the link form lives on the Results tab, which nobody
+                 finds by guessing. This is the signpost — same place the jump
+                 buttons appear once it *is* linked. */
+              <button
+                type="button"
+                className="jt-btn-ghost"
+                style={secondaryButtonStyle}
+                onClick={() => setTab("results")}
+              >
+                <Icon name="globe" size={14} /> {tExternal("linkAction")}
+              </button>
+            )}
             <EditButton onClick={onEdit} />
             <DeleteButton onClick={onDelete} />
           </>
