@@ -461,9 +461,30 @@ export function liveClasses(c: { classes: Row[] }): Row[] {
   return c.classes.filter((k) => !s(k, "archived_at"));
 }
 
-/** True once the academy has stopped running this class. */
-export function isArchived(cls: Row | undefined): boolean {
-  return Boolean(cls && s(cls, "archived_at"));
+/** True once the academy has stopped running this class, or selling this
+    package. Both carry `archived_at` and both mean the same thing: still on
+    file, no longer on offer. */
+export function isArchived(row: Row | undefined): boolean {
+  return Boolean(row && s(row, "archived_at"));
+}
+
+/**
+ * The packages the academy still sells.
+ *
+ * A package cannot be deleted once it has been sold — a payment points at it,
+ * and the console reads it to say what that payment bought, so removing it
+ * stops old receipts adding up. Retired ones leave the till and the price list
+ * and stay on file for the payments that need them.
+ *
+ * A package for a retired class goes too, without being archived itself: the
+ * class is not on offer, so neither is its price.
+ */
+export function livePackages(c: { creditPackages: Row[]; classes: Row[] }): Row[] {
+  return c.creditPackages.filter((p) => {
+    if (s(p, "archived_at")) return false;
+    const cls = c.classes.find((k) => s(k, "class_id") === s(p, "class_id"));
+    return !isArchived(cls);
+  });
 }
 
 /**
