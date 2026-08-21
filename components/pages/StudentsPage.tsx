@@ -71,12 +71,24 @@ function creditChipFor(credit: number): { color: string; bg: string } {
 /* Same convention the roster import uses, so an address created here and one
    imported in bulk look alike: first.last@student.jca.ac.th. */
 function studentEmailFor(name: string): string {
-  const slug = name
+  return `${slugOf(name) || "student"}@student.jca.ac.th`;
+}
+
+/* A guardian given at the desk as a name and a phone number still needs a way
+   into the parent portal, so their login gets the same kind of made-up address
+   the roster gives a student. It is a username, not a mailbox — the address the
+   academy actually writes to is the email *contact*, which stays empty until
+   the family gives one, and can be filled in later on the Parents screen. */
+function parentEmailFor(name: string): string {
+  return `${slugOf(name) || "parent"}@parent.jca.ac.th`;
+}
+
+function slugOf(name: string): string {
+  return name
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, ".")
     .replace(/^\.|\.$/g, "");
-  return `${slug || "student"}@student.jca.ac.th`;
 }
 
 type View =
@@ -522,6 +534,14 @@ function StudentDetail({
                   </select>
                 </div>
                 <div>
+                  <label style={labelStyle} htmlFor="ed-school">{t("currentSchool")}</label>
+                  <input id="ed-school" value={draft.school} onChange={(e) => setField("school", e.target.value)} style={fieldStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle} htmlFor="ed-fide">{t("fideId")}</label>
+                  <input id="ed-fide" value={draft.fideId} onChange={(e) => setField("fideId", e.target.value)} style={fieldStyle} />
+                </div>
+                <div>
                   <label style={labelStyle} htmlFor="ed-membership">{t("membership")}</label>
                   <input id="ed-membership" value={draft.membershipType} onChange={(e) => setField("membershipType", e.target.value)} style={fieldStyle} />
                 </div>
@@ -592,6 +612,8 @@ function StudentDetail({
                 { label: tCommon("class"), value: student.className },
                 { label: tCommon("branch"), value: student.branch },
                 { label: t("level"), value: student.level },
+                { label: t("currentSchool"), value: student.school || "—" },
+                { label: t("fideIdLabel"), value: student.fideId || "—" },
                 { label: t("membership"), value: student.membershipType },
                 { label: tCommon("email"), value: student.email || t("noAccountYet") },
                 { label: t("joined"), value: student.joinedDate },
@@ -977,10 +999,13 @@ function AddStudentWizard({
     }, 900);
   }
 
-  /* An existing guardian already has a phone number on file; only a new one
-     has to be given here. */
+  /* An existing guardian already has their details on file; a new one is
+     created from what is typed here, and a guardian with no name cannot be
+     created at all — which is what the phone-only form used to attempt before
+     giving up without saying so. */
   const canSubmit =
-    draft.name.trim() !== "" && (draft.parentId !== "" || draft.parentPhone.trim() !== "");
+    draft.name.trim() !== "" &&
+    (draft.parentId !== "" || (draft.parentName.trim() !== "" && draft.parentPhone.trim() !== ""));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 820 }}>
@@ -1240,6 +1265,9 @@ function AddStudentWizard({
                 <div>
                   <label style={labelStyle} htmlFor="w-pmail">{tCommon("email")}</label>
                   <input id="w-pmail" type="email" value={draft.parentEmail} onChange={(e) => set("parentEmail", e.target.value)} style={fieldStyle} />
+                  <p style={{ margin: "5px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+                    {t("guardianEmailHelp")}
+                  </p>
                 </div>
               </div>
             )}
@@ -1298,7 +1326,7 @@ export function StudentsPage({
   const [createdLogins, setCreatedLogins] = useState<{
     studentId: string;
     student: { email: string; password: string };
-    parent: { email: string; password: string } | null;
+    parent: { email: string; password: string; generated: boolean } | null;
   } | null>(null);
   const [search, setSearch] = useState("");
   /* One control for the student's condition. There used to be two — a raw
@@ -1391,6 +1419,11 @@ export function StudentsPage({
           name: draft.name,
           date_of_birth: draft.dateOfBirth || null,
           current_level: draft.level || "Beginner",
+          /* Both were on the form from the start and neither was written, so
+             the desk typed the child's school and their FIDE ID into a box
+             that forgot them the moment it closed. */
+          current_school: draft.school.trim() || null,
+          fide_id: draft.fideId.trim() || null,
           fide_rating: draft.fideRating ? Number(draft.fideRating) : null,
         });
 
@@ -1404,7 +1437,7 @@ export function StudentsPage({
           });
         }
 
-        let parentCredentials: { email: string; password: string } | null = null;
+        let parentCredentials: { email: string; password: string; generated: boolean } | null = null;
         if (draft.parentId) {
           /* An existing guardian: link, and leave their account alone. */
           await create("student-parents", {
@@ -1412,10 +1445,17 @@ export function StudentsPage({
             parent_id: draft.parentId,
             relationship_type: draft.parentRelation || "Guardian",
           });
-        } else if (draft.parentName.trim() && draft.parentEmail.trim()) {
+        } else if (draft.parentName.trim()) {
+          /* A name is enough. The guardian used to need an email address as
+             well, and the form never said so — a family who left one and gave
+             a phone number instead registered a child with nobody attached to
+             them, silently. The login falls back to a made-up address the same
+             way a student's does. */
+          const givenEmail = draft.parentEmail.trim();
+          const loginEmail = givenEmail || parentEmailFor(draft.parentName);
           const parentPassword = generateTempPassword();
           const parentAccount = await create("user-accounts", {
-            email: draft.parentEmail.trim(),
+            email: loginEmail,
             password: parentPassword,
             role: "Parent",
             display_name: draft.parentName.trim(),
@@ -1440,7 +1480,7 @@ export function StudentsPage({
             parent_id: parentId,
             relationship_type: draft.parentRelation || "Guardian",
           });
-          parentCredentials = { email: draft.parentEmail.trim(), password: parentPassword };
+          parentCredentials = { email: loginEmail, password: parentPassword, generated: givenEmail === "" };
         }
 
         setCreatedLogins({
@@ -1486,6 +1526,8 @@ export function StudentsPage({
                 name: next.name,
                 date_of_birth: next.dateOfBirth || null,
                 current_level: next.level,
+                current_school: next.school.trim() || null,
+                fide_id: next.fideId.trim() || null,
               });
             } catch (e) {
               showError(tCommon("saveFailed"), e);
@@ -1564,6 +1606,14 @@ export function StudentsPage({
                     },
                   ]}
                 />
+                {/* Nothing can be emailed to an address the academy invented,
+                    so the desk has to hand this one over in person — and it
+                    only says so when that is actually the case. */}
+                {createdLogins.parent.generated && (
+                  <p style={{ margin: "8px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+                    {t("parentLoginGenerated")}
+                  </p>
+                )}
               </div>
             )}
           </div>

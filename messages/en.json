@@ -328,7 +328,11 @@
     "noGuardian": "No guardian is linked to this student yet.",
     "noGuardiansYet": "No guardians on file. Add one on the Parents screen first.",
     "linkGuardian": "Link guardian",
-    "unlinkGuardian": "Unlink"
+    "unlinkGuardian": "Unlink",
+    "fideIdLabel": "FIDE ID",
+    "guardianEmailHelp": "Optional. Leave it blank and the guardian still gets a portal login, on an address the academy makes up — hand it over at the desk.",
+    "parentLoginGenerated": "This address was made up because no email was given, so nothing can be sent to it. Hand the password over in person, and add a real address on the Parents screen when the family gives one.",
+    "dateOfBirth": "Date of Birth"
   },
   "parents": {
     "title": "Parents",
@@ -406,7 +410,15 @@
     "colPaidBy": "Paid by",
     "studentRemoved": "student removed",
     "detailTitle": "Payment record",
-    "moreStudents": "{count} more — type to narrow the list"
+    "moreStudents": "{count} more — type to narrow the list",
+    "statusHoldsCredits": "Credits are held back until this is marked Paid.",
+    "statusEditHelp": "Marking a pending payment Paid adds the credits it bought.",
+    "payerNoChildren": "No children are linked to this guardian, so any student can be named.",
+    "payerOneChild": "{name} is the only child linked to them, and has been chosen. Clear the payer to search every student.",
+    "payerManyChildren": "The student list is narrowed to their {count} children. Clear the payer to search every student.",
+    "childrenOfPayer": "{name}’s children",
+    "noMatchInFamily": "No child of {payer} matches “{query}”.",
+    "studentNoGuardian": "No guardian is linked to {name}, so nobody is recorded as paying. Link one on the Students screen."
   },
   "classHistory": {
     "title": "Class History",
