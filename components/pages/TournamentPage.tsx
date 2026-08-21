@@ -44,6 +44,8 @@ import { BackLink, DeleteButton, DetailHeader, EditButton } from "../detail";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 import { useErrorToast } from "../ErrorToast";
+import { ApiError } from "@/lib/api";
+import { refreshLinkedResults } from "@/lib/chess-results";
 
 const PARTICIPANT_TEMPLATE = equalTemplate(6, 70);
 const TOURNAMENT_TEMPLATE = equalTemplate(5, 100);
@@ -476,6 +478,12 @@ function TournamentDetail({
         }
         actions={
           <>
+            {tournament.chessResultsId ? (
+              <>
+                <ChessResultsJump id={tournament.chessResultsId} name={tournament.name} />
+                <UpdateResultsButton tournamentId={tournament.id} />
+              </>
+            ) : null}
             <EditButton onClick={onEdit} />
             <DeleteButton onClick={onDelete} />
           </>
@@ -867,6 +875,69 @@ function TournamentDetail({
 
 /* ------------------------------------------------------------------ page --- */
 
+
+/** Pulls the mirror up to date on demand. The workflow is: jump to
+    chess-results (new tab), upload from Swiss-Manager, come back here, press
+    this. The mirror also follows by itself while an event is live — this
+    button exists so nobody has to wait the interval out. */
+function UpdateResultsButton({ tournamentId, compact }: { tournamentId: string; compact?: boolean }) {
+  const t = useTranslations("external");
+  const { showError } = useErrorToast();
+  const [state, setState] = useState<"idle" | "busy" | "done">("idle");
+  return (
+    <button
+      type="button"
+      className="jt-btn-ghost"
+      disabled={state === "busy"}
+      onClick={(e) => {
+        e.stopPropagation();
+        setState("busy");
+        refreshLinkedResults(tournamentId)
+          .then(() => {
+            setState("done");
+            setTimeout(() => setState("idle"), 2500);
+          })
+          .catch((err) => {
+            setState("idle");
+            const throttled = err instanceof ApiError && err.status === 429;
+            showError(t(throttled ? "refreshSoon" : "refreshFailed"), err);
+          });
+      }}
+      style={{
+        ...secondaryButtonStyle,
+        ...(compact ? { padding: "6px 10px", fontSize: 12.5 } : {}),
+        opacity: state === "busy" ? 0.75 : 1,
+      }}
+    >
+      <Icon name="refund" size={13} />{" "}
+      {state === "done" ? t("updated") : state === "busy" ? t("updating") : t("updateResults")}
+    </button>
+  );
+}
+
+/** The jump to where results are actually updated. Swiss-Manager uploads to
+    chess-results.com; staff go there, upload, and the mirror follows. */
+function ChessResultsJump({ id, name, compact }: { id: number; name: string; compact?: boolean }) {
+  const t = useTranslations("external");
+  return (
+    <a
+      href={`https://chess-results.com/tnr${id}.aspx?lan=1`}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={t("openFor", { name })}
+      onClick={(e) => e.stopPropagation()}
+      className="jt-btn-ghost"
+      style={{
+        ...secondaryButtonStyle,
+        ...(compact ? { padding: "6px 10px", fontSize: 12.5 } : {}),
+        textDecoration: "none",
+      }}
+    >
+      <Icon name="globe" size={13} /> {compact ? t("shortName") : t("openSource")}
+    </a>
+  );
+}
+
 const TOURNAMENT_STATUSES = ["Upcoming", "Ongoing", "Completed"];
 
 export function TournamentPage() {
@@ -879,6 +950,10 @@ export function TournamentPage() {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [mode, setMode] = useViewMode("tournaments", CARD_FIRST);
   const [search, setSearch] = useState("");
+  /* One view at a time. Stacked "Ongoing / Past / External" sections made the
+     page a scroll through three unrelated lists; the tabs match the detail
+     page's own idiom. */
+  const [view, setView] = useState<"active" | "past" | "external">("active");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [values, setValues] = useState<CrudValues>({});
   const [deleting, setDeleting] = useState<Tournament | null>(null);
@@ -1077,7 +1152,15 @@ export function TournamentPage() {
                     <span style={{ color: COLORS.textSecondary }}>
                       {t("participantCount", { count: item.currentParticipants })}
                     </span>
-                    <RowActions label={item.name} onEdit={() => openEdit(item)} onDelete={() => setDeleting(item)} />
+                    <span style={{ display: "flex", gap: 7, alignItems: "center" }}>
+                      {item.chessResultsId ? (
+                        <>
+                          <ChessResultsJump id={item.chessResultsId} name={item.name} compact />
+                          <UpdateResultsButton tournamentId={item.id} compact />
+                        </>
+                      ) : null}
+                      <RowActions label={item.name} onEdit={() => openEdit(item)} onDelete={() => setDeleting(item)} />
+                    </span>
                   </TableRow>
                 );
               })}
@@ -1108,11 +1191,19 @@ export function TournamentPage() {
                     <div>{item.venue}</div>
                     <div>{t("participantCount", { count: item.currentParticipants })}</div>
                   </div>
-                  <RowActions
-                    label={item.name}
-                    onEdit={() => openEdit(item)}
-                    onDelete={() => setDeleting(item)}
-                  />
+                  <div style={{ display: "flex", gap: 7, alignItems: "center", flexWrap: "wrap" }}>
+                    {item.chessResultsId ? (
+                      <>
+                        <ChessResultsJump id={item.chessResultsId} name={item.name} compact />
+                        <UpdateResultsButton tournamentId={item.id} compact />
+                      </>
+                    ) : null}
+                    <RowActions
+                      label={item.name}
+                      onEdit={() => openEdit(item)}
+                      onDelete={() => setDeleting(item)}
+                    />
+                  </div>
                 </Card>
               );
             })}
@@ -1143,20 +1234,50 @@ export function TournamentPage() {
         }
       />
 
-      <SearchInput
-        value={search}
-        onChange={setSearch}
-        placeholder={t("searchPlaceholder")}
-        label={t("searchLabel")}
-        style={{ maxWidth: 340 }}
-      />
+      <div style={{ display: "flex", gap: 18, borderBottom: `1px solid ${COLORS.border}` }}>
+        {(
+          [
+            ["active", t("viewActive", { count: ongoing.length })],
+            ["past", t("viewPast", { count: past.length })],
+            ["external", t("viewExternal")],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setView(key)}
+            style={{
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              padding: "11px 3px",
+              fontFamily: FONT,
+              fontSize: 14.5,
+              fontWeight: 600,
+              color: view === key ? COLORS.blue : COLORS.textSecondary,
+              borderBottom: `2px solid ${view === key ? COLORS.blue : "transparent"}`,
+              marginBottom: -1,
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
-      {section(t("ongoing"), ongoing)}
-      {section(t("past"), past)}
+      {view !== "external" && (
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder={t("searchPlaceholder")}
+          label={t("searchLabel")}
+          style={{ maxWidth: 340 }}
+        />
+      )}
 
-      {/* Other people's tournaments, read from chess-results.com. Below the
-          academy's own: the front desk's first job is the events it runs. */}
-      <ExternalTournaments />
+      {view === "active" && section(t("ongoing"), ongoing)}
+      {view === "past" && section(t("past"), past)}
+      {/* Other people's tournaments, read from chess-results.com. */}
+      {view === "external" && <ExternalTournaments />}
     </div>
   );
 }
