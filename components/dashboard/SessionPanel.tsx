@@ -172,7 +172,15 @@ function CreateSession({ onClose }: { onClose: () => void }) {
   const { showError } = useErrorToast();
   const { raw, students, create } = useData();
   const classes = raw.classes.map((c) => ({ id: String(c.class_id), name: String(c.name ?? "") }));
-  const [className, setClassName] = useState(classes[0]?.name ?? "");
+  const [chosenClass, setChosenClass] = useState("");
+  /* Worked out at render, not frozen at mount.
+     `useState(classes[0]?.name)` read the list once, and the panel can open
+     before it arrives — a cold backend, a hard reload. The name then stayed ""
+     for good while the select, having no option matching "", displayed its
+     first one anyway. The class looked chosen, the button stayed dead, and
+     nothing on screen accounted for it. */
+  const className =
+    classes.some((c) => c.name === chosenClass) ? chosenClass : classes[0]?.name ?? "";
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [search, setSearch] = useState("");
@@ -239,7 +247,14 @@ function CreateSession({ onClose }: { onClose: () => void }) {
               unfinished form — and the two fields it is waiting on start empty
               and are cleared again whenever the class changes. */}
           <span style={{ fontFamily: FONT, fontSize: 14, color: COLORS.textSecondary }}>
-            {canCreate || busy ? t("selectedCount", { count: selected.length }) : t("needTimes")}
+            {canCreate || busy
+              ? t("selectedCount", { count: selected.length })
+              : classes.length === 0
+                ? /* Not the times: there is no class to hold a session for.
+                     Saying "set a start and end time" here would send the desk
+                     to fill in two fields that would not have helped. */
+                  t("noClasses")
+                : t("needTimes")}
           </span>
           <span style={{ display: "flex", gap: 10 }}>
             <button type="button" style={ghostBtn} onClick={onClose}>
@@ -271,11 +286,11 @@ function CreateSession({ onClose }: { onClose: () => void }) {
             <select
               id="jtrax-class-name"
               value={className}
-              onChange={(e) => {
-                setClassName(e.target.value);
-                setStartTime("");
-                setEndTime("");
-              }}
+              /* The times stay. A class has no fixed hours — that is why
+                 sessions are made by hand — so changing which class this is
+                 says nothing about when it runs, and throwing away times the
+                 desk had already typed only made them type them again. */
+              onChange={(e) => setChosenClass(e.target.value)}
               style={selectStyle}
             >
               {classes.map((c) => (

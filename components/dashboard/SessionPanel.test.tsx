@@ -62,18 +62,82 @@ describe("the Create button while the form is incomplete", () => {
     expect(screen.queryByText("Set a start and end time to create the session.")).toBeNull();
   });
 
-  /* Changing the class clears both times on purpose — a new class rarely runs
-     at the old one's hours — so the reason has to come back with them. */
-  it("says it again after the class is changed", async () => {
+  /* A class has no fixed hours — that is the whole reason sessions are made by
+     hand — so changing which class this is says nothing about when it runs.
+     Wiping the times made the desk type them twice. */
+  it("keeps the times when the class is changed", async () => {
     const user = userEvent.setup();
     const { create: button, start, end, klass } = renderPanel();
     await user.type(start, "10:00");
     await user.type(end, "11:30");
-    expect(button.disabled).toBe(false);
 
     await user.selectOptions(klass, "Master Class");
-    expect(button.disabled).toBe(true);
-    expect(screen.getByText("Set a start and end time to create the session.")).toBeTruthy();
+
+    expect(start.value).toBe("10:00");
+    expect(end.value).toBe("11:30");
+    expect(button.disabled).toBe(false);
+  });
+});
+
+/* The panel can open before the class list lands — a cold backend, a hard
+   reload. The chosen class used to be frozen at mount from a list that was
+   still empty, so it stayed "" for good; the select, having no option matching
+   "", displayed its first one anyway. The class looked chosen and the button
+   stayed dead with both times filled in. */
+describe("classes that arrive after the panel is already open", () => {
+  it("creates with the class the dropdown is showing", async () => {
+    const saved = state.raw.classes;
+    state.raw.classes = [];
+    try {
+      const user = userEvent.setup();
+      const { rerender } = render(
+        <NextIntlClientProvider locale="en" messages={en}>
+          <ErrorToastProvider>
+            <SessionPanel state={{ mode: "create" }} onClose={() => {}} />
+          </ErrorToastProvider>
+        </NextIntlClientProvider>,
+      );
+
+      state.raw.classes = saved;
+      rerender(
+        <NextIntlClientProvider locale="en" messages={en}>
+          <ErrorToastProvider>
+            <SessionPanel state={{ mode: "create" }} onClose={() => {}} />
+          </ErrorToastProvider>
+        </NextIntlClientProvider>,
+      );
+
+      const select = screen.getByLabelText("Class Name") as HTMLSelectElement;
+      const button = screen.getAllByRole("button", { name: "Create Session" }).at(-1) as HTMLButtonElement;
+      await user.type(screen.getByLabelText("Start Time"), "10:00");
+      await user.type(screen.getByLabelText("End Time"), "11:30");
+
+      /* What the dropdown shows and what the panel will write are the same
+         thing — the whole bug was that they were not. */
+      expect(select.value).toBe("Group Class");
+      expect(button.disabled).toBe(false);
+
+      await user.click(button);
+      const [, body] = create.mock.calls.at(-1) as unknown as [string, Record<string, unknown>];
+      expect(body.class_id).toBe("cls_group");
+    } finally {
+      state.raw.classes = saved;
+    }
+  });
+});
+
+describe("no classes at all", () => {
+  it("says that, rather than blaming the times", () => {
+    const saved = state.raw.classes;
+    state.raw.classes = [];
+    try {
+      const { create: button } = renderPanel();
+      expect(button.disabled).toBe(true);
+      expect(screen.getByText(/No class exists yet/)).toBeTruthy();
+      expect(screen.queryByText("Set a start and end time to create the session.")).toBeNull();
+    } finally {
+      state.raw.classes = saved;
+    }
   });
 });
 

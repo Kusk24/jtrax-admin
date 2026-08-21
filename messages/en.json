@@ -249,7 +249,8 @@
     "removeFromRoster": "Remove {name} from roster",
     "addStudent": "Add Student",
     "allAdded": "Everyone is already on the roster.",
-    "needTimes": "Set a start and end time to create the session."
+    "needTimes": "Set a start and end time to create the session.",
+    "noClasses": "No class exists yet — an admin adds classes on the Academy screen."
   },
   "students": {
     "title": "Students",
