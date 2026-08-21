@@ -128,6 +128,8 @@ export function toStudents(c: LiveCollections): Student[] {
       age: age(s(st, "date_of_birth")),
       dateOfBirth: s(st, "date_of_birth"),
       level: s(st, "current_level") || "—",
+      school: s(st, "current_school"),
+      fideId: s(st, "fide_id"),
       parentName: parent ? s(parent, "name") : "—",
       parentRelation: link ? s(link, "relationship_type") || "Guardian" : "—",
       parentPhone: contact("phone"),
@@ -204,7 +206,10 @@ export function toPayments(c: LiveCollections): Payment[] {
         date: fmtDate(s(p, "payment_date")),
         isoDate: s(p, "payment_date"),
         method: s(p, "payment_method"),
-        status: "Paid",
+        /* Read, not assumed. A payment recorded as Pending is money the
+           academy has been promised, and one recorded as Refunded is money it
+           gave back — calling both of them Paid put them in Total Revenue. */
+        status: (s(p, "status") || "Paid") as Payment["status"],
       };
     });
 }
@@ -431,7 +436,7 @@ export function toRevenueTrend(c: LiveCollections, now = new Date()): TrendPoint
     const month = new Date(now.getFullYear(), now.getMonth() - back, 1);
     const prefix = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, "0")}`;
     const value = c.payments
-      .filter((p) => s(p, "payment_date").startsWith(prefix))
+      .filter((p) => isRevenue(p) && s(p, "payment_date").startsWith(prefix))
       .reduce((sum, p) => sum + n(p, "final_amount"), 0);
     points.push({ month: MONTH_SHORT[month.getMonth()], value });
   }
@@ -439,9 +444,17 @@ export function toRevenueTrend(c: LiveCollections, now = new Date()): TrendPoint
 }
 
 /** Revenue booked in the current calendar month, and how many payments made it. */
+/* Revenue is money the academy has, not money it has been promised. A payment
+   sitting Pending has not cleared and a Refunded one went back out, so neither
+   belongs in a total — a row with no status at all predates the column and was
+   taken at the till, which is Paid. */
+function isRevenue(p: Row): boolean {
+  return (s(p, "status") || "Paid") === "Paid";
+}
+
 export function monthRevenue(c: LiveCollections, now = new Date()): { total: number; count: number } {
   const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const rows = c.payments.filter((p) => s(p, "payment_date").startsWith(prefix));
+  const rows = c.payments.filter((p) => isRevenue(p) && s(p, "payment_date").startsWith(prefix));
   return { total: rows.reduce((sum, p) => sum + n(p, "final_amount"), 0), count: rows.length };
 }
 

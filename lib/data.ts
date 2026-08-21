@@ -25,6 +25,11 @@ export type Student = {
       it worked out. */
   dateOfBirth: string;
   level: string;
+  /** The school the child attends the rest of the week. Registration has always
+      asked for it; until there was a column for it the answer was thrown away. */
+  school: string;
+  /** Their FIDE ID, which is how an arbiter's standings name them. */
+  fideId: string;
   parentName: string;
   parentRelation: string;
   parentPhone: string;
