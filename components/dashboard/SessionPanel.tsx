@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { type ClassDef } from "@/lib/data";
-import { todayISO } from "@/lib/live";
+import { liveClasses, todayISO } from "@/lib/live";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
 /* Shared with the rest of the forms so the panel's fields keep the same box —
@@ -171,7 +171,9 @@ function CreateSession({ onClose }: { onClose: () => void }) {
   const tCommon = useTranslations("common");
   const { showError } = useErrorToast();
   const { raw, students, create } = useData();
-  const classes = raw.classes.map((c) => ({ id: String(c.class_id), name: String(c.name ?? "") }));
+  /* Only classes the academy still runs: an archived one cannot take a new
+     session, though its finished ones keep its name. */
+  const classes = liveClasses(raw).map((c) => ({ id: String(c.class_id), name: String(c.name ?? "") }));
   const [chosenClass, setChosenClass] = useState("");
   /* Worked out at render, not frozen at mount.
      `useState(classes[0]?.name)` read the list once, and the panel can open

@@ -134,6 +134,26 @@ describe("topping up credits", () => {
   });
 });
 
+/* A child may only be checked in to a class they are enrolled in. Credits hang
+   off an enrolment, so checking them into somebody else's class records an
+   hour that cannot be charged to anyone. */
+describe("a student enrolled in none of today's classes", () => {
+  it("is not checked in, and is sent to their own page instead", async () => {
+    const saved = state.raw.enrollments;
+    state.raw.enrollments = [];
+    try {
+      const user = userEvent.setup();
+      await user.type(renderDesk(), "Anong");
+      await user.click(await screen.findByRole("button", { name: "Check In" }));
+
+      expect(create).not.toHaveBeenCalled();
+      expect(await screen.findByText(/None of today's classes are ones this student is enrolled in/)).toBeTruthy();
+    } finally {
+      state.raw.enrollments = saved;
+    }
+  });
+});
+
 describe("nothing to write to", () => {
   it("says so rather than checking anyone in when no class is running", async () => {
     const saved = state.todaysClasses;

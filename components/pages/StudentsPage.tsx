@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { generateTempPassword } from "@/lib/credentials";
 import { type Student } from "@/lib/data";
 import { useData } from "@/components/DataProvider";
-import { fmtCredits, fmtDate, fmtTHB, practiceStrip } from "@/lib/live";
+import { fmtCredits, fmtDate, fmtTHB, liveClasses, practiceStrip } from "@/lib/live";
 import { Icon } from "@/lib/icons";
 import { LichessPanel } from "../lichess/LichessPanel";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
@@ -225,7 +225,8 @@ function StudentDetail({
         label: tCommon("class"),
         kind: "select",
         required: true,
-        options: raw.classes.map((c) => ({ value: String(c["class_id"]), label: String(c["name"] ?? "") })),
+        /* Nobody can be enrolled into a class the academy has retired. */
+        options: liveClasses({ classes: raw.classes }).map((c) => ({ value: String(c["class_id"]), label: String(c["name"] ?? "") })),
       },
       { name: "enrolled_date", label: t("enrolledDate"), kind: "date", required: true, half: true },
       {
@@ -244,7 +245,7 @@ function StudentDetail({
     setEnrolmentValues(
       row === "new"
         ? {
-            class_id: raw.classes[0] ? String(raw.classes[0]["class_id"]) : "",
+            class_id: liveClasses({ classes: raw.classes })[0] ? String(liveClasses({ classes: raw.classes })[0]["class_id"]) : "",
             enrolled_date: new Date().toISOString().slice(0, 10),
             status: "Active",
           }
@@ -1386,7 +1387,7 @@ export function StudentsPage({
   /* Falls back to the design's list only while the classes are still loading,
      so the picker is never empty. */
   const classNames = useMemo(() => {
-    const live = raw.classes.map((c) => String(c["name"] ?? "")).filter(Boolean);
+    const live = liveClasses({ classes: raw.classes }).map((c) => String(c["name"] ?? "")).filter(Boolean);
     return live.length > 0 ? live : CLASS_OPTIONS;
   }, [raw.classes]);
 

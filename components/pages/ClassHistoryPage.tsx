@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useData } from "@/components/DataProvider";
 import { type Student } from "@/lib/data";
-import { fmtDate } from "@/lib/live";
+import { fmtDate, liveClasses } from "@/lib/live";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
 import {
@@ -455,7 +455,8 @@ export function ClassHistoryPage() {
       label: tCommon("class"),
       kind: "select",
       required: true,
-      options: raw.classes.map((c) => ({ value: String(c["class_id"]), label: String(c["name"] ?? "") })),
+      /* A session cannot be created for a class the academy has retired. */
+      options: liveClasses({ classes: raw.classes }).map((c) => ({ value: String(c["class_id"]), label: String(c["name"] ?? "") })),
     },
     { name: "session_date", label: tCommon("date"), kind: "date", required: true, half: true },
     {
@@ -474,7 +475,7 @@ export function ClassHistoryPage() {
     setSessionValues(
       row === "new"
         ? {
-            class_id: raw.classes[0] ? String(raw.classes[0]["class_id"]) : "",
+            class_id: liveClasses({ classes: raw.classes })[0] ? String(liveClasses({ classes: raw.classes })[0]["class_id"]) : "",
             session_date: new Date().toISOString().slice(0, 10),
             session_status: "Scheduled",
             start_time: "",

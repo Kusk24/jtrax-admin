@@ -64,9 +64,17 @@ describe("which class to check them in to", () => {
     expect(candidateSessions(SESSIONS, ENROLMENTS, "boon")).toHaveLength(2);
   });
 
-  /* A child at the desk has to be recordable whatever the paperwork says. */
-  it("falls back to everything running today when they are enrolled in nothing", () => {
-    expect(candidateSessions(SESSIONS, ENROLMENTS, "chai")).toHaveLength(2);
+  /* No fallback to "everything running today". Credits hang off an enrolment,
+     so checking a child into a class they do not belong to records an hour
+     that either comes off a class they did not attend or off nothing at all.
+     An unenrolled child is an enrolment problem, fixed on their own page. */
+  it("is nothing when they are enrolled in nothing", () => {
+    expect(candidateSessions(SESSIONS, ENROLMENTS, "chai")).toEqual([]);
+  });
+
+  it("never offers a class they are not enrolled in", () => {
+    const offered = candidateSessions(SESSIONS, ENROLMENTS, "anong").map((s) => s.sessionId);
+    expect(offered).not.toContain("ses_master");
   });
 });
 
@@ -84,5 +92,11 @@ describe("what pressing Check In does", () => {
 
   it("reports that nothing is running when no session is scheduled", () => {
     expect(checkInIntent([], ENROLMENTS, "anong")).toEqual({ kind: "noSessions" });
+  });
+
+  /* Sessions are running, just none of theirs — the desk must not check them
+     into somebody else's class to get past it. */
+  it("reports the same when none of today's classes are theirs", () => {
+    expect(checkInIntent(SESSIONS, ENROLMENTS, "chai")).toEqual({ kind: "noSessions" });
   });
 });

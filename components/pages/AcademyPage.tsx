@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useData } from "@/components/DataProvider";
-import { fmtTHB } from "@/lib/live";
+import { fmtTHB, liveClasses } from "@/lib/live";
 import { Icon, type IconName } from "@/lib/icons";
 import { COLORS, FONT, initialsOf } from "@/lib/theme";
 import {
@@ -100,7 +100,10 @@ export function AcademyPage() {
   const { showError } = useErrorToast();
   const tStatus = useTranslations("status");
   const { raw, batch, create, update, remove } = useData();
-  const courses: Course[] = raw.classes.map((c) => ({
+  /* Retired classes drop out of the list, the pickers and the export. The
+     rows they left behind — enrolments, sessions, receipts — still find them
+     by id, which is the whole reason the row is kept. */
+  const courses: Course[] = liveClasses(raw).map((c) => ({
     id: String(c.class_id),
     name: String(c.name ?? ""),
     desc: String(c.description ?? ""),
@@ -247,7 +250,15 @@ export function AcademyPage() {
           note={t("courseDeleteNote")}
           onClose={() => setDeletingCourse(null)}
           onConfirm={async () => {
-            await remove("classes", deletingCourse.id);
+            /* Archived, not deleted. class_id is NOT NULL on enrolments,
+               sessions and packages, so removing the row would take last
+               term's attendance and a year of receipts with it — and the
+               database refuses outright, which is what the office kept
+               running into. This retires the class everywhere it can be
+               chosen and leaves what it taught alone. */
+            await update("classes", deletingCourse.id, {
+              archived_at: new Date().toISOString(),
+            });
             setCourseDetail(null);
           }}
         />
