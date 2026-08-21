@@ -44,6 +44,7 @@ import { BackLink, DeleteButton, DetailHeader, EditButton } from "../detail";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 import { useErrorToast } from "../ErrorToast";
+import { useUrlBackedState } from "@/lib/url-state";
 import { ApiError } from "@/lib/api";
 import { refreshLinkedResults } from "@/lib/chess-results";
 
@@ -359,10 +360,13 @@ function CreateWizard({
 
 function TournamentDetail({
   tournament,
+  initialTab,
   onBack,
   onEdit,
   onDelete,
 }: {
+  /* Which tab the address bar asked for. */
+  initialTab?: string;
   tournament: Tournament;
   onBack: () => void;
   onEdit: () => void;
@@ -373,7 +377,12 @@ function TournamentDetail({
   const tStatus = useTranslations("status");
   const tExternal = useTranslations("external");
   const { students, create, update, remove, refresh } = useData();
-  const [tab, setTab] = useState<"overview" | "participants" | "results">("overview");
+  /* Also in the address bar: refreshing while reading Results should not
+     silently return to Overview. */
+  const [tab, setTab] = useUrlBackedState<"overview" | "participants" | "results">(
+    "tab",
+    initialTab === "participants" || initialTab === "results" ? initialTab : "overview",
+  );
   const [categoryDraft, setCategoryDraft] = useState("");
   const [rowError, setRowError] = useState<string | null>(null);
   const [participantModal, setParticipantModal] = useState<"new" | Participant | null>(null);
@@ -951,15 +960,27 @@ function ChessResultsJump({ id, name, compact }: { id: number; name: string; com
   );
 }
 
+/* Stable identity: a fresh array each render would re-make the setter. */
+const TAB_PARAM = ["tab"];
+
 const TOURNAMENT_STATUSES = ["Upcoming", "Ongoing", "Completed"];
 
-export function TournamentPage() {
+export function TournamentPage({
+  detailId,
+  detailTab,
+}: {
+  /* Threaded from the route's searchParams so a reload keeps the open row. */
+  detailId?: string;
+  detailTab?: string;
+}) {
   const t = useTranslations("tournament");
   const tCommon = useTranslations("common");
   const { showError } = useErrorToast();
   const tStatus = useTranslations("status");
   const { tournaments, raw, batch, create, update, remove } = useData();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  /* In the address bar, so a refresh, a shared link and the Back button all
+     land on the tournament that was open rather than the list. */
+  const [selectedId, setSelectedId] = useUrlBackedState<string>("id", detailId ?? "", TAB_PARAM, "push");
   const [wizardOpen, setWizardOpen] = useState(false);
   const [mode, setMode] = useViewMode("tournaments", CARD_FIRST);
   const [search, setSearch] = useState("");
@@ -1026,7 +1047,7 @@ export function TournamentPage() {
       }
       await remove("tournaments", tournament.id);
     });
-    setSelectedId(null);
+    setSelectedId("");
   }
 
   const dialogs = (
@@ -1107,7 +1128,8 @@ export function TournamentPage() {
       <>
         <TournamentDetail
           tournament={selected}
-          onBack={() => setSelectedId(null)}
+          initialTab={detailTab}
+          onBack={() => setSelectedId("")}
           onEdit={() => openEdit(selected)}
           onDelete={() => setDeleting(selected)}
         />
