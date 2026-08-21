@@ -183,6 +183,18 @@ function CreateSession({ onClose }: { onClose: () => void }) {
     classes.some((c) => c.name === chosenClass) ? chosenClass : classes[0]?.name ?? "";
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+  /**
+   * A time field with digits in it that the browser will not give us.
+   *
+   * `<input type="time">` reports `value === ""` until *every* segment is
+   * filled, and how many segments there are depends on the locale: a
+   * 12-hour browser wants AM/PM as well, and a `step` under a minute wants
+   * seconds. So a field reading "03:30" on screen can still be empty to the
+   * code — which is a button that will not press and a form that looks
+   * complete. `validity.badInput` is how the browser admits to it.
+   */
+  const [startPartial, setStartPartial] = useState(false);
+  const [endPartial, setEndPartial] = useState(false);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -193,6 +205,22 @@ function CreateSession({ onClose }: { onClose: () => void }) {
   }, [search, students]);
 
   const canCreate = Boolean(className && startTime && endTime) && !busy;
+
+  /**
+   * Why the button will not press, named precisely.
+   *
+   * "Set a start and end time" is no help at all in front of two fields that
+   * both appear to have times in them — which is what a half-entered time
+   * looks like. So this distinguishes the field that is empty from the field
+   * that is only partly typed, and says which one.
+   */
+  function blockedReason(): string {
+    if (classes.length === 0) return t("noClasses");
+    if (startPartial || endPartial) return t("timeIncomplete");
+    if (!startTime && !endTime) return t("needTimes");
+    if (!startTime) return t("needStartTime");
+    return t("needEndTime");
+  }
 
   /* Creates the session, then checks in everyone picked — the panel used to
      close without writing anything. */
@@ -247,14 +275,7 @@ function CreateSession({ onClose }: { onClose: () => void }) {
               unfinished form — and the two fields it is waiting on start empty
               and are cleared again whenever the class changes. */}
           <span style={{ fontFamily: FONT, fontSize: 14, color: COLORS.textSecondary }}>
-            {canCreate || busy
-              ? t("selectedCount", { count: selected.length })
-              : classes.length === 0
-                ? /* Not the times: there is no class to hold a session for.
-                     Saying "set a start and end time" here would send the desk
-                     to fill in two fields that would not have helped. */
-                  t("noClasses")
-                : t("needTimes")}
+            {canCreate || busy ? t("selectedCount", { count: selected.length }) : blockedReason()}
           </span>
           <span style={{ display: "flex", gap: 10 }}>
             <button type="button" style={ghostBtn} onClick={onClose}>
@@ -310,7 +331,10 @@ function CreateSession({ onClose }: { onClose: () => void }) {
                 id="jtrax-start"
                 type="time"
                 value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
+                onChange={(e) => {
+                  setStartTime(e.target.value);
+                  setStartPartial(e.target.validity.badInput);
+                }}
                 style={fieldStyle}
               />
             </div>
@@ -322,7 +346,10 @@ function CreateSession({ onClose }: { onClose: () => void }) {
                 id="jtrax-end"
                 type="time"
                 value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
+                onChange={(e) => {
+                  setEndTime(e.target.value);
+                  setEndPartial(e.target.validity.badInput);
+                }}
                 style={fieldStyle}
               />
             </div>
