@@ -190,7 +190,13 @@ function CreateSession({ onClose }: { onClose: () => void }) {
      close without writing anything. */
   async function createSession() {
     const cls = classes.find((c) => c.name === className);
-    if (!cls) return;
+    if (!cls) {
+      /* Bailing silently here meant a button that did nothing at all: the
+         class list is read once as the panel mounts, so a panel opened before
+         the classes land has a name matching none of them. */
+      showError(tCommon("sessionFailed"));
+      return;
+    }
     setBusy(true);
     try {
       const session = await create("class-sessions", {
@@ -228,8 +234,12 @@ function CreateSession({ onClose }: { onClose: () => void }) {
       onClose={onClose}
       footer={
         <>
+          {/* Why the button is dead, when it is. A greyed-out Create with
+              nothing beside it reads as broken software rather than an
+              unfinished form — and the two fields it is waiting on start empty
+              and are cleared again whenever the class changes. */}
           <span style={{ fontFamily: FONT, fontSize: 14, color: COLORS.textSecondary }}>
-            {t("selectedCount", { count: selected.length })}
+            {canCreate || busy ? t("selectedCount", { count: selected.length }) : t("needTimes")}
           </span>
           <span style={{ display: "flex", gap: 10 }}>
             <button type="button" style={ghostBtn} onClick={onClose}>

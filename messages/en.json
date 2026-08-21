@@ -248,7 +248,8 @@
     "saveChanges": "Save Changes",
     "removeFromRoster": "Remove {name} from roster",
     "addStudent": "Add Student",
-    "allAdded": "Everyone is already on the roster."
+    "allAdded": "Everyone is already on the roster.",
+    "needTimes": "Set a start and end time to create the session."
   },
   "students": {
     "title": "Students",
