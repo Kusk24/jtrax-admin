@@ -26,9 +26,12 @@ import { Badge, Card, SectionTitle } from "../ui";
 
 export function LinkedResultsCard({
   tournamentId,
+  tournamentName,
   initial,
 }: {
   tournamentId: string;
+  /** Searched for on chess-results, so staff never retype it. */
+  tournamentName: string;
   /** What the tournament is already linked to, when it is. */
   initial: LinkedResults | null;
 }) {
@@ -39,6 +42,7 @@ export function LinkedResultsCard({
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   async function run(fn: () => Promise<void>) {
     setBusy(true);
@@ -125,6 +129,36 @@ export function LinkedResultsCard({
           </p>
         </>
       ) : (
+        <>
+        {/* chess-results' search is an ASP.NET postback form — its fields
+            cannot be filled from a URL, so the name goes to the clipboard and
+            the search page opens ready for a paste. That still beats leaving
+            the console to hunt through a web search. */}
+        <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            className="jt-btn-ghost"
+            style={secondaryButtonStyle}
+            onClick={() => {
+              void navigator.clipboard
+                ?.writeText(tournamentName)
+                .then(() => {
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 4000);
+                })
+                .catch(() => {
+                  /* Clipboard denied: the search page still opens, and the
+                     name is on screen to retype. */
+                });
+              window.open("https://chess-results.com/TurnierSuche.aspx?lan=1", "_blank", "noopener,noreferrer");
+            }}
+          >
+            <Icon name="search" size={14} /> {t("findOnSource")}
+          </button>
+          <span style={{ fontFamily: FONT, fontSize: 12.5, color: copied ? COLORS.success : COLORS.textSecondary }}>
+            {copied ? t("nameCopied") : t("findHint")}
+          </span>
+        </div>
         <div style={{ display: "flex", gap: 9, flexWrap: "wrap" }}>
           <input
             value={url}
@@ -158,6 +192,7 @@ export function LinkedResultsCard({
             <Icon name="link" size={15} color={COLORS.surface} /> {busy ? tCommon("saving") : t("link")}
           </button>
         </div>
+        </>
       )}
     </Card>
   );
