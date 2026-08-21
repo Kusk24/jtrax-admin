@@ -445,6 +445,28 @@ export function toRevenueTrend(c: LiveCollections, now = new Date()): TrendPoint
 
 /** Revenue booked in the current calendar month, and how many payments made it. */
 /**
+ * The classes the academy still runs.
+ *
+ * A class is never deleted — `class_id` is NOT NULL on enrolments, sessions
+ * and packages, so removing the row would take last term's attendance and a
+ * year of receipts with it. It is archived instead, and every screen that
+ * *offers* a class filters through here.
+ *
+ * Lookups deliberately do not: `raw.classes` still holds the archived ones, so
+ * an old enrolment or a finished session can still say which class it was.
+ * Choosing and naming are different questions, and only one of them should
+ * forget.
+ */
+export function liveClasses(c: { classes: Row[] }): Row[] {
+  return c.classes.filter((k) => !s(k, "archived_at"));
+}
+
+/** True once the academy has stopped running this class. */
+export function isArchived(cls: Row | undefined): boolean {
+  return Boolean(cls && s(cls, "archived_at"));
+}
+
+/**
  * A credit balance as a person would write it.
  *
  * One credit is an hour, so balances are fractional — half an hour is 0.5, and

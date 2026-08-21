@@ -52,13 +52,17 @@ export function deskStatusOf(
 }
 
 /**
- * Today's sessions this student could be checked in to: the ones for classes
- * they are enrolled in.
+ * Today's sessions this student may be checked in to: the ones for classes
+ * they are enrolled in, and nothing else.
  *
- * Falls back to every session running today when they are enrolled in none — a
- * child standing at the desk has to be recordable whatever the paperwork says,
- * and refusing to check them in because their enrolment lapsed would send the
- * receptionist to a different screen mid-queue.
+ * There is no fallback to "every session running today". A child belongs to
+ * the classes they are enrolled in, and checking them into another one records
+ * an attendance nobody can charge — credits hang off an enrolment, so the hour
+ * would either come off a class they did not attend or off nothing at all.
+ *
+ * A child in front of the desk with no enrolment is not a check-in problem, it
+ * is an enrolment problem, and it is fixed on their own page: Students →
+ * the child → Enrolments, which adds, changes or removes a class.
  */
 export function candidateSessions(
   sessions: SessionRow[],
@@ -66,8 +70,7 @@ export function candidateSessions(
   studentId: string,
 ): SessionRow[] {
   const mine = enrolments.filter((e) => e.studentId === studentId).map((e) => e.classId);
-  const theirs = sessions.filter((s) => mine.includes(s.classId));
-  return theirs.length > 0 ? theirs : sessions;
+  return sessions.filter((s) => mine.includes(s.classId));
 }
 
 /**
@@ -76,8 +79,9 @@ export function candidateSessions(
  * Exactly one candidate and there is nothing to ask, so it is written at once.
  * Several, and the desk has to say which — pressing the button opens the
  * picker rather than guessing, because the wrong class is a wrong attendance
- * record for a real child. None, and there is nothing running today to check
- * anyone in to.
+ * record for a real child. None means one of two different things, which the
+ * caller tells apart by whether anything is running today at all: no class of
+ * theirs this afternoon, or no enrolment to check in against.
  */
 export function checkInIntent(
   sessions: SessionRow[],

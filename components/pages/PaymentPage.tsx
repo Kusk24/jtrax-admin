@@ -11,6 +11,7 @@ import {
   type FamilyLink,
   type Pair,
 } from "@/lib/payment-pairing";
+import { isArchived } from "@/lib/live";
 import { useData } from "@/components/DataProvider";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf } from "@/lib/theme";
@@ -119,7 +120,12 @@ export function RecordPaymentForm({
      never reached the till. */
   const packages: PackageOption[] = useMemo(
     () =>
-      raw.creditPackages.map((p) => {
+      raw.creditPackages
+        /* A retired class cannot be sold. Its packages stay on file — old
+           payments point at them and a receipt has to keep adding up — but
+           they leave the till. */
+        .filter((p) => !isArchived(raw.classes.find((c) => String(c["class_id"]) === String(p["class_id"]))))
+        .map((p) => {
         const cls = raw.classes.find((c) => String(c["class_id"]) === String(p["class_id"]));
         return {
           id: String(p["credit_package_id"]),

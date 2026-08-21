@@ -379,11 +379,14 @@ export function FindStudent() {
                           </button>
                         );
                       })}
-                      {/* Nothing is scheduled, so there is nothing to check
-                          anyone in to. Said out loud, with the screen that
-                          fixes it named. */}
-                      {sessions.length === 0 && (
-                        <p style={noteStyle}>{t("noSessionsToday")}</p>
+                      {/* Two different dead ends, and the desk needs to know
+                          which: nothing running today at all, or nothing this
+                          child is enrolled in. The second is fixed on their
+                          own page, not here. */}
+                      {candidateSessions(sessions, enrolments, student.id).length === 0 && (
+                        <p style={noteStyle}>
+                          {sessions.length === 0 ? t("noSessionsToday") : t("notEnrolledToday")}
+                        </p>
                       )}
                     </div>
                   )}
