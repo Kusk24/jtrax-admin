@@ -812,6 +812,7 @@ function TournamentDetail({
       ) : (
         <ResultsTab
           tournamentId={tournament.id}
+          tournamentName={tournament.name}
           resultsPublic={tournament.published}
           onPublishChange={async (next) => {
             await update("tournaments", tournament.id, { results_public: next });

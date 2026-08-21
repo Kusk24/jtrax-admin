@@ -33,10 +33,13 @@ const PREVIEW_ROWS = 10;
 
 export function ResultsTab({
   tournamentId,
+  tournamentName,
   resultsPublic,
   onPublishChange,
 }: {
   tournamentId: string;
+  /** Used to search chess-results for this event by name. */
+  tournamentName: string;
   resultsPublic: boolean;
   onPublishChange: (next: boolean) => Promise<void>;
 }) {
@@ -94,7 +97,7 @@ export function ResultsTab({
       )}
 
       {/* The results source. This card *is* the results feature now. */}
-      {linkLoaded && <LinkedResultsCard tournamentId={tournamentId} initial={linkedResults} />}
+      {linkLoaded && <LinkedResultsCard tournamentId={tournamentId} tournamentName={tournamentName} initial={linkedResults} />}
 
       {/* ---- the public page ---- */}
       <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
