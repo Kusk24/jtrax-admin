@@ -7,6 +7,7 @@ import { generateTempPassword } from "@/lib/credentials";
 import { type Student } from "@/lib/data";
 import { useData } from "@/components/DataProvider";
 import { fmtCredits, fmtDate, fmtTHB, liveClasses, practiceStrip } from "@/lib/live";
+import { planTransfer, type CreditRate } from "@/lib/credit-transfer";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
 import {
@@ -148,7 +149,7 @@ function StudentDetail({
   function setField<K extends keyof Student>(key: K, value: Student[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
   }
-  const { raw, create, update, remove } = useData();
+  const { raw, batch, create, update, remove } = useData();
   const EDIT_CLASS_OPTIONS = Array.from(
     new Set([...raw.classes.map((c) => String(c.name ?? "")), ...CLASS_OPTIONS]),
   );
@@ -216,6 +217,43 @@ function StudentDetail({
   const [enrolmentModal, setEnrolmentModal] = useState<(typeof enrolments)[number] | "new" | null>(null);
   const [enrolmentValues, setEnrolmentValues] = useState<CrudValues>({});
   const [deletingEnrolment, setDeletingEnrolment] = useState<(typeof enrolments)[number] | null>(null);
+  const [movingCredits, setMovingCredits] = useState<(typeof enrolments)[number] | null>(null);
+  const [moveTo, setMoveTo] = useState("");
+
+  /** What is left on one enrolment. */
+  function balanceOf(enrolmentId: string): number {
+    return raw.creditTransactions
+      .filter((tx) => String(tx["enrollment_id"]) === enrolmentId)
+      .reduce((sum, tx) => sum + Number(tx["amount"] ?? 0), 0);
+  }
+
+  /**
+   * What an hour costs in a class, from that class's own credit package.
+   *
+   * The package the credits were bought under when the payment says which —
+   * a family who paid last term's price keeps last term's hours — and the
+   * class's current package otherwise. Never a figure held here: a level the
+   * academy adds next term prices itself the day it exists.
+   */
+  function rateOf(enrolmentId: string, classId: string): CreditRate {
+    const payment = raw.payments.find(
+      (p) =>
+        String(p["enrollment_id"] ?? "") === enrolmentId &&
+        String(p["status"] ?? "Paid") === "Paid" &&
+        String(p["credit_package_id"] ?? ""),
+    );
+    const bought = payment
+      ? raw.creditPackages.find(
+          (k) => String(k["credit_package_id"]) === String(payment["credit_package_id"]),
+        )
+      : undefined;
+    const pkg =
+      bought ?? raw.creditPackages.find((k) => String(k["class_id"] ?? "") === classId);
+    return {
+      credits: Number(pkg?.["credit_amount"] ?? 0),
+      price: Number(pkg?.["standard_price"] ?? 0),
+    };
+  }
 
   /**
    * Whether anything is hanging off this enrolment.
@@ -797,6 +835,23 @@ function StudentDetail({
                   >
                     {tStatus(e.status)}
                   </Badge>
+                  {/* Only where there is something to move: a balance left on
+                      a class the child is no longer in, and somewhere to put
+                      it. Credits hang off an enrolment, so without this they
+                      stay with the class that was left. */}
+                  {balanceOf(e.id) > 0 && enrolments.some((o) => o.id !== e.id) && (
+                    <button
+                      type="button"
+                      className="jt-btn-ghost"
+                      style={{ ...secondaryButtonStyle, padding: "5px 11px", fontSize: 12.5 }}
+                      onClick={() => {
+                        setMoveTo(enrolments.find((o) => o.id !== e.id && o.status === "Active")?.id ?? "");
+                        setMovingCredits(e);
+                      }}
+                    >
+                      {t("moveCredits", { credits: fmtCredits(balanceOf(e.id)) })}
+                    </button>
+                  )}
                   <RowActions
                     label={e.className}
                     onEdit={() => openEnrolmentModal(e)}
@@ -822,6 +877,120 @@ function StudentDetail({
           }}
         />
       )}
+
+      {movingCredits && (() => {
+        const targets = enrolments.filter((o) => o.id !== movingCredits.id);
+        const target = targets.find((o) => o.id === moveTo) ?? targets[0];
+        const balance = balanceOf(movingCredits.id);
+        const plan = target
+          ? planTransfer({
+              balance,
+              from: rateOf(movingCredits.id, movingCredits.classId),
+              to: rateOf(target.id, target.classId),
+            })
+          : ({ ok: false, problem: "rateUnknown" } as const);
+        return (
+          <Modal
+            title={t("moveCreditsTitle")}
+            width={460}
+            onClose={() => setMovingCredits(null)}
+            footer={
+              <>
+                <button
+                  type="button"
+                  className="jt-btn-ghost"
+                  style={secondaryButtonStyle}
+                  onClick={() => setMovingCredits(null)}
+                >
+                  {tCommon("cancel")}
+                </button>
+                <ActionButton
+                  className="jt-btn-primary"
+                  style={primaryButtonStyle}
+                  disabled={!plan.ok || !target}
+                  busyLabel={tCommon("saving")}
+                  onClick={async () => {
+                    if (!plan.ok || !target) return;
+                    const today = new Date().toISOString().slice(0, 10);
+                    /* Two entries, not one edited number: the ledger has to
+                       show where the hours went and where they came from, or a
+                       balance appears to have changed on its own. */
+                    await batch(async () => {
+                      await create("credit-transactions", {
+                        enrollment_id: movingCredits.id,
+                        transaction_type: "manual_adjustment",
+                        amount: -balance,
+                        transaction_date: today,
+                        notes: t("movedOut", { className: target.className }),
+                      });
+                      await create("credit-transactions", {
+                        enrollment_id: target.id,
+                        transaction_type: "manual_adjustment",
+                        amount: plan.credits,
+                        transaction_date: today,
+                        notes: t("movedIn", { className: movingCredits.className }),
+                      });
+                    });
+                    setMovingCredits(null);
+                  }}
+                >
+                  {t("moveCreditsConfirm")}
+                </ActionButton>
+              </>
+            }
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <label style={labelStyle} htmlFor="mv-target">{t("moveCreditsTo")}</label>
+                <select
+                  id="mv-target"
+                  value={target?.id ?? ""}
+                  onChange={(e) => setMoveTo(e.target.value)}
+                  style={selectStyle}
+                >
+                  {targets.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.className}
+                      {o.status === "Active" ? "" : ` (${tStatus(o.status)})`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* The sum, in full, before anyone commits to it. A credit is an
+                  hour and every class prices an hour differently, so what
+                  moves is the money — the hours change with it. */}
+              {plan.ok ? (
+                <InfoGrid
+                  rows={[
+                    {
+                      label: t("moveFrom"),
+                      value: t("creditsAtRate", {
+                        credits: fmtCredits(plan.balance),
+                        rate: fmtTHB(plan.fromRate),
+                        className: movingCredits.className,
+                      }),
+                    },
+                    { label: t("moveValue"), value: fmtTHB(plan.value) },
+                    {
+                      label: t("moveTo"),
+                      value: t("creditsAtRate", {
+                        credits: fmtCredits(plan.credits),
+                        rate: fmtTHB(plan.toRate),
+                        className: target!.className,
+                      }),
+                    },
+                  ]}
+                />
+              ) : (
+                <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
+                  {plan.problem === "nothingToMove" ? t("nothingToMove") : t("rateUnknown")}
+                </p>
+              )}
+            </div>
+          </Modal>
+        );
+      })()}
 
       {deletingEnrolment && (
         <ConfirmDeleteModal
