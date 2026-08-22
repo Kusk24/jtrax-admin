@@ -1,6 +1,7 @@
 "use client";
 
 import { canRoleAccess } from "@/lib/nav";
+import { opensCreate } from "@/lib/quick-actions";
 import { useJtrax } from "./JtraxContext";
 import { SectionPlaceholder } from "./SectionPlaceholder";
 import { AcademyPage } from "./pages/AcademyPage";
@@ -23,16 +24,18 @@ import { TournamentPage } from "./pages/TournamentPage";
  */
 export function SectionRouter({
   section,
-  newStudentName,
+  startNew,
   status,
   studentId,
   detailId,
   detailTab,
 }: {
   section: string;
-  /* Threaded from the server component rather than read with useSearchParams,
-     which would bail the whole route out of server rendering. */
-  newStudentName?: string;
+  /* A Quick Action asking this section to open its create form; the value
+     prefills the first field where there is one. Threaded from the server
+     component rather than read with useSearchParams, which would bail the
+     whole route out of server rendering. */
+  startNew?: string;
   /* Which condition the dashboard sent us to look at — a student status. */
   status?: string;
   /* The student a payment is about to be recorded for, straight off the end of
@@ -49,14 +52,25 @@ export function SectionRouter({
     return <SectionPlaceholder section={section} noAccess />;
   }
 
+  /* Every key below carries `startNew`, so arriving from a Quick Action at a
+     section that is already on screen remounts it with its form open. Without
+     it, going to /payment and then to /payment?new= keeps the mounted list —
+     the initial state that reads the flag never runs again, and the pill does
+     nothing at all.
+
+     Prefixed rather than `startNew ?? ""`, which is the same trap the flag
+     itself sets: absent and present-but-empty both become "", the key does
+     not change, and nothing remounts. */
+  const newKey = startNew === undefined ? "" : `new:${startNew}`;
+
   switch (section) {
     case "students":
       /* Keyed so arriving from a different follow-up card resets the filter
          rather than keeping the state of the previous visit. */
       return (
         <StudentsPage
-          key={`${newStudentName ?? ""}|${status ?? ""}`}
-          startWizard={newStudentName}
+          key={`${newKey}|${status ?? ""}`}
+          startWizard={startNew}
           startStatus={status}
         />
       );
@@ -65,7 +79,13 @@ export function SectionRouter({
     case "payment":
       /* Keyed so arriving for a second student opens the form for them rather
          than keeping the first one's draft. */
-      return <PaymentPage key={studentId ?? "list"} startStudentId={studentId} />;
+      return (
+        <PaymentPage
+          key={`${studentId ?? "list"}|${newKey}`}
+          startStudentId={studentId}
+          startNew={opensCreate(startNew)}
+        />
+      );
     case "classhistory":
       return <ClassHistoryPage />;
     case "games":
@@ -73,7 +93,7 @@ export function SectionRouter({
     case "lichess":
       return <LichessPage />;
     case "announcement":
-      return <AnnouncementPage />;
+      return <AnnouncementPage key={newKey} startNew={opensCreate(startNew)} />;
     case "settings":
       return <SettingsPage />;
     case "admins":
@@ -83,7 +103,14 @@ export function SectionRouter({
     case "chat":
       return <MessagesPage />;
     case "tournament":
-      return <TournamentPage detailId={detailId} detailTab={detailTab} />;
+      return (
+        <TournamentPage
+          key={newKey}
+          detailId={detailId}
+          detailTab={detailTab}
+          startNew={opensCreate(startNew)}
+        />
+      );
     default:
       return <SectionPlaceholder section={section} />;
   }

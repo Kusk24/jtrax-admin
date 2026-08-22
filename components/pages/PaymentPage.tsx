@@ -624,7 +624,15 @@ function PaymentDetail({
    labels above, which is why recording one strips the spaces. */
 const METHOD_VALUES = ["CreditCard", "BankTransfer", "PromptPay", "Cash"];
 
-export function PaymentPage({ startStudentId }: { startStudentId?: string }) {
+export function PaymentPage({
+  startStudentId,
+  startNew,
+}: {
+  startStudentId?: string;
+  /* The dashboard's "Record Payment" pill, which means the form and not the
+     ledger it is filed into. */
+  startNew?: boolean;
+}) {
   const t = useTranslations("payment");
   const tCommon = useTranslations("common");
   const { showError } = useErrorToast();
@@ -632,7 +640,7 @@ export function PaymentPage({ startStudentId }: { startStudentId?: string }) {
   const { payments, raw, batch, create, update, remove, loading } = useData();
   /* Arriving with a student means the wizard just registered them and the next
      thing the desk does is take their money. */
-  const [formOpen, setFormOpen] = useState(Boolean(startStudentId));
+  const [formOpen, setFormOpen] = useState(Boolean(startStudentId) || Boolean(startNew));
   const [mode, setMode] = useViewMode("payments", VIEWS);
   const [search, setSearch] = useState("");
   const [method, setMethod] = useState("");

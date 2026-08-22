@@ -21,13 +21,19 @@ const FIELDS = (t: (k: string) => string): CrudField[] => [
 
 type Editing = { mode: "create" } | { mode: "edit"; id: string };
 
-export function AnnouncementPage() {
+export function AnnouncementPage({
+  startNew,
+}: {
+  /* The dashboard's "New Announcement" pill, which means the composer and not
+     the list of what has already gone out. */
+  startNew?: boolean;
+}) {
   const t = useTranslations("announcement");
   const tCommon = useTranslations("common");
   const { announcements: rows, meAccountId, create, update, remove } = useData();
 
   const fields = FIELDS(t);
-  const [editing, setEditing] = useState<Editing | null>(null);
+  const [editing, setEditing] = useState<Editing | null>(startNew ? { mode: "create" } : null);
   const [values, setValues] = useState<CrudValues>(() => emptyValues(fields));
   const [deleting, setDeleting] = useState<{ id: string; title: string } | null>(null);
 
