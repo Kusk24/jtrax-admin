@@ -14,7 +14,8 @@
     "logout": "ออกจากระบบ",
     "brandSub": "โรงเรียนหมากรุก",
     "language": "ภาษา",
-    "games": "เกม"
+    "games": "เกม",
+    "lichess": "Lichess"
   },
   "roles": {
     "Admin": "ผู้ดูแล",
@@ -852,7 +853,8 @@
       "rapid": "แรพิด",
       "classical": "คลาสสิก",
       "puzzle": "ปริศนา"
-    }
+    },
+    "pageSub": "สิ่งที่นักเรียนของสถาบันเล่นที่บ้าน"
   },
   "external": {
     "title": "รายการแข่งขันภายนอก (chess-results.com)",

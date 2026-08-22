@@ -8,7 +8,6 @@ import { type Student } from "@/lib/data";
 import { useData } from "@/components/DataProvider";
 import { fmtCredits, fmtDate, fmtTHB, liveClasses, practiceStrip } from "@/lib/live";
 import { Icon } from "@/lib/icons";
-import { LichessPanel } from "../lichess/LichessPanel";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
 import {
   ActionButton,
@@ -1786,10 +1785,6 @@ export function StudentsPage({
             })}
           </Table>
           <Pagination page={current} totalPages={totalPages} onChange={setPage} />
-
-      {/* What the academy cannot see from its own records:
-          the chess these students play at home. */}
-      <LichessPanel />
         </Card>
       )}
     </div>

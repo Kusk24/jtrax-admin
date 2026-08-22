@@ -8,6 +8,7 @@ import { AdminsPage } from "./pages/AdminsPage";
 import { AnnouncementPage } from "./pages/AnnouncementPage";
 import { ClassHistoryPage } from "./pages/ClassHistoryPage";
 import { GamesPage } from "./pages/GamesPage";
+import { LichessPage } from "./pages/LichessPage";
 import { MessagesPage } from "./pages/MessagesPage";
 import { ParentsPage } from "./pages/ParentsPage";
 import { PaymentPage } from "./pages/PaymentPage";
@@ -69,6 +70,8 @@ export function SectionRouter({
       return <ClassHistoryPage />;
     case "games":
       return <GamesPage />;
+    case "lichess":
+      return <LichessPage />;
     case "announcement":
       return <AnnouncementPage />;
     case "settings":

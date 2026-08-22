@@ -19,6 +19,9 @@ export const NAV_STRUCTURE: NavItem[] = [
   { id: "academy", icon: "book", hideForReceptionist: true },
   { id: "classhistory", icon: "history" },
   { id: "games", icon: "knight" },
+  /* No role flags: the front desk is asked "how is my child doing at
+     home" as often as the office is. */
+  { id: "lichess", icon: "bishop" },
   { id: "students", icon: "students" },
   { id: "parents", icon: "parents" },
   { id: "payment", icon: "payment" },
