@@ -3,7 +3,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { type ClassDef } from "@/lib/data";
-import { liveClasses, todayISO } from "@/lib/live";
+import { fmtCredits, liveClasses, todayISO } from "@/lib/live";
+import {
+  creditCost,
+  defaultEndFor,
+  draftProblem,
+  lengthMinutes,
+  MIN_SESSION_MINUTES,
+  timeOptions,
+} from "@/lib/session-draft";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
 /* Shared with the rest of the forms so the panel's fields keep the same box —
@@ -166,94 +174,119 @@ const ghostBtn: React.CSSProperties = {
   cursor: "pointer",
 };
 
+/**
+ * Create Session.
+ *
+ * A class runs when it runs: the academy sets no fixed hours, which is why a
+ * session is written down one at a time. So both ends of it are chosen freely
+ * — any start, any end, five minutes apart — rather than offered as "now until
+ * something".
+ *
+ * The times are selects, not `<input type="time">`. That input reports its
+ * value as "" until every segment is filled, and how many segments there are
+ * is the browser's business, so a field reading "03:30" could be empty to the
+ * code while the desk stared at a Create button that would not press. A pair
+ * of selects cannot be half chosen.
+ *
+ * Students can be ticked here if they are already standing there, and checked
+ * in afterwards from the dashboard if they are not — the same attendance rows
+ * either way, which is what spends the credits.
+ */
 function CreateSession({ onClose }: { onClose: () => void }) {
   const t = useTranslations("session");
   const tCommon = useTranslations("common");
   const { showError } = useErrorToast();
-  const { raw, students, create } = useData();
+  const { raw, students, create, batch } = useData();
+
   /* Only classes the academy still runs: an archived one cannot take a new
      session, though its finished ones keep its name. */
-  const classes = liveClasses(raw).map((c) => ({ id: String(c.class_id), name: String(c.name ?? "") }));
+  const classes = useMemo(
+    () => liveClasses({ classes: raw.classes }).map((c) => ({ id: String(c.class_id), name: String(c.name ?? "") })),
+    [raw.classes],
+  );
+
   const [chosenClass, setChosenClass] = useState("");
-  /* Worked out at render, not frozen at mount.
-     `useState(classes[0]?.name)` read the list once, and the panel can open
-     before it arrives — a cold backend, a hard reload. The name then stayed ""
-     for good while the select, having no option matching "", displayed its
-     first one anyway. The class looked chosen, the button stayed dead, and
-     nothing on screen accounted for it. */
-  const className =
-    classes.some((c) => c.name === chosenClass) ? chosenClass : classes[0]?.name ?? "";
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
-  /**
-   * A time field with digits in it that the browser will not give us.
-   *
-   * `<input type="time">` reports `value === ""` until *every* segment is
-   * filled, and how many segments there are depends on the locale: a
-   * 12-hour browser wants AM/PM as well, and a `step` under a minute wants
-   * seconds. So a field reading "03:30" on screen can still be empty to the
-   * code — which is a button that will not press and a form that looks
-   * complete. `validity.badInput` is how the browser admits to it.
-   */
-  const [startPartial, setStartPartial] = useState(false);
-  const [endPartial, setEndPartial] = useState(false);
+  /* Worked out at render, never frozen at mount: the panel can open before the
+     class list arrives, and a name captured then would be one this list does
+     not contain — a class that looks chosen and a button that stays dead. */
+  const classId = classes.some((c) => c.id === chosenClass) ? chosenClass : classes[0]?.id ?? "";
+
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
 
-  const available = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return students.filter((s) => !q || s.name.toLowerCase().includes(q));
-  }, [search, students]);
+  const times = useMemo(() => timeOptions(), []);
+  const problem = draftProblem({ classCount: classes.length, classId, start, end });
+  const minutes = lengthMinutes(start, end);
+  const cost = creditCost(start, end);
 
-  const canCreate = Boolean(className && startTime && endTime) && !busy;
-
-  /**
-   * Why the button will not press, named precisely.
-   *
-   * "Set a start and end time" is no help at all in front of two fields that
-   * both appear to have times in them — which is what a half-entered time
-   * looks like. So this distinguishes the field that is empty from the field
-   * that is only partly typed, and says which one.
-   */
-  function blockedReason(): string {
-    if (classes.length === 0) return t("noClasses");
-    if (startPartial || endPartial) return t("timeIncomplete");
-    if (!startTime && !endTime) return t("needTimes");
-    if (!startTime) return t("needStartTime");
-    return t("needEndTime");
+  /** Choosing a start moves an end that no longer makes sense, rather than
+      leaving the desk with a Create button it cannot press and no clue why. */
+  function chooseStart(value: string) {
+    setStart(value);
+    if (lengthMinutes(value, end) < MIN_SESSION_MINUTES) setEnd(defaultEndFor(value));
   }
 
-  /* Creates the session, then checks in everyone picked — the panel used to
-     close without writing anything. */
+  /**
+   * Who may be in this session: the students enrolled in the class chosen.
+   *
+   * A child attends the classes they are enrolled in. Ticking anyone else here
+   * writes an attendance nobody can charge — credits hang off an enrolment —
+   * and the desk would find out at the end of the month.
+   */
+  const eligible = useMemo(() => {
+    const enrolled = new Set(
+      raw.enrollments
+        .filter((e) => String(e["class_id"] ?? "") === classId)
+        .map((e) => String(e["student_id"])),
+    );
+    const q = search.trim().toLowerCase();
+    return students
+      .filter((s) => enrolled.has(s.id))
+      .filter((s) => !q || s.name.toLowerCase().includes(q));
+  }, [students, raw.enrollments, classId, search]);
+
+  /* Ticks do not survive a change of class: they were made against a roster
+     that no longer applies. */
+  const eligibleIds = useMemo(() => new Set(eligible.map((s) => s.id)), [eligible]);
+  const picked = selected.filter((id) => eligibleIds.has(id));
+
+  function toggle(id: string) {
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  const reason: Record<NonNullable<typeof problem>, string> = {
+    noClasses: t("noClasses"),
+    noClass: t("chooseAClass"),
+    endBeforeStart: t("endAfterStart"),
+    tooShort: t("atLeastHalfAnHour"),
+  };
+
   async function createSession() {
-    const cls = classes.find((c) => c.name === className);
-    if (!cls) {
-      /* Bailing silently here meant a button that did nothing at all: the
-         class list is read once as the panel mounts, so a panel opened before
-         the classes land has a name matching none of them. */
-      showError(tCommon("sessionFailed"));
-      return;
-    }
+    if (problem) return;
     setBusy(true);
     try {
-      const session = await create("class-sessions", {
-        class_id: cls.id,
-        session_date: todayISO(),
-        start_time: startTime,
-        end_time: endTime,
-        session_status: "Ongoing",
-      });
-      for (const name of selected) {
-        const student = students.find((s) => s.name === name);
-        if (student) {
+      /* The session and everyone already in the room, as one unit — and the
+         credits follow the attendance rows on the server, one hour to one
+         credit, so nothing here has to work the price out twice. */
+      await batch(async () => {
+        const session = await create("class-sessions", {
+          class_id: classId,
+          session_date: todayISO(),
+          start_time: start,
+          end_time: end,
+          session_status: "Ongoing",
+        });
+        for (const studentId of picked) {
           await create("attendance", {
-            student_id: student.id,
+            student_id: studentId,
             session_id: session.session_id,
             check_in_time: new Date().toISOString(),
           });
         }
-      }
+      });
       onClose();
     } catch (e) {
       showError(tCommon("sessionFailed"), e);
@@ -262,22 +295,14 @@ function CreateSession({ onClose }: { onClose: () => void }) {
     }
   }
 
-  function toggle(name: string) {
-    setSelected((prev) => (prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]));
-  }
-
   return (
     <PanelFrame
       title={t("createTitle")}
       onClose={onClose}
       footer={
         <>
-          {/* Why the button is dead, when it is. A greyed-out Create with
-              nothing beside it reads as broken software rather than an
-              unfinished form — and the two fields it is waiting on start empty
-              and are cleared again whenever the class changes. */}
           <span style={{ fontFamily: FONT, fontSize: 14, color: COLORS.textSecondary }}>
-            {canCreate || busy ? t("selectedCount", { count: selected.length }) : blockedReason()}
+            {problem ? reason[problem] : t("readyToCreate", { count: picked.length })}
           </span>
           <span style={{ display: "flex", gap: 10 }}>
             <button type="button" style={ghostBtn} onClick={onClose}>
@@ -286,11 +311,15 @@ function CreateSession({ onClose }: { onClose: () => void }) {
             <button
               type="button"
               className="jt-btn-primary"
-              style={{ ...primaryBtn, opacity: canCreate ? 1 : 0.75, cursor: canCreate ? "pointer" : "not-allowed" }}
-              disabled={!canCreate}
+              style={{
+                ...primaryBtn,
+                opacity: problem || busy ? 0.75 : 1,
+                cursor: problem ? "not-allowed" : busy ? "wait" : "pointer",
+              }}
+              disabled={Boolean(problem) || busy}
               onClick={createSession}
             >
-              {t("createTitle")}
+              {busy ? tCommon("saving") : t("createTitle")}
             </button>
           </span>
         </>
@@ -303,112 +332,122 @@ function CreateSession({ onClose }: { onClose: () => void }) {
           </h3>
 
           <div style={{ marginBottom: 14 }}>
-            <label style={labelStyle} htmlFor="jtrax-class-name">
-              {t("className")}
-            </label>
+            <label style={labelStyle} htmlFor="jtrax-class-name">{t("className")}</label>
             <select
               id="jtrax-class-name"
-              value={className}
-              /* The times stay. A class has no fixed hours — that is why
-                 sessions are made by hand — so changing which class this is
-                 says nothing about when it runs, and throwing away times the
-                 desk had already typed only made them type them again. */
+              value={classId}
+              /* The times stay. A class has no fixed hours, so which class this
+                 is says nothing about when it runs. */
               onChange={(e) => setChosenClass(e.target.value)}
               style={selectStyle}
             >
+              {classes.length === 0 && <option value="">{t("noClasses")}</option>}
               {classes.map((c) => (
-                <option key={c.id} value={c.name}>
-                  {c.name}
-                </option>
+                <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
           </div>
 
-          <div style={{ display: "flex", gap: 12, marginBottom: 18 }}>
+          <div style={{ display: "flex", gap: 12, marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
-              <label style={labelStyle} htmlFor="jtrax-start">
-                {t("startTime")}
-              </label>
-              <input
+              <label style={labelStyle} htmlFor="jtrax-start">{t("startTime")}</label>
+              <select
                 id="jtrax-start"
-                type="time"
-                value={startTime}
-                onChange={(e) => {
-                  setStartTime(e.target.value);
-                  setStartPartial(e.target.validity.badInput);
-                }}
-                style={fieldStyle}
-              />
+                value={start}
+                onChange={(e) => chooseStart(e.target.value)}
+                style={selectStyle}
+              >
+                <option value="">{t("pickATime")}</option>
+                {times.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
             </div>
             <div style={{ flex: 1 }}>
-              <label style={labelStyle} htmlFor="jtrax-end">
-                {t("endTime")}
-              </label>
-              <input
+              <label style={labelStyle} htmlFor="jtrax-end">{t("endTime")}</label>
+              <select
                 id="jtrax-end"
-                type="time"
-                value={endTime}
-                onChange={(e) => {
-                  setEndTime(e.target.value);
-                  setEndPartial(e.target.validity.badInput);
-                }}
-                style={fieldStyle}
-              />
+                value={end}
+                onChange={(e) => setEnd(e.target.value)}
+                style={selectStyle}
+              >
+                <option value="">{t("pickATime")}</option>
+                {times.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
             </div>
           </div>
+
+          {/* The price, before the desk commits to it — a family should not
+              learn what an afternoon cost afterwards. */}
+          <p style={{ margin: "0 0 18px", fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
+            {minutes > 0
+              ? t("lengthAndCost", { minutes, credits: fmtCredits(cost) })
+              : t("atLeastHalfAnHour")}
+          </p>
 
           <div style={{ height: 1, background: COLORS.border, margin: "4px 0 16px" }} />
 
           <h3 style={{ margin: "0 0 10px", fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text }}>
-            {t("selectedStudents", { count: selected.length })}
+            {t("selectedStudents", { count: picked.length })}
           </h3>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-            {selected.length === 0 && (
+            {picked.length === 0 && (
               <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
-                {t("noneSelected")}
+                {t("noneSelectedYet")}
               </span>
             )}
-            {selected.map((name) => (
-              <span
-                key={name}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 7,
-                  padding: "5px 8px 5px 5px",
-                  borderRadius: 999,
-                  background: COLORS.light,
-                  fontFamily: FONT,
-                  fontSize: 13.5,
-                  color: COLORS.text,
-                }}
-              >
-                <Avatar initials={initialsOf(name)} size={20} bg={COLORS.surface} />
-                {name}
-                <button
-                  type="button"
-                  onClick={() => toggle(name)}
-                  aria-label={t("removeStudent", { name })}
+            {picked.map((id) => {
+              const student = students.find((s) => s.id === id);
+              if (!student) return null;
+              return (
+                <span
+                  key={id}
                   style={{
                     display: "inline-flex",
-                    border: "none",
-                    background: "transparent",
-                    cursor: "pointer",
-                    padding: 0,
-                    color: COLORS.textSecondary,
+                    alignItems: "center",
+                    gap: 7,
+                    padding: "5px 8px 5px 5px",
+                    borderRadius: 999,
+                    background: COLORS.light,
+                    fontFamily: FONT,
+                    fontSize: 13.5,
+                    color: COLORS.text,
                   }}
                 >
-                  <Icon name="x" size={13} />
-                </button>
-              </span>
-            ))}
+                  <Avatar initials={initialsOf(student.name)} size={20} bg={COLORS.surface} />
+                  {student.name}
+                  <button
+                    type="button"
+                    onClick={() => toggle(id)}
+                    aria-label={t("removeStudent", { name: student.name })}
+                    style={{
+                      display: "inline-flex",
+                      border: "none",
+                      background: "transparent",
+                      cursor: "pointer",
+                      padding: 0,
+                      color: COLORS.textSecondary,
+                    }}
+                  >
+                    <Icon name="x" size={13} />
+                  </button>
+                </span>
+              );
+            })}
           </div>
         </div>
 
         <div>
-          <h3 style={{ margin: "0 0 14px", fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text }}>
+          <h3 style={{ margin: "0 0 4px", fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text }}>
             {t("addStudents")}
           </h3>
+          {/* Nobody has to be ticked now: the dashboard checks a child in when
+              they walk through the door, and it writes the same row. */}
+          <p style={{ margin: "0 0 12px", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+            {t("addStudentsHelp")}
+          </p>
           <div style={{ marginBottom: 12 }}>
             <input
               value={search}
@@ -419,38 +458,47 @@ function CreateSession({ onClose }: { onClose: () => void }) {
             />
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 320, overflowY: "auto" }}>
-            {available.map((student) => {
-              const checked = selected.includes(student.name);
-              return (
-                <label
-                  key={student.id}
-                  className="jt-find-row"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "8px 10px",
-                    borderRadius: 9,
-                    cursor: "pointer",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggle(student.name)}
-                    style={{ accentColor: COLORS.blue, width: 15, height: 15 }}
-                  />
-                  <Avatar initials={initialsOf(student.name)} size={26} />
-                  <span style={{ fontFamily: FONT, fontSize: 14, color: COLORS.text }}>{student.name}</span>
-                </label>
-              );
-            })}
+            {eligible.length === 0 && (
+              <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
+                {search.trim() ? t("noStudentMatches") : t("nobodyEnrolled")}
+              </span>
+            )}
+            {eligible.map((student) => (
+              <label
+                key={student.id}
+                className="jt-find-row"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "8px 10px",
+                  borderRadius: 9,
+                  cursor: "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={picked.includes(student.id)}
+                  onChange={() => toggle(student.id)}
+                  style={{ accentColor: COLORS.blue, width: 15, height: 15 }}
+                />
+                <Avatar initials={initialsOf(student.name)} size={26} />
+                <span style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 14, color: COLORS.text }}>
+                  {student.name}
+                </span>
+                {/* What they have to spend, next to what this will cost. */}
+                <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+                  {tCommon("creditsCount", { count: fmtCredits(student.credit) })}
+                </span>
+              </label>
+            ))}
           </div>
         </div>
       </div>
     </PanelFrame>
   );
 }
+
 
 function ViewClass({ def, onClose }: { def: ClassDef; onClose: () => void }) {
   const t = useTranslations("session");

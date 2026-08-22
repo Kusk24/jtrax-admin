@@ -254,7 +254,17 @@
     "noClasses": "No class exists yet — an admin adds classes on the Academy screen.",
     "needStartTime": "Set a start time to create the session.",
     "needEndTime": "Set an end time to create the session.",
-    "timeIncomplete": "One of the times is only half entered — finish it, including AM/PM if your browser asks for it."
+    "timeIncomplete": "One of the times is only half entered — finish it, including AM/PM if your browser asks for it.",
+    "pickATime": "Pick a time",
+    "chooseAClass": "Choose the class this session is for.",
+    "endAfterStart": "The end time must be after the start.",
+    "atLeastHalfAnHour": "A session runs for at least half an hour.",
+    "lengthAndCost": "{minutes} minutes · costs each student {credits} credits",
+    "readyToCreate": "{count, plural, =0 {Nobody added yet — you can check students in later} one {# student added} other {# students added}}",
+    "noneSelectedYet": "Nobody yet — tick anyone already here, or check them in later.",
+    "addStudentsHelp": "Only students enrolled in this class. Anyone arriving later is checked in from the dashboard.",
+    "noStudentMatches": "No enrolled student matches that.",
+    "nobodyEnrolled": "Nobody is enrolled in this class yet."
   },
   "students": {
     "title": "Students",
