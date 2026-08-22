@@ -24,6 +24,7 @@ const state = {
     { id: "boon", name: "Boon Mek", credit: 2.5, status: "Low Credit", className: "Group Class" },
     { id: "chai", name: "Chai Rat", credit: 5, status: "Normal", className: "Master Class" },
   ],
+  todaysClasses: [] as ClassDef[],
   raw: {
     attendance: [{ attendance_id: "att_1", student_id: "anong", session_id: "ses_1" }],
     enrollments: [
@@ -35,11 +36,13 @@ const state = {
 };
 
 vi.mock("@/components/DataProvider", () => ({
-  useData: () => ({ ...state, create, remove }),
+  useData: () => ({ ...state, create, remove, todaysClasses: state.todaysClasses }),
 }));
 
 const { SessionPanel } = await import("./SessionPanel");
 const { ErrorToastProvider } = await import("@/components/ErrorToast");
+
+const SESSION_ID = "ses_1";
 
 const GROUP_SESSION: ClassDef = {
   id: "ses_1",
@@ -56,7 +59,8 @@ const GROUP_SESSION: ClassDef = {
 };
 
 function renderView(def: ClassDef = GROUP_SESSION) {
-  render(
+  state.todaysClasses = [def];
+  return render(
     <NextIntlClientProvider locale="en" messages={en}>
       <ErrorToastProvider>
         <SessionPanel state={{ mode: "view", def }} onClose={() => {}} />
@@ -72,6 +76,8 @@ async function openAddStudent(user: ReturnType<typeof userEvent.setup>) {
 beforeEach(() => {
   create.mockClear();
   remove.mockClear();
+  state.raw.attendance = [{ attendance_id: "att_1", student_id: "anong", session_id: SESSION_ID }];
+  state.todaysClasses = [];
 });
 
 describe("who can be added to a running session", () => {
@@ -114,6 +120,44 @@ describe("who can be added to a running session", () => {
     expect(path).toBe("attendance");
     expect(body.student_id).toBe("boon");
     expect(body.session_id).toBe("ses_1");
+  });
+
+  /**
+   * The panel is handed the session that was clicked, and the page holds that
+   * copy in state. Adding a student wrote the row and refetched — and this
+   * panel went on rendering the copy it was given, so nothing moved. The desk
+   * pressed again, and only found out it had worked by closing the panel.
+   */
+  it("shows the new arrival without the panel being closed and reopened", async () => {
+    const user = userEvent.setup();
+    const { rerender } = renderView();
+    await openAddStudent(user);
+    await user.click(screen.getByText("Boon Mek"));
+
+    /* What the refetch produces: the same session, one name longer. The panel
+       is deliberately NOT re-mounted, and is still passed the stale snapshot
+       the page captured when it was opened. */
+    state.raw.attendance = [
+      ...state.raw.attendance,
+      { attendance_id: "att_2", student_id: "boon", session_id: SESSION_ID },
+    ];
+    state.todaysClasses = [
+      { ...GROUP_SESSION, roster: ["Anong Sri", "Boon Mek"], students: ["Anong Sri", "Boon Mek"] },
+    ];
+    rerender(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <ErrorToastProvider>
+          <SessionPanel state={{ mode: "view", def: GROUP_SESSION }} onClose={() => {}} />
+        </ErrorToastProvider>
+      </NextIntlClientProvider>,
+    );
+
+    /* On the roster specifically — every roster row carries its own remove
+       button, and only a roster row does. Counting the name alone proves
+       nothing: with the stale copy he was still listed under "add", which is
+       one occurrence too. */
+    expect(screen.getByRole("button", { name: "Remove Boon Mek from roster" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Remove Anong Sri from roster" })).toBeTruthy();
   });
 
   /* A Master session offers Master children, and nobody from Group. */

@@ -580,12 +580,27 @@ function CreateSession({ onClose }: { onClose: () => void }) {
 }
 
 
-function ViewClass({ def, onClose }: { def: ClassDef; onClose: () => void }) {
+/**
+ * One session, open on the dashboard.
+ *
+ * The panel is handed the session that was clicked — but that is a snapshot,
+ * taken when it was opened and held in the page's state ever since. Adding or
+ * removing a student writes a row and refetches, and every other view of today
+ * moved; this one did not, because it was still rendering the copy it was
+ * given. The desk saw nothing happen, pressed again, and only found out it had
+ * worked by closing the panel.
+ *
+ * So the snapshot is only ever a starting point: the session is read back out
+ * of the live list by id on every render, and falls back to what it was handed
+ * for a session that is no longer in today's list at all.
+ */
+function ViewClass({ def: opened, onClose }: { def: ClassDef; onClose: () => void }) {
   const t = useTranslations("session");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
-  const { students, raw, create, remove } = useData();
+  const { students, raw, create, remove, todaysClasses } = useData();
   const { showError } = useErrorToast();
+  const def = todaysClasses.find((c) => c.id && c.id === opened.id) ?? opened;
   const editable = def.status === "Ongoing";
   /* The roster comes from attendance, so adding or removing someone writes a
      row rather than editing a local array that the next refresh discards. */
