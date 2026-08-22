@@ -218,6 +218,36 @@ function StudentDetail({
   const [enrolmentValues, setEnrolmentValues] = useState<CrudValues>({});
   const [deletingEnrolment, setDeletingEnrolment] = useState<(typeof enrolments)[number] | null>(null);
 
+  /**
+   * Whether anything is hanging off this enrolment.
+   *
+   * `credit_transaction.enrollment_id` is NOT NULL, so the moment a child has
+   * bought credits for a class or attended one of its sessions, the database
+   * refuses to delete the row — which is what the office kept running into.
+   */
+  function enrolmentHasHistory(id: string): boolean {
+    return (
+      raw.creditTransactions.some((tx) => String(tx["enrollment_id"]) === id) ||
+      raw.payments.some((p) => String(p["enrollment_id"] ?? "") === id)
+    );
+  }
+
+  /**
+   * Takes a child out of a class.
+   *
+   * An enrolment nobody has spent anything against is a mistake being undone,
+   * and goes. One with credits or payments behind it is a term that happened:
+   * the row already has a word for that — Withdrawn — and the ledger it
+   * carries has to stay, or a receipt loses what it was for.
+   *
+   * Either way the child leaves the class: nothing offers a withdrawn
+   * enrolment's sessions, and the desk cannot check them into it.
+   */
+  async function leaveClass(id: string) {
+    if (enrolmentHasHistory(id)) await update("enrollments", id, { status: "Withdrawn" });
+    else await remove("enrollments", id);
+  }
+
   const enrolmentFields: CrudField[] = useMemo(
     () => [
       {
@@ -797,9 +827,15 @@ function StudentDetail({
       {deletingEnrolment && (
         <ConfirmDeleteModal
           what={deletingEnrolment.className}
-          note={t("enrolmentDeleteNote")}
+          /* Says which of the two will happen, because they are different
+             things and the row afterwards looks different. */
+          note={
+            enrolmentHasHistory(deletingEnrolment.id)
+              ? t("enrolmentWithdrawNote")
+              : t("enrolmentDeleteNote")
+          }
           onClose={() => setDeletingEnrolment(null)}
-          onConfirm={() => remove("enrollments", deletingEnrolment.id)}
+          onConfirm={() => leaveClass(deletingEnrolment.id)}
         />
       )}
 

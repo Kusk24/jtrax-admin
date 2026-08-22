@@ -40,6 +40,9 @@ const state = {
       { enrollment_id: "e1", student_id: "anong", class_id: "cls_group" },
       { enrollment_id: "e2", student_id: "boon", class_id: "cls_group" },
       { enrollment_id: "e3", student_id: "chai", class_id: "cls_master" },
+      /* Anong left Master last term. A withdrawn enrolment is not a class she
+         is in, so it must not put her on that roster. */
+      { enrollment_id: "e4", student_id: "anong", class_id: "cls_master", status: "Withdrawn" },
     ],
   },
 };
