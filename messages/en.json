@@ -14,7 +14,8 @@
     "logout": "Logout",
     "brandSub": "Chess School",
     "language": "Language",
-    "games": "Games"
+    "games": "Games",
+    "lichess": "Lichess"
   },
   "roles": {
     "Admin": "Admin",
@@ -852,7 +853,8 @@
       "rapid": "Rapid",
       "classical": "Classical",
       "puzzle": "Puzzles"
-    }
+    },
+    "pageSub": "What the academy's students are playing at home"
   },
   "external": {
     "title": "External tournaments (chess-results.com)",
