@@ -23,13 +23,48 @@ export const TIME_STEP_MINUTES = 5;
 
 export type TimeOption = { value: string; label: string };
 
-/** "HH:MM" for every step of the day, oldest trick and the clearest one. */
-export function timeOptions(step = TIME_STEP_MINUTES): TimeOption[] {
+/**
+ * Two short lists rather than one long one.
+ *
+ * Every time of day five minutes apart is 288 options in a single dropdown —
+ * correct, and unusable: finding 16:45 meant scrolling past three hundred
+ * neighbours. An hour and a minute chosen separately is 24 options and 12,
+ * both short enough to see at once, and between them they still reach every
+ * five-minute mark the timetable uses.
+ */
+export function hourOptions(): TimeOption[] {
+  return Array.from({ length: 24 }, (_, h) => {
+    const value = String(h).padStart(2, "0");
+    return { value, label: value };
+  });
+}
+
+export function minuteOptions(step = TIME_STEP_MINUTES): TimeOption[] {
   const out: TimeOption[] = [];
-  for (let m = 0; m < 24 * 60; m += step) {
-    out.push({ value: clockOf(m), label: clockOf(m) });
-  }
+  for (let m = 0; m < 60; m += step) out.push({ value: String(m).padStart(2, "0"), label: String(m).padStart(2, "0") });
   return out;
+}
+
+/** The hour half of "HH:MM", or "" when there is nothing chosen yet. */
+export function hourOf(clock: string): string {
+  return /^(\d{2}):(\d{2})$/.test(clock) ? clock.slice(0, 2) : "";
+}
+
+export function minuteOf(clock: string): string {
+  return /^(\d{2}):(\d{2})$/.test(clock) ? clock.slice(3, 5) : "";
+}
+
+/**
+ * Puts the two halves back together.
+ *
+ * Half a time is not a time, so an hour with no minute yet reads as ":00" —
+ * choosing 4pm should mean 16:00 without also having to say "and no minutes".
+ * A minute with no hour is nothing at all, and returns "" rather than
+ * inventing midnight.
+ */
+export function joinClock(hour: string, minute: string): string {
+  if (!hour) return "";
+  return `${hour}:${minute || "00"}`;
 }
 
 function clockOf(minutes: number): string {

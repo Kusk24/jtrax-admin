@@ -8,9 +8,13 @@ import {
   creditCost,
   defaultEndFor,
   draftProblem,
+  hourOf,
+  hourOptions,
+  joinClock,
   lengthMinutes,
+  minuteOf,
+  minuteOptions,
   MIN_SESSION_MINUTES,
-  timeOptions,
 } from "@/lib/session-draft";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
@@ -174,6 +178,70 @@ const ghostBtn: React.CSSProperties = {
   cursor: "pointer",
 };
 
+
+/**
+ * An hour and a minute, side by side.
+ *
+ * One list of every five-minute mark in the day is 288 options: correct and
+ * unusable, since finding 16:45 meant scrolling past three hundred
+ * neighbours. Twenty-four hours and twelve minutes are both short enough to
+ * take in at a glance, and between them they still reach every mark the
+ * timetable uses.
+ */
+function ClockPicker({
+  idPrefix,
+  hourLabel,
+  minuteLabel,
+  value,
+  hours,
+  minutes,
+  onChange,
+}: {
+  idPrefix: string;
+  hourLabel: string;
+  minuteLabel: string;
+  value: string;
+  hours: { value: string; label: string }[];
+  minutes: { value: string; label: string }[];
+  onChange: (clock: string) => void;
+}) {
+  const hour = hourOf(value);
+  const minute = minuteOf(value);
+  return (
+    <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <select
+        id={`${idPrefix}-hour`}
+        aria-label={hourLabel}
+        value={hour}
+        /* Choosing an hour alone is a whole time: 4pm means 16:00 without the
+           desk also having to say "and no minutes". */
+        onChange={(e) => onChange(joinClock(e.target.value, minute))}
+        style={{ ...selectStyle, flex: 1, minWidth: 0 }}
+      >
+        <option value="">--</option>
+        {hours.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+      <span style={{ fontFamily: FONT, fontSize: 15, color: COLORS.textSecondary }}>:</span>
+      <select
+        id={`${idPrefix}-minute`}
+        aria-label={minuteLabel}
+        value={minute}
+        onChange={(e) => onChange(joinClock(hour, e.target.value))}
+        /* Without an hour there is no time to put minutes on. */
+        disabled={!hour}
+        style={{ ...selectStyle, flex: 1, minWidth: 0, opacity: hour ? 1 : 0.6 }}
+      >
+        <option value="">--</option>
+        {minutes.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+    </span>
+  );
+}
+
 /**
  * Create Session.
  *
@@ -217,7 +285,8 @@ function CreateSession({ onClose }: { onClose: () => void }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
 
-  const times = useMemo(() => timeOptions(), []);
+  const hours = useMemo(() => hourOptions(), []);
+  const minutes5 = useMemo(() => minuteOptions(), []);
   const problem = draftProblem({ classCount: classes.length, classId, start, end });
   const minutes = lengthMinutes(start, end);
   const cost = creditCost(start, end);
@@ -350,32 +419,28 @@ function CreateSession({ onClose }: { onClose: () => void }) {
 
           <div style={{ display: "flex", gap: 12, marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
-              <label style={labelStyle} htmlFor="jtrax-start">{t("startTime")}</label>
-              <select
-                id="jtrax-start"
+              <span style={labelStyle}>{t("startTime")}</span>
+              <ClockPicker
+                idPrefix="jtrax-start"
+                hourLabel={t("startHour")}
+                minuteLabel={t("startMinute")}
                 value={start}
-                onChange={(e) => chooseStart(e.target.value)}
-                style={selectStyle}
-              >
-                <option value="">{t("pickATime")}</option>
-                {times.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
+                hours={hours}
+                minutes={minutes5}
+                onChange={chooseStart}
+              />
             </div>
             <div style={{ flex: 1 }}>
-              <label style={labelStyle} htmlFor="jtrax-end">{t("endTime")}</label>
-              <select
-                id="jtrax-end"
+              <span style={labelStyle}>{t("endTime")}</span>
+              <ClockPicker
+                idPrefix="jtrax-end"
+                hourLabel={t("endHour")}
+                minuteLabel={t("endMinute")}
                 value={end}
-                onChange={(e) => setEnd(e.target.value)}
-                style={selectStyle}
-              >
-                <option value="">{t("pickATime")}</option>
-                {times.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
+                hours={hours}
+                minutes={minutes5}
+                onChange={setEnd}
+              />
             </div>
           </div>
 
@@ -463,35 +528,50 @@ function CreateSession({ onClose }: { onClose: () => void }) {
                 {search.trim() ? t("noStudentMatches") : t("nobodyEnrolled")}
               </span>
             )}
-            {eligible.map((student) => (
-              <label
-                key={student.id}
-                className="jt-find-row"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  padding: "8px 10px",
-                  borderRadius: 9,
-                  cursor: "pointer",
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={picked.includes(student.id)}
-                  onChange={() => toggle(student.id)}
-                  style={{ accentColor: COLORS.blue, width: 15, height: 15 }}
-                />
-                <Avatar initials={initialsOf(student.name)} size={26} />
-                <span style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 14, color: COLORS.text }}>
-                  {student.name}
-                </span>
-                {/* What they have to spend, next to what this will cost. */}
-                <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-                  {tCommon("creditsCount", { count: fmtCredits(student.credit) })}
-                </span>
-              </label>
-            ))}
+            {eligible.map((student) => {
+              /* Short by the time the session is priced. A warning, not a
+                 refusal: the academy lets a child attend on credit and settle
+                 later, so this marks who to chase rather than turning them
+                 away at the door. */
+              const short = cost > 0 && student.credit < cost;
+              return (
+                <label
+                  key={student.id}
+                  className="jt-find-row"
+                  title={short ? t("willGoNegative", { credits: fmtCredits(student.credit) }) : undefined}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "8px 10px",
+                    borderRadius: 9,
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={picked.includes(student.id)}
+                    onChange={() => toggle(student.id)}
+                    style={{ accentColor: COLORS.blue, width: 15, height: 15 }}
+                  />
+                  <Avatar initials={initialsOf(student.name)} size={26} />
+                  <span style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 14, color: COLORS.text }}>
+                    {student.name}
+                  </span>
+                  {/* What they have to spend, next to what this will cost. */}
+                  <span
+                    style={{
+                      fontFamily: FONT,
+                      fontSize: 12.5,
+                      fontWeight: short ? 600 : 400,
+                      color: short ? COLORS.danger : COLORS.textSecondary,
+                    }}
+                  >
+                    {tCommon("creditsCount", { count: fmtCredits(student.credit) })}
+                  </span>
+                </label>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -505,6 +585,7 @@ function ViewClass({ def, onClose }: { def: ClassDef; onClose: () => void }) {
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
   const { students, raw, create, remove } = useData();
+  const { showError } = useErrorToast();
   const editable = def.status === "Ongoing";
   /* The roster comes from attendance, so adding or removing someone writes a
      row rather than editing a local array that the next refresh discards. */
@@ -514,14 +595,24 @@ function ViewClass({ def, onClose }: { def: ClassDef; onClose: () => void }) {
   const status = statusChipColors(def.status);
 
   /* Latecomers are the point of this panel: a student who turns up after the
-     session started is added here, so the picker only offers people who
-     aren't on the roster yet. */
+     session started is added here. Only this class's own children, though —
+     the list used to offer every student in the academy, so a child could be
+     added to a session of a class they were never enrolled in, where their
+     attendance could not be charged to anything. */
   const addable = useMemo(() => {
+    const enrolled = new Set(
+      raw.enrollments
+        .filter((e) => String(e["class_id"] ?? "") === String(def.classId ?? ""))
+        .map((e) => String(e["student_id"])),
+    );
     const q = search.trim().toLowerCase();
     return students.filter(
-      (student) => !roster.includes(student.name) && (!q || student.name.toLowerCase().includes(q)),
+      (student) =>
+        enrolled.has(student.id) &&
+        !roster.includes(student.name) &&
+        (!q || student.name.toLowerCase().includes(q)),
     );
-  }, [roster, search, students]);
+  }, [roster, search, students, raw.enrollments, def.classId]);
 
   return (
     <PanelFrame
@@ -655,8 +746,13 @@ function ViewClass({ def, onClose }: { def: ClassDef; onClose: () => void }) {
                           session_id: def.id,
                           check_in_time: new Date().toISOString(),
                         });
-                      } catch {
-                        /* Already added, most likely — the list refreshes. */
+                      } catch (e) {
+                        /* This used to swallow everything as "already added".
+                           The server now also refuses a child who cannot
+                           afford the session, and that is the one refusal the
+                           desk has to hear — it names the balance and the
+                           cost, and the fix is a top-up. */
+                        showError(tCommon("checkInFailed"), e);
                       }
                       setSearch("");
                     }}

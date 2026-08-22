@@ -105,7 +105,8 @@
     "creditsCount": "{count, plural, one {# credit} other {# credits}}",
     "saving": "Saving…",
     "deleting": "Deleting…",
-    "loadFailed": "Could not load. Please try again."
+    "loadFailed": "Could not load. Please try again.",
+    "checkInFailed": "Could not add the student to this session."
   },
   "share": {
     "copy": "Copy link",
@@ -264,7 +265,12 @@
     "noneSelectedYet": "Nobody yet — tick anyone already here, or check them in later.",
     "addStudentsHelp": "Only students enrolled in this class. Anyone arriving later is checked in from the dashboard.",
     "noStudentMatches": "No enrolled student matches that.",
-    "nobodyEnrolled": "Nobody is enrolled in this class yet."
+    "nobodyEnrolled": "Nobody is enrolled in this class yet.",
+    "startHour": "Start hour",
+    "startMinute": "Start minute",
+    "endHour": "End hour",
+    "endMinute": "End minute",
+    "willGoNegative": "Only {credits} credits left — this session takes them below zero."
   },
   "students": {
     "title": "Students",
