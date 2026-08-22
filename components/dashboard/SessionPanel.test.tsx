@@ -1,30 +1,52 @@
 /**
- * Creating a session from the dashboard.
+ * Create Session, rebuilt.
  *
- * The Create button is disabled until the panel has a class and both times.
- * That is fine; saying nothing about it is not — the times start empty and are
- * cleared again whenever the class changes, so the button spends most of its
- * life dead for a reason the screen never gave.
+ * Both ends of the session are chosen freely from lists — any start, any end,
+ * five minutes apart — because a class has no fixed hours, which is the whole
+ * reason sessions are written one at a time. Selects rather than
+ * `<input type="time">`, which reports "" until every segment is filled and
+ * left the desk staring at a Create button that would not press.
  */
-import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
 
-const create = vi.fn(async () => ({ session_id: "ses_new" }));
+/* Typed with the body it is called with, so the recorded calls can be read as
+   (path, body) rather than cast at every assertion. */
+const create = vi.fn(
+  async (path: string, body: Record<string, unknown>): Promise<Record<string, unknown>> => {
+    void body;
+    return path === "class-sessions" ? { session_id: "ses_new" } : {};
+  },
+);
+const batch = vi.fn(async (job: () => Promise<unknown>) => job());
 
+/* Anong and Boon are in the Group class; Chai is in Master only. */
 const state = {
-  students: [{ id: "anong", name: "Anong Sri", credit: 8, status: "Normal", parentPhone: "0811111111" }],
+  students: [
+    { id: "anong", name: "Anong Sri", credit: 8, status: "Normal", className: "Group Class" },
+    { id: "boon", name: "Boon Mek", credit: 2.5, status: "Low Credit", className: "Group Class" },
+    { id: "chai", name: "Chai Rat", credit: 5, status: "Normal", className: "Master Class" },
+  ],
   raw: {
     classes: [
       { class_id: "cls_group", name: "Group Class" },
       { class_id: "cls_master", name: "Master Class" },
+      { class_id: "cls_gone", name: "Retired Class", archived_at: "2026-08-21T00:00:00Z" },
+    ],
+    enrollments: [
+      { enrollment_id: "e1", student_id: "anong", class_id: "cls_group" },
+      { enrollment_id: "e2", student_id: "boon", class_id: "cls_group" },
+      { enrollment_id: "e3", student_id: "chai", class_id: "cls_master" },
     ],
   },
 };
 
-vi.mock("@/components/DataProvider", () => ({ useData: () => ({ ...state, create }) }));
+vi.mock("@/components/DataProvider", () => ({
+  useData: () => ({ ...state, create, batch }),
+}));
 
 const { SessionPanel } = await import("./SessionPanel");
 const { ErrorToastProvider } = await import("@/components/ErrorToast");
@@ -38,162 +60,188 @@ function renderPanel() {
     </NextIntlClientProvider>,
   );
   return {
-    create: screen.getAllByRole("button", { name: "Create Session" }).at(-1) as HTMLButtonElement,
-    start: screen.getByLabelText("Start Time") as HTMLInputElement,
-    end: screen.getByLabelText("End Time") as HTMLInputElement,
     klass: screen.getByLabelText("Class Name") as HTMLSelectElement,
+    start: screen.getByLabelText("Start Time") as HTMLSelectElement,
+    end: screen.getByLabelText("End Time") as HTMLSelectElement,
+    button: screen.getAllByRole("button", { name: "Create Session" }).at(-1) as HTMLButtonElement,
   };
 }
 
-describe("the Create button while the form is incomplete", () => {
-  it("says what it is waiting for instead of just going grey", () => {
-    const { create: button } = renderPanel();
-    expect(button.disabled).toBe(true);
-    expect(screen.getByText("Set a start and end time to create the session.")).toBeTruthy();
-  });
-
-  it("stops saying it once both times are set", async () => {
-    const user = userEvent.setup();
-    const { create: button, start, end } = renderPanel();
-    await user.type(start, "10:00");
-    await user.type(end, "11:30");
-
-    expect(button.disabled).toBe(false);
-    expect(screen.queryByText("Set a start and end time to create the session.")).toBeNull();
-  });
-
-  /* A class has no fixed hours — that is the whole reason sessions are made by
-     hand — so changing which class this is says nothing about when it runs.
-     Wiping the times made the desk type them twice. */
-  it("keeps the times when the class is changed", async () => {
-    const user = userEvent.setup();
-    const { create: button, start, end, klass } = renderPanel();
-    await user.type(start, "10:00");
-    await user.type(end, "11:30");
-
-    await user.selectOptions(klass, "Master Class");
-
-    expect(start.value).toBe("10:00");
-    expect(end.value).toBe("11:30");
-    expect(button.disabled).toBe(false);
-  });
+beforeEach(() => {
+  create.mockClear();
+  batch.mockClear();
 });
 
-/* The panel can open before the class list lands — a cold backend, a hard
-   reload. The chosen class used to be frozen at mount from a list that was
-   still empty, so it stayed "" for good; the select, having no option matching
-   "", displayed its first one anyway. The class looked chosen and the button
-   stayed dead with both times filled in. */
-describe("classes that arrive after the panel is already open", () => {
-  it("creates with the class the dropdown is showing", async () => {
-    const saved = state.raw.classes;
-    state.raw.classes = [];
-    try {
-      const user = userEvent.setup();
-      const { rerender } = render(
-        <NextIntlClientProvider locale="en" messages={en}>
-          <ErrorToastProvider>
-            <SessionPanel state={{ mode: "create" }} onClose={() => {}} />
-          </ErrorToastProvider>
-        </NextIntlClientProvider>,
-      );
-
-      state.raw.classes = saved;
-      rerender(
-        <NextIntlClientProvider locale="en" messages={en}>
-          <ErrorToastProvider>
-            <SessionPanel state={{ mode: "create" }} onClose={() => {}} />
-          </ErrorToastProvider>
-        </NextIntlClientProvider>,
-      );
-
-      const select = screen.getByLabelText("Class Name") as HTMLSelectElement;
-      const button = screen.getAllByRole("button", { name: "Create Session" }).at(-1) as HTMLButtonElement;
-      await user.type(screen.getByLabelText("Start Time"), "10:00");
-      await user.type(screen.getByLabelText("End Time"), "11:30");
-
-      /* What the dropdown shows and what the panel will write are the same
-         thing — the whole bug was that they were not. */
-      expect(select.value).toBe("Group Class");
-      expect(button.disabled).toBe(false);
-
-      await user.click(button);
-      const [, body] = create.mock.calls.at(-1) as unknown as [string, Record<string, unknown>];
-      expect(body.class_id).toBe("cls_group");
-    } finally {
-      state.raw.classes = saved;
-    }
+describe("choosing the times", () => {
+  it("offers any time of day, five minutes apart", () => {
+    const { start } = renderPanel();
+    const values = [...start.options].map((o) => o.value);
+    expect(values).toContain("09:35");
+    expect(values).toContain("16:45");
+    expect(values).toContain("23:55");
+    // Every step of the day, plus the "Pick a time" placeholder.
+    expect(values).toHaveLength((24 * 60) / 5 + 1);
   });
-});
 
-describe("no classes at all", () => {
-  it("says that, rather than blaming the times", () => {
-    const saved = state.raw.classes;
-    state.raw.classes = [];
-    try {
-      const { create: button } = renderPanel();
-      expect(button.disabled).toBe(true);
-      expect(screen.getByText(/No class exists yet/)).toBeTruthy();
-      expect(screen.queryByText("Set a start and end time to create the session.")).toBeNull();
-    } finally {
-      state.raw.classes = saved;
-    }
+  /* Not anchored to now: a session is written down when the desk gets to it. */
+  it("does not start from the current time", () => {
+    const { start } = renderPanel();
+    expect(start.value).toBe("");
+    expect(start.options[1].value).toBe("00:00");
   });
-});
 
-/* A time field reading "03:30" can still be empty to the code: `<input
-   type="time">` reports "" until every segment is filled, and a 12-hour
-   browser has an AM/PM segment as well. "Set a start and end time" in front of
-   two fields that both look filled is no help at all. */
-describe("a time that is only half entered", () => {
-  it("says so, instead of claiming the times are unset", async () => {
+  it("moves the end along when a start is chosen", async () => {
     const user = userEvent.setup();
     const { start, end } = renderPanel();
-    await user.type(start, "10:00");
-    await user.type(end, "11:30");
-    expect(screen.queryByText(/create the session/)).toBeNull();
-
-    /* Now the desk edits the start and leaves a segment blank. This is exactly
-       what the browser then reports: digits still on screen, value "", and
-       badInput admitting why. */
-    Object.defineProperty(start, "validity", { configurable: true, value: { badInput: true } });
-    fireEvent.change(start, { target: { value: "" } });
-
-    expect(screen.getByText(/only half entered/)).toBeTruthy();
-    expect(screen.queryByText("Set a start and end time to create the session.")).toBeNull();
+    await user.selectOptions(start, "14:00");
+    expect(end.value).toBe("14:30");
   });
 
-  it("names the one field that is missing", async () => {
+  it("leaves an end that already works alone", async () => {
     const user = userEvent.setup();
-    const { end } = renderPanel();
-    await user.type(end, "11:30");
-
-    expect(screen.getByText("Set a start time to create the session.")).toBeTruthy();
-  });
-
-  it("names the end when that is the one left", async () => {
-    const user = userEvent.setup();
-    const { start } = renderPanel();
-    await user.type(start, "10:00");
-
-    expect(screen.getByText("Set an end time to create the session.")).toBeTruthy();
+    const { start, end } = renderPanel();
+    await user.selectOptions(start, "10:00");
+    await user.selectOptions(end, "12:00");
+    await user.selectOptions(start, "09:00");
+    expect(end.value).toBe("12:00");
   });
 });
 
-describe("creating", () => {
-  it("writes the session with the class and times chosen", async () => {
+describe("the half-hour floor", () => {
+  it("refuses a shorter session and says so", async () => {
     const user = userEvent.setup();
-    const { create: button, start, end } = renderPanel();
-    await user.type(start, "10:00");
-    await user.type(end, "11:30");
+    const { start, end, button } = renderPanel();
+    await user.selectOptions(start, "10:00");
+    await user.selectOptions(end, "10:20");
+
+    expect(button.disabled).toBe(true);
+    expect(screen.getAllByText("A session runs for at least half an hour.").length).toBeGreaterThan(0);
+  });
+
+  it("accepts exactly half an hour", async () => {
+    const user = userEvent.setup();
+    const { start, end, button } = renderPanel();
+    await user.selectOptions(start, "10:00");
+    await user.selectOptions(end, "10:30");
+    expect(button.disabled).toBe(false);
+  });
+
+  it("refuses an end before the start, and names that rather than the length", async () => {
+    const user = userEvent.setup();
+    const { start, end, button } = renderPanel();
+    await user.selectOptions(start, "14:00");
+    await user.selectOptions(end, "09:00");
+
+    expect(button.disabled).toBe(true);
+    expect(screen.getByText("The end time must be after the start.")).toBeTruthy();
+  });
+});
+
+describe("what it will cost", () => {
+  it("shows an hour as one credit", async () => {
+    const user = userEvent.setup();
+    const { start, end } = renderPanel();
+    await user.selectOptions(start, "10:00");
+    await user.selectOptions(end, "11:00");
+    expect(screen.getByText(/costs each student 1 credits/)).toBeTruthy();
+  });
+
+  it("shows half an hour as half a credit", async () => {
+    const user = userEvent.setup();
+    const { start, end } = renderPanel();
+    await user.selectOptions(start, "10:00");
+    await user.selectOptions(end, "10:30");
+    expect(screen.getByText(/costs each student 0.5 credits/)).toBeTruthy();
+  });
+
+  it("shows ninety minutes as one and a half", async () => {
+    const user = userEvent.setup();
+    const { start, end } = renderPanel();
+    await user.selectOptions(start, "09:00");
+    await user.selectOptions(end, "10:30");
+    expect(screen.getByText(/costs each student 1.5 credits/)).toBeTruthy();
+  });
+});
+
+describe("the students who can be added", () => {
+  it("offers only those enrolled in the class chosen", () => {
+    renderPanel();
+    expect(screen.getByText("Anong Sri")).toBeTruthy();
+    expect(screen.getByText("Boon Mek")).toBeTruthy();
+    expect(screen.queryByText("Chai Rat")).toBeNull();
+  });
+
+  it("follows the class when it changes", async () => {
+    const user = userEvent.setup();
+    const { klass } = renderPanel();
+    await user.selectOptions(klass, "cls_master");
+
+    expect(screen.getByText("Chai Rat")).toBeTruthy();
+    expect(screen.queryByText("Anong Sri")).toBeNull();
+  });
+
+  /* A tick was made against a roster that no longer applies. */
+  it("drops a tick that the new class does not include", async () => {
+    const user = userEvent.setup();
+    /* Times first: until they are valid the footer is showing what is wrong
+       with them, not the count. */
+    const { klass, start, end } = renderPanel();
+    await user.selectOptions(start, "09:00");
+    await user.selectOptions(end, "10:00");
+
+    await user.click(screen.getByRole("checkbox", { name: /Anong Sri/ }));
+    expect(screen.getByText(/1 student added/)).toBeTruthy();
+
+    await user.selectOptions(klass, "cls_master");
+    expect(screen.getByText(/Nobody added yet/)).toBeTruthy();
+  });
+
+  it("does not offer a retired class at all", () => {
+    const { klass } = renderPanel();
+    const names = [...klass.options].map((o) => o.textContent);
+    expect(names).not.toContain("Retired Class");
+  });
+
+  it("shows what each student has to spend", () => {
+    renderPanel();
+    expect(screen.getByText("2.5 credits")).toBeTruthy();
+  });
+});
+
+describe("creating it", () => {
+  it("writes the session and everyone already in the room, in one batch", async () => {
+    const user = userEvent.setup();
+    const { start, end, button } = renderPanel();
+    await user.selectOptions(start, "09:00");
+    await user.selectOptions(end, "10:30");
+    await user.click(screen.getByRole("checkbox", { name: /Anong Sri/ }));
+    await user.click(screen.getByRole("checkbox", { name: /Boon Mek/ }));
     await user.click(button);
 
-    expect(create).toHaveBeenCalled();
-    const [path, body] = create.mock.calls[0] as unknown as [string, Record<string, unknown>];
+    expect(batch).toHaveBeenCalledTimes(1);
+    const [path, session] = create.mock.calls[0];
     expect(path).toBe("class-sessions");
-    expect(body.class_id).toBe("cls_group");
-    expect(body.start_time).toBe("10:00");
-    expect(body.end_time).toBe("11:30");
-    expect(body.session_status).toBe("Ongoing");
+    expect(session.class_id).toBe("cls_group");
+    expect(session.start_time).toBe("09:00");
+    expect(session.end_time).toBe("10:30");
+
+    const attendance = create.mock.calls.slice(1);
+    expect(attendance.map((c) => c[0])).toEqual(["attendance", "attendance"]);
+    expect(attendance.map((c) => c[1].student_id)).toEqual(["anong", "boon"]);
+    expect(attendance[0][1].session_id).toBe("ses_new");
+  });
+
+  /* Nobody has to be ticked: the dashboard checks a child in when they arrive,
+     and it writes the same row. */
+  it("creates an empty session when nobody is here yet", async () => {
+    const user = userEvent.setup();
+    const { start, end, button } = renderPanel();
+    await user.selectOptions(start, "09:00");
+    await user.selectOptions(end, "10:00");
+    expect(button.disabled).toBe(false);
+    await user.click(button);
+
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(create.mock.calls[0][0]).toBe("class-sessions");
   });
 });
