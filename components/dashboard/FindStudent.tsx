@@ -14,6 +14,7 @@ import {
   type SessionRow,
 } from "@/lib/desk-state";
 
+import { activeEnrolments } from "@/lib/live";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
 import { useData } from "../DataProvider";
@@ -61,7 +62,9 @@ export function FindStudent() {
 
   const enrolments: EnrolmentRow[] = useMemo(
     () =>
-      raw.enrollments.map((e) => ({
+      /* Only the classes they are currently in: a withdrawn enrolment must
+         not offer its sessions at the desk. */
+      activeEnrolments(raw.enrollments).map((e) => ({
         studentId: String(e["student_id"]),
         classId: String(e["class_id"] ?? ""),
       })),
@@ -115,7 +118,7 @@ export function FindStudent() {
   /** A manual adjustment, not a purchase: no money changed hands at the desk.
       Money goes through Record Payment, which writes its own ledger entry. */
   async function addCredits(studentId: string, amount: number) {
-    const enr = raw.enrollments.find((e) => String(e["student_id"]) === studentId);
+    const enr = activeEnrolments(raw.enrollments).find((e) => String(e["student_id"]) === studentId);
     if (!enr) {
       showError(t("noEnrolment"));
       return;
@@ -410,7 +413,7 @@ export function FindStudent() {
                       ))}
                       {/* Credits hang off an enrolment; without one there is
                           nowhere to put them. */}
-                      {!raw.enrollments.some((e) => String(e["student_id"]) === student.id) && (
+                      {!activeEnrolments(raw.enrollments).some((e) => String(e["student_id"]) === student.id) && (
                         <p style={noteStyle}>{t("noEnrolment")}</p>
                       )}
                     </div>

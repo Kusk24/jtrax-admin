@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { type ClassDef } from "@/lib/data";
-import { fmtCredits, liveClasses, todayISO } from "@/lib/live";
+import { activeEnrolments, fmtCredits, liveClasses, todayISO } from "@/lib/live";
 import {
   creditCost,
   defaultEndFor,
@@ -307,7 +307,9 @@ function CreateSession({ onClose }: { onClose: () => void }) {
    */
   const eligible = useMemo(() => {
     const enrolled = new Set(
-      raw.enrollments
+      /* Currently in it — a child who has left the class, or finished it,
+         is not on its roster any more. */
+      activeEnrolments(raw.enrollments)
         .filter((e) => String(e["class_id"] ?? "") === classId)
         .map((e) => String(e["student_id"])),
     );
@@ -616,7 +618,7 @@ function ViewClass({ def: opened, onClose }: { def: ClassDef; onClose: () => voi
      attendance could not be charged to anything. */
   const addable = useMemo(() => {
     const enrolled = new Set(
-      raw.enrollments
+      activeEnrolments(raw.enrollments)
         .filter((e) => String(e["class_id"] ?? "") === String(def.classId ?? ""))
         .map((e) => String(e["student_id"])),
     );

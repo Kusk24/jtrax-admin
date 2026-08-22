@@ -461,6 +461,28 @@ export function liveClasses(c: { classes: Row[] }): Row[] {
   return c.classes.filter((k) => !s(k, "archived_at"));
 }
 
+/**
+ * Whether this enrolment is one the child is currently in.
+ *
+ * `student_enrollment.status` has had Active / Completed / Withdrawn from the
+ * first migration — a lifecycle for exactly this — but nothing ever read it,
+ * so a child who had left a class was still offered its sessions and could
+ * still be checked into them.
+ *
+ * A blank status counts as Active: the column is NOT NULL with an Active
+ * default, and a row that predates the default should not vanish from a
+ * child's classes on a technicality.
+ */
+export function isActiveEnrolment(enrolment: Row): boolean {
+  const status = s(enrolment, "status");
+  return status === "" || status === "Active";
+}
+
+/** The classes a child is in right now. */
+export function activeEnrolments(rows: Row[]): Row[] {
+  return rows.filter(isActiveEnrolment);
+}
+
 /** True once the academy has stopped running this class, or selling this
     package. Both carry `archived_at` and both mean the same thing: still on
     file, no longer on offer. */
