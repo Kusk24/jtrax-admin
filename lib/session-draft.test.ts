@@ -3,30 +3,63 @@ import {
   creditCost,
   defaultEndFor,
   draftProblem,
+  hourOf,
+  hourOptions,
+  joinClock,
   lengthMinutes,
+  minuteOf,
+  minuteOptions,
   minutesOf,
   MIN_SESSION_MINUTES,
-  timeOptions,
 } from "./session-draft";
 
 describe("the times on offer", () => {
-  it("covers the whole day in five-minute steps", () => {
-    const options = timeOptions();
-    expect(options).toHaveLength((24 * 60) / 5);
-    expect(options[0].value).toBe("00:00");
-    expect(options.at(-1)?.value).toBe("23:55");
+  /* One list of every five-minute mark is 288 options: correct and unusable,
+     since finding 16:45 meant scrolling past three hundred neighbours. */
+  it("is two short lists, not one long one", () => {
+    expect(hourOptions()).toHaveLength(24);
+    expect(minuteOptions()).toHaveLength(12);
+  });
+
+  it("covers the whole clock between them", () => {
+    expect(hourOptions()[0].value).toBe("00");
+    expect(hourOptions().at(-1)?.value).toBe("23");
+    expect(minuteOptions()[0].value).toBe("00");
+    expect(minuteOptions().at(-1)?.value).toBe("55");
   });
 
   /* Not "from now": a session is entered when the desk gets to it, which is
-     rarely the minute the class began, and often the day it is planned. */
+     rarely the minute the class began. */
   it("starts at midnight rather than at whatever time it is", () => {
-    expect(timeOptions()[0].value).toBe("00:00");
+    expect(hourOptions()[0].value).toBe("00");
   });
 
-  it("offers the awkward times a real timetable uses", () => {
-    const values = timeOptions().map((o) => o.value);
-    expect(values).toContain("09:35");
-    expect(values).toContain("16:45");
+  it("still reaches the awkward times a real timetable uses", () => {
+    expect(joinClock("09", "35")).toBe("09:35");
+    expect(joinClock("16", "45")).toBe("16:45");
+    expect(minuteOptions().map((o) => o.value)).toContain("35");
+  });
+});
+
+describe("the two halves of a time", () => {
+  it("splits a clock apart", () => {
+    expect(hourOf("09:35")).toBe("09");
+    expect(minuteOf("09:35")).toBe("35");
+  });
+
+  it("has nothing to split when nothing is chosen", () => {
+    expect(hourOf("")).toBe("");
+    expect(minuteOf("")).toBe("");
+  });
+
+  /* Choosing 4pm means 16:00 without also having to say "and no minutes". */
+  it("treats an hour alone as a whole time", () => {
+    expect(joinClock("16", "")).toBe("16:00");
+  });
+
+  /* A minute with no hour is not a time, and must not become midnight. */
+  it("refuses a minute with no hour", () => {
+    expect(joinClock("", "30")).toBe("");
   });
 });
 
