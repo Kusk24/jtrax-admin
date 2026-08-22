@@ -279,19 +279,32 @@ export function CrudFormModal({
 }
 
 /**
- * Delete confirmation. Names the row and says what else goes with it, because
- * the backend answers a referenced row with a 409 rather than cascading.
+ * "Are you sure?" for anything that cannot be taken back, in the academy's
+ * own words for it.
+ *
+ * Deleting is the commonest one but not the only one — a child withdrawing
+ * from a class is the same shape of dialog and the wrong word for what
+ * happens, and a dialog headed "Delete" over a button reading "Withdraw" is
+ * how somebody clicks the wrong one.
  */
-export function ConfirmDeleteModal({
-  what,
+export function ConfirmModal({
+  title,
+  prompt,
+  confirmLabel,
+  failedText,
   note,
   extra,
   onClose,
   onConfirm,
 }: {
-  what: string;
+  title: string;
+  prompt: string;
+  confirmLabel: string;
+  /* What to say when the backend refuses — a delete blocked by a reference
+     reads nothing like a withdrawal that failed to save. */
+  failedText: string;
   note?: string;
-  /* A choice the delete depends on — "take the children too" — rendered under
+  /* A choice the act depends on — "take the children too" — rendered under
      the note, so the decision is made in the same dialog that confirms it. */
   extra?: ReactNode;
   onClose: () => void;
@@ -303,7 +316,7 @@ export function ConfirmDeleteModal({
 
   return (
     <Modal
-      title={t("deleteTitle")}
+      title={title}
       width={440}
       onClose={onClose}
       footer={
@@ -327,13 +340,13 @@ export function ConfirmDeleteModal({
                 await onConfirm();
                 onClose();
               } catch (e) {
-                setError(errorText(e, t("deleteFailed")));
+                setError(errorText(e, failedText));
               } finally {
                 setBusy(false);
               }
             }}
           >
-            {t("delete")}
+            {confirmLabel}
           </button>
         </>
       }
@@ -341,7 +354,7 @@ export function ConfirmDeleteModal({
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {error && <ErrorNote>{error}</ErrorNote>}
         <p style={{ margin: 0, fontFamily: FONT, fontSize: 14.5, lineHeight: 1.55, color: COLORS.text }}>
-          {t("deleteConfirm", { what })}
+          {prompt}
         </p>
         {note && (
           <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, lineHeight: 1.5, color: COLORS.textSecondary }}>
@@ -351,6 +364,38 @@ export function ConfirmDeleteModal({
         {extra}
       </div>
     </Modal>
+  );
+}
+
+/**
+ * Delete confirmation. Names the row and says what else goes with it, because
+ * the backend answers a referenced row with a 409 rather than cascading.
+ */
+export function ConfirmDeleteModal({
+  what,
+  note,
+  extra,
+  onClose,
+  onConfirm,
+}: {
+  what: string;
+  note?: string;
+  extra?: ReactNode;
+  onClose: () => void;
+  onConfirm: () => Promise<void>;
+}) {
+  const t = useTranslations("common");
+  return (
+    <ConfirmModal
+      title={t("deleteTitle")}
+      prompt={t("deleteConfirm", { what })}
+      confirmLabel={t("delete")}
+      failedText={t("deleteFailed")}
+      note={note}
+      extra={extra}
+      onClose={onClose}
+      onConfirm={onConfirm}
+    />
   );
 }
 

@@ -969,10 +969,14 @@ const TOURNAMENT_STATUSES = ["Upcoming", "Ongoing", "Completed"];
 export function TournamentPage({
   detailId,
   detailTab,
+  startNew,
 }: {
   /* Threaded from the route's searchParams so a reload keeps the open row. */
   detailId?: string;
   detailTab?: string;
+  /* The dashboard's "Create Tournament" pill, which means the wizard and not
+     the list of tournaments that already exist. */
+  startNew?: boolean;
 }) {
   const t = useTranslations("tournament");
   const tCommon = useTranslations("common");
@@ -982,7 +986,7 @@ export function TournamentPage({
   /* In the address bar, so a refresh, a shared link and the Back button all
      land on the tournament that was open rather than the list. */
   const [selectedId, setSelectedId] = useUrlBackedState<string>("id", detailId ?? "", TAB_PARAM, "push");
-  const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(Boolean(startNew));
   const [mode, setMode] = useViewMode("tournaments", CARD_FIRST);
   const [search, setSearch] = useState("");
   /* One view at a time. Stacked "Ongoing / Past / External" sections made the

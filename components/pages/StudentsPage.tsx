@@ -6,14 +6,17 @@ import { useTranslations } from "next-intl";
 import { generateTempPassword } from "@/lib/credentials";
 import { type Student } from "@/lib/data";
 import { useData } from "@/components/DataProvider";
-import { fmtCredits, fmtDate, fmtTHB, liveClasses, practiceStrip } from "@/lib/live";
+import { fmtCredits, fmtDate, fmtTHB, isActiveEnrolment, liveClasses, practiceStrip } from "@/lib/live";
 import { planTransfer, type CreditRate } from "@/lib/credit-transfer";
+import { opensCreate } from "@/lib/quick-actions";
+import { classFilterOptions, classNamesOfStudent, isInClass } from "@/lib/student-classes";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
 import {
   ActionButton,
   AddButton,
   ConfirmDeleteModal,
+  ConfirmModal,
   CrudFormModal,
   RowActions,
   type CrudField,
@@ -104,7 +107,6 @@ type View =
 const DETAIL_TABS = ["Overview", "Attendance", "Credits", "Practice", "Payments"] as const;
 const CREDIT_TEMPLATE = equalTemplate(5, 90);
 const CREDIT_TYPES = ["purchase", "consumption", "manual_adjustment"];
-const ENROLMENT_STATUSES = ["Active", "Completed", "Withdrawn"];
 type DetailTab = (typeof DETAIL_TABS)[number];
 
 function StudentDetail({
@@ -214,9 +216,14 @@ function StudentDetail({
     [raw.enrollments, raw.classes, student.id],
   );
 
-  const [enrolmentModal, setEnrolmentModal] = useState<(typeof enrolments)[number] | "new" | null>(null);
+  /* Enrolling and leaving are the two things that happen to an enrolment, and
+     both have their own button. There is no third one that edits the row in
+     place: retyping the class on an enrolment with a term of credits behind it
+     moves that ledger to a class it was never spent in, and flipping its
+     status by hand is a withdrawal that skips everything a withdrawal does. */
+  const [addingEnrolment, setAddingEnrolment] = useState(false);
   const [enrolmentValues, setEnrolmentValues] = useState<CrudValues>({});
-  const [deletingEnrolment, setDeletingEnrolment] = useState<(typeof enrolments)[number] | null>(null);
+  const [withdrawing, setWithdrawing] = useState<(typeof enrolments)[number] | null>(null);
   const [movingCredits, setMovingCredits] = useState<(typeof enrolments)[number] | null>(null);
   const [moveTo, setMoveTo] = useState("");
 
@@ -296,28 +303,20 @@ function StudentDetail({
         options: liveClasses({ classes: raw.classes }).map((c) => ({ value: String(c["class_id"]), label: String(c["name"] ?? "") })),
       },
       { name: "enrolled_date", label: t("enrolledDate"), kind: "date", required: true, half: true },
-      {
-        name: "status",
-        label: tCommon("status"),
-        kind: "select",
-        half: true,
-        options: ENROLMENT_STATUSES.map((v) => ({ value: v, label: tStatus(v) })),
-      },
+      /* No status picker: joining a class is always joining it. The form used
+         to offer all three, so the desk could enrol a child as Withdrawn — a
+         row that puts them in a class and takes them out of it at once. */
     ],
-    [raw.classes, t, tCommon, tStatus],
+    [raw.classes, t, tCommon],
   );
 
-  function openEnrolmentModal(row: (typeof enrolments)[number] | "new") {
-    setEnrolmentModal(row);
-    setEnrolmentValues(
-      row === "new"
-        ? {
-            class_id: liveClasses({ classes: raw.classes })[0] ? String(liveClasses({ classes: raw.classes })[0]["class_id"]) : "",
-            enrolled_date: new Date().toISOString().slice(0, 10),
-            status: "Active",
-          }
-        : { class_id: row.classId, enrolled_date: row.enrolledDate, status: row.status },
-    );
+  function openAddEnrolment() {
+    const first = liveClasses({ classes: raw.classes })[0];
+    setAddingEnrolment(true);
+    setEnrolmentValues({
+      class_id: first ? String(first["class_id"]) : "",
+      enrolled_date: new Date().toISOString().slice(0, 10),
+    });
   }
 
   const [creditModal, setCreditModal] = useState<(typeof creditRows)[number] | "new" | null>(null);
@@ -802,7 +801,7 @@ function StudentDetail({
         <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
             <SectionTitle>{t("enrolments")}</SectionTitle>
-            <AddButton label={t("addEnrolment")} onClick={() => openEnrolmentModal("new")} />
+            <AddButton label={t("addEnrolment")} onClick={openAddEnrolment} />
           </div>
           {enrolments.length === 0 ? (
             <p style={{ margin: 0, fontFamily: FONT, fontSize: 14, color: COLORS.textSecondary }}>
@@ -852,11 +851,25 @@ function StudentDetail({
                       {t("moveCredits", { credits: fmtCredits(balanceOf(e.id)) })}
                     </button>
                   )}
-                  <RowActions
-                    label={e.className}
-                    onEdit={() => openEnrolmentModal(e)}
-                    onDelete={() => setDeletingEnrolment(e)}
-                  />
+                  {/* Only on a class they are actually in. Withdrawing from
+                      one they already left is a dialog that asks a question
+                      with no answer. */}
+                  {isActiveEnrolment({ status: e.status }) && (
+                    <button
+                      type="button"
+                      className="jt-btn-ghost"
+                      aria-label={t("withdrawFrom", { className: e.className })}
+                      style={{
+                        ...secondaryButtonStyle,
+                        padding: "5px 11px",
+                        fontSize: 12.5,
+                        color: COLORS.danger,
+                      }}
+                      onClick={() => setWithdrawing(e)}
+                    >
+                      {t("withdraw")}
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -864,16 +877,15 @@ function StudentDetail({
         </Card>
       )}
 
-      {enrolmentModal && (
+      {addingEnrolment && (
         <CrudFormModal
-          title={enrolmentModal === "new" ? t("addEnrolment") : t("editEnrolment")}
+          title={t("addEnrolment")}
           fields={enrolmentFields}
           values={enrolmentValues}
           onChange={setEnrolmentValues}
-          onClose={() => setEnrolmentModal(null)}
+          onClose={() => setAddingEnrolment(false)}
           onSubmit={async (payload) => {
-            if (enrolmentModal === "new") await create("enrollments", { ...payload, student_id: student.id });
-            else await update("enrollments", enrolmentModal.id, payload);
+            await create("enrollments", { ...payload, student_id: student.id, status: "Active" });
           }}
         />
       )}
@@ -992,18 +1004,21 @@ function StudentDetail({
         );
       })()}
 
-      {deletingEnrolment && (
-        <ConfirmDeleteModal
-          what={deletingEnrolment.className}
+      {withdrawing && (
+        <ConfirmModal
+          title={t("withdraw")}
+          prompt={t("withdrawConfirm", { className: withdrawing.className })}
+          confirmLabel={t("withdraw")}
+          failedText={tCommon("saveFailed")}
           /* Says which of the two will happen, because they are different
              things and the row afterwards looks different. */
           note={
-            enrolmentHasHistory(deletingEnrolment.id)
+            enrolmentHasHistory(withdrawing.id)
               ? t("enrolmentWithdrawNote")
               : t("enrolmentDeleteNote")
           }
-          onClose={() => setDeletingEnrolment(null)}
-          onConfirm={() => leaveClass(deletingEnrolment.id)}
+          onClose={() => setWithdrawing(null)}
+          onConfirm={() => leaveClass(withdrawing.id)}
         />
       )}
 
@@ -1519,6 +1534,9 @@ export function StudentsPage({
   startWizard,
   startStatus,
 }: {
+  /* Present means the registration wizard opens; its value prefills the name.
+     Present-and-empty is the dashboard's "Register Student" pill — nothing
+     typed yet, but still a request for the form. */
   startWizard?: string;
   /* The condition the dashboard's follow-up card was clicked on, if we got
      here from one. */
@@ -1529,7 +1547,9 @@ export function StudentsPage({
   const { showError } = useErrorToast();
   const tStatus = useTranslations("status");
   const { students, raw, batch, create, update, remove, removePerson, loading, error } = useData();
-  const [view, setView] = useState<View>(startWizard ? { kind: "wizard" } : { kind: "list" });
+  const [view, setView] = useState<View>(
+    opensCreate(startWizard) ? { kind: "wizard" } : { kind: "list" },
+  );
   const [mode, setMode] = useViewMode("students", VIEWS);
   const router = useRouter();
   const [createdLogins, setCreatedLogins] = useState<{
@@ -1547,6 +1567,9 @@ export function StudentsPage({
     STATUS_VALUES.includes(startStatus as (typeof STATUS_VALUES)[number]) ? startStatus! : "",
   );
   const [branch, setBranch] = useState("");
+  /* By class id, not by name: two classes can share a name, and the id is what
+     the enrolments are actually keyed on. */
+  const [classId, setClassId] = useState("");
   const [page, setPage] = useState(0);
 
   /* Filter values stay "" for "all" so the label can be localised without
@@ -1571,15 +1594,37 @@ export function StudentsPage({
     [tCommon, tStatus, students],
   );
 
+  /* Read off the enrolments rather than the row's single `className`, which is
+     only ever the first class a child is in — filtering on that would hide a
+     child from the second class they attend. */
+  const classOptions = useMemo(
+    () => [
+      { value: "", label: tCommon("allClasses") },
+      ...classFilterOptions(raw, students.map((s) => s.id)).map((c) => ({
+        value: c.id,
+        label: `${c.name} (${c.count})`,
+      })),
+    ],
+    [tCommon, raw, students],
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return students.filter((s) => {
       if (status && s.status !== status) return false;
       if (branch && s.branch !== branch) return false;
+      if (!isInClass(raw.enrollments, s.id, classId)) return false;
       if (q && !s.name.toLowerCase().includes(q) && !s.parentPhone.includes(q)) return false;
       return true;
     });
-  }, [students, search, status, branch]);
+  }, [students, search, status, branch, classId, raw.enrollments]);
+
+  /* Every class a child is in, so a row that turns up under a class filter
+     says why it did rather than naming a different class. */
+  function classesOf(studentId: string, fallback: string): string[] {
+    const names = classNamesOfStudent(raw, studentId);
+    return names.length > 0 ? names : [fallback];
+  }
 
   const { pageRows, totalPages, page: current } = paginate(filtered, page);
 
@@ -1837,7 +1882,16 @@ export function StudentsPage({
             <ExportButton
               filename="students"
               columns={[tCommon("student"), tCommon("class"), tCommon("branch"), t("colCredit"), tCommon("status"), tCommon("phone")]}
-              rows={() => filtered.map((s) => [s.name, s.className, s.branch, s.credit, s.status, s.parentPhone])}
+              rows={() =>
+                filtered.map((s) => [
+                  s.name,
+                  classesOf(s.id, s.className).join(", "),
+                  s.branch,
+                  s.credit,
+                  s.status,
+                  s.parentPhone,
+                ])
+              }
             />
             <button
               type="button"
@@ -1861,6 +1915,7 @@ export function StudentsPage({
           label={t("searchLabel")}
         />
         <SelectFilter value={branch} onChange={(v) => { setBranch(v); setPage(0); }} options={branchOptions} label={tCommon("branch")} />
+        <SelectFilter value={classId} onChange={(v) => { setClassId(v); setPage(0); }} options={classOptions} label={tCommon("class")} />
         <SelectFilter value={status} onChange={(v) => { setStatus(v); setPage(0); }} options={statusOptions} label={tCommon("status")} />
         <ViewToggle value={mode} onChange={setMode} options={VIEWS} style={{ marginLeft: "auto" }} />
       </FilterBar>
@@ -1890,7 +1945,7 @@ export function StudentsPage({
                   subtitle={
                     <span style={{ display: "inline-flex", alignItems: "center" }}>
                       <ClassDot color={classDotColor(s.className)} />
-                      {s.className}
+                      {classesOf(s.id, s.className).join(", ")}
                     </span>
                   }
                   badges={
@@ -1940,7 +1995,7 @@ export function StudentsPage({
                   </span>
                   <span style={{ display: "flex", alignItems: "center", color: COLORS.textSecondary }}>
                     <ClassDot color={classDotColor(s.className)} />
-                    {s.className}
+                    {classesOf(s.id, s.className).join(", ")}
                   </span>
                   <Badge color={creditChip.color} bg={creditChip.bg} style={{ justifySelf: "start" }}>
                     {fmtCredits(s.credit)}

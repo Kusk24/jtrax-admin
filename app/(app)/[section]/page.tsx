@@ -18,18 +18,23 @@ export default async function SectionPage({
   const known = NAV_STRUCTURE.some((item) => item.id === section && item.id !== "home");
   if (!known) notFound();
 
-  /* "Register Student" links carry ?new=<typed name> so the wizard opens
-     pre-filled, and the dashboard's follow-up cards carry ?status=<condition>
-     so the list opens narrowed to what was clicked. Registering a student ends
-     on ?student=<id>, which opens the payment form for them. Read here rather
+  /* ?new= is a Quick Action asking a section to open its create form — the
+     value prefills the first field where the form has an obvious one, so the
+     dashboard search can hand the registration wizard a typed name. It is
+     read present-or-absent, never truthy: `?new=` with nothing typed is still
+     a request to open the form.
+
+     The dashboard's follow-up cards carry ?status=<condition> so the list
+     opens narrowed to what was clicked, and registering a student ends on
+     ?student=<id>, which opens the payment form for them. Read here rather
      than with useSearchParams in the client component, which would bail the
      whole route out of server rendering. */
-  const { new: newStudentName, status, student, id, tab } = await searchParams;
+  const { new: startNew, status, student, id, tab } = await searchParams;
 
   return (
     <SectionRouter
       section={section}
-      newStudentName={newStudentName}
+      startNew={startNew}
       status={status}
       studentId={student}
       detailId={id}

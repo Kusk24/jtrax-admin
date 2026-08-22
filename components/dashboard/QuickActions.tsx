@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Icon, type IconName } from "@/lib/icons";
+import { createHref } from "@/lib/quick-actions";
 import { ACCENTS, ACCENT_TINTS, COLORS, FONT } from "@/lib/theme";
 
 export type QuickAction = {
@@ -16,12 +17,16 @@ export type QuickAction = {
 };
 
 /* The four hero pills, in the accent order the .qa-pill-N classes expect:
-   0 olive, 1 brick, 2 rust, 3 plum. */
+   0 olive, 1 brick, 2 rust, 3 plum.
+
+   Every one of them is named after an act, so every one of them lands on that
+   act rather than on the section's list: "Register Student" opens the
+   registration form, not the roster with a button on it somewhere. */
 export const ADMIN_QUICK_ACTIONS: QuickAction[] = [
-  { key: "register", labelKey: "registerStudent", icon: "usersPlus", color: COLORS.success, bg: ACCENT_TINTS.green, href: "/students" },
-  { key: "payment", labelKey: "recordPayment", icon: "wallet", color: ACCENTS.red, bg: ACCENT_TINTS.red, href: "/payment" },
-  { key: "announce", labelKey: "newAnnouncement", icon: "announcement", color: ACCENTS.amber, bg: ACCENT_TINTS.amber, href: "/announcement" },
-  { key: "tournament", labelKey: "createTournament", icon: "trophy", color: ACCENTS.plum, bg: ACCENT_TINTS.plum, href: "/tournament" },
+  { key: "register", labelKey: "registerStudent", icon: "usersPlus", color: COLORS.success, bg: ACCENT_TINTS.green, href: createHref("students") },
+  { key: "payment", labelKey: "recordPayment", icon: "wallet", color: ACCENTS.red, bg: ACCENT_TINTS.red, href: createHref("payment") },
+  { key: "announce", labelKey: "newAnnouncement", icon: "announcement", color: ACCENTS.amber, bg: ACCENT_TINTS.amber, href: createHref("announcement") },
+  { key: "tournament", labelKey: "createTournament", icon: "trophy", color: ACCENTS.plum, bg: ACCENT_TINTS.plum, href: createHref("tournament") },
 ];
 
 export const RECEPTIONIST_QUICK_ACTIONS: QuickAction[] = ADMIN_QUICK_ACTIONS.slice(0, 2);

@@ -12,8 +12,13 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
+import { todayISO } from "@/lib/live";
 
-const today = new Date().toISOString().slice(0, 10);
+/* The same day the dashboard means by "today". `toISOString().slice(0, 10)`
+   is a different date for the first seven hours of every Bangkok morning —
+   the fixture's session fell on yesterday, the dashboard showed an empty
+   check-in table, and the whole file failed until lunchtime. */
+const today = todayISO();
 
 /** A tiny in-memory backend: the rows, and what a PATCH does to them. */
 const db: Record<string, Record<string, unknown>[]> = {};
