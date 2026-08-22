@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useData } from "@/components/DataProvider";
 import { type Student } from "@/lib/data";
-import { fmtDate, liveClasses } from "@/lib/live";
+import { clockOf, fmtDate, liveClasses } from "@/lib/live";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
 import {
@@ -49,7 +49,16 @@ const VIEWS = ["list", "card", "calendar"] as const;
 
 const SESSION_STATUSES = ["Scheduled", "Ongoing", "Completed"];
 
-type Attendee = { attendanceId: string; studentId: string; name: string };
+/* The times are the whole reason this screen exists: Class History is where
+   the office answers "when did this child arrive, and when did they leave".
+   The detail panel used to show a row of names and nothing else. */
+type Attendee = {
+  attendanceId: string;
+  studentId: string;
+  name: string;
+  timeIn: string;
+  timeOut: string;
+};
 
 type HistoryRow = {
   key: string;
@@ -327,6 +336,8 @@ function SessionDetail({
 }) {
   const t = useTranslations("classHistory");
   const tStatus = useTranslations("status");
+  
+  const tCommon = useTranslations("common");
   const chip = statusChipColors(row.status);
   return (
     <Modal title={t("sessionDetail")} onClose={onClose} width={560}>
@@ -366,13 +377,97 @@ function SessionDetail({
         />
         <div>
           <SectionTitle>{t("attendance")}</SectionTitle>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
-            <AttendeeChips
-              row={row}
-              onView={onViewAttendee}
-              onRemove={onRemoveAttendee}
-              onAdd={onAddAttendee}
-            />
+          {/* Names alone were all this showed, which left the one question
+              Class History exists to answer — when each child arrived and when
+              they left — unanswerable from the record of the session. */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 12 }}>
+            {row.attendees.length === 0 && (
+              <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
+                {t("noAttendees")}
+              </span>
+            )}
+            {row.attendees.length > 0 && (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr auto auto auto",
+                  gap: "0 12px",
+                  alignItems: "center",
+                  fontFamily: FONT,
+                  fontSize: 12.5,
+                  color: COLORS.textSecondary,
+                  padding: "0 8px 4px",
+                }}
+              >
+                <span>{tCommon("student")}</span>
+                <span>{t("checkedInAt")}</span>
+                <span>{t("dismissedAt")}</span>
+                <span />
+              </div>
+            )}
+            {row.attendees.map((a) => (
+              <div
+                key={a.attendanceId}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr auto auto auto",
+                  gap: "0 12px",
+                  alignItems: "center",
+                  padding: "7px 8px",
+                  borderRadius: 9,
+                  border: `1px solid ${COLORS.border}`,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => onViewAttendee(a.name)}
+                  style={{
+                    justifySelf: "start",
+                    border: "none",
+                    background: "transparent",
+                    cursor: "pointer",
+                    padding: 0,
+                    fontFamily: FONT,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: COLORS.text,
+                  }}
+                >
+                  {a.name}
+                </button>
+                <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
+                  {a.timeIn}
+                </span>
+                {/* Blank would read as missing data; still in the room is the
+                    normal state until the class ends. */}
+                <span
+                  style={{
+                    fontFamily: FONT,
+                    fontSize: 13,
+                    color: a.timeOut ? COLORS.textSecondary : COLORS.blue,
+                  }}
+                >
+                  {a.timeOut || t("stillInClass")}
+                </span>
+                <ActionButton
+                  onClick={async () => onRemoveAttendee(a.attendanceId)}
+                  ariaLabel={t("removeAttendee", { name: a.name })}
+                  style={{
+                    display: "inline-flex",
+                    border: "none",
+                    background: "transparent",
+                    cursor: "pointer",
+                    padding: 0,
+                    color: COLORS.textSecondary,
+                  }}
+                >
+                  <Icon name="x" size={14} />
+                </ActionButton>
+              </div>
+            ))}
+            <span style={{ marginTop: 6 }}>
+              <AddButton label={t("addAttendee")} onClick={onAddAttendee} />
+            </span>
           </div>
         </div>
       </div>
@@ -420,10 +515,16 @@ export function ClassHistoryPage() {
           .filter((a) => String(a["session_id"]) === id)
           .map((a) => {
             const student = students.find((s) => s.id === String(a["student_id"]));
+            const out = String(a["check_out_time"] ?? "");
             return {
               attendanceId: String(a["attendance_id"]),
               studentId: String(a["student_id"]),
               name: student?.name ?? String(a["student_id"]),
+              timeIn: clockOf(String(a["check_in_time"] ?? "")),
+              /* Still in the room, rather than a blank that reads as missing
+                 data — a session where nobody was dismissed is the normal
+                 state until the class ends. */
+              timeOut: out ? clockOf(out) : "",
             };
           });
         return {

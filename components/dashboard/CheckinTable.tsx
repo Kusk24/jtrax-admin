@@ -4,7 +4,9 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { fmtCredits } from "@/lib/live";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
+import { ActionButton } from "../crud";
 import { useData } from "../DataProvider";
+import { useErrorToast } from "../ErrorToast";
 import { equalTemplate, Table, TableRow } from "../page-kit";
 import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
 
@@ -24,14 +26,27 @@ export function CheckinTable() {
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
   const { checkins: rows, update } = useData();
+  const { showError } = useErrorToast();
   const [expanded, setExpanded] = useState(false);
   const visible = expanded ? rows : rows.slice(0, COLLAPSED_ROWS);
 
-  /* Dismissing stamps check_out_time on the attendance row, so the desk's
-     action outlives the page — it used to live in component state and vanish
-     on the next render. */
-  function dismiss(attendanceId: string) {
-    update("attendance", attendanceId, { check_out_time: new Date().toISOString() }).catch(() => {});
+  /**
+   * Dismissing stamps check_out_time on the attendance row, so the desk's
+   * action outlives the page — it used to live in component state and vanish
+   * on the next render.
+   *
+   * Awaited, and through ActionButton, because a write here refetches every
+   * collection: on the deployed backend that is seconds during which a plain
+   * button sits there looking unpressed. The desk read that as a freeze and
+   * reloaded the page to find the dismissal had gone through all along.
+   */
+  async function dismiss(attendanceId: string) {
+    try {
+      await update("attendance", attendanceId, { check_out_time: new Date().toISOString() });
+    } catch (e) {
+      /* Swallowing this was how a refusal became a freeze too. */
+      showError(tCommon("saveFailed"), e);
+    }
   }
 
   return (
@@ -120,9 +135,9 @@ export function CheckinTable() {
 
               <span>
                 {row.status === "In class" && row.attendanceId && (
-                  <button
-                    type="button"
+                  <ActionButton
                     className="jt-chip"
+                    busyLabel={tCommon("saving")}
                     onClick={() => dismiss(row.attendanceId!)}
                     style={{
                       padding: "5px 12px",
@@ -138,7 +153,7 @@ export function CheckinTable() {
                     }}
                   >
                     {t("dismiss")}
-                  </button>
+                  </ActionButton>
                 )}
               </span>
             </TableRow>

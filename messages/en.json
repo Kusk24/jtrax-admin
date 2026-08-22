@@ -481,7 +481,10 @@
     "pickADay": "Pick a day to see its sessions and who attended.",
     "noSessionsOn": "No sessions on {date}.",
     "weekdayHidden": "{count, plural, one {# on a weekday} other {# on weekdays}}",
-    "sessionDetail": "Class session"
+    "sessionDetail": "Class session",
+    "checkedInAt": "In",
+    "dismissedAt": "Out",
+    "stillInClass": "still in class"
   },
   "tournament": {
     "title": "Tournament",
