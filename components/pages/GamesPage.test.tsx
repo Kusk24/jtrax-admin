@@ -8,8 +8,8 @@
  * It behaves like a student's detail now: the list gives way to it, and a
  * Back link returns.
  */
-import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
@@ -28,16 +28,32 @@ const ROOM = {
   lichessRated: false,
 };
 
+/* A game that has finished. Delete is refused on a board two people are
+   playing, so the two fixtures are not interchangeable. */
+const FINISHED = { ...ROOM, status: "Finished" as const, result: "1-0" };
+
+/* Which room the hooks are serving. Set per test rather than per file: the
+   controls on offer differ by status, which is the point. */
+const state = { room: ROOM as typeof ROOM | typeof FINISHED };
+
+const deleteRoom = vi.fn(async () => ({ status: "deleted" }));
+vi.mock("@/lib/games", async (real) => ({ ...(await real()), deleteRoom }));
+
 vi.mock("../games/useLiveRooms", () => ({
-  useLiveRooms: () => ({ rooms: [ROOM], loading: false, error: "", reload: vi.fn() }),
+  useLiveRooms: () => ({ rooms: [state.room], loading: false, error: "", reload: vi.fn() }),
   useLiveRoom: () => ({
-    detail: { room: ROOM, moves: [{ san: "e4", uci: "e2e4" }, { san: "e5", uci: "e7e5" }] },
+    detail: { room: state.room, moves: [{ san: "e4", uci: "e2e4" }, { san: "e5", uci: "e7e5" }] },
     connection: "live",
     reload: vi.fn(),
   }),
 }));
 
 const { GamesPage } = await import("./GamesPage");
+
+beforeEach(() => {
+  state.room = ROOM;
+  deleteRoom.mockClear();
+});
 
 function renderGames() {
   render(
@@ -93,5 +109,59 @@ describe("opening a game", () => {
     await user.click(screen.getByRole("button", { name: /Back to Games/ }));
 
     expect(screen.getByLabelText("Search players, code or label")).toBeDefined();
+  });
+});
+
+describe("deleting a game", () => {
+  it("is offered on a game that is not being played", async () => {
+    state.room = FINISHED;
+    const user = renderGames();
+    await openGame(user);
+
+    expect(screen.getByRole("button", { name: /Delete/ })).toBeDefined();
+  });
+
+  it("asks first, and says what goes with it", async () => {
+    state.room = FINISHED;
+    const user = renderGames();
+    await openGame(user);
+    await user.click(screen.getByRole("button", { name: /Delete/ }));
+
+    expect(screen.getByText(/2 moves played in this game go with it/)).toBeDefined();
+    expect(deleteRoom).not.toHaveBeenCalled();
+  });
+
+  it("deletes on confirming, and leaves the page it was on", async () => {
+    state.room = FINISHED;
+    const user = renderGames();
+    await openGame(user);
+    await user.click(screen.getByRole("button", { name: /Delete/ }));
+    /* Scoped to the dialog: the page's own Delete button is still behind it. */
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Delete" }));
+
+    expect(deleteRoom).toHaveBeenCalledWith("gr_1");
+    /* The detail cannot stay open on a room that no longer exists. */
+    expect(await screen.findByLabelText("Search players, code or label")).toBeDefined();
+  });
+});
+
+describe("exporting the moves", () => {
+  it("is offered where there are moves to export", async () => {
+    const user = renderGames();
+    await openGame(user);
+
+    expect(screen.getByRole("button", { name: /Export PGN/ })).toBeDefined();
+  });
+});
+
+/* Stopping a live board is reversible; throwing it away is not, and the two
+   players are mid-move. The backend refuses it too. */
+describe("a game being played", () => {
+  it("offers Stop rather than Delete", async () => {
+    const user = renderGames();
+    await openGame(user);
+
+    expect(screen.getByRole("button", { name: /Stop this game/ })).toBeDefined();
+    expect(screen.queryByRole("button", { name: /^Delete/ })).toBeNull();
   });
 });

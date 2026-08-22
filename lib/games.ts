@@ -62,6 +62,10 @@ export const openRoom = (label: string, opts: OpenRoomOptions = {}) =>
   api.post<GameRoom>("game-rooms", { label, ...opts });
 export const cancelRoom = (id: string) => api.del<{ status: string }>(`game-rooms/${id}`);
 
+/** Throws the room and its moves away. Refused while the game is being played —
+    stopping it is the reversible act, and this one is not. */
+export const deleteRoom = (id: string) => api.del<{ status: string }>(`game-rooms/${id}/record`);
+
 /** Live boards first, then rooms still waiting for players, then the record —
     the console is opened during a class, not to browse history. */
 const RANK: Record<GameRoom["status"], number> = { Active: 0, Open: 1, Finished: 2, Cancelled: 3 };

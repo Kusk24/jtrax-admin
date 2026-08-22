@@ -236,3 +236,59 @@ describe("saving a class", () => {
     expect(patch.badge).toBe("Weekend");
   });
 });
+
+/**
+ * The class type — the field the screen called "Category".
+ *
+ * `class.class_type` has been NOT NULL with a three-value CHECK since the
+ * first migration, and this form never asked for it. Its draft seeded the
+ * field with "Beginner", a *level* rather than one of the three, so the guard
+ * on save fell through to "Group" every time — and the edit path never sent
+ * the column at all. Every class the academy has is a Group class, and there
+ * was no screen anywhere that could say otherwise.
+ */
+describe("the class type", () => {
+  it("can be chosen when a class is created", async () => {
+    const user = userEvent.setup();
+    renderAcademy();
+    const f = await openAddClass(user);
+
+    await user.type(f.name, "One to one");
+    await user.selectOptions(screen.getByLabelText("Class Type"), "Private");
+    await user.click(f.save);
+
+    const [, cls] = create.mock.calls[0] as unknown as [string, Record<string, unknown>];
+    expect(cls.class_type).toBe("Private");
+  });
+
+  it("can be changed afterwards", async () => {
+    const user = userEvent.setup();
+    renderAcademy();
+
+    await user.click(screen.getAllByRole("button", { name: /^Edit/ })[0]);
+    await user.selectOptions(screen.getByLabelText("Class Type"), "Master");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    const [, , patch] = update.mock.calls[0] as unknown as [string, string, Record<string, unknown>];
+    expect(patch.class_type).toBe("Master");
+  });
+
+  it("opens on the class's own type, not a default", async () => {
+    const user = userEvent.setup();
+    renderAcademy();
+
+    await user.click(screen.getAllByRole("button", { name: /^Edit/ })[0]);
+    expect((screen.getByLabelText("Class Type") as HTMLSelectElement).value).toBe("Group");
+  });
+
+  /* "Beginner" was the old draft's starting value. It is a level, and offering
+     it here is how a class ends up typed as something the column cannot hold. */
+  it("offers only the three the column allows", async () => {
+    const user = userEvent.setup();
+    renderAcademy();
+    await openAddClass(user);
+
+    const options = Array.from((screen.getByLabelText("Class Type") as HTMLSelectElement).options);
+    expect(options.map((o) => o.value)).toEqual(["Private", "Group", "Master"]);
+  });
+});
