@@ -420,7 +420,10 @@ export function toCheckins(c: LiveCollections, day = todayISO()): CheckinDef[] {
 }
 
 /** "2026-08-13T09:58:00" -> "9:58 AM". */
-function clockOf(iso: string): string {
+/** The clock time out of a timestamp — "14:05" from an ISO check-in stamp.
+    Exported because Class History shows the same times the dashboard does, and
+    two copies of this drifted apart once already. */
+export function clockOf(iso: string): string {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;

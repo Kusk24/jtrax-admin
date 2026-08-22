@@ -481,7 +481,10 @@
     "pickADay": "เลือกวันเพื่อดูคาบเรียนและผู้เข้าเรียน",
     "noSessionsOn": "ไม่มีคาบเรียนวันที่ {date}",
     "weekdayHidden": "{count, plural, other {# รายการในวันธรรมดา}}",
-    "sessionDetail": "คาบเรียน"
+    "sessionDetail": "คาบเรียน",
+    "checkedInAt": "เข้า",
+    "dismissedAt": "ออก",
+    "stillInClass": "ยังอยู่ในคลาส"
   },
   "tournament": {
     "title": "การแข่งขัน",
