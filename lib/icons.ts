@@ -28,16 +28,19 @@ const ICON_DATA = {
     ["path", { "d": "M6.5 10.7V15c0 1.7 2.5 3 5.5 3s5.5-1.3 5.5-3v-4.3" }],
     ["path", { "d": "M21 8.8v5" }],
   ],
-  /* An adult and a child hand in hand: a family rather than two colleagues.
-     The height difference and the joined hands are what carry the meaning at
-     nav size — two circles of different radii do not. */
+  /* An adult standing behind a child.
+     The previous drawing had six strokes and two of them were the problem: a
+     long bare neck running from the chin down into the shoulders, and an arm
+     that reached out to nothing. At 18px they collapsed into a smudge.
+     This is four. The parent's shoulder sweeps up and stops where the child
+     occludes it, which is what says "together" — a hand-holding stroke across
+     the gap measures under a pixel at nav size and reads as a speck. The
+     height difference does the rest. */
   "parents": [
-    ["circle", { "cx": 8, "cy": 5.4, "r": 2.6 }],
-    ["path", { "d": "M8 8v6.5" }],
-    ["path", { "d": "M5.2 20.5V15a2.8 2.8 0 0 1 5.6 0v5.5" }],
-    ["path", { "d": "M10.8 13h2.6a2 2 0 0 1 2 2" }],
-    ["circle", { "cx": 17.4, "cy": 10.6, "r": 2 }],
-    ["path", { "d": "M15 20.5v-3.6a2.4 2.4 0 0 1 4.8 0v3.6" }],
+    ["circle", { "cx": 8.4, "cy": 5.2, "r": 3.2 }],
+    ["path", { "d": "M2.8 20.4v-3.4a5.6 5.6 0 0 1 8.3-4.9" }],
+    ["circle", { "cx": 16.6, "cy": 11.4, "r": 2.3 }],
+    ["path", { "d": "M11.4 20.4v-1.2a5.2 5.2 0 0 1 10.4 0v1.2" }],
   ],
   "payment": [
     ["rect", { "x": 2.5, "y": 5.5, "width": 19, "height": 13, "rx": 2 }],

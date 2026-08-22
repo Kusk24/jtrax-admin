@@ -120,6 +120,23 @@ textarea {
   }
 }
 
+/* A game: the board on the left, the moves and the result beside it. The board
+   is a fixed square, so its column is sized to the board rather than sharing
+   the width evenly — an even split either shrinks the board or leaves the move
+   list with a column it cannot fill. Stacks on a narrow screen, board first. */
+.jt-game-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (width >= 920px) {
+  .jt-game-split {
+    grid-template-columns: minmax(0, auto) minmax(260px, 1fr);
+  }
+}
+
 /* The four dashboard stat tiles: two up on a phone, four across once there's
    room, and never a half-empty trailing row. */
 .jt-kpi-strip {

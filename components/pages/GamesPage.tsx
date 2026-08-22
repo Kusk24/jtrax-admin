@@ -3,9 +3,12 @@
 /* Games: open a room, read out its code, watch the board live, and keep the
    record of who played whom.
 
-   Follows the list/detail shape the console uses everywhere else — the detail
-   is a Drawer rather than a full page because staff watch a board *while*
-   doing something else, and losing the list to do it would be a step back. */
+   Follows the list/detail shape the console uses everywhere else, detail
+   included. It was a Drawer, on the theory that staff watch a board *while*
+   doing something else — but a 460px panel is not enough room for a board, two
+   players and a move list, so the board came out small and the moves were a
+   scrollbar inside a scrollbar. A game is the thing you came to look at. It
+   gets the page, the same way a student does. */
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Icon } from "@/lib/icons";
@@ -14,8 +17,8 @@ import { RATED_CLOCKS, cancelRoom, durationOf, openRoom, playersOf, type GameRoo
 import { GameBoard } from "../games/GameBoard";
 import { useLiveRoom, useLiveRooms } from "../games/useLiveRooms";
 import { ErrorNote, errorText } from "../crud";
+import { BackLink, DetailHeader } from "../detail";
 import {
-  Drawer,
   EmptyRow,
   equalTemplate,
   ExportButton,
@@ -47,7 +50,7 @@ const STATUS_TONE: Record<GameRoom["status"], { color: string; bg: string }> = {
 
 /* --------------------------------------------------------------- detail --- */
 
-function RoomDrawer({ roomId, onClose, onChanged }: { roomId: string; onClose: () => void; onChanged: () => void }) {
+function RoomDetail({ roomId, onBack, onChanged }: { roomId: string; onBack: () => void; onChanged: () => void }) {
   const t = useTranslations("games");
   const tc = useTranslations("common");
   const { detail, connection } = useLiveRoom(roomId);
@@ -70,18 +73,34 @@ function RoomDrawer({ roomId, onClose, onChanged }: { roomId: string; onClose: (
     }
   }
 
-  return (
-    <Drawer title={t("gameTitle")} onClose={onClose}>
-      {!room ? (
-        <p style={{ fontFamily: FONT, fontSize: 14, color: COLORS.textSecondary }}>{tc("loading")}</p>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {error && <ErrorNote>{error}</ErrorNote>}
+  if (!room) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <BackLink label={t("backToGames")} onClick={onBack} />
+        <Card>
+          <p style={{ margin: 0, fontFamily: FONT, fontSize: 14, color: COLORS.textSecondary }}>{tc("loading")}</p>
+        </Card>
+      </div>
+    );
+  }
 
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <BackLink label={t("backToGames")} onClick={onBack} />
+
+      {error && <ErrorNote>{error}</ErrorNote>}
+
+      <DetailHeader
+        title={playersOf(room, t("waiting"))}
+        subtitle={t("gameTitle")}
+        badges={
+          <>
             <Badge color={STATUS_TONE[room.status].color} bg={STATUS_TONE[room.status].bg}>
               {t(`status.${room.status}`)}
             </Badge>
+            <RatedBadge room={room} t={t} />
+            {/* Whether what is on screen is still arriving. Only while the game
+                can still change — a finished board is not "reconnecting". */}
             {room.status !== "Finished" && room.status !== "Cancelled" && (
               <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontFamily: FONT,
                              fontSize: 12.5, fontWeight: 600, color: connection === "live" ? COLORS.success : COLORS.warning }}>
@@ -90,48 +109,74 @@ function RoomDrawer({ roomId, onClose, onChanged }: { roomId: string; onClose: (
                 {t(`connection.${connection}`)}
               </span>
             )}
-          </div>
+          </>
+        }
+        actions={
+          (room.status === "Open" || room.status === "Active") && (
+            <button onClick={stop} disabled={busy} style={{ ...secondaryButtonStyle, color: COLORS.danger }}>
+              {t("stopGame")}
+            </button>
+          )
+        }
+      />
 
-          {/* An Open room still needs its code read out, so it stays visible. */}
-          {room.status === "Open" && room.code && (
-            <Card style={{ textAlign: "center", background: COLORS.light, borderColor: COLORS.light }}>
-              <p style={{ margin: 0, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>{t("readOutCode")}</p>
-              <p style={{ margin: "6px 0 0", fontFamily: "ui-monospace, monospace", fontSize: 30,
-                          fontWeight: 700, letterSpacing: "0.25em", color: COLORS.navy }}>
-                {room.code}
-              </p>
-            </Card>
-          )}
+      {/* An Open room still needs its code read out, so it stays visible. */}
+      {room.status === "Open" && room.code && (
+        <Card style={{ textAlign: "center", background: COLORS.light, borderColor: COLORS.light }}>
+          <p style={{ margin: 0, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>{t("readOutCode")}</p>
+          <p style={{ margin: "6px 0 0", fontFamily: "ui-monospace, monospace", fontSize: 34,
+                      fontWeight: 700, letterSpacing: "0.25em", color: COLORS.navy }}>
+            {room.code}
+          </p>
+        </Card>
+      )}
 
-          <div style={{ display: "flex", justifyContent: "center" }}>
-            <GameBoard fen={room.fen} lastMove={last?.uci} />
-          </div>
-
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+      {/* Board beside the move list on a wide screen, stacked on a narrow one.
+          In the drawer these were one column at 460px and the board was the
+          loser; here the board keeps its size and the moves get a column of
+          their own. */}
+      <div className="jt-game-split">
+        <Card style={{ display: "flex", flexDirection: "column", gap: 16, alignItems: "center" }}>
+          <GameBoard fen={room.fen} lastMove={last?.uci} />
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, width: "100%" }}>
             {(["white", "black"] as const).map((side) => {
               const seat = room[side];
               return (
-                <div key={side} style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
-                  <Avatar initials={seat ? initialsOf(seat.displayName) : "?"} size={30} />
-                  <span style={{ display: "flex", flexDirection: "column" }}>
-                    <span style={{ fontFamily: FONT, fontSize: 13.5, fontWeight: 600, color: COLORS.text }}>
+                <div key={side} style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
+                  <Avatar initials={seat ? initialsOf(seat.displayName) : "?"} size={34} />
+                  <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                    <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text,
+                                   overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {seat?.displayName ?? t("waiting")}
                     </span>
-                    <span style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textSecondary }}>{t(`side.${side}`)}</span>
+                    <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>{t(`side.${side}`)}</span>
                   </span>
                 </div>
               );
             })}
           </div>
+        </Card>
 
-          <Card style={{ padding: 14 }}>
-            <SectionTitle style={{ fontSize: 14, marginBottom: 8 }}>{t("moves")}</SectionTitle>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {room.status === "Finished" && (
+            <Card style={{ background: COLORS.light, borderColor: COLORS.light }}>
+              <p style={{ margin: 0, fontFamily: FONT, fontSize: 14.5, fontWeight: 700, color: COLORS.text }}>
+                {t(`result.${room.result === "1/2-1/2" ? "draw" : room.result === "1-0" ? "white" : "black"}`)}
+                {room.resultReason ? ` · ${t(`reason.${room.resultReason}`)}` : ""}
+              </p>
+              <p style={{ margin: "4px 0 0", fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
+                {t("lasted", { time: durationOf(room) })}
+              </p>
+            </Card>
+          )}
+
+          <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <SectionTitle>{t("moves")}</SectionTitle>
             {moves.length === 0 ? (
-              <p style={{ margin: 0, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>{t("noMoves")}</p>
+              <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>{t("noMoves")}</p>
             ) : (
-              <div style={{ maxHeight: 150, overflowY: "auto", display: "grid",
-                            gridTemplateColumns: "auto 1fr 1fr", gap: "2px 12px",
-                            fontFamily: "ui-monospace, monospace", fontSize: 12.5, color: COLORS.text }}>
+              <div style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr", gap: "3px 14px",
+                            fontFamily: "ui-monospace, monospace", fontSize: 13, color: COLORS.text }}>
                 {Array.from({ length: Math.ceil(moves.length / 2) }, (_, i) => (
                   <div key={i} style={{ display: "contents" }}>
                     <span style={{ color: COLORS.textSecondary }}>{i + 1}.</span>
@@ -142,27 +187,9 @@ function RoomDrawer({ roomId, onClose, onChanged }: { roomId: string; onClose: (
               </div>
             )}
           </Card>
-
-          {room.status === "Finished" && (
-            <Card style={{ padding: 14, background: COLORS.light, borderColor: COLORS.light }}>
-              <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, fontWeight: 600, color: COLORS.text }}>
-                {t(`result.${room.result === "1/2-1/2" ? "draw" : room.result === "1-0" ? "white" : "black"}`)}
-                {room.resultReason ? ` · ${t(`reason.${room.resultReason}`)}` : ""}
-              </p>
-              <p style={{ margin: "4px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-                {t("lasted", { time: durationOf(room) })}
-              </p>
-            </Card>
-          )}
-
-          {(room.status === "Open" || room.status === "Active") && (
-            <button onClick={stop} disabled={busy} style={{ ...secondaryButtonStyle, color: COLORS.danger }}>
-              {t("stopGame")}
-            </button>
-          )}
         </div>
-      )}
-    </Drawer>
+      </div>
+    </div>
   );
 }
 
@@ -235,6 +262,20 @@ export function GamesPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  /* The detail replaces the list rather than sitting on top of it, so the
+     board gets the width. Keyed by room so opening a second game does not
+     inherit the first one's socket. */
+  if (openId) {
+    return (
+      <RoomDetail
+        key={openId}
+        roomId={openId}
+        onBack={() => setOpenId(null)}
+        onChanged={reload}
+      />
+    );
   }
 
   return (
@@ -351,41 +392,47 @@ export function GamesPage() {
           )}
         </CardGrid>
       ) : (
-      <Table
-        template={TEMPLATE}
-        columns={[t("col.players"), t("col.status"), t("col.code"), t("col.moves"), t("col.result")]}
-      >
-        {loading ? (
-          <EmptyRow>{tc("loading")}</EmptyRow>
-        ) : pageRows.length === 0 ? (
-          <EmptyRow>{t("empty")}</EmptyRow>
-        ) : (
-          pageRows.map((room: GameRoom) => (
-            <TableRow key={room.gameRoomId} template={TEMPLATE} onClick={() => setOpenId(room.gameRoomId)}>
-              <span style={{ fontFamily: FONT, fontSize: 13.5, fontWeight: 600, color: COLORS.text }}>
-                {playersOf(room, t("waiting"))}
-              </span>
-              <span style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                <Badge color={STATUS_TONE[room.status].color} bg={STATUS_TONE[room.status].bg}>
-                  {t(`status.${room.status}`)}
-                </Badge>
-                <RatedBadge room={room} t={t} />
-              </span>
-              <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, letterSpacing: "0.1em",
-                             color: room.status === "Open" ? COLORS.navy : COLORS.textSecondary }}>
-                {room.status === "Open" ? room.code : "—"}
-              </span>
-              <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>{room.moveCount}</span>
-              <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
-                {room.result ?? "—"}
-              </span>
-            </TableRow>
-          ))
-        )}
-      </Table>
+      /* On a card, like every other list here. Bare, the table sat straight on
+         the page background with no surface under it — the only list in the
+         console that did. */
+      <Card style={{ padding: 0, overflow: "hidden" }}>
+        <Table
+          template={TEMPLATE}
+          columns={[t("col.players"), t("col.status"), t("col.code"), t("col.moves"), t("col.result")]}
+        >
+          {loading ? (
+            <EmptyRow>{tc("loading")}</EmptyRow>
+          ) : pageRows.length === 0 ? (
+            <EmptyRow>{t("empty")}</EmptyRow>
+          ) : (
+            pageRows.map((room: GameRoom) => (
+              <TableRow key={room.gameRoomId} template={TEMPLATE} onClick={() => setOpenId(room.gameRoomId)}>
+                <span style={{ fontFamily: FONT, fontSize: 13.5, fontWeight: 600, color: COLORS.text }}>
+                  {playersOf(room, t("waiting"))}
+                </span>
+                <span style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                  <Badge color={STATUS_TONE[room.status].color} bg={STATUS_TONE[room.status].bg}>
+                    {t(`status.${room.status}`)}
+                  </Badge>
+                  <RatedBadge room={room} t={t} />
+                </span>
+                <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, letterSpacing: "0.1em",
+                               color: room.status === "Open" ? COLORS.navy : COLORS.textSecondary }}>
+                  {room.status === "Open" ? room.code : "—"}
+                </span>
+                <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>{room.moveCount}</span>
+                <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
+                  {room.result ?? "—"}
+                </span>
+              </TableRow>
+            ))
+          )}
+        </Table>
+        <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+      </Card>
       )}
 
-      <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+      {mode === "card" && <Pagination page={page} totalPages={totalPages} onChange={setPage} />}
 
       {/* The code is shown once, big, because it is about to be read aloud. */}
       {minted && (
@@ -404,9 +451,6 @@ export function GamesPage() {
         </Modal>
       )}
 
-      {openId && (
-        <RoomDrawer roomId={openId} onClose={() => setOpenId(null)} onChanged={reload} />
-      )}
     </div>
   );
 }

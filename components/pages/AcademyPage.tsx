@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useData } from "@/components/DataProvider";
 import { fmtTHB, liveClasses, livePackages } from "@/lib/live";
+import { CLASS_ICONS, badgeOf, iconOf } from "@/lib/class-face";
 import { Icon, type IconName } from "@/lib/icons";
 import { COLORS, FONT, initialsOf } from "@/lib/theme";
 import {
@@ -38,9 +39,9 @@ import { CardGrid, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 import { useErrorToast } from "../ErrorToast";
 
-/* The design's icon picker offers the six chess pieces plus the trophy the
-   Master Class seed uses. */
-const PIECE_OPTIONS: IconName[] = ["king", "queen", "rook", "knight", "bishop", "pawn", "trophy"];
+/* The picker's options and the two "what do we draw when nothing was chosen"
+   rules live in lib/class-face.ts. */
+const PIECE_OPTIONS = CLASS_ICONS;
 
 /* Three lists on one screen, each remembered separately: the office tends to
    want courses as cards and packages as a table at the same time. */
@@ -103,12 +104,21 @@ export function AcademyPage() {
   /* Retired classes drop out of the list, the pickers and the export. The
      rows they left behind — enrolments, sessions, receipts — still find them
      by id, which is the whole reason the row is kept. */
+  /* The icon and the badge are read from the class, not worked out from its
+     type. They used to be derived here — badge was class_type under another
+     name, and the icon was a three-way guess on it — so the picker set a value
+     that this line overwrote on the very next render. Picking the pawn and
+     pressing Save changed nothing, which is what the office reported.
+
+     The fallbacks are the old derivation, for a class written before there
+     was anywhere to put a choice. `iconOf` also guards against a name that
+     has since left the icon set, which would otherwise render nothing. */
   const courses: Course[] = liveClasses(raw).map((c) => ({
     id: String(c.class_id),
     name: String(c.name ?? ""),
     desc: String(c.description ?? ""),
-    badge: String(c.class_type ?? ""),
-    icon: c.class_type === "Master" ? "trophy" : c.class_type === "Private" ? "king" : "queen",
+    badge: badgeOf(c.badge, String(c.class_type ?? "")),
+    icon: iconOf(c.icon, String(c.class_type ?? "")),
     category: String(c.class_type ?? ""),
   }));
   const teachers: Teacher[] = raw.teachers.map((t) => ({
@@ -669,6 +679,10 @@ export function AcademyPage() {
                           name: courseDraft.name,
                           description: courseDraft.desc,
                           class_type: ["Private", "Group", "Master"].includes(courseDraft.category) ? courseDraft.category : "Group",
+                          /* The two the form has always asked for and never
+                             sent. Without them the picker is decoration. */
+                          icon: courseDraft.icon,
+                          badge: courseDraft.badge,
                         });
                         await create("credit-packages", {
                           class_id: cls.class_id,
@@ -681,6 +695,8 @@ export function AcademyPage() {
                       await update("classes", courseModal.id, {
                         name: courseDraft.name,
                         description: courseDraft.desc,
+                        icon: courseDraft.icon,
+                        badge: courseDraft.badge,
                       });
                     }
                   } catch (e) {
