@@ -13,11 +13,12 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT, initialsOf } from "@/lib/theme";
-import { RATED_CLOCKS, cancelRoom, durationOf, openRoom, playersOf, type GameRoom } from "@/lib/games";
+import { RATED_CLOCKS, cancelRoom, deleteRoom, durationOf, openRoom, playersOf, type GameRoom } from "@/lib/games";
+import { downloadPgn, toPgn } from "@/lib/pgn";
 import { GameBoard } from "../games/GameBoard";
 import { useLiveRoom, useLiveRooms } from "../games/useLiveRooms";
-import { ErrorNote, errorText } from "../crud";
-import { BackLink, DetailHeader } from "../detail";
+import { ConfirmDeleteModal, ErrorNote, RowActions, errorText } from "../crud";
+import { BackLink, DeleteButton, DetailHeader } from "../detail";
 import {
   EmptyRow,
   equalTemplate,
@@ -38,7 +39,7 @@ import { Avatar, Badge, Card, SectionTitle } from "../ui";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 
-const TEMPLATE = equalTemplate(5, 90);
+const TEMPLATE = equalTemplate(6, 90);
 const VIEWS = ["list", "card"] as const;
 
 const STATUS_TONE: Record<GameRoom["status"], { color: string; bg: string }> = {
@@ -50,12 +51,25 @@ const STATUS_TONE: Record<GameRoom["status"], { color: string; bg: string }> = {
 
 /* --------------------------------------------------------------- detail --- */
 
-function RoomDetail({ roomId, onBack, onChanged }: { roomId: string; onBack: () => void; onChanged: () => void }) {
+function RoomDetail({
+  roomId,
+  onBack,
+  onChanged,
+  onDeleted,
+}: {
+  roomId: string;
+  onBack: () => void;
+  onChanged: () => void;
+  /* Deleting takes the page's subject away, so the caller has to go somewhere
+     — the detail cannot close itself onto a room that no longer exists. */
+  onDeleted: () => void;
+}) {
   const t = useTranslations("games");
   const tc = useTranslations("common");
   const { detail, connection } = useLiveRoom(roomId);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   const room = detail?.room;
   const moves = detail?.moves ?? [];
@@ -71,6 +85,16 @@ function RoomDetail({ roomId, onBack, onChanged }: { roomId: string; onBack: () 
     } finally {
       setBusy(false);
     }
+  }
+
+  /* PGN rather than the CSV every other export produces. A column of SANs is
+     a chess game with the chess removed; this opens in Lichess. */
+  function exportPgn() {
+    if (!room) return;
+    downloadPgn(
+      `game-${room.code || roomId}`,
+      toPgn(room, moves, { event: t("event"), site: t("site"), waiting: t("waiting") }),
+    );
   }
 
   if (!room) {
@@ -112,13 +136,39 @@ function RoomDetail({ roomId, onBack, onChanged }: { roomId: string; onBack: () 
           </>
         }
         actions={
-          (room.status === "Open" || room.status === "Active") && (
-            <button onClick={stop} disabled={busy} style={{ ...secondaryButtonStyle, color: COLORS.danger }}>
-              {t("stopGame")}
-            </button>
-          )
+          <>
+            {/* Only where there is a game to write down. An empty room exports
+                seven tags and no moves, which is a file that says nothing. */}
+            {moves.length > 0 && (
+              <button onClick={exportPgn} className="jt-btn-ghost" style={secondaryButtonStyle}>
+                <Icon name="download" size={14} /> {t("exportPgn")}
+              </button>
+            )}
+            {(room.status === "Open" || room.status === "Active") && (
+              <button onClick={stop} disabled={busy} style={{ ...secondaryButtonStyle, color: COLORS.danger }}>
+                {t("stopGame")}
+              </button>
+            )}
+            {/* A game being played is not deletable — stopping it is the
+                reversible act, and the backend refuses this one anyway. */}
+            {room.status !== "Active" && (
+              <DeleteButton onClick={() => setDeleting(true)} label={t("deleteGame")} />
+            )}
+          </>
         }
       />
+
+      {deleting && (
+        <ConfirmDeleteModal
+          what={playersOf(room, t("waiting"))}
+          note={moves.length > 0 ? t("deleteNote", { moves: moves.length }) : undefined}
+          onClose={() => setDeleting(false)}
+          onConfirm={async () => {
+            await deleteRoom(roomId);
+            onDeleted();
+          }}
+        />
+      )}
 
       {/* An Open room still needs its code read out, so it stays visible. */}
       {room.status === "Open" && room.code && (
@@ -175,7 +225,11 @@ function RoomDetail({ roomId, onBack, onChanged }: { roomId: string; onBack: () 
             {moves.length === 0 ? (
               <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>{t("noMoves")}</p>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr", gap: "3px 14px",
+              /* Sized to the moves, not to the card: `1fr` columns pushed
+                 White's move and Black's reply to opposite ends of a wide
+                 panel, which is a pair you read together. */
+              <div style={{ display: "grid", gridTemplateColumns: "auto minmax(56px, auto) minmax(56px, auto)",
+                            justifyContent: "start", gap: "3px 16px",
                             fontFamily: "ui-monospace, monospace", fontSize: 13, color: COLORS.text }}>
                 {Array.from({ length: Math.ceil(moves.length / 2) }, (_, i) => (
                   <div key={i} style={{ display: "contents" }}>
@@ -234,6 +288,10 @@ export function GamesPage() {
   const [mintError, setMintError] = useState("");
   const [rated, setRated] = useState(false);
   const [clockIndex, setClockIndex] = useState(2); // 15+10, a school-friendly rapid
+  /* Deleting from the list as well as from the detail: the rooms most worth
+     clearing out are the ones nobody ever opened, and making the office visit
+     each one first is the long way round. */
+  const [deleting, setDeleting] = useState<GameRoom | null>(null);
 
   const filtered = useMemo(
     () =>
@@ -274,6 +332,10 @@ export function GamesPage() {
         roomId={openId}
         onBack={() => setOpenId(null)}
         onChanged={reload}
+        onDeleted={() => {
+          setOpenId(null);
+          reload();
+        }}
       />
     );
   }
@@ -367,6 +429,14 @@ export function GamesPage() {
                 key={room.gameRoomId}
                 onClick={() => setOpenId(room.gameRoomId)}
                 title={playersOf(room, t("waiting"))}
+                actions={
+                  room.status !== "Active" ? (
+                    <RowActions
+                      label={playersOf(room, t("waiting"))}
+                      onDelete={() => setDeleting(room)}
+                    />
+                  ) : undefined
+                }
                 badges={
                   <>
                     <Badge color={STATUS_TONE[room.status].color} bg={STATUS_TONE[room.status].bg}>
@@ -398,7 +468,7 @@ export function GamesPage() {
       <Card style={{ padding: 0, overflow: "hidden" }}>
         <Table
           template={TEMPLATE}
-          columns={[t("col.players"), t("col.status"), t("col.code"), t("col.moves"), t("col.result")]}
+          columns={[t("col.players"), t("col.status"), t("col.code"), t("col.moves"), t("col.result"), tc("action")]}
         >
           {loading ? (
             <EmptyRow>{tc("loading")}</EmptyRow>
@@ -424,6 +494,16 @@ export function GamesPage() {
                 <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
                   {room.result ?? "—"}
                 </span>
+                {/* Nothing to offer on a board two people are playing: the act
+                    there is Stop, which lives on the game's own page. */}
+                {room.status === "Active" ? (
+                  <span />
+                ) : (
+                  <RowActions
+                    label={playersOf(room, t("waiting"))}
+                    onDelete={() => setDeleting(room)}
+                  />
+                )}
               </TableRow>
             ))
           )}
@@ -433,6 +513,18 @@ export function GamesPage() {
       )}
 
       {mode === "card" && <Pagination page={page} totalPages={totalPages} onChange={setPage} />}
+
+      {deleting && (
+        <ConfirmDeleteModal
+          what={playersOf(deleting, t("waiting"))}
+          note={deleting.moveCount > 0 ? t("deleteNote", { moves: deleting.moveCount }) : undefined}
+          onClose={() => setDeleting(null)}
+          onConfirm={async () => {
+            await deleteRoom(deleting.gameRoomId);
+            reload();
+          }}
+        />
+      )}
 
       {/* The code is shown once, big, because it is about to be read aloud. */}
       {minted && (

@@ -35,7 +35,6 @@ export type LiveCollections = {
   tournaments: Row[];
   tournamentCategories: Row[];
   tournamentRegistrations: Row[];
-  practiceActivities: Row[];
   systemConfig: Row[];
 };
 
@@ -538,25 +537,4 @@ export function monthRevenue(c: LiveCollections, now = new Date()): { total: num
   const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const rows = c.payments.filter((p) => isRevenue(p) && s(p, "payment_date").startsWith(prefix));
   return { total: rows.reduce((sum, p) => sum + n(p, "final_amount"), 0), count: rows.length };
-}
-
-/** A student's last 35 days of practice, and the streak trailing off today. */
-export function practiceStrip(
-  c: LiveCollections,
-  studentId: string,
-  now = new Date(),
-): { days: boolean[]; streak: number } {
-  const done = new Set(
-    c.practiceActivities
-      .filter((a) => s(a, "student_id") === studentId && n(a, "minutes_practiced") > 0)
-      .map((a) => s(a, "activity_date")),
-  );
-  const days: boolean[] = [];
-  for (let back = 34; back >= 0; back--) {
-    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - back);
-    days.push(done.has(todayISO(d)));
-  }
-  let streak = 0;
-  for (let i = days.length - 1; i >= 0 && days[i]; i--) streak++;
-  return { days, streak };
 }

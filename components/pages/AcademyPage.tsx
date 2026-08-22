@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useData } from "@/components/DataProvider";
 import { fmtTHB, liveClasses, livePackages } from "@/lib/live";
-import { CLASS_ICONS, badgeOf, iconOf } from "@/lib/class-face";
+import { CLASS_ICONS, CLASS_TYPES, badgeOf, classTypeOf, iconOf, type ClassType } from "@/lib/class-face";
 import { Icon, type IconName } from "@/lib/icons";
 import { COLORS, FONT, initialsOf } from "@/lib/theme";
 import {
@@ -50,7 +50,11 @@ const LIST_FIRST = ["list", "card"] as const;
 const COURSE_TEMPLATE = equalTemplate(4, 110);
 const TEACHER_TEMPLATE = equalTemplate(4, 110);
 
-type Course = { id: string; name: string; desc: string; badge: string; icon: IconName; category: string };
+/* `classType` is the ER model's `class.class_type` — how a class is taught,
+   not what it is called. It was named `category` here, which is most of why
+   nobody could tell where it came from: two words for one column, and the
+   console's word was not the one in the database. */
+type Course = { id: string; name: string; desc: string; badge: string; icon: IconName; classType: ClassType };
 type Teacher = { id: string; name: string; email: string; phone: string; lineId: string; status: string };
 type CreditPackage = {
   id: string;
@@ -100,6 +104,7 @@ export function AcademyPage() {
   const tCommon = useTranslations("common");
   const { showError } = useErrorToast();
   const tStatus = useTranslations("status");
+  const tClassType = useTranslations("classType");
   const { raw, batch, create, update, remove } = useData();
   /* Retired classes drop out of the list, the pickers and the export. The
      rows they left behind — enrolments, sessions, receipts — still find them
@@ -119,7 +124,7 @@ export function AcademyPage() {
     desc: String(c.description ?? ""),
     badge: badgeOf(c.badge, String(c.class_type ?? "")),
     icon: iconOf(c.icon, String(c.class_type ?? "")),
-    category: String(c.class_type ?? ""),
+    classType: classTypeOf(c.class_type),
   }));
   const teachers: Teacher[] = raw.teachers.map((t) => ({
     id: String(t.teacher_id),
@@ -198,7 +203,7 @@ export function AcademyPage() {
     desc: "",
     badge: "",
     icon: "pawn",
-    category: "Beginner",
+    classType: "Group",
   });
   /* A class with no package cannot be sold, cannot be paid for and cannot give
      anyone credits — so its first one is asked for here rather than left as a
@@ -225,7 +230,7 @@ export function AcademyPage() {
   function openCourseModal(course: Course | "new") {
     setCourseModal(course);
     setCourseDraft(
-      course === "new" ? { name: "", desc: "", badge: "", icon: "pawn", category: "Beginner" } : { ...course },
+      course === "new" ? { name: "", desc: "", badge: "", icon: "pawn", classType: "Group" } : { ...course },
     );
   }
 
@@ -310,8 +315,8 @@ export function AcademyPage() {
             <ViewToggle value={courseMode} onChange={setCourseMode} options={CARD_FIRST} />
             <ExportButton
               filename="courses"
-              columns={[t("courseName"), t("badge"), t("category"), t("description")]}
-              rows={() => courses.map((c) => [c.name, c.badge, c.category, c.desc])}
+              columns={[t("courseName"), t("badge"), t("classType"), t("description")]}
+              rows={() => courses.map((c) => [c.name, c.badge, tClassType(c.classType), c.desc])}
             />
             <button type="button" className="jt-btn-primary" style={primaryButtonStyle} onClick={() => openCourseModal("new")}>
               <Icon name="plus" size={15} color={COLORS.surface} /> {t("addCourse")}
@@ -580,7 +585,7 @@ export function AcademyPage() {
             <p style={{ margin: 0, fontFamily: FONT, fontSize: 14.5, lineHeight: 1.6, color: COLORS.textSecondary }}>
               {courseDetail.desc}
             </p>
-            <InfoGrid rows={[{ label: t("badge"), value: courseDetail.badge }, { label: t("category"), value: courseDetail.category }]} />
+            <InfoGrid rows={[{ label: t("badge"), value: courseDetail.badge }, { label: t("classType"), value: tClassType(courseDetail.classType) }]} />
           </div>
         </Modal>
       )}
@@ -678,7 +683,7 @@ export function AcademyPage() {
                         const cls = await create("classes", {
                           name: courseDraft.name,
                           description: courseDraft.desc,
-                          class_type: ["Private", "Group", "Master"].includes(courseDraft.category) ? courseDraft.category : "Group",
+                          class_type: courseDraft.classType,
                           /* The two the form has always asked for and never
                              sent. Without them the picker is decoration. */
                           icon: courseDraft.icon,
@@ -695,6 +700,7 @@ export function AcademyPage() {
                       await update("classes", courseModal.id, {
                         name: courseDraft.name,
                         description: courseDraft.desc,
+                        class_type: courseDraft.classType,
                         icon: courseDraft.icon,
                         badge: courseDraft.badge,
                       });
@@ -728,6 +734,25 @@ export function AcademyPage() {
             <div>
               <label style={labelStyle} htmlFor="co-badge">{t("badge")}</label>
               <input id="co-badge" value={courseDraft.badge} onChange={(e) => setCourseDraft({ ...courseDraft, badge: e.target.value })} style={fieldStyle} />
+            </div>
+            {/* The column has existed since the first migration and this form
+                has never asked for it, so every class the academy created came
+                out "Group" whether it was one or not. */}
+            <div>
+              <label style={labelStyle} htmlFor="co-type">{t("classType")}</label>
+              <select
+                id="co-type"
+                value={courseDraft.classType}
+                onChange={(e) => setCourseDraft({ ...courseDraft, classType: e.target.value as ClassType })}
+                style={selectStyle}
+              >
+                {CLASS_TYPES.map((v) => (
+                  <option key={v} value={v}>{tClassType(v)}</option>
+                ))}
+              </select>
+              <p style={{ margin: "5px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+                {t("classTypeHelp")}
+              </p>
             </div>
             <div>
               <span style={labelStyle}>{t("icon")}</span>

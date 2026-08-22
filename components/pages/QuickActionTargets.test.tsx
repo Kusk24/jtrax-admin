@@ -24,7 +24,7 @@ const EMPTY_COLLECTIONS = [
   "classSessions", "attendance", "enrollments", "creditTransactions",
   "creditPackages", "payments", "teachers", "admins", "accounts",
   "announcements", "tournaments", "tournamentCategories",
-  "tournamentRegistrations", "practiceActivities", "systemConfig",
+  "tournamentRegistrations", "systemConfig",
 ];
 const raw = Object.fromEntries(EMPTY_COLLECTIONS.map((k) => [k, []]));
 

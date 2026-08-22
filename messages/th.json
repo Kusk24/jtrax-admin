@@ -43,6 +43,11 @@
     "Withdrawn": "ถอนการลงทะเบียน",
     "Scheduled": "ตามกำหนดการ"
   },
+  "classType": {
+    "Private": "ตัวต่อตัว",
+    "Group": "กลุ่ม",
+    "Master": "มาสเตอร์คลาส"
+  },
   "common": {
     "search": "ค้นหา",
     "cancel": "ยกเลิก",
@@ -283,7 +288,6 @@
     "backToStudents": "กลับไปหน้านักเรียน",
     "tabOverview": "ภาพรวม",
     "tabAttendance": "การเข้าเรียน",
-    "tabPractice": "การฝึกซ้อม",
     "tabPayments": "การชำระเงิน",
     "yrs": "{age} ปี",
     "studentSection": "ข้อมูลนักเรียน",
@@ -294,10 +298,6 @@
     "creditsExpire": "เครดิตหมดอายุ",
     "relation": "ความสัมพันธ์",
     "attendanceSummary": "การเข้าเรียน — มาเรียน {present} จาก {total} ครั้ง",
-    "practiceSummary": "การฝึกซ้อม — ต่อเนื่อง {days} วัน",
-    "practiceHint": "35 วันล่าสุด ช่องที่ระบายสีคือวันที่มีการบันทึกการฝึกซ้อม",
-    "practised": "ฝึกซ้อมแล้ว",
-    "noPractice": "ไม่ได้ฝึกซ้อม",
     "registerTitle": "ลงทะเบียนนักเรียน",
     "registerSub": "อัปโหลดใบสมัคร หรือกรอกข้อมูลเอง",
     "uploadChoice": "อัปโหลดใบสมัคร",
@@ -685,7 +685,8 @@
     "description": "คำอธิบาย",
     "badge": "ป้ายกำกับ",
     "icon": "ไอคอน",
-    "category": "หมวดหมู่",
+    "classType": "ประเภทคลาส",
+    "classTypeHelp": "รูปแบบการสอน — Private คือตัวต่อตัว, Master คือมาสเตอร์คลาส",
     "editTeacher": "แก้ไขข้อมูลคุณครู",
     "deleteTeacher": "ลบครูผู้สอน",
     "deleteTeacherTitle": "ลบ {name} ใช่หรือไม่?",
@@ -755,6 +756,11 @@
     "moves": "ตาเดิน",
     "noMoves": "ยังไม่มีการเดิน",
     "stopGame": "หยุดเกมนี้",
+    "exportPgn": "ส่งออก PGN",
+    "deleteGame": "ลบ",
+    "deleteNote": "หมาก {moves} ตาที่เล่นในเกมนี้จะถูกลบไปด้วย หากต้องการเก็บไว้ ให้ส่งออก PGN ก่อน",
+    "event": "เกมในคาบเรียน JCA",
+    "site": "Junior Chess Academy",
     "lasted": "ใช้เวลา {time}",
     "status": {
       "all": "ทุกเกม",

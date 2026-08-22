@@ -43,6 +43,11 @@
     "Withdrawn": "Withdrawn",
     "Scheduled": "Scheduled"
   },
+  "classType": {
+    "Private": "Private",
+    "Group": "Group",
+    "Master": "Master"
+  },
   "common": {
     "search": "Search",
     "cancel": "Cancel",
@@ -283,7 +288,6 @@
     "backToStudents": "Back to Students",
     "tabOverview": "Overview",
     "tabAttendance": "Attendance",
-    "tabPractice": "Practice",
     "tabPayments": "Payments",
     "yrs": "{age} yrs",
     "studentSection": "Student",
@@ -294,10 +298,6 @@
     "creditsExpire": "Credits expire",
     "relation": "Relation",
     "attendanceSummary": "Attendance — {present} of {total} present",
-    "practiceSummary": "Practice — {days} day streak",
-    "practiceHint": "Last 35 days. Filled squares are days with a logged practice session.",
-    "practised": "Practised",
-    "noPractice": "No practice",
     "registerTitle": "Register Student",
     "registerSub": "Upload a registration form or enter the details manually.",
     "uploadChoice": "Upload Registration Form",
@@ -685,7 +685,8 @@
     "description": "Description",
     "badge": "Badge",
     "icon": "Icon",
-    "category": "Category",
+    "classType": "Class Type",
+    "classTypeHelp": "How the class is taught. Private is one-to-one; Master is a masterclass.",
     "editTeacher": "Edit Teacher",
     "deleteTeacher": "Delete Teacher",
     "deleteTeacherTitle": "Delete {name}?",
@@ -755,6 +756,11 @@
     "moves": "Moves",
     "noMoves": "No moves played yet.",
     "stopGame": "Stop this game",
+    "exportPgn": "Export PGN",
+    "deleteGame": "Delete",
+    "deleteNote": "The {moves} moves played in this game go with it. Export the PGN first if the game is worth keeping.",
+    "event": "JCA lesson game",
+    "site": "Junior Chess Academy",
     "lasted": "Lasted {time}",
     "status": {
       "all": "All games",

@@ -18,6 +18,35 @@ import type { IconName } from "./icons";
 export const CLASS_ICONS: IconName[] = ["king", "queen", "rook", "knight", "bishop", "pawn", "trophy"];
 
 /**
+ * How a class is taught. `class.class_type` in the ER model.
+ *
+ * NOT NULL with `CHECK (class_type IN ('Private','Group','Master'))` since the
+ * first migration, and the console never asked for it. Worse, the Add form
+ * seeded its draft with "Beginner" — which is a *level*, not one of the three —
+ * so the guard on save fell through to "Group" every time. Every class the
+ * academy has ever created through this screen is a Group class, whatever it
+ * actually is, and the edit form never sent the column at all.
+ *
+ * It was labelled "Category" on screen, which is the rest of the reason nobody
+ * could tell where it came from: one column, two names, and neither screen used
+ * the database's.
+ */
+export const CLASS_TYPES = ["Private", "Group", "Master"] as const;
+export type ClassType = (typeof CLASS_TYPES)[number];
+
+/**
+ * A stored class type, or the one the database would have defaulted to.
+ *
+ * Anything unrecognised becomes Group rather than being shown as-is: the column
+ * is a closed set, and a form that opens on a value the picker cannot offer
+ * silently rewrites it on the next save.
+ */
+export function classTypeOf(stored: unknown): ClassType {
+  const value = String(stored ?? "");
+  return (CLASS_TYPES as readonly string[]).includes(value) ? (value as ClassType) : "Group";
+}
+
+/**
  * The icon to draw a class with.
  *
  * The stored choice wins, but only if the picker still offers it. The icon set
