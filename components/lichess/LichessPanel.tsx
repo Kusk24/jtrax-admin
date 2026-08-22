@@ -174,7 +174,11 @@ export function LichessPanel() {
                             )}
                           </span>
                         ) : (
-                          <span style={{ color: COLORS.border }}>—</span>
+                          /* "No rating in this speed" is information, so it is
+                             legible. This was COLORS.border — a hairline grey
+                             meant for 1px rules, which on white read as an
+                             empty cell rather than a dash. */
+                          <span style={{ color: COLORS.text }}>—</span>
                         )}
                       </td>
                     );

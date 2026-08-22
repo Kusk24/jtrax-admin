@@ -22,7 +22,12 @@ const batch = vi.fn(async (job: () => Promise<unknown>) => job());
 
 const state = {
   raw: {
-    classes: [{ class_id: "cls_group", name: "Group Class", class_type: "Group" }],
+    /* Stored with the rook and a badge nobody would derive: the old code drew
+       a queen for any Group class and showed "Group" in the badge field, so a
+       fixture that agreed with the guess would pass either way. */
+    classes: [
+      { class_id: "cls_group", name: "Group Class", class_type: "Group", icon: "rook", badge: "Weekend" },
+    ],
     creditPackages: [
       { credit_package_id: "pkg_1", class_id: "cls_group", credit_amount: 20, standard_price: 12000, validity_days: 90 },
     ],
@@ -154,5 +159,80 @@ describe("editing an existing class", () => {
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(create).not.toHaveBeenCalled();
     expect(update).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * The icon and the badge actually reaching the backend.
+ *
+ * Reported: changing either one in Academy does nothing — the card goes on
+ * showing what it showed. Two separate faults, and the fix needs both halves.
+ * `lib/class-face.test.ts` covers the reading rule; this covers the writing,
+ * which is where the report came from: the form has always collected both and
+ * the save has never sent either.
+ */
+describe("saving a class", () => {
+  /* The picker set state that the next render threw away, and Save posted a
+     body with neither field in it. */
+  it("sends the icon that was picked", async () => {
+    const user = userEvent.setup();
+    renderAcademy();
+
+    await user.click(screen.getAllByRole("button", { name: /^Edit/ })[0]);
+    await user.click(screen.getByRole("button", { name: "rook" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    const [path, id, patch] = update.mock.calls[0] as unknown as [string, string, Record<string, unknown>];
+    expect([path, id]).toEqual(["classes", "cls_group"]);
+    expect(patch.icon).toBe("rook");
+  });
+
+  it("sends the badge that was typed", async () => {
+    const user = userEvent.setup();
+    renderAcademy();
+
+    await user.click(screen.getAllByRole("button", { name: /^Edit/ })[0]);
+    const badge = screen.getByLabelText("Badge") as HTMLInputElement;
+    /* Opens on the stored badge. It used to be class_type wearing a different
+       label, so the field read "Group" back however it had been filled in. */
+    expect(badge.value).toBe("Weekend");
+
+    await user.clear(badge);
+    await user.type(badge, "Juniors");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    const [, , patch] = update.mock.calls[0] as unknown as [string, string, Record<string, unknown>];
+    expect(patch.badge).toBe("Juniors");
+  });
+
+  it("sends both on a new class too", async () => {
+    const user = userEvent.setup();
+    renderAcademy();
+    const f = await openAddClass(user);
+
+    await user.type(f.name, "Endgame Lab");
+    await user.type(screen.getByLabelText("Badge"), "Exam prep");
+    await user.click(screen.getByRole("button", { name: "bishop" }));
+    await user.click(f.save);
+
+    const [, cls] = create.mock.calls[0] as unknown as [string, Record<string, unknown>];
+    expect(cls.icon).toBe("bishop");
+    expect(cls.badge).toBe("Exam prep");
+  });
+
+  /* Renaming must not reset the face to whatever the type would guess. */
+  it("keeps the stored icon when only the name changes", async () => {
+    const user = userEvent.setup();
+    renderAcademy();
+
+    await user.click(screen.getAllByRole("button", { name: /^Edit/ })[0]);
+    const name = screen.getByLabelText("Course Name") as HTMLInputElement;
+    await user.clear(name);
+    await user.type(name, "Group Class II");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    const [, , patch] = update.mock.calls[0] as unknown as [string, string, Record<string, unknown>];
+    expect(patch.icon).toBe("rook");
+    expect(patch.badge).toBe("Weekend");
   });
 });
