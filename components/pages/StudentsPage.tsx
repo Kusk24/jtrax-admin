@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { generateTempPassword } from "@/lib/credentials";
 import { type Student } from "@/lib/data";
 import { useData } from "@/components/DataProvider";
-import { fmtCredits, fmtDate, fmtTHB, isActiveEnrolment, liveClasses } from "@/lib/live";
+import { fmtCredits, fmtDate, fmtTHB, isActiveEnrolment, liveClasses, practiceStrip } from "@/lib/live";
 import { planTransfer, type CreditRate } from "@/lib/credit-transfer";
 import { opensCreate } from "@/lib/quick-actions";
 import { classFilterOptions, classNamesOfStudent, isInClass } from "@/lib/student-classes";
@@ -104,7 +104,7 @@ type View =
 
 /* ---------------------------------------------------------------- detail --- */
 
-const DETAIL_TABS = ["Overview", "Attendance", "Credits", "Payments"] as const;
+const DETAIL_TABS = ["Overview", "Attendance", "Credits", "Practice", "Payments"] as const;
 const CREDIT_TEMPLATE = equalTemplate(5, 90);
 const CREDIT_TYPES = ["purchase", "consumption", "manual_adjustment"];
 type DetailTab = (typeof DETAIL_TABS)[number];
@@ -391,6 +391,7 @@ function StudentDetail({
     );
   }
 
+  const practice = useMemo(() => practiceStrip(raw, student.id), [raw, student.id]);
 
   /* This student's real payments, newest first — the tab used to show a
      generated set that had nothing to do with what the office recorded. */
@@ -1077,6 +1078,29 @@ function StudentDetail({
                 </TableRow>
               ))}
             </Table>
+          </div>
+        </Card>
+      )}
+
+      {tab === "Practice" && (
+        <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <SectionTitle>{t("practiceSummary", { days: practice.streak })}</SectionTitle>
+          <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
+            {t("practiceHint")}
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, maxWidth: 320 }}>
+            {practice.days.map((on, i) => (
+              <span
+                key={i}
+                title={on ? t("practised") : t("noPractice")}
+                style={{
+                  aspectRatio: "1",
+                  borderRadius: 5,
+                  background: on ? COLORS.blue : COLORS.neutralBg,
+                  opacity: on ? 0.85 : 1,
+                }}
+              />
+            ))}
           </div>
         </Card>
       )}

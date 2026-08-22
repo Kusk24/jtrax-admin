@@ -69,6 +69,7 @@ const raw = {
   tournaments: [],
   tournamentCategories: [],
   tournamentRegistrations: [],
+  practiceActivities: [],
   systemConfig: [],
 };
 

@@ -24,7 +24,7 @@ const EMPTY: LiveCollections = {
   classSessions: [], attendance: [], enrollments: [], creditTransactions: [],
   creditPackages: [], payments: [], teachers: [], admins: [], accounts: [],
   announcements: [], tournaments: [], tournamentCategories: [],
-  tournamentRegistrations: [], systemConfig: [],
+  tournamentRegistrations: [], practiceActivities: [], systemConfig: [],
 };
 
 const PATHS: Record<keyof LiveCollections, string> = {
@@ -35,6 +35,7 @@ const PATHS: Record<keyof LiveCollections, string> = {
   payments: "payments", teachers: "teachers", admins: "admins", accounts: "user-accounts",
   announcements: "announcements", tournaments: "tournaments",
   tournamentCategories: "tournament-categories", tournamentRegistrations: "tournament-registrations",
+  practiceActivities: "practice-activities",
   systemConfig: "system-configuration",
 };
 
