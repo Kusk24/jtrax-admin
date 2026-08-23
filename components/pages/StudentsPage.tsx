@@ -7,7 +7,7 @@ import { generateTempPassword } from "@/lib/credentials";
 import { type Student } from "@/lib/data";
 import { useData } from "@/components/DataProvider";
 import { fmtCredits, fmtDate, fmtTHB, isActiveEnrolment, liveClasses, practiceStrip } from "@/lib/live";
-import { planTransfer, type CreditRate } from "@/lib/credit-transfer";
+import { planTransfer, roundCredits, type CreditRate } from "@/lib/credit-transfer";
 import { opensCreate } from "@/lib/quick-actions";
 import { classFilterOptions, classNamesOfStudent, isInClass } from "@/lib/student-classes";
 import { Icon } from "@/lib/icons";
@@ -226,12 +226,32 @@ function StudentDetail({
   const [withdrawing, setWithdrawing] = useState<(typeof enrolments)[number] | null>(null);
   const [movingCredits, setMovingCredits] = useState<(typeof enrolments)[number] | null>(null);
   const [moveTo, setMoveTo] = useState("");
+  /* What lands on the new enrolment. null means "follow the computed
+     conversion" — the field shows the sum's answer until the office types
+     over it, and a hand-typed figure is what gets written. */
+  const [moveAmount, setMoveAmount] = useState<string | null>(null);
+  /* The moved credits' expiry. The transfer used to write the incoming entry
+     with no expiry_date at all, so a moved balance quietly stopped expiring —
+     and the parent portal read "valid until —" off it. Prefilled from the
+     balance being moved. */
+  const [moveExpiry, setMoveExpiry] = useState("");
 
   /** What is left on one enrolment. */
   function balanceOf(enrolmentId: string): number {
     return raw.creditTransactions
       .filter((tx) => String(tx["enrollment_id"]) === enrolmentId)
       .reduce((sum, tx) => sum + Number(tx["amount"] ?? 0), 0);
+  }
+
+  /** The latest expiry on an enrolment's ledger — the same "last date any of
+      it is good for" rule the balance chip and the parent portal use. */
+  function expiryOf(enrolmentId: string): string {
+    return raw.creditTransactions
+      .filter((tx) => String(tx["enrollment_id"]) === enrolmentId)
+      .map((tx) => String(tx["expiry_date"] ?? ""))
+      .filter(Boolean)
+      .sort()
+      .at(-1) ?? "";
   }
 
   /**
@@ -845,6 +865,8 @@ function StudentDetail({
                       style={{ ...secondaryButtonStyle, padding: "5px 11px", fontSize: 12.5 }}
                       onClick={() => {
                         setMoveTo(enrolments.find((o) => o.id !== e.id && o.status === "Active")?.id ?? "");
+                        setMoveAmount(null);
+                        setMoveExpiry(expiryOf(e.id));
                         setMovingCredits(e);
                       }}
                     >
@@ -901,6 +923,15 @@ function StudentDetail({
               to: rateOf(target.id, target.classId),
             })
           : ({ ok: false, problem: "rateUnknown" } as const);
+        /* The field follows the computed sum until somebody types; what is in
+           the field is what gets written. With no rate to convert at there is
+           no suggestion — the office enters the figure itself, which is a
+           decision, not the guess the automatic path refuses to make. */
+        const suggested = plan.ok ? String(plan.credits) : "";
+        const amountText = moveAmount ?? suggested;
+        const amount = Number(amountText);
+        const amountOk = amountText.trim() !== "" && Number.isFinite(amount) && amount > 0;
+        const overridden = plan.ok && amountOk && roundCredits(amount) !== plan.credits;
         return (
           <Modal
             title={t("moveCreditsTitle")}
@@ -919,14 +950,16 @@ function StudentDetail({
                 <ActionButton
                   className="jt-btn-primary"
                   style={primaryButtonStyle}
-                  disabled={!plan.ok || !target}
+                  disabled={!target || balance <= 0 || !amountOk}
                   busyLabel={tCommon("saving")}
                   onClick={async () => {
-                    if (!plan.ok || !target) return;
+                    if (!target || balance <= 0 || !amountOk) return;
                     const today = new Date().toISOString().slice(0, 10);
                     /* Two entries, not one edited number: the ledger has to
                        show where the hours went and where they came from, or a
-                       balance appears to have changed on its own. */
+                       balance appears to have changed on its own. The expiry
+                       rides on the incoming entry only — it says how long the
+                       added credits are good for, which a removal is not. */
                     await batch(async () => {
                       await create("credit-transactions", {
                         enrollment_id: movingCredits.id,
@@ -938,8 +971,9 @@ function StudentDetail({
                       await create("credit-transactions", {
                         enrollment_id: target.id,
                         transaction_type: "manual_adjustment",
-                        amount: plan.credits,
+                        amount: roundCredits(amount),
                         transaction_date: today,
+                        ...(moveExpiry ? { expiry_date: moveExpiry } : {}),
                         notes: t("movedIn", { className: movingCredits.className }),
                       });
                     });
@@ -957,7 +991,13 @@ function StudentDetail({
                 <select
                   id="mv-target"
                   value={target?.id ?? ""}
-                  onChange={(e) => setMoveTo(e.target.value)}
+                  onChange={(e) => {
+                    setMoveTo(e.target.value);
+                    /* A figure typed against one class's rate says nothing
+                       about another's; follow the new conversion until the
+                       office types again. */
+                    setMoveAmount(null);
+                  }}
                   style={selectStyle}
                 >
                   {targets.map((o) => (
@@ -968,6 +1008,36 @@ function StudentDetail({
                   ))}
                 </select>
               </div>
+
+              <div style={{ display: "flex", gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={labelStyle} htmlFor="mv-amount">{t("moveAmount")}</label>
+                  <input
+                    id="mv-amount"
+                    type="number"
+                    min={0}
+                    step={0.5}
+                    value={amountText}
+                    onChange={(e) => setMoveAmount(e.target.value)}
+                    style={fieldStyle}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={labelStyle} htmlFor="mv-expiry">{t("expires")}</label>
+                  <input
+                    id="mv-expiry"
+                    type="date"
+                    value={moveExpiry}
+                    onChange={(e) => setMoveExpiry(e.target.value)}
+                    style={fieldStyle}
+                  />
+                </div>
+              </div>
+              {overridden && (
+                <p style={{ margin: 0, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+                  {t("moveOverrideNote", { credits: fmtCredits(plan.ok ? plan.credits : 0) })}
+                </p>
+              )}
 
               {/* The sum, in full, before anyone commits to it. A credit is an
                   hour and every class prices an hour differently, so what

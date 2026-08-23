@@ -378,7 +378,9 @@
     "movedOut": "Moved to {className}",
     "movedIn": "Moved from {className}",
     "nothingToMove": "There is nothing left on this enrolment to move.",
-    "rateUnknown": "No payment was recorded against one of these classes, so there is no rate to convert at. Record the payment first — guessing would either hand out free hours or take paid ones away."
+    "rateUnknown": "No payment or priced package says what an hour costs in one of these classes, so there is no rate to convert at. Enter the credits to add yourself — or record the payment first and let the sum do it.",
+    "moveAmount": "Credits to add",
+    "moveOverrideNote": "Entered by hand — the conversion works out to {credits} credits."
   },
   "parents": {
     "title": "Parents",
