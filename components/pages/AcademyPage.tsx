@@ -839,20 +839,17 @@ export function AcademyPage() {
                   setSavingTeacher(true);
                   try {
                     if (teacherModal === "new") {
-                      await batch(async () => {
-                        const acct = await create("user-accounts", {
-                          email: teacherDraft.email || `${teacherDraft.name.toLowerCase().replace(/\s+/g, ".")}@jca.ac.th`,
-                          password: `teach-${Math.random().toString(36).slice(2, 10)}`,
-                          role: "Teacher",
-                          display_name: teacherDraft.name,
-                        });
-                        await create("teachers", {
-                          user_account_id: acct.user_account_id,
-                          name: teacherDraft.name,
-                          email: teacherDraft.email,
-                          phone: teacherDraft.phone,
-                          line_id: teacherDraft.lineId,
-                        });
+                      /* A record of who teaches, not an account. The academy
+                         has no teacher workflow — the desk takes attendance —
+                         so there is no portal to sign in to, and this used to
+                         mint a login anyway: a fabricated @jca.ac.th address
+                         and a random password nobody was ever shown. The
+                         column is nullable since backend 0023. */
+                      await create("teachers", {
+                        name: teacherDraft.name,
+                        email: teacherDraft.email,
+                        phone: teacherDraft.phone,
+                        line_id: teacherDraft.lineId,
                       });
                     } else {
                       await update("teachers", teacherModal.id, {
