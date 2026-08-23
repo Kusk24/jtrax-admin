@@ -52,9 +52,10 @@ const raw = {
   classSessions: [],
   attendance: [],
   enrollments: ENROLMENTS,
-  /* Anong has spent credits in Beginner; Chai has spent nothing anywhere. */
+  /* Anong has spent credits in Beginner; Chai has spent nothing anywhere.
+     The purchase carries an expiry, because a moved balance has to keep one. */
   creditTransactions: [
-    { credit_transaction_id: "t1", enrollment_id: "e_anong_beg", amount: 20, transaction_date: "2026-01-06", transaction_type: "purchase" },
+    { credit_transaction_id: "t1", enrollment_id: "e_anong_beg", amount: 20, transaction_date: "2026-01-06", transaction_type: "purchase", expiry_date: "2026-12-31" },
     { credit_transaction_id: "t2", enrollment_id: "e_anong_beg", amount: -12, transaction_date: "2026-06-02", transaction_type: "consumption" },
   ],
   creditPackages: [
@@ -243,5 +244,90 @@ describe("filtering the roster by class", () => {
     const user = renderList();
     await user.selectOptions(filter(), "int");
     expect(screen.getByText("Beginner, Intermediate")).toBeDefined();
+  });
+});
+
+/* Moving a balance between classes. The dialog computes the conversion, but
+   what is written is what is in the field — the office can type over it — and
+   the incoming entry carries an expiry, prefilled from the balance being
+   moved. It used to write none at all, so moved credits quietly stopped
+   expiring. */
+describe("moving credits", () => {
+  async function openMoveDialog(user: ReturnType<typeof userEvent.setup>) {
+    await openStudent(user, "Anong");
+    await user.click(screen.getByRole("button", { name: /Move 8 credits/ }));
+  }
+  const confirm = () => screen.getByRole("button", { name: "Move credits" });
+  const amountField = () => screen.getByLabelText("Credits to add") as HTMLInputElement;
+  const expiryField = () => screen.getByLabelText("Expires") as HTMLInputElement;
+  /* The mock is argless to vitest, so the call tuples need their real shape
+     back before the payloads can be read. */
+  const payloads = () =>
+    (create.mock.calls as unknown as [string, Record<string, unknown>][]).map((c) => c[1]);
+  const incomingEntry = () => payloads().find((p) => Number(p.amount) > 0)!;
+
+  it("writes the computed conversion, with the old balance's expiry", async () => {
+    const user = renderList();
+    await openMoveDialog(user);
+    /* 8 credits at ฿600 an hour are ฿4,800 — 4.8 hours at Intermediate's
+       ฿1,000. The field starts on the sum's answer. */
+    expect(amountField().value).toBe("4.8");
+    expect(expiryField().value).toBe("2026-12-31");
+    await user.click(confirm());
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(incomingEntry()).toMatchObject({
+      enrollment_id: "e_anong_int",
+      amount: 4.8,
+      expiry_date: "2026-12-31",
+    });
+  });
+
+  it("a hand-typed amount is what lands", async () => {
+    const user = renderList();
+    await openMoveDialog(user);
+    await user.clear(amountField());
+    await user.type(amountField(), "5");
+    await user.click(confirm());
+    expect(incomingEntry()).toMatchObject({ enrollment_id: "e_anong_int", amount: 5 });
+    /* The outgoing side always clears the whole balance, typed or not. */
+    const outgoing = payloads().find((p) => Number(p.amount) < 0)!;
+    expect(outgoing).toMatchObject({ enrollment_id: "e_anong_beg", amount: -8 });
+  });
+
+  it("the expiry can be changed before it moves", async () => {
+    const user = renderList();
+    await openMoveDialog(user);
+    await user.clear(expiryField());
+    await user.type(expiryField(), "2027-01-31");
+    await user.click(confirm());
+    expect(incomingEntry()).toMatchObject({ expiry_date: "2027-01-31" });
+  });
+
+  it("an emptied amount cannot be saved", async () => {
+    const user = renderList();
+    await openMoveDialog(user);
+    await user.clear(amountField());
+    expect((confirm() as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  /* A class with no payment and no priced package has no rate. The automatic
+     path refuses to guess; a figure the office types is a decision, not a
+     guess, and goes through. */
+  it("still moves into a class with no rate, once an amount is typed", async () => {
+    raw.classes.push({ class_id: "priv", name: "Private Coaching" });
+    raw.enrollments.push({ enrollment_id: "e_anong_priv", student_id: "anong", class_id: "priv", status: "Active", enrolled_date: "2026-07-01" });
+    try {
+      const user = renderList();
+      await openMoveDialog(user);
+      await user.selectOptions(screen.getByLabelText("Move them to"), "e_anong_priv");
+      expect(amountField().value).toBe("");
+      expect((confirm() as HTMLButtonElement).disabled).toBe(true);
+      await user.type(amountField(), "6");
+      await user.click(confirm());
+      expect(incomingEntry()).toMatchObject({ enrollment_id: "e_anong_priv", amount: 6 });
+    } finally {
+      raw.classes.pop();
+      raw.enrollments.pop();
+    }
   });
 });
