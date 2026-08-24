@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planTransfer, ratePerCredit, roundCredits } from "./credit-transfer";
+import { planTransfer, ratePerCredit, roundCredits, roundToHalfCredit } from "./credit-transfer";
 
 /* Two classes' own packages. Beginner sells 20 credits for 12,000 — 600 an
    hour — and Intermediate 20 for 20,000, which is 1,000. Nothing here is a
@@ -36,9 +36,10 @@ describe("moving a balance to a dearer class", () => {
   it("keeps the money, not the hours", () => {
     expect(plan.ok).toBe(true);
     if (!plan.ok) return;
-    // 8 hours at 600 is 4,800 baht; at 1,000 an hour that is 4.8 hours.
+    // 8 hours at 600 is 4,800 baht; at 1,000 an hour that is 4.8 hours —
+    // which no session can spend, so it lands on the next half: 5.
     expect(plan.value).toBe(4800);
-    expect(plan.credits).toBe(4.8);
+    expect(plan.credits).toBe(5);
   });
 
   it("reports both rates, so the desk can see the sum", () => {
@@ -54,7 +55,8 @@ describe("moving a balance to a dearer class", () => {
     expect(p.ok).toBe(true);
     if (!p.ok) return;
     expect(p.toRate).toBe(2000);
-    expect(p.credits).toBe(2.4);
+    // 4,800 baht at 2,000 an hour is 2.4 hours → the next half is 2.5.
+    expect(p.credits).toBe(2.5);
   });
 });
 
@@ -114,7 +116,7 @@ describe("what cannot be moved", () => {
   });
 });
 
-describe("rounding", () => {
+describe("rounding a typed figure", () => {
   /* A hundredth of a credit is thirty-six seconds of class. */
   it("keeps two decimal places", () => {
     expect(roundCredits(1 / 3)).toBe(0.33);
@@ -124,12 +126,43 @@ describe("rounding", () => {
   it("leaves a whole number whole", () => {
     expect(roundCredits(10)).toBe(10);
   });
+});
 
-  it("rounds the awkward division rather than storing its tail", () => {
+/* A session costs 0.5 or 1 — the academy has no smaller unit of teaching, so
+   a converted balance must land where it can actually be spent. The result is
+   rounded, never the rates, and to the NEAREST half: rounding up was tried
+   and rejected, because it hands out up to half an hour free on every move. */
+describe("the conversion lands on the half-credit grid", () => {
+  it("rounds the awkward division to the nearest half", () => {
     const plan = planTransfer({ balance: 10, from: BEGINNER, to: { credits: 10, price: 18000 } });
     expect(plan.ok).toBe(true);
     if (!plan.ok) return;
-    // 10 at 600 is 6,000; at 1,800 an hour that is 3.333... hours.
-    expect(plan.credits).toBe(3.33);
+    // 10 at 600 is 6,000; at 1,800 an hour that is 3.333... hours → 3.5.
+    expect(plan.credits).toBe(3.5);
+  });
+
+  it("rounds down when down is nearer — nothing is given away", () => {
+    // 4,800 baht at 4,700 an hour is 1.02 hours: 1, not 1.5.
+    const plan = planTransfer({ balance: 8, from: BEGINNER, to: { credits: 1, price: 4700 } });
+    expect(plan.ok).toBe(true);
+    if (!plan.ok) return;
+    expect(plan.credits).toBe(1);
+  });
+
+  /* The rule as the academy stated it. */
+  it("13.2 is 13; 13.3 and 13.4 are 13.5", () => {
+    expect(roundToHalfCredit(13.2)).toBe(13);
+    expect(roundToHalfCredit(13.3)).toBe(13.5);
+    expect(roundToHalfCredit(13.4)).toBe(13.5);
+  });
+
+  it("leaves a balance already on the grid alone", () => {
+    expect(roundToHalfCredit(16.5)).toBe(16.5);
+    expect(roundToHalfCredit(7)).toBe(7);
+  });
+
+  it("is not fooled by floating-point dust", () => {
+    expect(roundToHalfCredit(16.500000000000004)).toBe(16.5);
+    expect(roundToHalfCredit(0.1 + 0.2 + 0.2)).toBe(0.5);
   });
 });

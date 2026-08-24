@@ -270,14 +270,15 @@ describe("moving credits", () => {
     const user = renderList();
     await openMoveDialog(user);
     /* 8 credits at ฿600 an hour are ฿4,800 — 4.8 hours at Intermediate's
-       ฿1,000. The field starts on the sum's answer. */
-    expect(amountField().value).toBe("4.8");
+       ฿1,000, landed on the next half credit because a session costs 0.5 or
+       1 and nothing can spend a 0.3. The field starts on the sum's answer. */
+    expect(amountField().value).toBe("5");
     expect(expiryField().value).toBe("2026-12-31");
     await user.click(confirm());
     expect(create).toHaveBeenCalledTimes(2);
     expect(incomingEntry()).toMatchObject({
       enrollment_id: "e_anong_int",
-      amount: 4.8,
+      amount: 5,
       expiry_date: "2026-12-31",
     });
   });

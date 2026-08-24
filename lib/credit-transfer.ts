@@ -38,9 +38,31 @@ export function ratePerCredit(rate: CreditRate): number | null {
  * is unreadable. A hundredth of a credit is thirty-six seconds of class, which
  * is below anything the academy can teach or bill for — and rounding at the
  * point of writing keeps the sum on screen equal to the sum in the database.
+ *
+ * This is for a figure the office typed. A *computed* conversion goes through
+ * roundToHalfCredit instead — see there for why.
  */
 export function roundCredits(credits: number): number {
   return Math.round(credits * 100) / 100;
+}
+
+/**
+ * Rounded to the nearest half credit.
+ *
+ * A session costs 0.5 for a half hour or 1 for a full one — nothing at the
+ * academy ever charges 0.29 of a credit, so a balance like 16.29 is not
+ * spendable down to zero: the dust below a half step could never be used.
+ * The *result* of the conversion therefore lands on the half-credit grid;
+ * the rates themselves are never rounded, or the sum would drift.
+ *
+ * Nearest, not up: 13.2 becomes 13 and 13.3 becomes 13.5. Rounding up was
+ * tried and rejected by the academy — it hands out up to half an hour free
+ * on every single move. Nearest caps what either side gives at a quarter
+ * credit, and it evens out across moves instead of always costing the
+ * academy.
+ */
+export function roundToHalfCredit(credits: number): number {
+  return Math.round(credits * 2) / 2;
 }
 
 export type TransferPlan =
@@ -82,7 +104,7 @@ export function planTransfer(opts: {
     balance: opts.balance,
     fromRate,
     toRate,
-    credits: roundCredits(value / toRate),
+    credits: roundToHalfCredit(value / toRate),
     value,
   };
 }
