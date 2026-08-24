@@ -25,14 +25,17 @@ function apply(theme: Theme) {
  */
 export function ThemeToggle() {
   const t = useTranslations("nav");
-  const [theme, setTheme] = useState<Theme>("System");
+  /* Lazy initialiser, not an effect: the stored value is known synchronously,
+     and setting state inside the effect would render System for a frame. */
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === "undefined") return "System";
+    const stored = localStorage.getItem("jtrax:theme") as Theme | null;
+    return stored && THEMES.includes(stored) ? stored : "System";
+  });
 
   useEffect(() => {
     const stored = localStorage.getItem("jtrax:theme") as Theme | null;
-    if (stored && THEMES.includes(stored)) {
-      setTheme(stored);
-      apply(stored);
-    }
+    if (stored && THEMES.includes(stored)) apply(stored);
     fetch("/api/auth/me", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((me) => {
