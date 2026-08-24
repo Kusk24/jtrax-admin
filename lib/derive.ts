@@ -14,13 +14,19 @@ export type CreditRules = {
   lowCredit: number;
   expiringDays: number;
   inactiveDays: number;
+  /* Not a credit rule, but it rides the same machinery: the classes-attended
+     milestone at which the academy awards a certificate. The parent portal
+     counts toward it. */
+  certSessions: number;
 };
 
-/* Defaults from the design's `state.settingsCreditRules`. */
+/* Defaults from the design's `state.settingsCreditRules`; certSessions is the
+   academy's stated rule. */
 export const DEFAULT_CREDIT_RULES: CreditRules = {
   lowCredit: 3,
   expiringDays: 7,
   inactiveDays: 30,
+  certSessions: 50,
 };
 
 /** Where the thresholds live in `system_configuration`. */
@@ -28,6 +34,7 @@ export const RULE_KEYS: Record<keyof CreditRules, string> = {
   lowCredit: "credit_rule_low_credit",
   expiringDays: "credit_rule_expiring_days",
   inactiveDays: "credit_rule_inactive_days",
+  certSessions: "certificate_sessions",
 };
 
 export type FollowUpBucket = "low" | "expiring" | "expired" | "inactive";
