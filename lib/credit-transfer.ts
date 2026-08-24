@@ -38,9 +38,31 @@ export function ratePerCredit(rate: CreditRate): number | null {
  * is unreadable. A hundredth of a credit is thirty-six seconds of class, which
  * is below anything the academy can teach or bill for — and rounding at the
  * point of writing keeps the sum on screen equal to the sum in the database.
+ *
+ * This is for a figure the office typed. A *computed* conversion goes through
+ * ceilToHalfCredit instead — see there for why.
  */
 export function roundCredits(credits: number): number {
   return Math.round(credits * 100) / 100;
+}
+
+/**
+ * Rounded up to the next half credit.
+ *
+ * A session costs 0.5 for a half hour or 1 for a full one — nothing at the
+ * academy ever charges 0.29 of a credit, so a balance like 16.29 is not
+ * spendable down to zero: the dust below a half step could never be used.
+ * The conversion therefore lands on the half-credit grid.
+ *
+ * Up, not to nearest: rounding down takes teaching a family has paid for,
+ * rounding up gives away at most 0.49 of a credit. When the academy is the
+ * one rounding, it rounds in the family's favour.
+ *
+ * The epsilon keeps floating-point dust just above a half step (16.5000…04)
+ * from being pushed to the next one.
+ */
+export function ceilToHalfCredit(credits: number): number {
+  return Math.ceil(credits * 2 - 1e-9) / 2;
 }
 
 export type TransferPlan =
@@ -82,7 +104,7 @@ export function planTransfer(opts: {
     balance: opts.balance,
     fromRate,
     toRate,
-    credits: roundCredits(value / toRate),
+    credits: ceilToHalfCredit(value / toRate),
     value,
   };
 }
