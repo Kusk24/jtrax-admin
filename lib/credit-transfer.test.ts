@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ceilToHalfCredit, planTransfer, ratePerCredit, roundCredits } from "./credit-transfer";
+import { planTransfer, ratePerCredit, roundCredits, roundToHalfCredit } from "./credit-transfer";
 
 /* Two classes' own packages. Beginner sells 20 credits for 12,000 — 600 an
    hour — and Intermediate 20 for 20,000, which is 1,000. Nothing here is a
@@ -129,10 +129,11 @@ describe("rounding a typed figure", () => {
 });
 
 /* A session costs 0.5 or 1 — the academy has no smaller unit of teaching, so
-   a converted balance must land where it can actually be spent. Up, not to
-   nearest: when the academy rounds, it rounds in the family's favour. */
+   a converted balance must land where it can actually be spent. The result is
+   rounded, never the rates, and to the NEAREST half: rounding up was tried
+   and rejected, because it hands out up to half an hour free on every move. */
 describe("the conversion lands on the half-credit grid", () => {
-  it("rounds the awkward division up to the next half", () => {
+  it("rounds the awkward division to the nearest half", () => {
     const plan = planTransfer({ balance: 10, from: BEGINNER, to: { credits: 10, price: 18000 } });
     expect(plan.ok).toBe(true);
     if (!plan.ok) return;
@@ -140,22 +141,28 @@ describe("the conversion lands on the half-credit grid", () => {
     expect(plan.credits).toBe(3.5);
   });
 
-  it("rounds up even when nearest would round down", () => {
-    // 4,800 baht at 4,700 an hour is 1.02 hours — nearest is 1, but rounding
-    // down would take teaching the family paid for.
+  it("rounds down when down is nearer — nothing is given away", () => {
+    // 4,800 baht at 4,700 an hour is 1.02 hours: 1, not 1.5.
     const plan = planTransfer({ balance: 8, from: BEGINNER, to: { credits: 1, price: 4700 } });
     expect(plan.ok).toBe(true);
     if (!plan.ok) return;
-    expect(plan.credits).toBe(1.5);
+    expect(plan.credits).toBe(1);
+  });
+
+  /* The rule as the academy stated it. */
+  it("13.2 is 13; 13.3 and 13.4 are 13.5", () => {
+    expect(roundToHalfCredit(13.2)).toBe(13);
+    expect(roundToHalfCredit(13.3)).toBe(13.5);
+    expect(roundToHalfCredit(13.4)).toBe(13.5);
   });
 
   it("leaves a balance already on the grid alone", () => {
-    expect(ceilToHalfCredit(16.5)).toBe(16.5);
-    expect(ceilToHalfCredit(7)).toBe(7);
+    expect(roundToHalfCredit(16.5)).toBe(16.5);
+    expect(roundToHalfCredit(7)).toBe(7);
   });
 
-  it("does not let floating-point dust climb to the next half", () => {
-    expect(ceilToHalfCredit(16.500000000000004)).toBe(16.5);
-    expect(ceilToHalfCredit(0.1 + 0.2 + 0.2)).toBe(0.5);
+  it("is not fooled by floating-point dust", () => {
+    expect(roundToHalfCredit(16.500000000000004)).toBe(16.5);
+    expect(roundToHalfCredit(0.1 + 0.2 + 0.2)).toBe(0.5);
   });
 });

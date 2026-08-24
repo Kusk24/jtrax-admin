@@ -40,29 +40,29 @@ export function ratePerCredit(rate: CreditRate): number | null {
  * point of writing keeps the sum on screen equal to the sum in the database.
  *
  * This is for a figure the office typed. A *computed* conversion goes through
- * ceilToHalfCredit instead — see there for why.
+ * roundToHalfCredit instead — see there for why.
  */
 export function roundCredits(credits: number): number {
   return Math.round(credits * 100) / 100;
 }
 
 /**
- * Rounded up to the next half credit.
+ * Rounded to the nearest half credit.
  *
  * A session costs 0.5 for a half hour or 1 for a full one — nothing at the
  * academy ever charges 0.29 of a credit, so a balance like 16.29 is not
  * spendable down to zero: the dust below a half step could never be used.
- * The conversion therefore lands on the half-credit grid.
+ * The *result* of the conversion therefore lands on the half-credit grid;
+ * the rates themselves are never rounded, or the sum would drift.
  *
- * Up, not to nearest: rounding down takes teaching a family has paid for,
- * rounding up gives away at most 0.49 of a credit. When the academy is the
- * one rounding, it rounds in the family's favour.
- *
- * The epsilon keeps floating-point dust just above a half step (16.5000…04)
- * from being pushed to the next one.
+ * Nearest, not up: 13.2 becomes 13 and 13.3 becomes 13.5. Rounding up was
+ * tried and rejected by the academy — it hands out up to half an hour free
+ * on every single move. Nearest caps what either side gives at a quarter
+ * credit, and it evens out across moves instead of always costing the
+ * academy.
  */
-export function ceilToHalfCredit(credits: number): number {
-  return Math.ceil(credits * 2 - 1e-9) / 2;
+export function roundToHalfCredit(credits: number): number {
+  return Math.round(credits * 2) / 2;
 }
 
 export type TransferPlan =
@@ -104,7 +104,7 @@ export function planTransfer(opts: {
     balance: opts.balance,
     fromRate,
     toRate,
-    credits: ceilToHalfCredit(value / toRate),
+    credits: roundToHalfCredit(value / toRate),
     value,
   };
 }
