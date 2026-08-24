@@ -60,16 +60,16 @@ textarea {
 
 /* Visible keyboard focus — nothing else in the design provides one. */
 .jtrax-root :focus-visible {
-  outline: 2px solid #2e5cb8;
+  outline: 2px solid var(--jt-blue);
   outline-offset: 2px;
   border-radius: 4px;
 }
 
 .jtrax-root {
-  --jtrax-blue: #2e5cb8;
-  --jtrax-bg: #f0f4fc;
-  --jtrax-border: #e7ebf3;
-  --jtrax-text: #1a2b4a;
+  --jtrax-blue: var(--jt-blue);
+  --jtrax-bg: var(--jt-bg);
+  --jtrax-border: var(--jt-border);
+  --jtrax-text: var(--jt-text);
 
   min-height: 100vh;
   background: var(--jtrax-bg);
@@ -99,7 +99,7 @@ textarea {
 }
 
 .jtrax-root a:hover {
-  color: #234a9f;
+  color: var(--jt-blueHover);
   text-decoration: underline;
 }
 
@@ -219,7 +219,7 @@ textarea {
   justify-content: center;
   gap: 16px;
   padding: 26px 24px;
-  background: linear-gradient(155deg, #3a6ac9 0%, #2e5cb8 48%, #1e3a70 100%);
+  background: linear-gradient(155deg, #3a6ac9 0%, var(--jt-blue) 48%, var(--jt-navy) 100%);
 }
 
 .jt-login-motif,
@@ -232,7 +232,7 @@ textarea {
   flex-direction: column;
   gap: 20px;
   padding: 22px 24px 28px;
-  background: #f0f4fc;
+  background: var(--jt-bg);
 }
 
 @media (width >= 900px) {
@@ -330,10 +330,10 @@ textarea {
 .qa-pill-0:hover {
   transform: translateY(-3px);
   box-shadow: 0 8px 18px rgb(26 127 55 / 0.22);
-  background: #e6f4ec;
+  background: var(--jt-successBg);
 }
 .qa-pill-0:hover .qa-label {
-  color: #2a7150;
+  color: var(--jt-success);
 }
 
 .qa-pill-1 {
@@ -342,10 +342,10 @@ textarea {
 .qa-pill-1:hover {
   transform: translateY(-3px);
   box-shadow: 0 8px 18px rgb(192 57 43 / 0.22);
-  background: #fbeaea;
+  background: var(--jt-dangerBg);
 }
 .qa-pill-1:hover .qa-label {
-  color: #b54040;
+  color: var(--jt-danger);
 }
 
 .qa-pill-2 {
@@ -354,10 +354,10 @@ textarea {
 .qa-pill-2:hover {
   transform: translateY(-3px);
   box-shadow: 0 8px 18px rgb(183 121 31 / 0.22);
-  background: #fbeedf;
+  background: var(--jt-warningBg);
 }
 .qa-pill-2:hover .qa-label {
-  color: #9c5a1b;
+  color: var(--jt-warning);
 }
 
 .qa-pill-3 {
@@ -407,8 +407,8 @@ textarea {
 
 .jt-adm-card:hover,
 .jt-class-card:hover {
-  border-color: #2e5cb8 !important;
-  background: #e8eefa !important;
+  border-color: var(--jt-blue) !important;
+  background: var(--jt-light) !important;
   box-shadow: 0 8px 24px rgb(36 59 99 / 0.14);
   transform: translateY(-2px);
 }
@@ -423,8 +423,8 @@ textarea {
 }
 
 .jt-create-card:hover {
-  border-color: #2e5cb8 !important;
-  background: #e8eefa !important;
+  border-color: var(--jt-blue) !important;
+  background: var(--jt-light) !important;
   transform: translateY(-2px);
 }
 
@@ -433,7 +433,7 @@ textarea {
 }
 
 .jt-nav-row:hover {
-  background: #e8eefa !important;
+  background: var(--jt-light) !important;
 }
 
 .jt-find-row {
@@ -441,7 +441,7 @@ textarea {
 }
 
 .jt-find-row:hover {
-  background: #f0f4fc !important;
+  background: var(--jt-bg) !important;
 }
 
 .jt-table-row {
@@ -449,16 +449,16 @@ textarea {
 }
 
 .jt-table-row:hover {
-  background: #f0f4fc !important;
+  background: var(--jt-bg) !important;
 }
 
 .jt-btn-primary:hover {
-  background: #234a9f !important;
+  background: var(--jt-blueHover) !important;
 }
 
 .jt-btn-ghost:hover {
-  background: #e8eefa !important;
-  border-color: #2e5cb8 !important;
+  background: var(--jt-light) !important;
+  border-color: var(--jt-blue) !important;
 }
 
 /* --- Row / drawer actions ---
@@ -477,29 +477,29 @@ textarea {
 .jt-act-edit:hover,
 .jt-qa-call:hover,
 .jt-reg-choice:hover {
-  border-color: #2e5cb8 !important;
-  background: #e8eefa !important;
-  color: #2e5cb8 !important;
+  border-color: var(--jt-blue) !important;
+  background: var(--jt-light) !important;
+  color: var(--jt-blue) !important;
 }
 
 .jt-act-reset:hover {
   border-color: #e3b98d !important;
-  background: #fbeedf !important;
-  color: #9c5a1b !important;
+  background: var(--jt-warningBg) !important;
+  color: var(--jt-warning) !important;
 }
 
 /* Delete is the one irreversible action on these panels — it reads red before
    it's pressed, not only in the confirmation that follows. */
 .jt-act-danger:hover {
-  border-color: #b54040 !important;
-  background: #fbeaea !important;
-  color: #b54040 !important;
+  border-color: var(--jt-danger) !important;
+  background: var(--jt-dangerBg) !important;
+  color: var(--jt-danger) !important;
 }
 
 .jt-qa-line:hover {
   border-color: #06c755 !important;
-  background: #e6f4ec !important;
-  color: #2a7150 !important;
+  background: var(--jt-successBg) !important;
+  color: var(--jt-success) !important;
 }
 
 .jt-qa-email:hover {
@@ -514,9 +514,9 @@ textarea {
 }
 
 .jt-chip:hover {
-  background: #2e5cb8 !important;
+  background: var(--jt-blue) !important;
   color: #fff !important;
-  border-color: #2e5cb8 !important;
+  border-color: var(--jt-blue) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -557,7 +557,7 @@ textarea {
   flex-wrap: wrap;
   gap: 8px 12px;
   padding: 10px 12px;
-  border-bottom: 1px solid #e7ebf3;
+  border-bottom: 1px solid var(--jt-border);
 }
 
 /* The brand block is the one thing worth losing on a phone: the academy knows
@@ -613,7 +613,7 @@ textarea {
     align-items: stretch;
     gap: 24px;
     padding: 20px 14px;
-    border-right: 1px solid #e7ebf3;
+    border-right: 1px solid var(--jt-border);
     border-bottom: none;
     overflow-x: visible;
   }
@@ -627,3 +627,54 @@ textarea {
     mask-image: none;
   }
 }
+
+/* ---- theme tokens ----
+   Every colour the console paints, with its dark half. `lib/theme.ts`
+   exposes these to inline styles; the account's saved preference decides
+   which half applies (System follows the OS). The board and piece colours
+   deliberately have no dark half — a pupil's game looks the same to the
+   pupil, the parent and the office, whatever the office's theme. */
+:root {
+  color-scheme: light dark;
+  --jt-blue: light-dark(#2E5CB8, #7FA7EF);
+  --jt-blueHover: light-dark(#234A9F, #9DBCF5);
+  --jt-navy: light-dark(#1E3A70, var(--jt-blue));
+  --jt-bg: light-dark(#F0F4FC, #0F1729);
+  --jt-surface: light-dark(#FFFFFF, #182238);
+  --jt-light: light-dark(#E8EEFA, #20304F);
+  --jt-border: light-dark(#E7EBF3, #2A3A5C);
+  --jt-text: light-dark(#1A2B4A, #E8EEFB);
+  --jt-textSecondary: light-dark(#5C6880, #A6B3CE);
+  --jt-success: light-dark(#2A7150, #7CC9A0);
+  --jt-successBg: light-dark(#E6F4EC, #173325);
+  --jt-successFill: #4CAF7D;
+  --jt-warning: light-dark(#9C5A1B, #E0A967);
+  --jt-warningBg: light-dark(#FBEEDF, #33270F);
+  --jt-warningFill: #C97A2E;
+  --jt-danger: light-dark(#B54040, #E58B8B);
+  --jt-dangerBg: light-dark(#FBEAEA, #391B1B);
+  --jt-dangerFill: #E0645F;
+  --jt-neutralBg: light-dark(#EEF1F7, #232E47);
+  --jt-disabled: light-dark(#7D8CA6, #6C7A94);
+  --jt-line: #06C755;
+  --jt-boardLight: #EEF3FA;
+  --jt-boardDark: #A3B6D2;
+  --jt-boardHighlight: #F2D98C;
+  --jt-pieceWhite: #FDFEFE;
+  --jt-pieceBlack: #1B3260;
+  --jt-navy: light-dark(#1E3A70, var(--jt-blue));
+  --jt-blue: light-dark(#2E5CB8, #7FA7EF);
+  --jt-green: var(--jt-success);
+  --jt-amber: var(--jt-warning);
+  --jt-red: var(--jt-danger);
+  --jt-plum: #5C4A8A;
+  --jt-navy: light-dark(#1E3A70, var(--jt-blue));
+  --jt-blue: light-dark(#2E5CB8, #7FA7EF);
+  --jt-green: var(--jt-successBg);
+  --jt-amber: var(--jt-warningBg);
+  --jt-red: var(--jt-dangerBg);
+  --jt-plum: #EAE6F5;
+  --jt-scrim: light-dark(rgb(20 33 58 / 0.38), rgb(2 6 14 / 0.6));
+}
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }

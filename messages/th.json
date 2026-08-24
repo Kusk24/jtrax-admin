@@ -15,7 +15,11 @@
     "brandSub": "โรงเรียนหมากรุก",
     "language": "ภาษา",
     "games": "เกม",
-    "lichess": "Lichess"
+    "lichess": "Lichess",
+    "theme": "ธีม",
+    "themeSystem": "ระบบ",
+    "themeLight": "สว่าง",
+    "themeDark": "มืด"
   },
   "roles": {
     "Admin": "ผู้ดูแล",

@@ -13,48 +13,48 @@
 
 export const COLORS = {
   /* pp-blue / pp-deep. */
-  blue: "#2E5CB8",
-  blueHover: "#234A9F",
-  navy: "#1E3A70",
+  blue: "var(--jt-blue)",
+  blueHover: "var(--jt-blueHover)",
+  navy: "var(--jt-navy)",
   /* pp-mist rather than the near-white pp-bg: the console is wall-to-wall
      cards, and they need a tinted page behind them to read as cards. */
-  bg: "#F0F4FC",
-  surface: "#FFFFFF",
-  light: "#E8EEFA",
-  border: "#E7EBF3",
-  text: "#1A2B4A",
-  textSecondary: "#5C6880",
+  bg: "var(--jt-bg)",
+  surface: "var(--jt-surface)",
+  light: "var(--jt-light)",
+  border: "var(--jt-border)",
+  text: "var(--jt-text)",
+  textSecondary: "var(--jt-textSecondary)",
   /* The portal's status colours are tuned for dots and fills; as 12.5px bold
      text on their own tint they land at ~4.1:1, so each has a darker step that
      clears 4.5:1. `*Fill` keeps the portal's original for dots and chart marks. */
-  success: "#2A7150",
-  successBg: "#E6F4EC",
-  successFill: "#4CAF7D",
-  warning: "#9C5A1B",
-  warningBg: "#FBEEDF",
-  warningFill: "#C97A2E",
-  danger: "#B54040",
-  dangerBg: "#FBEAEA",
-  dangerFill: "#E0645F",
-  neutralBg: "#EEF1F7",
+  success: "var(--jt-success)",
+  successBg: "var(--jt-successBg)",
+  successFill: "var(--jt-successFill)",
+  warning: "var(--jt-warning)",
+  warningBg: "var(--jt-warningBg)",
+  warningFill: "var(--jt-warningFill)",
+  danger: "var(--jt-danger)",
+  dangerBg: "var(--jt-dangerBg)",
+  dangerFill: "var(--jt-dangerFill)",
+  neutralBg: "var(--jt-neutralBg)",
   /* Disabled controls. WCAG exempts them from 4.5:1, but a label nobody can
      read is still a label nobody can read — the pagination arrows sat at
      1.3:1, because a lightened colour and `opacity: 0.6` were multiplying.
      Use this instead of fading, and never both. */
-  disabled: "#7D8CA6",
+  disabled: "var(--jt-disabled)",
   /* LINE's brand green — a third-party mark, not ours to re-skin. */
-  line: "#06C755",
+  line: "var(--jt-line)",
   /* The replay board, matching the portals' board exactly (jtrax-web-app
      `--color-sv-board-*`). A pupil's game should look the same to the pupil,
      the parent and the office. The move highlight stays warm on purpose: a
      blue highlight on a blue board is not a highlight. */
-  boardLight: "#EEF3FA",
-  boardDark: "#A3B6D2",
-  boardHighlight: "#F2D98C",
-  pieceWhite: "#FDFEFE",
-  pieceBlack: "#1B3260",
+  boardLight: "var(--jt-boardLight)",
+  boardDark: "var(--jt-boardDark)",
+  boardHighlight: "var(--jt-boardHighlight)",
+  pieceWhite: "var(--jt-pieceWhite)",
+  pieceBlack: "var(--jt-pieceBlack)",
   /* The dim behind a modal or drawer. Was copy-pasted into six files. */
-  scrim: "rgb(20 33 58 / 0.38)",
+  scrim: "var(--jt-scrim)",
 } as const;
 
 /**
@@ -62,22 +62,22 @@ export const COLORS = {
  * where needed so they hold up as small text on their own tint.
  */
 export const ACCENTS = {
-  navy: "#1E3A70",
-  blue: "#2E5CB8",
-  green: "#2A7150",
-  amber: "#9C5A1B",
-  red: "#B54040",
-  plum: "#5C4A8A",
+  navy: "var(--jt-navy)",
+  blue: "var(--jt-blue)",
+  green: "var(--jt-green)",
+  amber: "var(--jt-amber)",
+  red: "var(--jt-red)",
+  plum: "var(--jt-plum)",
 } as const;
 
 /** Each accent paired with the tint it sits on. */
 export const ACCENT_TINTS: Record<keyof typeof ACCENTS, string> = {
-  navy: "#E3E9F6",
-  blue: "#E8EEFA",
-  green: "#E6F4EC",
-  amber: "#FBEEDF",
-  red: "#FBEAEA",
-  plum: "#EAE6F5",
+  navy: "var(--jt-navy)",
+  blue: "var(--jt-blue)",
+  green: "var(--jt-green)",
+  amber: "var(--jt-amber)",
+  red: "var(--jt-red)",
+  plum: "var(--jt-plum)",
 };
 
 /* DM Sans for body copy, matching the parent portal. Thai falls through to
