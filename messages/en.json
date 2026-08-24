@@ -717,8 +717,8 @@
     "firstPackageIncomplete": "Credits and validity must be more than zero. A free class is fine — leave the price at 0."
   },
   "settings": {
-    "title": "Credit Rules",
-    "sub": "These thresholds drive the dashboard's Needs Follow-up card.",
+    "title": "Academy Rules",
+    "sub": "The follow-up thresholds the dashboard uses, and the certificate milestone the parent portal counts toward.",
     "lowCreditTitle": "Low Credit Warning",
     "lowCreditDesc": "Students will appear in \"Needs Follow-up\" when their remaining credits are below this value.",
     "expiringTitle": "Expiring Soon",
@@ -745,7 +745,10 @@
     "lineWebhookHint": "Paste this into the Messaging API channel in the LINE Developers console, and switch the webhook on.",
     "lineCopyWebhook": "Copy webhook URL",
     "lineSave": "Save credentials",
-    "lineDisconnect": "Disconnect"
+    "lineDisconnect": "Disconnect",
+    "certTitle": "Certificate Milestone",
+    "certDesc": "A student is awarded a certificate after attending this many classes. The parent portal shows progress toward it.",
+    "unitClasses": "classes"
   },
   "games": {
     "title": "Games",

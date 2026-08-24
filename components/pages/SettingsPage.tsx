@@ -17,6 +17,7 @@ const RULES: Array<{ key: RuleKey; icon: IconName; titleKey: string; descKey: st
   { key: "lowCredit", icon: "wallet", titleKey: "lowCreditTitle", descKey: "lowCreditDesc", unitKey: "unitCredits" },
   { key: "expiringDays", icon: "calendar", titleKey: "expiringTitle", descKey: "expiringDesc", unitKey: "unitDays" },
   { key: "inactiveDays", icon: "userX", titleKey: "inactiveTitle", descKey: "inactiveDesc", unitKey: "unitDays" },
+  { key: "certSessions", icon: "trophy", titleKey: "certTitle", descKey: "certDesc", unitKey: "unitClasses" },
 ];
 
 export function SettingsPage() {
