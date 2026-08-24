@@ -15,7 +15,11 @@
     "brandSub": "Chess School",
     "language": "Language",
     "games": "Games",
-    "lichess": "Lichess"
+    "lichess": "Lichess",
+    "theme": "Theme",
+    "themeSystem": "Auto",
+    "themeLight": "Light",
+    "themeDark": "Dark"
   },
   "roles": {
     "Admin": "Admin",
