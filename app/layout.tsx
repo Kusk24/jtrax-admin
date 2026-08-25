@@ -44,8 +44,13 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
      costs nothing here. */
   const store = await cookies();
   const me = await fetchIdentity(store.get(SESSION_COOKIE)?.value);
-  const theme = me?.themePreference === "Dark" ? "dark"
-    : me?.themePreference === "Light" ? "light"
+  /* Signed out — sign-in, forgot- and reset-password — is always light. There
+     is no account yet whose preference could be honoured, and following the
+     machine's dark mode gave the academy a dark front door nobody asked for.
+     Auto still means the OS once somebody is signed in. */
+  const theme = !me ? "light"
+    : me.themePreference === "Dark" ? "dark"
+    : me.themePreference === "Light" ? "light"
     : undefined;
 
   return (
