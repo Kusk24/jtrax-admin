@@ -37,8 +37,11 @@ export function KpiStrip() {
       key: "totalStudents",
       icon: "students",
       value: String(students.length),
-      color: ACCENTS.navy,
-      bg: ACCENT_TINTS.navy,
+      /* The console's own blue, the one the primary buttons use — navy is a
+         near-black next to the green, amber and plum the other three tiles
+         carry, and read as a different kind of thing. */
+      color: ACCENTS.blue,
+      bg: ACCENT_TINTS.blue,
     },
     {
       key: "checkedInToday",
