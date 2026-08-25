@@ -6,6 +6,7 @@ import { DEFAULT_CREDIT_RULES, type CreditRules } from "@/lib/derive";
 import { Icon, type IconName } from "@/lib/icons";
 import { COLORS, FONT } from "@/lib/theme";
 import { useData } from "../DataProvider";
+import { useJtrax } from "../JtraxContext";
 import { ErrorNote, errorText } from "../crud";
 import { PageHeader, primaryButtonStyle, secondaryButtonStyle } from "../page-kit";
 import { LineChannelCard } from "../settings/LineChannelCard";
@@ -23,6 +24,8 @@ const RULES: Array<{ key: RuleKey; icon: IconName; titleKey: string; descKey: st
 
 export function SettingsPage() {
   const { creditRules, saveCreditRules } = useData();
+  const { role } = useJtrax();
+  const isAdmin = role === "Admin";
   const t = useTranslations("settings");
   const tCommon = useTranslations("common");
   /* null until the user types. The saved values only arrive after the first
@@ -60,10 +63,12 @@ export function SettingsPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 820 }}>
-      <PageHeader title={t("title")} sub={t("sub")} />
+      <PageHeader title={t("pageTitle")} sub={isAdmin ? t("sub") : t("subStaff")} />
 
       {error && <ErrorNote>{error}</ErrorNote>}
 
+      {isAdmin && <SectionTitle>{t("title")}</SectionTitle>}
+      {isAdmin && (
       <Card style={{ padding: 0 }}>
         {RULES.map((rule, i) => (
           <div
@@ -184,6 +189,7 @@ export function SettingsPage() {
           </div>
         </div>
       </Card>
+      )}
 
       {/* Appearance is a preference, not an academy rule, so it gets its own
           card rather than a row among the thresholds — and it lives here
@@ -213,7 +219,7 @@ export function SettingsPage() {
         <ThemeToggle />
       </Card>
 
-      <LineChannelCard />
+      {isAdmin && <LineChannelCard />}
     </div>
   );
 }
