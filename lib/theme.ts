@@ -62,22 +62,22 @@ export const COLORS = {
  * where needed so they hold up as small text on their own tint.
  */
 export const ACCENTS = {
-  navy: "var(--jt-navy)",
-  blue: "var(--jt-blue)",
-  green: "var(--jt-green)",
-  amber: "var(--jt-amber)",
-  red: "var(--jt-red)",
-  plum: "var(--jt-plum)",
+  navy: "var(--jt-accent-navy)",
+  blue: "var(--jt-accent-blue)",
+  green: "var(--jt-accent-green)",
+  amber: "var(--jt-accent-amber)",
+  red: "var(--jt-accent-red)",
+  plum: "var(--jt-accent-plum)",
 } as const;
 
 /** Each accent paired with the tint it sits on. */
 export const ACCENT_TINTS: Record<keyof typeof ACCENTS, string> = {
-  navy: "var(--jt-navy)",
-  blue: "var(--jt-blue)",
-  green: "var(--jt-green)",
-  amber: "var(--jt-amber)",
-  red: "var(--jt-red)",
-  plum: "var(--jt-plum)",
+  navy: "var(--jt-tint-navy)",
+  blue: "var(--jt-tint-blue)",
+  green: "var(--jt-tint-green)",
+  amber: "var(--jt-tint-amber)",
+  red: "var(--jt-tint-red)",
+  plum: "var(--jt-tint-plum)",
 };
 
 /* DM Sans for body copy, matching the parent portal. Thai falls through to
@@ -94,7 +94,9 @@ export const FONT_DISPLAY =
 export type JtraxRole = "Admin" | "Receptionist";
 
 export const ROLE_COLORS: Record<JtraxRole, { color: string; bg: string }> = {
-  Admin: { color: ACCENTS.navy, bg: ACCENT_TINTS.navy },
+  /* Blue, not navy: the console's real blue, the one the primary buttons
+     use. Navy is dark enough to read as a filled shape rather than a chip. */
+  Admin: { color: ACCENTS.blue, bg: ACCENT_TINTS.blue },
   Receptionist: { color: ACCENTS.amber, bg: ACCENT_TINTS.amber },
 };
 
