@@ -29,11 +29,18 @@ describe("the Lichess section", () => {
 });
 
 describe("what the two roles still differ on", () => {
-  it("keeps Admins and Settings away from the receptionist", () => {
+  it("keeps Admins away from the receptionist", () => {
     const desk = idsFor("Receptionist");
     expect(desk).not.toContain("admins");
-    expect(desk).not.toContain("settings");
-    expect(canRoleAccess("Receptionist", "settings")).toBe(false);
+    expect(canRoleAccess("Receptionist", "admins")).toBe(false);
+  });
+
+  /* The theme is a per-account preference and it lives on Settings, so a desk
+     that cannot open Settings cannot change how its own screen looks. What is
+     on the page is split by role instead — see SettingsPage.test.tsx. */
+  it("lets the receptionist into Settings, for their own theme", () => {
+    expect(idsFor("Receptionist")).toContain("settings");
+    expect(canRoleAccess("Receptionist", "settings")).toBe(true);
   });
 
   it("keeps Academy away from the receptionist", () => {

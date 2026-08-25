@@ -28,7 +28,11 @@ export const NAV_STRUCTURE: NavItem[] = [
   { id: "tournament", icon: "tournament" },
   { id: "announcement", icon: "announcement" },
   { id: "chat", icon: "chat" },
-  { id: "settings", icon: "settings", adminOnly: true, hideForReceptionist: true },
+  /* Both roles: the theme is a per-account preference and lives here, so a
+     receptionist who cannot open Settings cannot change how their own screen
+     looks. What is *on* the page is still split by role — the academy's rules
+     and the LINE credentials are the admin's. */
+  { id: "settings", icon: "settings" },
 ];
 
 export function navItemsForRole(role: JtraxRole): NavItem[] {
