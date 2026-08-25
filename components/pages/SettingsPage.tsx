@@ -9,7 +9,8 @@ import { useData } from "../DataProvider";
 import { ErrorNote, errorText } from "../crud";
 import { PageHeader, primaryButtonStyle, secondaryButtonStyle } from "../page-kit";
 import { LineChannelCard } from "../settings/LineChannelCard";
-import { Card } from "../ui";
+import { ThemeToggle } from "../ThemeToggle";
+import { Card, SectionTitle } from "../ui";
 
 type RuleKey = keyof CreditRules;
 
@@ -182,6 +183,34 @@ export function SettingsPage() {
             </button>
           </div>
         </div>
+      </Card>
+
+      {/* Appearance is a preference, not an academy rule, so it gets its own
+          card rather than a row among the thresholds — and it lives here
+          rather than in the header, where a control nobody changes twice a
+          year sat beside the date and the account. */}
+      <Card style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+        <span
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 36,
+            height: 36,
+            borderRadius: "50%",
+            background: COLORS.light,
+            flexShrink: 0,
+          }}
+        >
+          <Icon name="settings" size={18} color={COLORS.blue} />
+        </span>
+        <div style={{ flex: "1 1 260px", minWidth: 0 }}>
+          <SectionTitle>{t("themeTitle")}</SectionTitle>
+          <p style={{ margin: "3px 0 0", fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
+            {t("themeDesc")}
+          </p>
+        </div>
+        <ThemeToggle />
       </Card>
 
       <LineChannelCard />
