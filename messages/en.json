@@ -752,7 +752,9 @@
     "lineDisconnect": "Disconnect",
     "certTitle": "Certificate Milestone",
     "certDesc": "A student is awarded a certificate after attending this many classes. The parent portal shows progress toward it.",
-    "unitClasses": "classes"
+    "unitClasses": "classes",
+    "themeTitle": "Appearance",
+    "themeDesc": "Light, dark, or follow this device. Saved to your account, so it follows you to any machine."
   },
   "games": {
     "title": "Games",

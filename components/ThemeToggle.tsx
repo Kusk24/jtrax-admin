@@ -19,7 +19,7 @@ function apply(theme: Theme) {
 }
 
 /**
- * System ⇄ Light ⇄ Dark pill, next to the language toggle. The choice is the
+ * System ⇄ Light ⇄ Dark pill, on the Settings screen. The choice is the
  * account's, saved to user_account.theme_preference, so it follows the person
  * to any machine; localStorage only bridges the moment before /auth/me lands.
  */
@@ -27,6 +27,8 @@ export function ThemeToggle() {
   const t = useTranslations("nav");
   /* Lazy initialiser, not an effect: the stored value is known synchronously,
      and setting state inside the effect would render System for a frame. */
+  /* Same pill shape and the same active blue as LanguageToggle — they are
+     the same kind of control and were reading as two different ones. */
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window === "undefined") return "System";
     const stored = localStorage.getItem("jtrax:theme") as Theme | null;
@@ -87,8 +89,8 @@ export function ThemeToggle() {
             fontSize: 12,
             fontWeight: 700,
             cursor: "pointer",
-            background: theme === option ? COLORS.navy : "transparent",
-            color: theme === option ? "#FFFFFF" : COLORS.textSecondary,
+            background: theme === option ? COLORS.blue : "transparent",
+            color: theme === option ? COLORS.surface : COLORS.textSecondary,
           }}
         >
           {t(`theme${option}`)}

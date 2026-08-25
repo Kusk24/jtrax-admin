@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import { useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 import { LanguageToggle } from "./LanguageToggle";
-import { ThemeToggle } from "./ThemeToggle";
 import { signOut } from "@/app/actions/auth";
 import { Icon } from "@/lib/icons";
 import { navItemsForRole } from "@/lib/nav";
@@ -295,7 +294,6 @@ export function JtraxShell({ children }: { children: React.ReactNode }) {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <LanguageToggle />
-            <ThemeToggle />
             <AccountChip />
           </div>
         </header>
