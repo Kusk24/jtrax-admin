@@ -56,8 +56,14 @@ export function identityToPerson(id: BackendIdentity): AdminPerson {
   };
 }
 
-/** Resolves a session token to the signed-in admin, or undefined. */
-export async function fetchMe(token: string | undefined): Promise<AdminPerson | undefined> {
+/**
+ * Resolves a session token to the raw identity, or undefined.
+ *
+ * Separate from `fetchMe` because the root layout needs one field the console's
+ * display type does not carry — the saved theme, which has to be on <html>
+ * before anything paints.
+ */
+export async function fetchIdentity(token: string | undefined): Promise<BackendIdentity | undefined> {
   if (!token) return undefined;
   try {
     const res = await fetch(`${API_BASE}/api/v1/auth/me`, {
@@ -67,6 +73,17 @@ export async function fetchMe(token: string | undefined): Promise<AdminPerson | 
     if (!res.ok) return undefined;
     const id = (await res.json()) as BackendIdentity;
     if (id.role !== "Admin" && id.role !== "Receptionist") return undefined; // console is staff-only
+    return id;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Resolves a session token to the signed-in admin, or undefined. */
+export async function fetchMe(token: string | undefined): Promise<AdminPerson | undefined> {
+  try {
+    const id = await fetchIdentity(token);
+    if (!id) return undefined;
     return identityToPerson(id);
   } catch {
     return undefined;

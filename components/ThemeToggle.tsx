@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { COLORS, FONT } from "@/lib/theme";
 
@@ -9,19 +9,19 @@ type Theme = "System" | "Light" | "Dark";
 const THEMES: Theme[] = ["System", "Light", "Dark"];
 
 /* Module scope on purpose, like LanguageToggle's cookie write: touching the
-   document and localStorage are side effects on external stores. */
+   document is a side effect on an external store. */
 function apply(theme: Theme) {
   if (theme === "System") delete document.documentElement.dataset.theme;
   else document.documentElement.dataset.theme = theme.toLowerCase();
-  try {
-    localStorage.setItem("jtrax:theme", theme);
-  } catch { /* private mode — the account still remembers */ }
 }
 
 /**
- * System ⇄ Light ⇄ Dark pill, on the Settings screen. The choice is the
- * account's, saved to user_account.theme_preference, so it follows the person
- * to any machine; localStorage only bridges the moment before /auth/me lands.
+ * Auto ⇄ Light ⇄ Dark pill, on the Settings screen.
+ *
+ * A control only: the root layout renders the account's saved theme onto
+ * <html>, so the theme holds on every screen and survives a refresh whether
+ * or not this component is mounted. This reads that attribute back for its
+ * own state, applies a change immediately, and saves it to the account.
  */
 export function ThemeToggle() {
   const t = useTranslations("nav");
@@ -29,26 +29,15 @@ export function ThemeToggle() {
      and setting state inside the effect would render System for a frame. */
   /* Same pill shape and the same active blue as LanguageToggle — they are
      the same kind of control and were reading as two different ones. */
+  /* Read back what the server already rendered, so the pill agrees with the
+     screen without asking the backend a second time. A lazy initialiser, not
+     an effect: the attribute is there before React runs, and setting state in
+     an effect would render the wrong pill for a frame. */
   const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window === "undefined") return "System";
-    const stored = localStorage.getItem("jtrax:theme") as Theme | null;
-    return stored && THEMES.includes(stored) ? stored : "System";
+    if (typeof document === "undefined") return "System";
+    const attr = document.documentElement.dataset.theme;
+    return attr === "dark" ? "Dark" : attr === "light" ? "Light" : "System";
   });
-
-  useEffect(() => {
-    const stored = localStorage.getItem("jtrax:theme") as Theme | null;
-    if (stored && THEMES.includes(stored)) apply(stored);
-    fetch("/api/auth/me", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((me) => {
-        const saved = me?.themePreference as Theme | undefined;
-        if (saved && THEMES.includes(saved) && saved !== stored) {
-          setTheme(saved);
-          apply(saved);
-        }
-      })
-      .catch(() => { /* the stored value already applied */ });
-  }, []);
 
   function choose(next: Theme) {
     if (next === theme) return;
