@@ -5,11 +5,9 @@ import { opensCreate } from "@/lib/quick-actions";
 import { useJtrax } from "./JtraxContext";
 import { SectionPlaceholder } from "./SectionPlaceholder";
 import { AcademyPage } from "./pages/AcademyPage";
-import { AdminsPage } from "./pages/AdminsPage";
 import { AnnouncementPage } from "./pages/AnnouncementPage";
 import { ClassHistoryPage } from "./pages/ClassHistoryPage";
 import { GamesPage } from "./pages/GamesPage";
-import { LichessPage } from "./pages/LichessPage";
 import { MessagesPage } from "./pages/MessagesPage";
 import { ParentsPage } from "./pages/ParentsPage";
 import { PaymentPage } from "./pages/PaymentPage";
@@ -88,16 +86,14 @@ export function SectionRouter({
       );
     case "classhistory":
       return <ClassHistoryPage />;
+    /* Lichess and the console's own boards share this one; /lichess redirects
+       here. Staff accounts live under Settings the same way. */
     case "games":
       return <GamesPage />;
-    case "lichess":
-      return <LichessPage />;
     case "announcement":
       return <AnnouncementPage key={newKey} startNew={opensCreate(startNew)} />;
     case "settings":
       return <SettingsPage />;
-    case "admins":
-      return <AdminsPage />;
     case "academy":
       return <AcademyPage />;
     case "chat":

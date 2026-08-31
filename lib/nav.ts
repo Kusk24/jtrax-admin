@@ -15,13 +15,13 @@ export type NavItem = {
    index route, everything else is /<id>. */
 export const NAV_STRUCTURE: NavItem[] = [
   { id: "home", icon: "home" },
-  { id: "admins", icon: "userCheck", adminOnly: true },
   { id: "academy", icon: "book", hideForReceptionist: true },
   { id: "classhistory", icon: "history" },
+  /* One chess section, not two. Lichess and the console's own boards are the
+     same question asked of two places — what a pupil is playing — and splitting
+     them across adjacent tabs made the nav longer without making either easier
+     to find. Lichess leads the page: it is the half the academy never sees. */
   { id: "games", icon: "knight" },
-  /* No role flags: the front desk is asked "how is my child doing at
-     home" as often as the office is. */
-  { id: "lichess", icon: "bishop" },
   { id: "students", icon: "students" },
   { id: "parents", icon: "parents" },
   { id: "payment", icon: "payment" },
@@ -30,10 +30,23 @@ export const NAV_STRUCTURE: NavItem[] = [
   { id: "chat", icon: "chat" },
   /* Both roles: the theme is a per-account preference and lives here, so a
      receptionist who cannot open Settings cannot change how their own screen
-     looks. What is *on* the page is still split by role — the academy's rules
-     and the LINE credentials are the admin's. */
+     looks. What is *on* the page is still split by role — the academy's rules,
+     the LINE credentials and the staff accounts are the admin's. */
   { id: "settings", icon: "settings" },
 ];
+
+/**
+ * Sections that were folded into another one, and where they went.
+ *
+ * A tab that stops existing takes every bookmark, typed URL and stale browser
+ * tab pointing at it down with it — and `generateStaticParams` reads
+ * NAV_STRUCTURE, so the route 404s rather than landing anywhere useful. These
+ * ids still resolve; they just resolve somewhere else.
+ */
+export const MERGED_SECTIONS: Record<string, string> = {
+  lichess: "games",
+  admins: "settings",
+};
 
 export function navItemsForRole(role: JtraxRole): NavItem[] {
   return NAV_STRUCTURE.filter((item) => {

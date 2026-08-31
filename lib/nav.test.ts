@@ -1,37 +1,36 @@
 /**
- * Which sections each role gets.
+ * Which sections each role gets, and where the folded-away ones went.
  *
- * Lichess used to be a panel at the bottom of the students list — inside the
- * table's card, and only in list view, so switching to cards made it vanish.
- * It is its own section now, and the front desk needs it too: "how is my child
- * doing at home" is a question asked at the desk as often as in the office.
+ * The nav is the console's only grouping — there are no headings — so what it
+ * lists, and in what order, is the whole of what says two screens are about the
+ * same thing. Two rounds of tidying it: Lichess and Games are one chess
+ * section, and staff accounts moved under Settings.
  */
 import { describe, expect, it } from "vitest";
-import { canRoleAccess, navItemsForRole } from "./nav";
+import { canRoleAccess, MERGED_SECTIONS, navItemsForRole } from "./nav";
 
 const idsFor = (role: "Admin" | "Receptionist") => navItemsForRole(role).map((i) => i.id);
 
-describe("the Lichess section", () => {
-  it("is its own place in the nav", () => {
-    expect(idsFor("Admin")).toContain("lichess");
-  });
-
-  it("is there for the receptionist too", () => {
-    expect(idsFor("Receptionist")).toContain("lichess");
-    expect(canRoleAccess("Receptionist", "lichess")).toBe(true);
-  });
-
-  /* It sits with the other chess, not among the office records. */
-  it("sits next to Games", () => {
+describe("the chess section", () => {
+  it("is one tab, not two", () => {
     const ids = idsFor("Admin");
-    expect(ids.indexOf("lichess")).toBe(ids.indexOf("games") + 1);
+    expect(ids).toContain("games");
+    expect(ids).not.toContain("lichess");
+  });
+
+  /* "How is my child doing at home" is asked at the desk as often as in the
+     office, and Lichess is the only screen that answers it. */
+  it("is there for the receptionist too", () => {
+    expect(idsFor("Receptionist")).toContain("games");
+    expect(canRoleAccess("Receptionist", "games")).toBe(true);
   });
 });
 
 describe("what the two roles still differ on", () => {
-  it("keeps Admins away from the receptionist", () => {
-    const desk = idsFor("Receptionist");
-    expect(desk).not.toContain("admins");
+  it("keeps staff accounts away from the receptionist", () => {
+    /* Not by hiding a tab any more — Settings is open to both — but by what
+       SettingsPage renders inside it. See SettingsPage.test.tsx. */
+    expect(idsFor("Receptionist")).not.toContain("admins");
     expect(canRoleAccess("Receptionist", "admins")).toBe(false);
   });
 
@@ -49,8 +48,31 @@ describe("what the two roles still differ on", () => {
 
   it("gives the admin everything", () => {
     const office = idsFor("Admin");
-    for (const id of ["admins", "academy", "settings", "lichess", "students"]) {
+    for (const id of ["academy", "settings", "games", "students"]) {
       expect(office).toContain(id);
+    }
+  });
+});
+
+/* A tab that stops existing takes every bookmark pointing at it with it, and
+   the route reads NAV_STRUCTURE — so without these the old address 404s. */
+describe("the sections that moved", () => {
+  it("sends the old addresses where the screens went", () => {
+    expect(MERGED_SECTIONS.lichess).toBe("games");
+    expect(MERGED_SECTIONS.admins).toBe("settings");
+  });
+
+  it("names only ids the nav no longer has", () => {
+    const ids = idsFor("Admin");
+    for (const gone of Object.keys(MERGED_SECTIONS)) {
+      expect(ids).not.toContain(gone);
+    }
+  });
+
+  it("points every one of them at a section that exists", () => {
+    const ids = idsFor("Admin");
+    for (const target of Object.values(MERGED_SECTIONS)) {
+      expect(ids).toContain(target);
     }
   });
 });

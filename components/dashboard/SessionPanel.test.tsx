@@ -1,5 +1,5 @@
 /**
- * Create Session, rebuilt.
+ * Create Class, rebuilt.
  *
  * Both ends of the session are chosen freely from lists — any start, any end,
  * five minutes apart — because a class has no fixed hours, which is the whole
@@ -63,12 +63,12 @@ function renderPanel() {
     </NextIntlClientProvider>,
   );
   return {
-    klass: screen.getByLabelText("Class Name") as HTMLSelectElement,
+    klass: screen.getByLabelText("Course") as HTMLSelectElement,
     startHour: screen.getByLabelText("Start hour") as HTMLSelectElement,
     startMinute: screen.getByLabelText("Start minute") as HTMLSelectElement,
     endHour: screen.getByLabelText("End hour") as HTMLSelectElement,
     endMinute: screen.getByLabelText("End minute") as HTMLSelectElement,
-    button: screen.getAllByRole("button", { name: "Create Session" }).at(-1) as HTMLButtonElement,
+    button: screen.getAllByRole("button", { name: "Create Class" }).at(-1) as HTMLButtonElement,
   };
 }
 
@@ -154,7 +154,7 @@ describe("the half-hour floor", () => {
     await setTime(user, f.endHour, f.endMinute, "10:20");
 
     expect(button.disabled).toBe(true);
-    expect(screen.getAllByText("A session runs for at least half an hour.").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("A class runs for at least half an hour.").length).toBeGreaterThan(0);
   });
 
   it("accepts exactly half an hour", async () => {

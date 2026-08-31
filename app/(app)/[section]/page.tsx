@@ -1,10 +1,14 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { SectionRouter } from "@/components/SectionRouter";
-import { NAV_STRUCTURE } from "@/lib/nav";
+import { MERGED_SECTIONS, NAV_STRUCTURE } from "@/lib/nav";
 
-/* Only the nav's own section ids resolve; anything else is a 404. */
+/* The nav's own section ids, plus the ones that were folded into another
+   section and now redirect there. Anything else is a 404. */
 export function generateStaticParams() {
-  return NAV_STRUCTURE.filter((item) => item.id !== "home").map((item) => ({ section: item.id }));
+  return [
+    ...NAV_STRUCTURE.filter((item) => item.id !== "home").map((item) => item.id),
+    ...Object.keys(MERGED_SECTIONS),
+  ].map((section) => ({ section }));
 }
 
 export default async function SectionPage({
@@ -15,6 +19,10 @@ export default async function SectionPage({
   searchParams: Promise<{ new?: string; status?: string; student?: string; id?: string; tab?: string }>;
 }) {
   const { section } = await params;
+  /* Checked before the nav, because a merged id is deliberately no longer in
+     it — an old link goes where the screen went rather than to a 404. */
+  const movedTo = MERGED_SECTIONS[section];
+  if (movedTo) redirect(`/${movedTo}`);
   const known = NAV_STRUCTURE.some((item) => item.id === section && item.id !== "home");
   if (!known) notFound();
 
