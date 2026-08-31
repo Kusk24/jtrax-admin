@@ -392,7 +392,9 @@
     "nothingToMove": "There is nothing left on this enrolment to move.",
     "rateUnknown": "No payment or priced package says what an hour costs in one of these courses, so there is no rate to convert at. Enter the credits to add yourself — or record the payment first and let the sum do it.",
     "moveAmount": "Credits to add",
-    "moveOverrideNote": "Entered by hand — the conversion works out to {credits} credits."
+    "moveOverrideNote": "Entered by hand — the conversion works out to {credits} credits.",
+    "courseOnEnrolments": "Which course this child is in is set on the Enrolments tab, which carries their credits across with them.",
+    "guardianSaveFailed": "The child was saved, but their guardian's details could not be. Please try again."
   },
   "parents": {
     "title": "Parents",
