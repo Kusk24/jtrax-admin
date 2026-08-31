@@ -57,11 +57,10 @@ const STATUS_VALUES = ["Normal", "Low Credit", "Expiring", "Expired", "Inactive"
 const LEVEL_OPTIONS = ["Beginner", "Intermediate", "Advanced"];
 const RELATION_OPTIONS = ["Mother", "Father", "Guardian"];
 
-/* The registration wizard's class list and the seed's class names don't fully
-   overlap, so the edit form unions them — otherwise opening a seeded student
-   would show a picker that doesn't contain their own class and silently move
-   them to the first option on save. */
-const BRANCH_OPTIONS = ["Bangkok"];
+/* Branch had a picker here with one option and no column behind it. Its own
+   comment warned that a mismatched list would "silently move them to the first
+   option on save" — which is what the whole card was doing, to six fields at
+   once, because nothing it collected was written at all. */
 
 /* Credit reads as a warning before it reads as a number, so the chip is
    coloured by how close to empty the balance is — shared by both views. */
@@ -139,6 +138,7 @@ function StudentDetail({
   const t = useTranslations("students");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
+  const { showError } = useErrorToast();
   const [tab, setTab] = useState<DetailTab>("Overview");
   const [editing, setEditing] = useState(startEditing);
   const [draft, setDraft] = useState<Student>(student);
@@ -152,9 +152,65 @@ function StudentDetail({
     setDraft((d) => ({ ...d, [key]: value }));
   }
   const { raw, batch, create, update, remove } = useData();
-  const EDIT_CLASS_OPTIONS = Array.from(
-    new Set([...raw.classes.map((c) => String(c.name ?? "")), ...CLASS_OPTIONS]),
-  );
+
+  /**
+   * The rows behind the guardian card, so the form can write to them.
+   *
+   * A guardian is a person with their own record, shared with their other
+   * children — not four columns on the student. Saving them means the parent
+   * row, the link that carries the relationship, and one `parent_contact` row
+   * per way of reaching them. The card showed all of it and wrote none of it;
+   * these are the ids that make it real.
+   */
+  const guardian = useMemo(() => {
+    const link = raw.studentParents.find((sp) => String(sp["student_id"]) === student.id);
+    if (!link) return null;
+    const parentId = String(link["parent_id"]);
+    const contacts = raw.parentContacts.filter((pc) => String(pc["parent_id"]) === parentId);
+    const rowFor = (type: string) => contacts.find((pc) => String(pc["contact_type"]) === type);
+    return {
+      parentId,
+      phone: rowFor("phone"),
+      email: rowFor("email"),
+      lineId: rowFor("line_id"),
+    };
+  }, [raw.studentParents, raw.parentContacts, student.id]);
+
+  /**
+   * Writes the guardian card: their name, the relationship, and the three
+   * contact lines.
+   *
+   * Only what changed, because each of these is a separate request and most
+   * edits touch one field. A cleared line is deleted rather than blanked —
+   * `parent_contact.value` is required, so an empty one is a row the backend
+   * refuses, and a blank phone number reads at the desk as "we have one".
+   */
+  async function saveGuardian(next: Student) {
+    if (!guardian) return;
+    const name = next.parentName.trim();
+    if (name && name !== "—" && name !== student.parentName) {
+      await update("parents", guardian.parentId, { name });
+    }
+    if (next.parentRelation !== student.parentRelation) {
+      await update("student-parents", student.id, { relationship_type: next.parentRelation });
+    }
+    for (const [type, typed, row] of [
+      ["phone", next.parentPhone, guardian.phone],
+      ["email", next.parentEmail, guardian.email],
+      ["line_id", next.parentLineId, guardian.lineId],
+    ] as const) {
+      const wanted = typed.trim();
+      const current = row ? String(row["value"] ?? "") : "";
+      if (wanted === current) continue;
+      if (row) {
+        const id = String(row["parent_contact_id"]);
+        if (wanted) await update("parent-contacts", id, { value: wanted });
+        else await remove("parent-contacts", id);
+      } else if (wanted) {
+        await create("parent-contacts", { parent_id: guardian.parentId, contact_type: type, value: wanted });
+      }
+    }
+  }
 
   /* Real attendance: the sessions this student was checked in to, newest first. */
   const attendance = useMemo(() => {
@@ -590,22 +646,17 @@ function StudentDetail({
                   <label style={labelStyle} htmlFor="ed-name">{t("fullName")}</label>
                   <input id="ed-name" value={draft.name} onChange={(e) => setField("name", e.target.value)} style={fieldStyle} />
                 </div>
-                <div>
-                  <label style={labelStyle} htmlFor="ed-class">{tCommon("class")}</label>
-                  <select id="ed-class" value={draft.className} onChange={(e) => setField("className", e.target.value)} style={selectStyle}>
-                    {EDIT_CLASS_OPTIONS.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label style={labelStyle} htmlFor="ed-branch">{tCommon("branch")}</label>
-                  <select id="ed-branch" value={draft.branch} onChange={(e) => setField("branch", e.target.value)} style={selectStyle}>
-                    {BRANCH_OPTIONS.map((b) => (
-                      <option key={b} value={b}>{b}</option>
-                    ))}
-                  </select>
-                </div>
+                {/* Course, Branch and Membership used to be fields here. None
+                    of them is a column on the student: the course comes from
+                    the enrolment, membership from the course's own type, and
+                    Branch has exactly one value and nowhere to store it. They
+                    were editable, and every edit was discarded. Which of a
+                    child's courses they are in is a real question with a real
+                    answer — it is the Enrolments tab, which moves the credits
+                    with them. */}
+                <p style={{ margin: 0, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
+                  {t("courseOnEnrolments")}
+                </p>
                 <div>
                   <label style={labelStyle} htmlFor="ed-dob">{t("dateOfBirth")}</label>
                   <input
@@ -632,14 +683,10 @@ function StudentDetail({
                   <label style={labelStyle} htmlFor="ed-fide">{t("fideId")}</label>
                   <input id="ed-fide" value={draft.fideId} onChange={(e) => setField("fideId", e.target.value)} style={fieldStyle} />
                 </div>
-                <div>
-                  <label style={labelStyle} htmlFor="ed-membership">{t("membership")}</label>
-                  <input id="ed-membership" value={draft.membershipType} onChange={(e) => setField("membershipType", e.target.value)} style={fieldStyle} />
-                </div>
-                <div>
-                  <label style={labelStyle} htmlFor="ed-sline">{tCommon("lineId")}</label>
-                  <input id="ed-sline" value={draft.studentLineId} onChange={(e) => setField("studentLineId", e.target.value)} style={fieldStyle} />
-                </div>
+                {/* The student's own LINE ID was a field with nothing behind
+                    it in either direction — `toStudents` sets it to "" every
+                    time, and there is no column to write it to. A box that is
+                    always empty and always stays empty is not a field. */}
               </div>
             </Card>
 
@@ -684,7 +731,21 @@ function StudentDetail({
               disabled={!draft.name.trim()}
               busyLabel={tCommon("saving")}
               onClick={async () => {
-                await onSave(draft);
+                /* The child and their guardian in one act: up to six writes
+                   across four tables, and unbatched each one reloads every
+                   collection. Correcting a family's phone number should not
+                   cost six full refreshes. */
+                await batch(async () => {
+                  await onSave(draft);
+                  try {
+                    await saveGuardian(draft);
+                  } catch (e) {
+                    /* Named separately from the student's own save: "could not
+                       save" while the name and date of birth went through is
+                       worse than saying which half failed. */
+                    showError(t("guardianSaveFailed"), e);
+                  }
+                });
                 setEditing(false);
               }}
             >
