@@ -283,7 +283,12 @@
     "startMinute": "นาทีเริ่ม",
     "endHour": "ชั่วโมงสิ้นสุด",
     "endMinute": "นาทีสิ้นสุด",
-    "willGoNegative": "เหลือเพียง {credits} เครดิต คลาสนี้จะทำให้ติดลบ"
+    "willGoNegative": "เหลือเพียง {credits} เครดิต คลาสนี้จะทำให้ติดลบ",
+    "length": "ระยะเวลา",
+    "lengthMinutes": "{minutes} นาที",
+    "lengthHours": "{hours} ชั่วโมง",
+    "lengthHoursMinutes": "{hours} ชม. {minutes} นาที",
+    "endsAt": "สิ้นสุด {time}"
   },
   "students": {
     "title": "นักเรียน",
@@ -512,7 +517,8 @@
     "sessionDetail": "คลาส",
     "checkedInAt": "เข้า",
     "dismissedAt": "ออก",
-    "stillInClass": "ยังอยู่ในคลาส"
+    "stillInClass": "ยังอยู่ในคลาส",
+    "otherCourses": "อื่น ๆ"
   },
   "tournament": {
     "title": "การแข่งขัน",

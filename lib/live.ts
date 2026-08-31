@@ -50,6 +50,35 @@ export function fmtTHB(amount: number): string {
   return `${new Intl.NumberFormat("en-US").format(amount)} THB`;
 }
 
+/**
+ * A stored date as `<input type="date">` will actually show it.
+ *
+ * That control accepts exactly `YYYY-MM-DD` and silently renders **blank** for
+ * anything else — no warning, no fallback, just an empty field over a date the
+ * database is holding. Every other reader of `date_of_birth` is forgiving
+ * (`new Date` takes a timestamp, a slashed date, a space instead of a T), so a
+ * row imported in one of those shapes looks fine everywhere and looks *unset*
+ * in the one place the office goes to change it. Which reads, correctly, as a
+ * field that cannot be edited.
+ *
+ * Anything unparseable comes back as "", because a date input cannot show it
+ * either and an empty field at least invites a real answer.
+ */
+export function toDateInput(value: string): string {
+  if (!value) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  /* A leading ISO date with a time or timezone glued on: take it as written
+     rather than through `new Date`, which would shift 2011-05-02T00:00:00Z
+     back a day for anyone west of Greenwich. */
+  const iso = /^(\d{4}-\d{2}-\d{2})[T ]/.exec(value);
+  if (iso) return iso[1];
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  /* Local getters, to match the calendar the person is looking at. */
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 function age(dobISO: string): number {
   if (!dobISO) return 0;
   const dob = new Date(dobISO);
@@ -127,7 +156,9 @@ export function toStudents(c: LiveCollections): Student[] {
       expires: fmtDate(expiry),
       status: studentStatus(credit, expiry, s(st, "last_attended_date"), rules),
       age: age(s(st, "date_of_birth")),
-      dateOfBirth: s(st, "date_of_birth"),
+      /* Normalised here rather than at the form, so every reader gets the same
+         shape and the edit field can actually show what is on file. */
+      dateOfBirth: toDateInput(s(st, "date_of_birth")),
       level: s(st, "current_level") || "—",
       school: s(st, "current_school"),
       fideId: s(st, "fide_id"),

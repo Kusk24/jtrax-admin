@@ -21,8 +21,9 @@ export type Student = {
   expires: string;
   status: 'Normal' | 'Low Credit' | 'Expiring' | 'Expired' | 'Inactive';
   age: number;
-  /** The raw `YYYY-MM-DD`, so the edit form has something to bind to; `age` is
-      it worked out. */
+  /** `YYYY-MM-DD`, normalised by `toDateInput` from whatever shape the row
+      holds, so the edit form's date input can show it; `age` is it worked
+      out. Empty when there is no usable date on file. */
   dateOfBirth: string;
   level: string;
   /** The school the child attends the rest of the week. Registration has always

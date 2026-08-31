@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { generateTempPassword } from "@/lib/credentials";
 import { type Student } from "@/lib/data";
 import { useData } from "@/components/DataProvider";
-import { fmtCredits, fmtDate, fmtTHB, isActiveEnrolment, liveClasses, practiceStrip } from "@/lib/live";
+import { fmtCredits, fmtDate, fmtTHB, isActiveEnrolment, liveClasses, practiceStrip, toDateInput } from "@/lib/live";
 import { planTransfer, roundCredits, type CreditRate } from "@/lib/credit-transfer";
 import { opensCreate } from "@/lib/quick-actions";
 import { classFilterOptions, classNamesOfStudent, isInClass } from "@/lib/student-classes";
@@ -702,6 +702,12 @@ function StudentDetail({
               rows={[
                 { label: tCommon("class"), value: student.className },
                 { label: tCommon("branch"), value: student.branch },
+                /* Shown, not just implied by the age in the header. The only
+                   trace of it used to be that number, so an office checking
+                   whether a correction had saved had to work backwards from
+                   it — and a wrong date and a missing one look identical
+                   that way. */
+                { label: t("dateOfBirth"), value: fmtDate(student.dateOfBirth) || "—" },
                 { label: t("level"), value: student.level },
                 { label: t("currentSchool"), value: student.school || "—" },
                 { label: t("fideIdLabel"), value: student.fideId || "—" },
@@ -1848,7 +1854,9 @@ export function StudentsPage({
             try {
               await update("students", next.id, {
                 name: next.name,
-                date_of_birth: next.dateOfBirth || null,
+                /* Normalised on the way out too, so a row that arrived in some
+                   other shape leaves in the one every reader can handle. */
+                date_of_birth: toDateInput(next.dateOfBirth) || null,
                 current_level: next.level,
                 current_school: next.school.trim() || null,
                 fide_id: next.fideId.trim() || null,

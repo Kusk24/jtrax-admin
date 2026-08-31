@@ -8,6 +8,8 @@ import {
   creditCost,
   defaultEndFor,
   draftProblem,
+  durationOptions,
+  endAfter,
   hourOf,
   hourOptions,
   joinClock,
@@ -290,12 +292,30 @@ function CreateSession({ onClose }: { onClose: () => void }) {
   const problem = draftProblem({ classCount: classes.length, classId, start, end });
   const minutes = lengthMinutes(start, end);
   const cost = creditCost(start, end);
+  /* Only the lengths that still fit before midnight — a 23:00 start is offered
+     half an hour and three quarters, not the whole ladder and then a refusal. */
+  const lengths = useMemo(() => durationOptions(start), [start]);
 
-  /** Choosing a start moves an end that no longer makes sense, rather than
-      leaving the desk with a Create button it cannot press and no clue why. */
+  /** "1 h 30 min", from the parts, so the two languages can order them and
+      punctuate them their own way. */
+  function lengthLabel(total: number): string {
+    const h = Math.floor(total / 60);
+    const m = total % 60;
+    if (h === 0) return t("lengthMinutes", { minutes: m });
+    if (m === 0) return t("lengthHours", { hours: h });
+    return t("lengthHoursMinutes", { hours: h, minutes: m });
+  }
+
+  /**
+   * Choosing a start keeps the length the desk already picked and slides the
+   * end along with it — that is the whole point of asking for a length. It
+   * only falls back to the default when there was no usable length yet, or
+   * when the one chosen no longer fits inside the day.
+   */
   function chooseStart(value: string) {
     setStart(value);
-    if (lengthMinutes(value, end) < MIN_SESSION_MINUTES) setEnd(defaultEndFor(value));
+    const keep = minutes >= MIN_SESSION_MINUTES && durationOptions(value).includes(minutes);
+    setEnd(keep ? endAfter(value, minutes) : defaultEndFor(value));
   }
 
   /**
@@ -433,24 +453,34 @@ function CreateSession({ onClose }: { onClose: () => void }) {
               />
             </div>
             <div style={{ flex: 1 }}>
-              <span style={labelStyle}>{t("endTime")}</span>
-              <ClockPicker
-                idPrefix="jtrax-end"
-                hourLabel={t("endHour")}
-                minuteLabel={t("endMinute")}
-                value={end}
-                hours={hours}
-                minutes={minutes5}
-                onChange={setEnd}
-              />
+              <span style={labelStyle}>{t("length")}</span>
+              {/* A length, not a second clock time. The office decides a class
+                  runs for an hour and a half from four — not that it ends at
+                  17:30 — and the half-hour floor is the shortest thing on the
+                  list rather than a refusal after the fact. */}
+              <select
+                id="jtrax-length"
+                aria-label={t("length")}
+                value={lengths.includes(minutes) ? String(minutes) : ""}
+                disabled={!start}
+                onChange={(e) => setEnd(endAfter(start, Number(e.target.value)))}
+                style={{ ...selectStyle, opacity: start ? 1 : 0.6 }}
+              >
+                <option value="">--</option>
+                {lengths.map((m) => (
+                  <option key={m} value={m}>{lengthLabel(m)}</option>
+                ))}
+              </select>
             </div>
           </div>
 
-          {/* The price, before the desk commits to it — a family should not
-              learn what an afternoon cost afterwards. */}
+          {/* When it ends, and what it costs — both worked out, both said out
+              loud before the desk commits. A family should not learn what an
+              afternoon cost afterwards, and a length is only reassuring if you
+              can see the time it lands on. */}
           <p style={{ margin: "0 0 18px", fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
             {minutes > 0
-              ? t("lengthAndCost", { minutes, credits: fmtCredits(cost) })
+              ? `${t("endsAt", { time: end })} · ${t("lengthAndCost", { minutes, credits: fmtCredits(cost) })}`
               : t("atLeastHalfAnHour")}
           </p>
 
