@@ -109,7 +109,7 @@ describe("dismissing", () => {
     ];
     const user = userEvent.setup();
     await user.type(renderDesk(), "Anong");
-    await user.click(await screen.findByRole("button", { name: "Dismiss" }));
+    await user.click(await screen.findByRole("button", { name: "Check Out" }));
 
     expect(update).toHaveBeenCalledTimes(1);
     const [path, id, body] = update.mock.calls[0] as unknown as [string, string, Record<string, unknown>];

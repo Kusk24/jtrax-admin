@@ -40,7 +40,17 @@ const TEMPLATE = equalTemplate(5, 100);
 
 const EMPTY_FORM = { fullName: "", phone: "", email: "", lineId: "", role: "Admin" as JtraxRole };
 
-export function AdminsPage() {
+/**
+ * Staff accounts. No longer a tab of its own: it is a section of Settings, and
+ * only the admin's Settings.
+ *
+ * It was one nav entry used a handful of times a year — a new receptionist, a
+ * forgotten password — sitting at the top of the list above the screens the
+ * office opens every morning. Everything else on it was already "how this
+ * academy is set up", which is what Settings is. `level` is how it says so:
+ * embedded it is an h2 under Settings' own h1, on its own it is the h1.
+ */
+export function AdminsPage({ level = 1 }: { level?: 1 | 2 }) {
   const t = useTranslations("admins");
   const tCommon = useTranslations("common");
   const { showError } = useErrorToast();
@@ -89,6 +99,7 @@ export function AdminsPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <PageHeader
+        level={level}
         title={t("title")}
         sub={t("sub")}
         action={

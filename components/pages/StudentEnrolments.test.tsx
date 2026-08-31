@@ -204,14 +204,14 @@ describe("enrolling", () => {
 });
 
 describe("filtering the roster by class", () => {
-  const filter = () => screen.getByLabelText("Class") as HTMLSelectElement;
+  const filter = () => screen.getByLabelText("Course") as HTMLSelectElement;
   const namesOnScreen = () =>
     STUDENTS.filter((s) => screen.queryByText(s.name) !== null).map((s) => s.name);
 
   it("offers the live classes with how many are in each", () => {
     renderList();
     const labels = Array.from(filter().options).map((o) => o.textContent);
-    expect(labels).toEqual(["All Classes", "Beginner (2)", "Intermediate (2)"]);
+    expect(labels).toEqual(["All Courses", "Beginner (2)", "Intermediate (2)"]);
   });
 
   it("does not offer a class the academy has retired", () => {

@@ -12,6 +12,7 @@ import { PageHeader, primaryButtonStyle, secondaryButtonStyle } from "../page-ki
 import { LineChannelCard } from "../settings/LineChannelCard";
 import { ThemeToggle } from "../ThemeToggle";
 import { Card, SectionTitle } from "../ui";
+import { AdminsPage } from "./AdminsPage";
 
 type RuleKey = keyof CreditRules;
 
@@ -62,7 +63,11 @@ export function SettingsPage() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 820 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 26 }}>
+      {/* The rules and the preferences read as prose and are capped at 820 so
+          the lines stay readable. Staff accounts are a table and a card grid,
+          so they sit outside the cap and get the whole width. */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 820 }}>
       <PageHeader title={t("pageTitle")} sub={isAdmin ? t("sub") : t("subStaff")} />
 
       {error && <ErrorNote>{error}</ErrorNote>}
@@ -220,6 +225,16 @@ export function SettingsPage() {
       </Card>
 
       {isAdmin && <LineChannelCard />}
+      </div>
+
+      {/* Admin only, and the reason the whole section is not: the theme above
+          belongs to whoever is signed in, but who *can* sign in is the office's
+          to decide. A receptionist reaching Settings must not reach this. */}
+      {isAdmin && (
+        <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 24 }}>
+          <AdminsPage level={2} />
+        </div>
+      )}
     </div>
   );
 }

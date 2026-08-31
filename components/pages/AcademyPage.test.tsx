@@ -254,7 +254,7 @@ describe("the class type", () => {
     const f = await openAddClass(user);
 
     await user.type(f.name, "One to one");
-    await user.selectOptions(screen.getByLabelText("Class Type"), "Private");
+    await user.selectOptions(screen.getByLabelText("Course Type"), "Private");
     await user.click(f.save);
 
     const [, cls] = create.mock.calls[0] as unknown as [string, Record<string, unknown>];
@@ -266,7 +266,7 @@ describe("the class type", () => {
     renderAcademy();
 
     await user.click(screen.getAllByRole("button", { name: /^Edit/ })[0]);
-    await user.selectOptions(screen.getByLabelText("Class Type"), "Master");
+    await user.selectOptions(screen.getByLabelText("Course Type"), "Master");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     const [, , patch] = update.mock.calls[0] as unknown as [string, string, Record<string, unknown>];
@@ -278,7 +278,7 @@ describe("the class type", () => {
     renderAcademy();
 
     await user.click(screen.getAllByRole("button", { name: /^Edit/ })[0]);
-    expect((screen.getByLabelText("Class Type") as HTMLSelectElement).value).toBe("Group");
+    expect((screen.getByLabelText("Course Type") as HTMLSelectElement).value).toBe("Group");
   });
 
   /* "Beginner" was the old draft's starting value. It is a level, and offering
@@ -288,7 +288,7 @@ describe("the class type", () => {
     renderAcademy();
     await openAddClass(user);
 
-    const options = Array.from((screen.getByLabelText("Class Type") as HTMLSelectElement).options);
+    const options = Array.from((screen.getByLabelText("Course Type") as HTMLSelectElement).options);
     expect(options.map((o) => o.value)).toEqual(["Private", "Group", "Master"]);
   });
 });

@@ -325,7 +325,10 @@ export function Table({
   children,
   minWidth = 820,
 }: {
-  columns: string[];
+  /* Nodes, not just strings: the check-in table puts a select-all checkbox in
+     its first heading, and a header that can only be text would have pushed
+     that control somewhere the desk does not look for it. */
+  columns: ReactNode[];
   template: string;
   children: ReactNode;
   minWidth?: number;
@@ -361,9 +364,11 @@ export function Table({
             background: COLORS.light,
           }}
         >
-          {columns.map((c) => (
+          {/* Indexed: the list is fixed for the life of a table, and a node
+              column has no string to key on. */}
+          {columns.map((c, i) => (
             <span
-              key={c}
+              key={i}
               style={{
                 fontFamily: FONT,
                 fontSize: 12.5,

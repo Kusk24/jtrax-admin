@@ -22,7 +22,14 @@ import { ErrorNote, errorText } from "../crud";
 import { secondaryButtonStyle } from "../page-kit";
 import { Badge, Card, SectionTitle } from "../ui";
 
-export function LichessPanel() {
+/**
+ * `heading` is off when the panel sits under a page header that already names
+ * it — on the chess screen it does, and printing "Lichess at home" twice, once
+ * as the h1 and again inside the card, read as two sections that happened to
+ * share a name. The row stays: the verified count and Sync belong to the
+ * table, not to the page.
+ */
+export function LichessPanel({ heading = true }: { heading?: boolean }) {
   const t = useTranslations("lichessAdmin");
   const tCommon = useTranslations("common");
 
@@ -88,8 +95,16 @@ export function LichessPanel() {
           padding: "14px 16px", borderBottom: `1px solid ${COLORS.border}`,
         }}
       >
-        <Icon name="knight" size={17} color={COLORS.blue} />
-        <SectionTitle style={{ flex: 1 }}>{t("title")}</SectionTitle>
+        {heading ? (
+          <>
+            <Icon name="knight" size={17} color={COLORS.blue} />
+            <SectionTitle style={{ flex: 1 }}>{t("title")}</SectionTitle>
+          </>
+        ) : (
+          /* Nothing to say, but the controls still sit at the right-hand end
+             of the row rather than bunched against the left edge. */
+          <span style={{ flex: 1 }} />
+        )}
         {links.length > 0 && (
           <Badge color={COLORS.textSecondary} bg={COLORS.neutralBg}>
             {t("verifiedCount", { verified, total: links.length })}

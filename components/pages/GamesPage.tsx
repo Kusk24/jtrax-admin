@@ -8,7 +8,14 @@
    doing something else — but a 460px panel is not enough room for a board, two
    players and a move list, so the board came out small and the moves were a
    scrollbar inside a scrollbar. A game is the thing you came to look at. It
-   gets the page, the same way a student does. */
+   gets the page, the same way a student does.
+
+   Lichess shares the screen, and leads it. Both answer "what is this child
+   playing?" — one here, one at home — and as adjacent tabs they were two
+   clicks apart for no reason anybody could name. Lichess goes first because it
+   is the half the academy never sees; the boards it opened itself are the half
+   it already knows about. The pattern is Academy's: h1 for the first section,
+   h2 for the rest, so the page still has exactly one h1. */
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Icon } from "@/lib/icons";
@@ -17,6 +24,7 @@ import { RATED_CLOCKS, cancelRoom, deleteRoom, durationOf, openRoom, playersOf, 
 import { downloadPgn, toPgn } from "@/lib/pgn";
 import { GameBoard } from "../games/GameBoard";
 import { useLiveRoom, useLiveRooms } from "../games/useLiveRooms";
+import { LichessPanel } from "../lichess/LichessPanel";
 import { ConfirmDeleteModal, ErrorNote, RowActions, errorText } from "../crud";
 import { BackLink, DeleteButton, DetailHeader } from "../detail";
 import {
@@ -274,6 +282,7 @@ function RatedBadge({ room, t }: { room: GameRoom; t: (k: string) => string }) {
 export function GamesPage() {
   const t = useTranslations("games");
   const tc = useTranslations("common");
+  const tLichess = useTranslations("lichessAdmin");
   const { rooms, loading, error, reload } = useLiveRooms();
 
   const [query, setQuery] = useState("");
@@ -342,7 +351,15 @@ export function GamesPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <PageHeader title={tLichess("title")} sub={tLichess("pageSub")} />
+      <LichessPanel heading={false} />
+
+      {/* A clear break, so the second half reads as its own screen rather than
+          as more of the Lichess table. */}
+      <div style={{ marginTop: 10, borderTop: `1px solid ${COLORS.border}`, paddingTop: 22 }} />
+
       <PageHeader
+        level={2}
         title={t("title")}
         sub={t("subtitle")}
         action={

@@ -76,8 +76,8 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 beforeEach(reset);
 
-describe("dismissing a student from the check-in table", () => {
-  it("shows them as dismissed without the page being reloaded", async () => {
+describe("checking a student out from the check-in table", () => {
+  it("shows them as checked out without the page being reloaded", async () => {
     const user = userEvent.setup();
     render(
       <NextIntlClientProvider locale="en" messages={en}>
@@ -89,23 +89,23 @@ describe("dismissing a student from the check-in table", () => {
       </NextIntlClientProvider>,
     );
 
-    /* The first fetch has to land before there is a row to dismiss. */
+    /* The first fetch has to land before there is a row to check out. */
     await waitFor(() => expect(screen.getByText("Anong Sri")).toBeTruthy());
     expect(screen.getByText("In class")).toBeTruthy();
 
-    await user.click(screen.getByRole("button", { name: /Dismiss/i }));
+    await user.click(screen.getByRole("button", { name: /Check Out/i }));
 
     /* The write went through — the fake backend has the stamp. */
     await waitFor(() => expect(db.attendance[0].check_out_time).toBeTruthy());
 
     /* And the screen followed, with nobody reloading anything. */
-    await waitFor(() => expect(screen.getByText("Dismissed")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Checked out")).toBeTruthy());
     expect(screen.queryByText("In class")).toBeNull();
   });
 });
 
-describe("dismissing a student from the desk search", () => {
-  it("shows them as dismissed without the page being reloaded", async () => {
+describe("checking a student out from the desk search", () => {
+  it("shows them as checked out without the page being reloaded", async () => {
     const user = userEvent.setup();
     render(
       <NextIntlClientProvider locale="en" messages={en}>
@@ -120,18 +120,18 @@ describe("dismissing a student from the desk search", () => {
     await user.type(screen.getByLabelText("Search students by name or phone number"), "Anong");
     await waitFor(() => expect(screen.getByText("In class · Group Class")).toBeTruthy());
 
-    await user.click(screen.getByRole("button", { name: "Dismiss" }));
+    await user.click(screen.getByRole("button", { name: "Check Out" }));
 
     await waitFor(() => expect(db.attendance[0].check_out_time).toBeTruthy());
-    await waitFor(() => expect(screen.getByText("Dismissed")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Checked out")).toBeTruthy());
   });
 });
 
-describe("while a dismissal is in flight", () => {
+describe("while a check-out is in flight", () => {
   /* A write refetches all twenty collections. On the deployed backend that is
      seconds, and a plain button sat there looking unpressed for all of them —
      which the desk read as a freeze, and reloaded the page to find the
-     dismissal had gone through the whole time. */
+     check-out had gone through the whole time. */
   it("says it is working rather than sitting there looking unpressed", async () => {
     const user = userEvent.setup();
     render(
@@ -145,7 +145,7 @@ describe("while a dismissal is in flight", () => {
     );
 
     await waitFor(() => expect(screen.getByText("Anong Sri")).toBeTruthy());
-    const button = screen.getByRole("button", { name: /Dismiss/i }) as HTMLButtonElement;
+    const button = screen.getByRole("button", { name: /Check Out/i }) as HTMLButtonElement;
     await user.click(button);
 
     /* Mid-write: the label has changed and the button will not take a second
@@ -153,7 +153,7 @@ describe("while a dismissal is in flight", () => {
     expect(screen.getByRole("button", { name: /Saving/i })).toBeTruthy();
     expect((screen.getByRole("button", { name: /Saving/i }) as HTMLButtonElement).disabled).toBe(true);
 
-    await waitFor(() => expect(screen.getByText("Dismissed")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Checked out")).toBeTruthy());
   });
 
   it("takes one press, not two", async () => {
@@ -169,11 +169,11 @@ describe("while a dismissal is in flight", () => {
     );
 
     await waitFor(() => expect(screen.getByText("Anong Sri")).toBeTruthy());
-    const button = screen.getByRole("button", { name: /Dismiss/i });
+    const button = screen.getByRole("button", { name: /Check Out/i });
     await user.click(button);
     await user.click(button).catch(() => {});
 
-    await waitFor(() => expect(screen.getByText("Dismissed")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Checked out")).toBeTruthy());
     expect(db.attendance).toHaveLength(1);
   });
 });
