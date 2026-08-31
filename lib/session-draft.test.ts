@@ -3,6 +3,8 @@ import {
   creditCost,
   defaultEndFor,
   draftProblem,
+  durationOptions,
+  endAfter,
   hourOf,
   hourOptions,
   joinClock,
@@ -10,6 +12,7 @@ import {
   minuteOf,
   minuteOptions,
   minutesOf,
+  MAX_SESSION_MINUTES,
   MIN_SESSION_MINUTES,
 } from "./session-draft";
 
@@ -148,18 +151,89 @@ describe("what is stopping it being created", () => {
 });
 
 describe("moving the end when the start moves", () => {
-  it("puts it the minimum length later", () => {
-    expect(defaultEndFor("10:00")).toBe("10:30");
-    expect(defaultEndFor("16:45")).toBe("17:15");
+  /* An hour, because that is what a class is and what a credit buys. */
+  it("puts it the usual length later", () => {
+    expect(defaultEndFor("10:00")).toBe("11:00");
+    expect(defaultEndFor("16:45")).toBe("17:45");
   });
 
-  /* A session cannot run past midnight, and wrapping round to 00:15 would be
-     worse than refusing to move. */
-  it("clamps at the end of the day rather than wrapping", () => {
-    expect(defaultEndFor("23:50")).toBe("23:55");
+  /* A class cannot run past midnight, so a late start shortens it rather than
+     wrapping round to the small hours. */
+  it("shortens rather than wrapping at the end of the day", () => {
+    /* An hour still fits here, just. */
+    expect(defaultEndFor("22:45")).toBe("23:45");
+    /* Here it does not, so it falls back to the longest that does — 45
+       minutes, landing on midnight. */
+    expect(defaultEndFor("23:15")).toBe("00:00");
+    /* And here nothing fits at all, not even the half-hour floor. */
+    expect(defaultEndFor("23:50")).toBe("");
   });
 
   it("gives nothing for an unreadable start", () => {
     expect(defaultEndFor("")).toBe("");
+  });
+});
+
+/**
+ * The lengths on offer.
+ *
+ * Asked for directly, because the office decides a class runs for an hour and
+ * a half from four — not that it ends at 17:30. It also puts the half-hour
+ * floor in the list rather than in an error message.
+ */
+describe("how long a class runs", () => {
+  it("starts at the floor and climbs in quarter hours", () => {
+    const options = durationOptions("10:00");
+    expect(options[0]).toBe(MIN_SESSION_MINUTES);
+    expect(options[1]).toBe(45);
+    expect(options[2]).toBe(60);
+    expect(options.at(-1)).toBe(MAX_SESSION_MINUTES);
+  });
+
+  it("never offers anything under half an hour", () => {
+    for (const start of ["00:00", "10:00", "23:00"]) {
+      for (const m of durationOptions(start)) expect(m).toBeGreaterThanOrEqual(MIN_SESSION_MINUTES);
+    }
+  });
+
+  /* Offering four hours from 23:00 and refusing it afterwards is the Create
+     button that will not press, all over again. */
+  it("offers only what fits before midnight", () => {
+    /* An hour from 23:00 lands exactly on midnight, which is a class that ends
+       when the day does — allowed. Anything past it is not. */
+    expect(durationOptions("23:00")).toEqual([30, 45, 60]);
+    expect(durationOptions("22:30")).toEqual([30, 45, 60, 75, 90]);
+  });
+
+  it("offers nothing at all when not even the floor fits", () => {
+    expect(durationOptions("23:45")).toEqual([]);
+  });
+
+  /* No start yet is not the same as a late one: the list is the full ladder
+     until the desk says when it begins. */
+  it("offers every length before a start is chosen", () => {
+    expect(durationOptions("")[0]).toBe(MIN_SESSION_MINUTES);
+    expect(durationOptions("").at(-1)).toBe(MAX_SESSION_MINUTES);
+  });
+});
+
+describe("where a length lands", () => {
+  it("adds the length to the start", () => {
+    expect(endAfter("16:00", 90)).toBe("17:30");
+    expect(endAfter("09:15", 30)).toBe("09:45");
+  });
+
+  /* Midnight is 00:00 on a clock, not 24:00 — the class still belongs to the
+     day it started. */
+  it("reads a class that ends at midnight as 00:00", () => {
+    expect(endAfter("23:30", 30)).toBe("00:00");
+  });
+
+  it("refuses to run past midnight", () => {
+    expect(endAfter("23:30", 60)).toBe("");
+  });
+
+  it("has nowhere to land without a start", () => {
+    expect(endAfter("", 60)).toBe("");
   });
 });

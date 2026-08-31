@@ -283,7 +283,12 @@
     "startMinute": "Start minute",
     "endHour": "End hour",
     "endMinute": "End minute",
-    "willGoNegative": "Only {credits} credits left — this class takes them below zero."
+    "willGoNegative": "Only {credits} credits left — this class takes them below zero.",
+    "length": "Length",
+    "lengthMinutes": "{minutes} min",
+    "lengthHours": "{hours, plural, one {# hour} other {# hours}}",
+    "lengthHoursMinutes": "{hours} h {minutes} min",
+    "endsAt": "Ends {time}"
   },
   "students": {
     "title": "Students",
@@ -512,7 +517,8 @@
     "sessionDetail": "Class",
     "checkedInAt": "In",
     "dismissedAt": "Out",
-    "stillInClass": "still in class"
+    "stillInClass": "still in class",
+    "otherCourses": "Others"
   },
   "tournament": {
     "title": "Tournament",

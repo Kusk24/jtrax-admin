@@ -66,10 +66,26 @@ function renderPanel() {
     klass: screen.getByLabelText("Course") as HTMLSelectElement,
     startHour: screen.getByLabelText("Start hour") as HTMLSelectElement,
     startMinute: screen.getByLabelText("Start minute") as HTMLSelectElement,
-    endHour: screen.getByLabelText("End hour") as HTMLSelectElement,
-    endMinute: screen.getByLabelText("End minute") as HTMLSelectElement,
+    length: screen.getByLabelText("Length") as HTMLSelectElement,
     button: screen.getAllByRole("button", { name: "Create Class" }).at(-1) as HTMLButtonElement,
   };
+}
+
+/**
+ * Runs the class until this clock time.
+ *
+ * The panel asks for a length now, not a second clock time — but a timetable
+ * is still written in end times, so the tests say when a class finishes and
+ * this works out the length the desk would pick to get there.
+ */
+async function runUntil(
+  user: ReturnType<typeof userEvent.setup>,
+  f: ReturnType<typeof renderPanel>,
+  clock: string,
+) {
+  const [sh, sm] = [Number(f.startHour.value), Number(f.startMinute.value || 0)];
+  const [eh, em] = clock.split(":").map(Number);
+  await user.selectOptions(f.length, String(eh * 60 + em - (sh * 60 + sm)));
 }
 
 /** Sets one end of the session the way the desk does: hour, then minute. */
@@ -117,8 +133,9 @@ describe("choosing the times", () => {
     const user = userEvent.setup();
     const f = renderPanel();
     await user.selectOptions(f.startHour, "14");
-    expect(f.endHour.value).toBe("14");
-    expect(f.endMinute.value).toBe("30");
+    /* A whole start, so the class has a length and an end to show. */
+    expect(f.length.value).toBe("60");
+    expect(screen.getAllByText(/Ends 15:00/).length).toBeGreaterThan(0);
   });
 
   it("has nothing to put minutes on until an hour is chosen", () => {
@@ -126,34 +143,62 @@ describe("choosing the times", () => {
     expect(f.startMinute.disabled).toBe(true);
   });
 
-  it("moves the end along when a start is chosen", async () => {
+  /* An hour, which is what a class is and what a credit buys. */
+  it("offers the usual length as soon as a start is chosen", async () => {
     const user = userEvent.setup();
     const f = renderPanel();
     await setTime(user, f.startHour, f.startMinute, "14:00");
-    expect(f.endHour.value).toBe("14");
-    expect(f.endMinute.value).toBe("30");
+    expect(f.length.value).toBe("60");
+    expect(screen.getAllByText(/Ends 15:00/).length).toBeGreaterThan(0);
   });
 
-  it("leaves an end that already works alone", async () => {
+  /* The whole reason for asking a length rather than an end time: moving the
+     start slides the class, it does not resize it. Choosing two hours and then
+     correcting 10:00 to 09:00 used to leave a three-hour class. */
+  it("keeps the chosen length when the start moves", async () => {
     const user = userEvent.setup();
     const f = renderPanel();
     await setTime(user, f.startHour, f.startMinute, "10:00");
-    await setTime(user, f.endHour, f.endMinute, "12:00");
+    await runUntil(user, f, "12:00");
+    expect(f.length.value).toBe("120");
+
     await setTime(user, f.startHour, f.startMinute, "09:00");
-    expect(f.endHour.value).toBe("12");
-    expect(f.endMinute.value).toBe("00");
+    expect(f.length.value).toBe("120");
+    expect(screen.getAllByText(/Ends 11:00/).length).toBeGreaterThan(0);
+  });
+
+  it("has no length to offer until a start is chosen", () => {
+    const f = renderPanel();
+    expect(f.length.disabled).toBe(true);
+  });
+
+  /* A late start shortens the class rather than offering a length that would
+     run past midnight and refusing it afterwards. */
+  it("offers only the lengths that fit before midnight", async () => {
+    const user = userEvent.setup();
+    const f = renderPanel();
+    await setTime(user, f.startHour, f.startMinute, "23:00");
+    const offered = Array.from(f.length.options).map((o) => o.value).filter(Boolean);
+    expect(offered).toEqual(["30", "45", "60"]);
   });
 });
 
 describe("the half-hour floor", () => {
-  it("refuses a shorter session and says so", async () => {
+  /* It used to be an error message after the fact. Now it is the shortest
+     thing on the list, so a twenty-minute class cannot be asked for at all
+     and nobody has to be told off for trying. */
+  it("is the shortest length on offer, not a refusal", async () => {
     const user = userEvent.setup();
     const f = renderPanel();
-    const button = f.button;
     await setTime(user, f.startHour, f.startMinute, "10:00");
-    await setTime(user, f.endHour, f.endMinute, "10:20");
+    const offered = Array.from(f.length.options).map((o) => o.value).filter(Boolean);
+    expect(offered[0]).toBe("30");
+    expect(offered.every((v) => Number(v) >= 30)).toBe(true);
+  });
 
-    expect(button.disabled).toBe(true);
+  it("says so while there is no length yet", async () => {
+    const f = renderPanel();
+    expect(f.button.disabled).toBe(true);
     expect(screen.getAllByText("A class runs for at least half an hour.").length).toBeGreaterThan(0);
   });
 
@@ -162,19 +207,23 @@ describe("the half-hour floor", () => {
     const f = renderPanel();
     const button = f.button;
     await setTime(user, f.startHour, f.startMinute, "10:00");
-    await setTime(user, f.endHour, f.endMinute, "10:30");
+    await runUntil(user, f, "10:30");
     expect(button.disabled).toBe(false);
   });
 
-  it("refuses an end before the start, and names that rather than the length", async () => {
+  /* "The end time must be after the start" was a real message on a real form,
+     because two clock times can be put in either order. A length cannot be
+     negative, so the case is now unreachable from the screen — the guard
+     itself is still tested, in lib/session-draft.test.ts, because the times
+     it protects still reach the backend. */
+  it("cannot be asked to end before it starts", async () => {
     const user = userEvent.setup();
     const f = renderPanel();
-    const button = f.button;
     await setTime(user, f.startHour, f.startMinute, "14:00");
-    await setTime(user, f.endHour, f.endMinute, "09:00");
 
-    expect(button.disabled).toBe(true);
-    expect(screen.getByText("The end time must be after the start.")).toBeTruthy();
+    const offered = Array.from(f.length.options).map((o) => o.value).filter(Boolean);
+    expect(offered.every((v) => Number(v) > 0)).toBe(true);
+    expect(screen.queryByText("The end time must be after the start.")).toBeNull();
   });
 });
 
@@ -183,7 +232,7 @@ describe("what it will cost", () => {
     const user = userEvent.setup();
     const f = renderPanel();
     await setTime(user, f.startHour, f.startMinute, "10:00");
-    await setTime(user, f.endHour, f.endMinute, "11:00");
+    await runUntil(user, f, "11:00");
     expect(screen.getByText(/costs each student 1 credits/)).toBeTruthy();
   });
 
@@ -191,7 +240,7 @@ describe("what it will cost", () => {
     const user = userEvent.setup();
     const f = renderPanel();
     await setTime(user, f.startHour, f.startMinute, "10:00");
-    await setTime(user, f.endHour, f.endMinute, "10:30");
+    await runUntil(user, f, "10:30");
     expect(screen.getByText(/costs each student 0.5 credits/)).toBeTruthy();
   });
 
@@ -199,7 +248,7 @@ describe("what it will cost", () => {
     const user = userEvent.setup();
     const f = renderPanel();
     await setTime(user, f.startHour, f.startMinute, "09:00");
-    await setTime(user, f.endHour, f.endMinute, "10:30");
+    await runUntil(user, f, "10:30");
     expect(screen.getByText(/costs each student 1.5 credits/)).toBeTruthy();
   });
 });
@@ -229,7 +278,7 @@ describe("the students who can be added", () => {
     const f = renderPanel();
     const klass = f.klass;
     await setTime(user, f.startHour, f.startMinute, "09:00");
-    await setTime(user, f.endHour, f.endMinute, "10:00");
+    await runUntil(user, f, "10:00");
 
     await user.click(screen.getByRole("checkbox", { name: /Anong Sri/ }));
     expect(screen.getByText(/1 student added/)).toBeTruthy();
@@ -256,7 +305,7 @@ describe("creating it", () => {
     const f = renderPanel();
     const button = f.button;
     await setTime(user, f.startHour, f.startMinute, "09:00");
-    await setTime(user, f.endHour, f.endMinute, "10:30");
+    await runUntil(user, f, "10:30");
     await user.click(screen.getByRole("checkbox", { name: /Anong Sri/ }));
     await user.click(screen.getByRole("checkbox", { name: /Boon Mek/ }));
     await user.click(button);
@@ -281,7 +330,7 @@ describe("creating it", () => {
     const f = renderPanel();
     const button = f.button;
     await setTime(user, f.startHour, f.startMinute, "09:00");
-    await setTime(user, f.endHour, f.endMinute, "10:00");
+    await runUntil(user, f, "10:00");
     expect(button.disabled).toBe(false);
     await user.click(button);
 
@@ -297,7 +346,7 @@ describe("a student whose balance will not cover the session", () => {
     const user = userEvent.setup();
     const f = renderPanel();
     await setTime(user, f.startHour, f.startMinute, "09:00");
-    await setTime(user, f.endHour, f.endMinute, "12:00"); // 3 credits, they have 2.5
+    await runUntil(user, f, "12:00"); // 3 credits, they have 2.5
 
     const boon = screen.getByRole("checkbox", { name: /Boon Mek/ }) as HTMLInputElement;
     expect(boon.disabled).toBe(false);
@@ -315,7 +364,7 @@ describe("a student whose balance will not cover the session", () => {
     const user = userEvent.setup();
     const f = renderPanel();
     await setTime(user, f.startHour, f.startMinute, "09:00");
-    await setTime(user, f.endHour, f.endMinute, "12:00");
+    await runUntil(user, f, "12:00");
 
     expect(screen.getByTitle(/takes them below zero/)).toBeTruthy();
   });
@@ -324,7 +373,7 @@ describe("a student whose balance will not cover the session", () => {
     const user = userEvent.setup();
     const f = renderPanel();
     await setTime(user, f.startHour, f.startMinute, "09:00");
-    await setTime(user, f.endHour, f.endMinute, "10:00"); // 1 credit
+    await runUntil(user, f, "10:00"); // 1 credit
 
     expect(screen.queryByTitle(/takes them below zero/)).toBeNull();
   });
@@ -335,10 +384,10 @@ describe("a student whose balance will not cover the session", () => {
     const user = userEvent.setup();
     const f = renderPanel();
     await setTime(user, f.startHour, f.startMinute, "09:00");
-    await setTime(user, f.endHour, f.endMinute, "10:00");
+    await runUntil(user, f, "10:00");
     await user.click(screen.getByRole("checkbox", { name: /Boon Mek/ }));
 
-    await setTime(user, f.endHour, f.endMinute, "12:00");
+    await runUntil(user, f, "12:00");
     expect(screen.getByText(/1 student added/)).toBeTruthy();
   });
 });

@@ -21,6 +21,67 @@ export const MIN_SESSION_MINUTES = 30;
 /** How finely a time can be chosen. */
 export const TIME_STEP_MINUTES = 5;
 
+/**
+ * The lengths a class is offered in.
+ *
+ * The desk used to choose two clock times and the software worked out the gap
+ * — which is the wrong way round from how the office thinks. Nobody decides a
+ * class ends at 17:30; they decide it runs for an hour and a half, starting at
+ * four. Asking for the length directly also makes the half-hour floor a
+ * property of the list instead of an error message: there is no way to pick
+ * twenty minutes, so nobody has to be told off for trying.
+ *
+ * Quarter-hour steps up to four hours. Finer than that is a timetable nobody
+ * runs, and longer is a holiday camp, which is several classes.
+ */
+export const DURATION_STEP_MINUTES = 15;
+export const MAX_SESSION_MINUTES = 240;
+
+/** What a class runs for unless the desk says otherwise — one hour, one credit. */
+export const DEFAULT_SESSION_MINUTES = 60;
+
+/**
+ * The lengths that still fit in the day from this start.
+ *
+ * A class cannot run past midnight, so a 23:00 start is offered half an hour
+ * and three quarters and nothing else. Offering the full ladder and refusing
+ * the choice afterwards would be the Create button that will not press, again.
+ */
+export function durationOptions(start: string): number[] {
+  const from = minutesOf(start);
+  const out: number[] = [];
+  for (let m = MIN_SESSION_MINUTES; m <= MAX_SESSION_MINUTES; m += DURATION_STEP_MINUTES) {
+    if (from !== null && from + m > 24 * 60) break;
+    out.push(m);
+  }
+  return out;
+}
+
+/** The clock time a class of this length ends at, or "" if the start is unreadable. */
+export function endAfter(start: string, minutes: number): string {
+  const from = minutesOf(start);
+  if (from === null) return "";
+  const end = from + minutes;
+  if (end > 24 * 60) return "";
+  /* 24:00 is midnight, which no clock shows; a class ending exactly at the end
+     of the day reads 00:00 and its date is the day it started. */
+  return clockOf(end % (24 * 60));
+}
+
+/**
+ * The length to offer when a start is chosen and the old one no longer fits.
+ *
+ * An hour where the day allows it, and the longest that does fit where it does
+ * not — a late start should shorten the class, not empty the field.
+ */
+export function defaultDurationFor(start: string): number {
+  const options = durationOptions(start);
+  if (options.length === 0) return MIN_SESSION_MINUTES;
+  return options.includes(DEFAULT_SESSION_MINUTES)
+    ? DEFAULT_SESSION_MINUTES
+    : options[options.length - 1];
+}
+
 export type TimeOption = { value: string; label: string };
 
 /**
@@ -133,15 +194,10 @@ export function draftProblem(opts: {
 }
 
 /**
- * An end time a half hour after the start, for when the desk has picked a
- * start and the old end no longer makes sense. Clamped to the end of the day:
- * a session cannot run past midnight, and silently wrapping to 00:15 would be
- * worse than refusing to move.
+ * The end time for a freshly chosen start: the default length, or the longest
+ * that fits before midnight.
  */
 export function defaultEndFor(start: string): string {
-  const a = minutesOf(start);
-  if (a === null) return "";
-  const end = a + MIN_SESSION_MINUTES;
-  if (end > 24 * 60 - TIME_STEP_MINUTES) return clockOf(24 * 60 - TIME_STEP_MINUTES);
-  return clockOf(end);
+  if (minutesOf(start) === null) return "";
+  return endAfter(start, defaultDurationFor(start));
 }
