@@ -363,12 +363,29 @@ function StudentDetail({
    * academy adds next term prices itself the day it exists.
    */
   function rateOf(enrolmentId: string, classId: string): CreditRate {
-    const payment = raw.payments.find(
-      (p) =>
-        String(p["enrollment_id"] ?? "") === enrolmentId &&
-        String(p["status"] ?? "Paid") === "Paid" &&
-        String(p["credit_package_id"] ?? ""),
-    );
+    /**
+     * Only when there is an enrolment to look up.
+     *
+     * `String(p["enrollment_id"] ?? "") === ""` is true of every payment that
+     * has no enrolment — so an empty id here did not mean "no payment", it
+     * meant "the first detached payment on file", and the rate came back off
+     * whatever package that one happened to buy. For a course being moved
+     * *into* — which has no enrolment yet, and so was always asked for with an
+     * empty id — that is a conversion computed against an unrelated course's
+     * price list.
+     *
+     * Detached payments are not rare, either: deleting an enrolment nulls
+     * `enrollment_id` on its payments and keeps the receipt, so the longer the
+     * office tidies the list the more of them there are.
+     */
+    const payment = enrolmentId
+      ? raw.payments.find(
+          (p) =>
+            String(p["enrollment_id"] ?? "") === enrolmentId &&
+            String(p["status"] ?? "Paid") === "Paid" &&
+            String(p["credit_package_id"] ?? ""),
+        )
+      : undefined;
     const bought = payment
       ? raw.creditPackages.find(
           (k) => String(k["credit_package_id"]) === String(payment["credit_package_id"]),
