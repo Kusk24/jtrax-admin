@@ -402,7 +402,18 @@
     "enrolmentIn": "the enrolment in {className}",
     "deleteEnrolmentFrom": "Delete the enrolment in {className}",
     "changeCourseNowhere": "There is no other course to move them to.",
-    "enrolmentDeleteWithLedger": "{credits, plural, =0 {No credit entries} one {# credit entry} other {# credit entries}} recorded against this course {credits, plural, one {goes} other {go}} with it, and cannot be recovered. {payments, plural, =0 {} one {# payment keeps its receipt but stops pointing at this course.} other {# payments keep their receipts but stop pointing at this course.}}"
+    "enrolmentDeleteWithLedger": "{credits, plural, =0 {} one {# credit entry stays with the child as credits not in any course, ready to be moved into one.} other {# credit entries stay with the child as credits not in any course, ready to be moved into one.}} {payments, plural, =0 {} one {# payment keeps its receipt but stops pointing at this course.} other {# payments keep their receipts but stop pointing at this course.}}",
+    "looseCredits": "{credits} credits not in any course",
+    "looseFrom": "Bought for {className}, which is no longer on file for this child.",
+    "looseNoCourse": "The course they were bought for is no longer on file.",
+    "looseMoveIn": "Move into a course",
+    "looseMoveInTitle": "Move credits into a course",
+    "looseMoveInIntro": "{credits} credits are waiting, bought for {className}. Put them into a course this child is in — the sum converts at both courses' rates, the same way a move between courses does.",
+    "looseMoveInIntroNoCourse": "{credits} credits are waiting. Put them into a course this child is in.",
+    "looseMovedIn": "Moved in from credits held outside a course",
+    "looseNeedsCourse": "Add this child to a course first, then their credits can be moved into it.",
+    "noEnrolmentsYetCredits": "Not in any course yet. Their credits are waiting above — add a course and move them in.",
+    "moveCreditsTo": "Move them to"
   },
   "parents": {
     "title": "Parents",

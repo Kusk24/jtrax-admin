@@ -139,7 +139,17 @@ export function toStudents(c: LiveCollections): Student[] {
     const enr = c.enrollments.find((e) => s(e, "student_id") === sid && s(e, "status") === "Active")
       ?? c.enrollments.find((e) => s(e, "student_id") === sid);
     const cls = enr ? c.classes.find((k) => s(k, "class_id") === s(enr, "class_id")) : undefined;
-    const txs = enr ? c.creditTransactions.filter((t) => s(t, "enrollment_id") === s(enr, "enrollment_id")) : [];
+    /* Hours the child holds and has not spent anywhere: what is left when the
+       enrolment that recorded them is deleted. They are still paid for, so
+       they still count — a balance that dropped to zero because the office
+       tidied a course away was the whole complaint. */
+    const loose = c.creditTransactions.filter(
+      (t) => !s(t, "enrollment_id") && s(t, "student_id") === sid,
+    );
+    const txs = [
+      ...(enr ? c.creditTransactions.filter((t) => s(t, "enrollment_id") === s(enr, "enrollment_id")) : []),
+      ...loose,
+    ];
     const credit = txs.reduce((sum, t) => sum + n(t, "amount"), 0);
     const expiry = txs.filter((t) => s(t, "expiry_date")).map((t) => s(t, "expiry_date")).sort().at(-1) ?? "";
     const link = c.studentParents.find((sp) => s(sp, "student_id") === sid);

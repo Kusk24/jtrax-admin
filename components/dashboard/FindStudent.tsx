@@ -127,6 +127,10 @@ export function FindStudent() {
     try {
       await create("credit-transactions", {
         enrollment_id: String(enr["enrollment_id"]),
+        /* Whose the hours are and what they were bought for, so they outlive
+           the enrolment if the office ever deletes it. */
+        student_id: studentId,
+        class_id: String(enr["class_id"] ?? "") || null,
         transaction_type: "manual_adjustment",
         amount,
         transaction_date: new Date().toISOString().slice(0, 10),

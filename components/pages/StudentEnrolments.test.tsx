@@ -64,7 +64,7 @@ const raw = {
   creditTransactions: [
     { credit_transaction_id: "t1", enrollment_id: "e_anong_beg", amount: 20, transaction_date: "2026-01-06", transaction_type: "purchase", expiry_date: "2026-12-31" },
     { credit_transaction_id: "t2", enrollment_id: "e_anong_beg", amount: -12, transaction_date: "2026-06-02", transaction_type: "consumption" },
-  ],
+  ] as Row[],
   creditPackages: [
     { credit_package_id: "p_beg", class_id: "beg", credit_amount: 20, standard_price: 12000 },
     { credit_package_id: "p_int", class_id: "int", credit_amount: 20, standard_price: 20000 },
@@ -446,14 +446,22 @@ describe("deleting an enrolment", () => {
     expect(remove).toHaveBeenCalledWith("enrollments", "e_chai_beg");
   });
 
-  it("takes the credit entries with it", async () => {
+  /* The hours a family paid for are not the office's to delete. Detaching
+     keeps them on the child's balance, still knowing what they were bought
+     for, ready to be put into a course again. */
+  it("detaches the credit entries instead of deleting them", async () => {
     const user = renderList();
     await openStudent(user, "Anong");
     await user.click(deleteButton("Beginner"));
     await confirmDelete(user);
 
-    expect(remove).toHaveBeenCalledWith("credit-transactions", "t1");
-    expect(remove).toHaveBeenCalledWith("credit-transactions", "t2");
+    expect(update).toHaveBeenCalledWith("credit-transactions", "t1", {
+      enrollment_id: null, student_id: "anong", class_id: "beg",
+    });
+    expect(update).toHaveBeenCalledWith("credit-transactions", "t2", {
+      enrollment_id: null, student_id: "anong", class_id: "beg",
+    });
+    expect(remove).not.toHaveBeenCalledWith("credit-transactions", "t1");
     expect(remove).toHaveBeenCalledWith("enrollments", "e_anong_beg");
   });
 
@@ -475,14 +483,15 @@ describe("deleting an enrolment", () => {
     }
   });
 
-  /* "Tidying up the list" and "deleting a term of credit history" are the
-     same click, and only one of them is what the office had in mind. */
-  it("says what goes with the row before it goes", async () => {
+  /* It has to say what survives, not what is destroyed — the hours are kept,
+     and an office told otherwise would avoid the button that tidies the
+     list. */
+  it("says the credits are kept, before the row goes", async () => {
     const user = renderList();
     await openStudent(user, "Anong");
     await user.click(deleteButton("Beginner"));
 
-    expect(screen.getByText(/2 credit entries/)).toBeDefined();
+    expect(screen.getByText(/2 credit entries stay with the child/)).toBeDefined();
   });
 
   it("says nothing alarming about a row that is already empty", async () => {
@@ -580,6 +589,127 @@ describe("what a change converts against", () => {
       raw.creditTransactions.pop();
       raw.enrollments.length = 0;
       raw.enrollments.push(...ENROLMENTS);
+    }
+  });
+});
+
+
+/**
+ * Credits that outlived their enrolment.
+ *
+ * Reported: a child with thirteen credits had their one and only enrolment
+ * deleted, and the balance went to zero. `credit_transaction.enrollment_id`
+ * was NOT NULL, so a credit could not exist without an enrolment and the
+ * delete had to take the ledger with it — thirteen paid-for hours, gone.
+ *
+ * Since backend 0026 an entry carries its own `student_id` and `class_id`, so
+ * it can be detached: the hours stay on the child, still know what they were
+ * bought for, and convert into a course whenever the child joins one.
+ */
+describe("credits with no course", () => {
+  /* Chai has no enrolment at all, and thirteen credits waiting. */
+  function withLooseCredits(classId: string | null = "int"): void {
+    raw.enrollments.length = 0;
+    raw.creditTransactions.push({
+      credit_transaction_id: "t_loose", enrollment_id: null, student_id: "chai",
+      class_id: classId, amount: 13, transaction_date: "2026-03-01",
+      transaction_type: "purchase", expiry_date: "2026-12-31",
+    });
+  }
+  function restore() {
+    raw.creditTransactions.pop();
+    raw.enrollments.length = 0;
+    raw.enrollments.push(...ENROLMENTS);
+  }
+
+  it("are shown on the child's page rather than lost", async () => {
+    withLooseCredits();
+    try {
+      const user = renderList();
+      await openStudent(user, "Chai");
+      expect(screen.getByText(/13 credits not in any course/)).toBeDefined();
+      expect(screen.getByText(/Bought for Intermediate/)).toBeDefined();
+    } finally {
+      restore();
+    }
+  });
+
+  /* With no course to put them in, the button says why rather than opening a
+     dialog with an empty list. */
+  it("cannot be moved anywhere until the child is in a course", async () => {
+    withLooseCredits();
+    try {
+      const user = renderList();
+      await openStudent(user, "Chai");
+      expect((screen.getByRole("button", { name: "Move into a course" }) as HTMLButtonElement).disabled).toBe(true);
+    } finally {
+      restore();
+    }
+  });
+
+  /* Bought for Intermediate at 1,000 an hour, moving into Beginner at 600:
+     13 credits is 13,000 baht, which buys 21.67 hours — 21.5 on the
+     half-credit grid. More hours, because the course is cheaper. */
+  it("convert at both courses' rates when moved in", async () => {
+    withLooseCredits();
+    raw.enrollments.push({
+      enrollment_id: "e_chai_new", student_id: "chai", class_id: "beg",
+      status: "Active", enrolled_date: "2026-09-02",
+    });
+    try {
+      const user = renderList();
+      await openStudent(user, "Chai");
+      await user.click(screen.getByRole("button", { name: "Move into a course" }));
+      expect((screen.getByLabelText("Credits to add") as HTMLInputElement).value).toBe("21.5");
+      /* And the expiry comes across from the balance being moved. */
+      expect((screen.getByLabelText("Expires") as HTMLInputElement).value).toBe("2026-12-31");
+    } finally {
+      restore();
+    }
+  });
+
+  it("are written as a matching pair, so the ledger still balances", async () => {
+    withLooseCredits();
+    raw.enrollments.push({
+      enrollment_id: "e_chai_new", student_id: "chai", class_id: "beg",
+      status: "Active", enrolled_date: "2026-09-02",
+    });
+    try {
+      const user = renderList();
+      await openStudent(user, "Chai");
+      await user.click(screen.getByRole("button", { name: "Move into a course" }));
+      await user.click(screen.getAllByRole("button", { name: "Move into a course", hidden: true }).at(-1)!);
+
+      const written = create.mock.calls.filter(([path]) => path === "credit-transactions");
+      expect(written).toHaveLength(2);
+      /* Out of the loose balance — no enrolment on this side, because there
+         never was one. */
+      expect(written[0][1]).toMatchObject({ student_id: "chai", amount: -13 });
+      expect(written[0][1]).not.toHaveProperty("enrollment_id");
+      /* And into the course they have joined. */
+      expect(written[1][1]).toMatchObject({
+        enrollment_id: "e_chai_new", student_id: "chai", class_id: "beg", amount: 21.5,
+      });
+    } finally {
+      restore();
+    }
+  });
+
+  /* A retired or unpriced source course has no rate. The hours carry across as
+     they stand rather than being held hostage to a price list. */
+  it("carry across unconverted when the old course has no rate", async () => {
+    withLooseCredits(null);
+    raw.enrollments.push({
+      enrollment_id: "e_chai_new", student_id: "chai", class_id: "beg",
+      status: "Active", enrolled_date: "2026-09-02",
+    });
+    try {
+      const user = renderList();
+      await openStudent(user, "Chai");
+      await user.click(screen.getByRole("button", { name: "Move into a course" }));
+      expect((screen.getByLabelText("Credits to add") as HTMLInputElement).value).toBe("13");
+    } finally {
+      restore();
     }
   });
 });
