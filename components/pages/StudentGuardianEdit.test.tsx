@@ -1,15 +1,19 @@
 /**
- * The student edit card, and whether it edits anything.
+ * The guardian half of the student card: which parent, not what the parent is.
  *
- * It showed fourteen fields and wrote five. The guardian's name, the
- * relationship and all three ways of reaching them were typed, saved, and
- * discarded — no error, no hint, the values simply back as they were on the
- * next render. Course, Branch, Membership and the student's own LINE ID were
- * worse: nothing behind them in either direction.
+ * A parent is their own record, shared with their other children. Editing
+ * their name or phone number from a child's page edits a person nobody is
+ * looking at, and silently rewrites what the *sibling's* page says too. Those
+ * details belong on the Parents screen, on their own page, where changing them
+ * is visibly changing them.
  *
- * A guardian is a person with their own record, shared with their other
- * children, so saving them is several writes across three tables rather than
- * columns on the student. That is what this covers.
+ * What genuinely belongs to the child is the link: whose child they are, and
+ * how they are related. That is what this card writes.
+ *
+ * Also here: a save that fails has to *look* failed. It used to close the form
+ * and drop a toast in the corner, after which the screen showed the old values
+ * back — which is indistinguishable from a save that worked, and is what "I
+ * changed it and it did not change" looks like from the desk.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
@@ -19,10 +23,15 @@ import en from "@/messages/en.json";
 
 const db: Record<string, Record<string, unknown>[]> = {};
 const writes: Array<{ verb: string; path: string; body?: Record<string, unknown> }> = [];
+/** Set to make the next student PATCH fail, the way a refused write does. */
+let refuseStudentWrite = "";
+const push = vi.fn();
 
 function reset() {
   for (const key of Object.keys(db)) delete db[key];
   writes.length = 0;
+  refuseStudentWrite = "";
+  push.mockClear();
   Object.assign(db, {
     students: [
       { student_id: "stu_1", name: "Anong Sri", date_of_birth: "2013-04-01", current_level: "Beginner" },
@@ -31,12 +40,12 @@ function reset() {
     enrollments: [
       { enrollment_id: "enr_1", student_id: "stu_1", class_id: "cls_group", status: "Active" },
     ],
-    parents: [{ parent_id: "par_1", user_account_id: "usr_p1", name: "Malee Sri" }],
-    /* A phone and an email on file, and no LINE ID — the three cases the save
-       has to tell apart: change one, clear one, add one. */
+    parents: [
+      { parent_id: "par_1", user_account_id: "usr_p1", name: "Malee Sri" },
+      { parent_id: "par_2", user_account_id: "usr_p2", name: "Somchai Sri" },
+    ],
     "parent-contacts": [
       { parent_contact_id: "pct_1", parent_id: "par_1", contact_type: "phone", value: "0801111111" },
-      { parent_contact_id: "pct_2", parent_id: "par_1", contact_type: "email", value: "malee@example.com" },
     ],
     "student-parents": [
       { student_id: "stu_1", parent_id: "par_1", relationship_type: "Mother" },
@@ -51,6 +60,7 @@ vi.mock("@/lib/api", () => ({
       return (db[path] ?? []).map((row) => ({ ...row }));
     },
     patch: async (path: string, body: Record<string, unknown>) => {
+      if (refuseStudentWrite && path.startsWith("students/")) throw new Error(refuseStudentWrite);
       writes.push({ verb: "PATCH", path, body });
       const [collection, id] = path.split("/");
       const row = (db[collection] ?? []).find((r) => Object.values(r).includes(id));
@@ -59,9 +69,8 @@ vi.mock("@/lib/api", () => ({
     },
     post: async (path: string, body: Record<string, unknown>) => {
       writes.push({ verb: "POST", path, body });
-      const row = { ...body, [`${path.replace(/s$/, "").replace(/-/g, "_")}_id`]: `new_${writes.length}` };
-      (db[path] ??= []).push(row);
-      return row;
+      (db[path] ??= []).push({ ...body });
+      return { ...body };
     },
     del: async (path: string) => {
       writes.push({ verb: "DELETE", path });
@@ -75,7 +84,7 @@ vi.mock("@/lib/api", () => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push, replace: vi.fn() }),
   usePathname: () => "/students",
 }));
 
@@ -106,104 +115,107 @@ async function openEditor() {
 const save = (user: ReturnType<typeof userEvent.setup>) =>
   user.click(screen.getByRole("button", { name: en.common.save }));
 
-async function retype(user: ReturnType<typeof userEvent.setup>, field: HTMLElement, value: string) {
-  await user.clear(field);
-  if (value) await user.type(field, value);
-}
+const link = () => db["student-parents"].find((r) => r["student_id"] === "stu_1");
 
-const contactValue = (type: string) =>
-  db["parent-contacts"].find((r) => r["contact_type"] === type)?.["value"];
-
-describe("the guardian's details", () => {
-  it("saves a corrected name to the guardian's own row", async () => {
-    const user = await openEditor();
-    await retype(user, screen.getByLabelText(en.common.name), "Malee Sriwongse");
-    await save(user);
-
-    await waitFor(() => expect(db.parents[0]["name"]).toBe("Malee Sriwongse"));
-    expect(writes.some((w) => w.verb === "PATCH" && w.path === "parents/par_1")).toBe(true);
+describe("choosing the guardian", () => {
+  it("offers the parents on file", async () => {
+    await openEditor();
+    const picker = screen.getByLabelText(en.students.chooseGuardian) as HTMLSelectElement;
+    expect(Array.from(picker.options).map((o) => o.textContent)).toContain("Somchai Sri");
+    expect(picker.value).toBe("par_1");
   });
 
-  it("saves the relationship on the link, not on the child", async () => {
+  /* The link is keyed by student, so swapping the parent is a delete and a
+     create rather than a field. */
+  it("moves the child to another parent", async () => {
+    const user = await openEditor();
+    await user.selectOptions(screen.getByLabelText(en.students.chooseGuardian), "par_2");
+    await save(user);
+
+    await waitFor(() => expect(link()?.["parent_id"]).toBe("par_2"));
+    expect(writes.some((w) => w.verb === "DELETE" && w.path === "student-parents/stu_1")).toBe(true);
+    expect(writes.some((w) => w.verb === "POST" && w.path === "student-parents")).toBe(true);
+  });
+
+  it("saves the relationship, which belongs to the link and nowhere else", async () => {
     const user = await openEditor();
     await user.selectOptions(screen.getByLabelText(en.students.relation), "Father");
     await save(user);
 
-    await waitFor(() => expect(db["student-parents"][0]["relationship_type"]).toBe("Father"));
+    await waitFor(() => expect(link()?.["relationship_type"]).toBe("Father"));
   });
 
-  it("changes a contact line that is already on file", async () => {
+  it("can detach a guardian without touching the parent", async () => {
     const user = await openEditor();
-    await retype(user, screen.getByLabelText(en.common.phone), "0899999999");
+    await user.selectOptions(screen.getByLabelText(en.students.chooseGuardian), "");
     await save(user);
 
-    await waitFor(() => expect(contactValue("phone")).toBe("0899999999"));
-  });
-
-  /* No LINE ID on file, so there is no row to change — one has to be made. */
-  it("adds a contact line the family did not have", async () => {
-    const user = await openEditor();
-    await retype(user, screen.getByLabelText(en.common.lineId), "@malee");
-    await save(user);
-
-    await waitFor(() => expect(contactValue("line_id")).toBe("@malee"));
-    expect(writes.some((w) => w.verb === "POST" && w.path === "parent-contacts")).toBe(true);
-  });
-
-  /* `parent_contact.value` is required, so a blank one is a row the backend
-     refuses — and a blank phone number reads at the desk as "we have one". */
-  it("removes a contact line that was cleared rather than blanking it", async () => {
-    const user = await openEditor();
-    await retype(user, screen.getByLabelText(en.common.email), "");
-    await save(user);
-
-    await waitFor(() => expect(contactValue("email")).toBeUndefined());
-    expect(writes.some((w) => w.verb === "DELETE" && w.path === "parent-contacts/pct_2")).toBe(true);
-  });
-
-  it("leaves alone what was not touched", async () => {
-    const user = await openEditor();
-    await retype(user, screen.getByLabelText(en.common.phone), "0899999999");
-    await save(user);
-
-    await waitFor(() => expect(contactValue("phone")).toBe("0899999999"));
-    /* The email and the name were not edited, so nothing was written for them. */
-    expect(writes.some((w) => w.path === "parent-contacts/pct_2")).toBe(false);
-    expect(writes.some((w) => w.path === "parents/par_1")).toBe(false);
-  });
-
-  it("saves the child and the guardian together", async () => {
-    const user = await openEditor();
-    await retype(user, screen.getByLabelText(en.students.fullName), "Anong Sriwongse");
-    await retype(user, screen.getByLabelText(en.common.phone), "0899999999");
-    await save(user);
-
-    await waitFor(() => expect(db.students[0]["name"]).toBe("Anong Sriwongse"));
-    expect(contactValue("phone")).toBe("0899999999");
+    await waitFor(() => expect(link()).toBeUndefined());
+    /* The parent is still on file — they have their own record and possibly
+       other children. */
+    expect(db.parents).toHaveLength(2);
   });
 });
 
-/* Fields with nothing behind them are worse than fields that fail to save:
-   they invite an edit the console was never going to keep. */
-describe("the fields that were never real", () => {
-  it("no longer offers a course picker that discards the choice", async () => {
+describe("the parent's own details", () => {
+  it("cannot be edited from the child's page", async () => {
     await openEditor();
-    expect(screen.queryByLabelText(en.common.class)).toBeNull();
-    /* It says where the answer actually lives instead. */
-    expect(screen.getByText(en.students.courseOnEnrolments)).toBeTruthy();
+    /* Their name, phone, email and LINE ID were all inputs here. The only
+       name field left is the child's own. */
+    expect(screen.queryByLabelText(en.common.name)).toBeNull();
+    expect(screen.queryByLabelText(en.common.phone)).toBeNull();
+    expect(screen.queryByLabelText(en.common.email)).toBeNull();
+    expect(screen.queryByLabelText(en.common.lineId)).toBeNull();
   });
 
-  it("no longer offers Branch or Membership", async () => {
-    await openEditor();
-    expect(screen.queryByLabelText(en.common.branch)).toBeNull();
-    expect(screen.queryByLabelText(en.students.membership)).toBeNull();
+  it("says where they are changed, and goes there", async () => {
+    const user = await openEditor();
+    expect(screen.getByText(en.students.parentDetailsOnParents)).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: /Malee Sri/ }));
+    expect(push).toHaveBeenCalledWith("/parents?id=par_1");
   });
 
-  /* `toStudents` sets this to "" every time and there is no column to write
-     it to, so the box was always empty and always stayed empty. */
-  it("no longer offers the student their own LINE ID", async () => {
+  it("shows them, so the desk can see what it is not editing", async () => {
     await openEditor();
-    /* Only the guardian's remains. */
-    expect(screen.getAllByLabelText(en.common.lineId)).toHaveLength(1);
+    expect(screen.getByText("0801111111")).toBeTruthy();
+  });
+
+  it("is left alone by a save", async () => {
+    const user = await openEditor();
+    await user.selectOptions(screen.getByLabelText(en.students.relation), "Father");
+    await save(user);
+
+    await waitFor(() => expect(link()?.["relationship_type"]).toBe("Father"));
+    expect(writes.some((w) => w.path.startsWith("parents/"))).toBe(false);
+    expect(writes.some((w) => w.path.startsWith("parent-contacts"))).toBe(false);
+  });
+});
+
+/* A refused write used to close the form and put a toast in the corner —
+   four seconds of something you may not be looking at, after which the screen
+   shows the old values back and looks exactly like a save that worked. */
+describe("a save that fails", () => {
+  it("keeps the form open instead of closing as though it worked", async () => {
+    refuseStudentWrite = "the backend said no";
+    const user = await openEditor();
+    await save(user);
+
+    await waitFor(() => expect(screen.getByLabelText(en.students.dateOfBirth)).toBeTruthy());
+  });
+
+  it("writes what went wrong on the form", async () => {
+    refuseStudentWrite = "the backend said no";
+    const user = await openEditor();
+    await save(user);
+
+    await waitFor(() => expect(screen.getByText(/the backend said no/)).toBeTruthy());
+  });
+
+  it("closes on a save that works", async () => {
+    const user = await openEditor();
+    await save(user);
+
+    await waitFor(() => expect(screen.queryByLabelText(en.students.dateOfBirth)).toBeNull());
   });
 });

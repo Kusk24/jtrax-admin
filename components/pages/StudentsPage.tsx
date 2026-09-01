@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { ApiError } from "@/lib/api";
 import { generateTempPassword } from "@/lib/credentials";
 import { type Student } from "@/lib/data";
 import { useData } from "@/components/DataProvider";
@@ -18,6 +19,8 @@ import {
   ConfirmDeleteModal,
   ConfirmModal,
   CrudFormModal,
+  ErrorNote,
+  errorText,
   RowActions,
   type CrudField,
   type CrudValues,
@@ -61,6 +64,22 @@ const RELATION_OPTIONS = ["Mother", "Father", "Guardian"];
    comment warned that a mismatched list would "silently move them to the first
    option on save" — which is what the whole card was doing, to six fields at
    once, because nothing it collected was written at all. */
+
+/**
+ * What the server said, with the status it said it with.
+ *
+ * `errorText` alone gives the message, which is usually enough — but a refusal
+ * reported from another machine is not something anyone can reproduce from
+ * "could not save", and the number is what separates "you are not allowed" from
+ * "that field does not exist" from "the backend is down". This is the string
+ * the office reads out when a save will not take.
+ */
+function saveFailureText(e: unknown, fallback: string): string {
+  const text = errorText(e, fallback);
+  const status = e instanceof ApiError ? e.status : 0;
+  return status ? `${text} (${status})` : text;
+}
+
 
 /* Credit reads as a warning before it reads as a number, so the chip is
    coloured by how close to empty the balance is — shared by both views. */
@@ -138,7 +157,6 @@ function StudentDetail({
   const t = useTranslations("students");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
-  const { showError } = useErrorToast();
   const [tab, setTab] = useState<DetailTab>("Overview");
   const [editing, setEditing] = useState(startEditing);
   const [draft, setDraft] = useState<Student>(student);
@@ -147,6 +165,10 @@ function StudentDetail({
   const [deleting, setDeleting] = useState(false);
   const [guardianId, setGuardianId] = useState("");
   const [guardianRelation, setGuardianRelation] = useState(RELATION_OPTIONS[0]);
+  /* Shown on the form itself rather than in a toast, and it keeps the form
+     open — see the Save button. */
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const router = useRouter();
 
   function setField<K extends keyof Student>(key: K, value: Student[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
@@ -154,61 +176,34 @@ function StudentDetail({
   const { raw, batch, create, update, remove } = useData();
 
   /**
-   * The rows behind the guardian card, so the form can write to them.
+   * Writes the link between this child and their guardian — which parent, and
+   * how they are related. Nothing about the parent themselves.
    *
-   * A guardian is a person with their own record, shared with their other
-   * children — not four columns on the student. Saving them means the parent
-   * row, the link that carries the relationship, and one `parent_contact` row
-   * per way of reaching them. The card showed all of it and wrote none of it;
-   * these are the ids that make it real.
+   * A parent is their own record, shared with their other children. Editing
+   * their name or phone number from a child's page edits a person nobody is
+   * looking at, and quietly changes what the *sibling's* page says too. Those
+   * details are on the Parents screen, on their own page, where changing them
+   * is visibly changing them. This is the half that genuinely belongs to the
+   * child: whose child they are.
    */
-  const guardian = useMemo(() => {
-    const link = raw.studentParents.find((sp) => String(sp["student_id"]) === student.id);
-    if (!link) return null;
-    const parentId = String(link["parent_id"]);
-    const contacts = raw.parentContacts.filter((pc) => String(pc["parent_id"]) === parentId);
-    const rowFor = (type: string) => contacts.find((pc) => String(pc["contact_type"]) === type);
-    return {
-      parentId,
-      phone: rowFor("phone"),
-      email: rowFor("email"),
-      lineId: rowFor("line_id"),
-    };
-  }, [raw.studentParents, raw.parentContacts, student.id]);
-
-  /**
-   * Writes the guardian card: their name, the relationship, and the three
-   * contact lines.
-   *
-   * Only what changed, because each of these is a separate request and most
-   * edits touch one field. A cleared line is deleted rather than blanked —
-   * `parent_contact.value` is required, so an empty one is a row the backend
-   * refuses, and a blank phone number reads at the desk as "we have one".
-   */
-  async function saveGuardian(next: Student) {
-    if (!guardian) return;
-    const name = next.parentName.trim();
-    if (name && name !== "—" && name !== student.parentName) {
-      await update("parents", guardian.parentId, { name });
-    }
-    if (next.parentRelation !== student.parentRelation) {
-      await update("student-parents", student.id, { relationship_type: next.parentRelation });
-    }
-    for (const [type, typed, row] of [
-      ["phone", next.parentPhone, guardian.phone],
-      ["email", next.parentEmail, guardian.email],
-      ["line_id", next.parentLineId, guardian.lineId],
-    ] as const) {
-      const wanted = typed.trim();
-      const current = row ? String(row["value"] ?? "") : "";
-      if (wanted === current) continue;
-      if (row) {
-        const id = String(row["parent_contact_id"]);
-        if (wanted) await update("parent-contacts", id, { value: wanted });
-        else await remove("parent-contacts", id);
-      } else if (wanted) {
-        await create("parent-contacts", { parent_id: guardian.parentId, contact_type: type, value: wanted });
+  async function saveGuardianLink(next: Student) {
+    const chosen = next.parentId;
+    const before = student.parentId;
+    if (chosen === before) {
+      if (chosen && next.parentRelation !== student.parentRelation) {
+        await update("student-parents", student.id, { relationship_type: next.parentRelation });
       }
+      return;
+    }
+    /* The link is keyed by student, so there is at most one and swapping it is
+       a delete and a create rather than a field. */
+    if (before) await remove("student-parents", student.id);
+    if (chosen) {
+      await create("student-parents", {
+        student_id: student.id,
+        parent_id: chosen,
+        relationship_type: next.parentRelation || RELATION_OPTIONS[0],
+      });
     }
   }
 
@@ -690,39 +685,84 @@ function StudentDetail({
               </div>
             </Card>
 
+            {/* A parent is their own record, shared with their other children.
+                Editing their name or phone number from here would be editing a
+                person through one of their children — and the same details are
+                on the Parents screen, on their own page, where a change is
+                visibly a change to *them*. So this card chooses which parent,
+                and how they are related to this child; both of those are facts
+                about the link, and this is the only place they live. Their
+                details are shown, read-only, with the way to change them. */}
             <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <SectionTitle>{t("parentSection")}</SectionTitle>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <div>
-                  <label style={labelStyle} htmlFor="ed-pname">{tCommon("name")}</label>
-                  <input id="ed-pname" value={draft.parentName} onChange={(e) => setField("parentName", e.target.value)} style={fieldStyle} />
+                  <label style={labelStyle} htmlFor="ed-pguardian">{t("chooseGuardian")}</label>
+                  <select
+                    id="ed-pguardian"
+                    value={draft.parentId}
+                    onChange={(e) => setField("parentId", e.target.value)}
+                    style={selectStyle}
+                  >
+                    <option value="">{t("noGuardianOption")}</option>
+                    {guardianOptions.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label style={labelStyle} htmlFor="ed-prel">{t("relation")}</label>
-                  <select id="ed-prel" value={draft.parentRelation} onChange={(e) => setField("parentRelation", e.target.value)} style={selectStyle}>
+                  <select
+                    id="ed-prel"
+                    value={draft.parentRelation}
+                    disabled={!draft.parentId}
+                    onChange={(e) => setField("parentRelation", e.target.value)}
+                    style={{ ...selectStyle, opacity: draft.parentId ? 1 : 0.6 }}
+                  >
                     {RELATION_OPTIONS.map((r) => (
                       <option key={r} value={r}>{r}</option>
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label style={labelStyle} htmlFor="ed-pphone">{tCommon("phone")}</label>
-                  <input id="ed-pphone" value={draft.parentPhone} onChange={(e) => setField("parentPhone", e.target.value)} style={fieldStyle} />
-                </div>
-                <div>
-                  <label style={labelStyle} htmlFor="ed-pmail">{tCommon("email")}</label>
-                  <input id="ed-pmail" type="email" value={draft.parentEmail} onChange={(e) => setField("parentEmail", e.target.value)} style={fieldStyle} />
-                </div>
-                <div>
-                  <label style={labelStyle} htmlFor="ed-pline">{tCommon("lineId")}</label>
-                  <input id="ed-pline" value={draft.parentLineId} onChange={(e) => setField("parentLineId", e.target.value)} style={fieldStyle} />
-                </div>
+
+                {draft.parentId === student.parentId && hasGuardian && (
+                  <>
+                    <InfoGrid
+                      rows={[
+                        { label: tCommon("phone"), value: student.parentPhone || "—" },
+                        { label: tCommon("email"), value: student.parentEmail || "—" },
+                        { label: tCommon("lineId"), value: student.parentLineId || "—" },
+                      ]}
+                    />
+                    <p style={{ margin: 0, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
+                      {t("parentDetailsOnParents")}
+                    </p>
+                    <button
+                      type="button"
+                      className="jt-btn-ghost"
+                      style={{ ...secondaryButtonStyle, alignSelf: "flex-start" }}
+                      onClick={() => router.push(`/parents?id=${encodeURIComponent(student.parentId)}`)}
+                    >
+                      <Icon name="parents" size={14} /> {t("openParent", { name: student.parentName })}
+                    </button>
+                  </>
+                )}
               </div>
             </Card>
           </div>
 
+          {/* Whatever the server actually said, on the form, beside the button
+              that failed — not a generic "could not save" four seconds long in
+              a corner. */}
+          {saveError && <ErrorNote>{saveError}</ErrorNote>}
+
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-            <button type="button" className="jt-btn-ghost" style={secondaryButtonStyle} onClick={() => setEditing(false)}>
+            <button
+              type="button"
+              className="jt-btn-ghost"
+              style={secondaryButtonStyle}
+              onClick={() => { setSaveError(null); setEditing(false); }}
+            >
               {tCommon("cancel")}
             </button>
             <ActionButton
@@ -731,21 +771,26 @@ function StudentDetail({
               disabled={!draft.name.trim()}
               busyLabel={tCommon("saving")}
               onClick={async () => {
-                /* The child and their guardian in one act: up to six writes
-                   across four tables, and unbatched each one reloads every
-                   collection. Correcting a family's phone number should not
-                   cost six full refreshes. */
-                await batch(async () => {
-                  await onSave(draft);
-                  try {
-                    await saveGuardian(draft);
-                  } catch (e) {
-                    /* Named separately from the student's own save: "could not
-                       save" while the name and date of birth went through is
-                       worse than saying which half failed. */
-                    showError(t("guardianSaveFailed"), e);
-                  }
-                });
+                setSaveError(null);
+                try {
+                  /* The child and their guardian link in one act, so a
+                     correction costs one refetch rather than three. */
+                  await batch(async () => {
+                    await onSave(draft);
+                    await saveGuardianLink(draft);
+                  });
+                } catch (e) {
+                  /* The form stays open, with what went wrong written on it.
+                     It used to close either way and put a toast in the corner,
+                     which is four seconds of something you may not be looking
+                     at — after which the screen shows the old values back and
+                     is indistinguishable from a save that worked. "I changed
+                     it and it did not change" is what that looks like from the
+                     desk, and it is not a thing the office should have to
+                     diagnose. */
+                  setSaveError(saveFailureText(e, tCommon("saveFailed")));
+                  return;
+                }
                 setEditing(false);
               }}
             >
@@ -1912,19 +1957,19 @@ export function StudentsPage({
           }}
           onBack={() => setView({ kind: "list" })}
           onSave={async (next) => {
-            try {
-              await update("students", next.id, {
-                name: next.name,
-                /* Normalised on the way out too, so a row that arrived in some
-                   other shape leaves in the one every reader can handle. */
-                date_of_birth: toDateInput(next.dateOfBirth) || null,
-                current_level: next.level,
-                current_school: next.school.trim() || null,
-                fide_id: next.fideId.trim() || null,
-              });
-            } catch (e) {
-              showError(tCommon("saveFailed"), e);
-            }
+            /* Deliberately not caught here. It used to be, with a toast — so a
+               refused write closed the form and looked exactly like a save
+               that worked. The card shows the failure itself now, and can only
+               do that if it is told. */
+            await update("students", next.id, {
+              name: next.name,
+              /* Normalised on the way out too, so a row that arrived in some
+                 other shape leaves in the one every reader can handle. */
+              date_of_birth: toDateInput(next.dateOfBirth) || null,
+              current_level: next.level,
+              current_school: next.school.trim() || null,
+              fide_id: next.fideId.trim() || null,
+            });
           }}
           onDelete={(id, alsoParent) =>
             /* One request: the backend removes the attendance, credits,

@@ -31,6 +31,10 @@ export type Student = {
   school: string;
   /** Their FIDE ID, which is how an arbiter's standings name them. */
   fideId: string;
+  /** The guardian's own `parent_id`, or "" when nobody is linked. The student
+      card chooses *which* parent; their details belong to them, on the Parents
+      screen. */
+  parentId: string;
   parentName: string;
   parentRelation: string;
   parentPhone: string;

@@ -394,7 +394,9 @@
     "moveAmount": "Credits to add",
     "moveOverrideNote": "Entered by hand — the conversion works out to {credits} credits.",
     "courseOnEnrolments": "Which course this child is in is set on the Enrolments tab, which carries their credits across with them.",
-    "guardianSaveFailed": "The child was saved, but their guardian's details could not be. Please try again."
+    "noGuardianOption": "No guardian",
+    "parentDetailsOnParents": "A parent is their own record, shared with their other children. Their name and contact details are changed on the Parents screen.",
+    "openParent": "Open {name} on Parents"
   },
   "parents": {
     "title": "Parents",

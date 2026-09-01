@@ -73,7 +73,9 @@ export function SectionRouter({
         />
       );
     case "parents":
-      return <ParentsPage />;
+      /* Keyed so arriving from a second child's page opens *their* guardian
+         rather than keeping the first one on screen. */
+      return <ParentsPage key={detailId ?? "list"} detailId={detailId} />;
     case "payment":
       /* Keyed so arriving for a second student opens the form for them rather
          than keeping the first one's draft. */

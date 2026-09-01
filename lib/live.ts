@@ -162,6 +162,7 @@ export function toStudents(c: LiveCollections): Student[] {
       level: s(st, "current_level") || "—",
       school: s(st, "current_school"),
       fideId: s(st, "fide_id"),
+      parentId: parent ? s(parent, "parent_id") : "",
       parentName: parent ? s(parent, "name") : "—",
       parentRelation: link ? s(link, "relationship_type") || "Guardian" : "—",
       parentPhone: contact("phone"),
