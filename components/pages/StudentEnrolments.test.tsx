@@ -47,6 +47,9 @@ const raw = {
   classes: [
     { class_id: "beg", name: "Beginner" },
     { class_id: "int", name: "Intermediate" },
+    /* Somewhere to move to. Anong is in Beginner and Intermediate, so Advanced
+       is the only course a change can offer them. */
+    { class_id: "adv", name: "Advanced" },
     { class_id: "gone", name: "Saturday Camp", archived_at: "2026-02-01" },
   ],
   classSessions: [],
@@ -113,12 +116,23 @@ async function openStudent(user: ReturnType<typeof userEvent.setup>, name: strin
   await user.click(screen.getByText(name));
 }
 
-/** The enrolment row for a class, on the open detail page. */
+/**
+ * The enrolment row for a class, on the open detail page.
+ *
+ * Found by walking up from the name to the element that holds the row's
+ * buttons, rather than by a fixed number of `parentElement` steps — the name
+ * gained a "Moved from …" line beneath it when Change course landed, and a
+ * count of levels would have silently started returning the wrong element.
+ */
 function enrolmentRow(className: string): HTMLElement {
   const heading = screen.getByText("Enrolments");
   const card = heading.closest("div")!.parentElement!;
   const name = within(card).getAllByText(className)[0];
-  return name.parentElement as HTMLElement;
+  let node: HTMLElement | null = name.parentElement;
+  while (node && node !== card && node.querySelectorAll("button").length === 0) {
+    node = node.parentElement;
+  }
+  return (node ?? name.parentElement) as HTMLElement;
 }
 
 beforeEach(() => {
@@ -211,7 +225,9 @@ describe("filtering the roster by class", () => {
   it("offers the live classes with how many are in each", () => {
     renderList();
     const labels = Array.from(filter().options).map((o) => o.textContent);
-    expect(labels).toEqual(["All Courses", "Beginner (2)", "Intermediate (2)"]);
+    /* Advanced is live and has nobody in it — a course the academy runs is a
+       filter you can pick even when it is empty. */
+    expect(labels).toEqual(["All Courses", "Beginner (2)", "Intermediate (2)", "Advanced (0)"]);
   });
 
   it("does not offer a class the academy has retired", () => {
@@ -330,5 +346,182 @@ describe("moving credits", () => {
       raw.classes.pop();
       raw.enrollments.pop();
     }
+  });
+});
+
+/**
+ * Changing course.
+ *
+ * Moving a child up a level was two acts done by hand — withdraw, then
+ * remember to enrol them again — and the result was two unrelated rows: a
+ * Withdrawn enrolment in the old course and an Active one in the new, with
+ * nothing saying the second happened because of the first. Months later, "why
+ * did this child stop attending Beginner" could not be told apart from "they
+ * left the academy".
+ */
+describe("changing course", () => {
+  const changeButton = (className: string) =>
+    within(enrolmentRow(className)).getByRole("button", { name: `Change ${className} to another course` });
+
+  async function openChange(user: ReturnType<typeof userEvent.setup>, who = "Anong", from = "Beginner") {
+    await openStudent(user, who);
+    await user.click(changeButton(from));
+  }
+  const confirmChange = () => screen.getByRole("button", { name: "Change course", hidden: true });
+
+  it("is offered on a course the child is in", async () => {
+    const user = renderList();
+    await openStudent(user, "Anong");
+    expect(changeButton("Beginner")).toBeDefined();
+  });
+
+  /* A course they already left is not one they can move out of. */
+  it("is not offered on a course already left", async () => {
+    const user = renderList();
+    await openStudent(user, "Boon");
+    expect(within(enrolmentRow("Beginner")).queryByRole("button", { name: /Change/ })).toBeNull();
+  });
+
+  /* Moving them into a course they already attend would make a second
+     enrolment for the same pair — two balances and two rosters for one child
+     in one room. Anong is in Beginner and Intermediate, so neither is offered. */
+  it("does not offer a course they are already in", async () => {
+    const user = renderList();
+    await openChange(user);
+    const options = Array.from(
+      (screen.getByLabelText("Move them to") as HTMLSelectElement).options,
+    ).map((o) => o.textContent);
+    expect(options).not.toContain("Intermediate");
+    expect(options).not.toContain("Beginner");
+  });
+
+  it("does not offer a retired course", async () => {
+    const user = renderList();
+    await openChange(user);
+    const options = Array.from(
+      (screen.getByLabelText("Move them to") as HTMLSelectElement).options,
+    ).map((o) => o.textContent);
+    expect(options).not.toContain("Saturday Camp");
+  });
+
+  it("writes the new enrolment with the course they came from", async () => {
+    {
+      const user = renderList();
+      await openChange(user);
+      await user.selectOptions(screen.getByLabelText("Move them to"), "adv");
+      await user.click(confirmChange());
+
+      expect(create).toHaveBeenCalledWith(
+        "enrollments",
+        expect.objectContaining({ student_id: "anong", class_id: "adv", moved_from_class_id: "beg" }),
+      );
+    }
+  });
+
+  /* The outgoing entry gives the old row a ledger, so it is withdrawn and
+     kept rather than deleted — a receipt still points at it. */
+  it("leaves the old course behind it", async () => {
+    {
+      const user = renderList();
+      await openChange(user);
+      await user.selectOptions(screen.getByLabelText("Move them to"), "adv");
+      await user.click(confirmChange());
+
+      expect(update).toHaveBeenCalledWith("enrollments", "e_anong_beg", { status: "Withdrawn" });
+    }
+  });
+
+  /* An hour paid for is an hour owed whichever course it is taken in. */
+  it("carries the balance across, as a matching pair of entries", async () => {
+    {
+      const user = renderList();
+      await openChange(user);
+      await user.selectOptions(screen.getByLabelText("Move them to"), "adv");
+      await user.click(confirmChange());
+
+      const ledger = create.mock.calls.filter(([path]) => path === "credit-transactions");
+      expect(ledger).toHaveLength(2);
+      expect(ledger[0][1]).toMatchObject({ enrollment_id: "e_anong_beg", amount: -8 });
+      expect(ledger[1][1]).toMatchObject({ enrollment_id: "e_new" });
+    }
+  });
+
+  it("leaves the balance where it is when the office unticks it", async () => {
+    {
+      const user = renderList();
+      await openChange(user);
+      await user.selectOptions(screen.getByLabelText("Move them to"), "adv");
+      await user.click(screen.getByRole("checkbox"));
+      await user.click(confirmChange());
+
+      expect(create.mock.calls.filter(([path]) => path === "credit-transactions")).toHaveLength(0);
+      /* The row still carries the term that was already spent against it, so
+         it is withdrawn and kept — unticking moves no credits, it does not
+         make the history go away. */
+      expect(update).toHaveBeenCalledWith("enrollments", "e_anong_beg", { status: "Withdrawn" });
+    }
+  });
+
+  /* Chai was enrolled by mistake this morning: nothing bought, nothing
+     attended, so there is no balance to decide about. */
+  it("asks nothing about credits when there are none", async () => {
+    {
+      const user = renderList();
+      await openChange(user, "Chai");
+      expect(screen.queryByRole("checkbox")).toBeNull();
+    }
+  });
+
+  it("shows where a moved enrolment came from", async () => {
+    raw.enrollments.push({
+      enrollment_id: "e_chai_int", student_id: "chai", class_id: "int",
+      status: "Active", enrolled_date: "2026-09-01", moved_from_class_id: "beg",
+    });
+    try {
+      const user = renderList();
+      await openStudent(user, "Chai");
+      expect(screen.getByText("Moved from Beginner")).toBeDefined();
+    } finally {
+      raw.enrollments.pop();
+    }
+  });
+});
+
+/**
+ * Deleting an enrolment.
+ *
+ * Distinct from withdrawing, which is what happens to a term that really ran.
+ * This is for a row that should never have existed — a course picked by
+ * mistake — and it is offered only where nothing hangs off it, because
+ * `credit_transaction` and `payment` both point at the row and the database
+ * refuses to drop one they reference.
+ */
+describe("deleting an enrolment", () => {
+  const deleteButton = (className: string) =>
+    within(enrolmentRow(className)).queryByRole("button", { name: `Delete the enrolment in ${className}` });
+
+  it("is offered on a row nothing has happened against", async () => {
+    const user = renderList();
+    await openStudent(user, "Chai");
+    expect(deleteButton("Beginner")).not.toBeNull();
+  });
+
+  /* Eight credits and a term of attendance hang off Anong's Beginner row. */
+  it("is not offered where a ledger points at the row", async () => {
+    const user = renderList();
+    await openStudent(user, "Anong");
+    expect(deleteButton("Beginner")).toBeNull();
+  });
+
+  it("removes the row outright", async () => {
+    const user = renderList();
+    await openStudent(user, "Chai");
+    await user.click(deleteButton("Beginner")!);
+    /* The detail header carries a Delete for the child themselves; the
+       dialog's confirm is the one that mounted last. */
+    await user.click(screen.getAllByRole("button", { name: "Delete", hidden: true }).at(-1)!);
+
+    expect(remove).toHaveBeenCalledWith("enrollments", "e_chai_beg");
+    expect(update).not.toHaveBeenCalled();
   });
 });

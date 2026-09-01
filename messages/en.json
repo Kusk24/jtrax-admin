@@ -397,7 +397,20 @@
     "noGuardianOption": "No guardian",
     "parentDetailsOnParents": "A parent is their own record, shared with their other children. Their name and contact details are changed on the Parents screen.",
     "openParent": "Open {name} on Parents",
-    "notStored": "The server accepted the change but did not store it: {fields}. Please send this message to whoever maintains JTrax."
+    "notStored": "The server accepted the change but did not store it: {fields}. Please send this message to whoever maintains JTrax.",
+    "changeCourse": "Change course",
+    "changeCourseFrom": "Change {className} to another course",
+    "changeCourseTitle": "Change course",
+    "changeCourseIntro": "Moves this child out of {className} and into another course, as one act — so the new enrolment records where they came from.",
+    "changeCourseTo": "Move them to",
+    "changeCourseConfirm": "Change course",
+    "changeCourseCarry": "Carry their {credits} credits across",
+    "changeCourseNoRate": "No priced package says what an hour costs in one of these courses, so the credits move across as they stand. Correct the figure on the Credits tab if the two courses are priced differently.",
+    "changeCourseKeepsOld": "{className} stays on file as Withdrawn, because there is a ledger behind it.",
+    "changeCourseDropsOld": "{className} is removed, because nothing has been bought or attended against it.",
+    "movedFromCourse": "Moved from {className}",
+    "enrolmentIn": "the enrolment in {className}",
+    "deleteEnrolmentFrom": "Delete the enrolment in {className}"
   },
   "parents": {
     "title": "Parents",
