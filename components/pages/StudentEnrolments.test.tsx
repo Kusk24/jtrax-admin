@@ -493,3 +493,93 @@ describe("deleting an enrolment", () => {
     expect(screen.getByText(en.students.enrolmentDeleteNote)).toBeDefined();
   });
 });
+
+/**
+ * The rate the conversion is computed against.
+ *
+ * Reported: moving credits from a dearer course to a cheaper one stopped
+ * producing more credits. The arithmetic was never wrong — `planTransfer` is
+ * covered in lib/credit-transfer.test.ts and converts in the right direction —
+ * what was wrong is which package it was handed for the course being moved
+ * *into*.
+ *
+ * A course being moved into has no enrolment yet, so its rate was asked for
+ * with an empty enrolment id. `String(p["enrollment_id"] ?? "") === ""` is
+ * true of every payment that has no enrolment, so the lookup matched the first
+ * *detached* payment on file and returned whatever package that one bought.
+ *
+ * Detached payments are not rare: deleting an enrolment nulls `enrollment_id`
+ * on its payments so the receipt survives, which means the longer the office
+ * tidies the list, the more wrong the next conversion gets.
+ */
+describe("what a change converts against", () => {
+  const amountField = () => screen.getByLabelText("Credits to add") as HTMLInputElement;
+
+  async function openChangeFrom(user: ReturnType<typeof userEvent.setup>, who: string, from: string) {
+    await openStudent(user, who);
+    await user.click(
+      within(enrolmentRow(from)).getByRole("button", { name: `Change ${from} to another course` }),
+    );
+  }
+
+  /* Beginner is 12,000 for 20 (600 an hour), Intermediate 20,000 for 20
+     (1,000 an hour). Four credits of Intermediate is 4,000 baht, which buys
+     6.67 hours of Beginner — 6.5 on the half-credit grid. More hours for the
+     same money, which is the whole point of converting rather than copying a
+     number across. */
+  it("gives more credits moving to a cheaper course", async () => {
+    raw.enrollments.length = 0;
+    raw.enrollments.push({
+      enrollment_id: "e_solo_int", student_id: "chai", class_id: "int",
+      status: "Active", enrolled_date: "2026-02-01",
+    });
+    raw.creditTransactions.push({
+      credit_transaction_id: "t_solo", enrollment_id: "e_solo_int", amount: 4,
+      transaction_date: "2026-02-01", transaction_type: "purchase",
+    });
+    try {
+      const user = renderList();
+      await openChangeFrom(user, "Chai", "Intermediate");
+      await user.selectOptions(screen.getByLabelText("Move them to"), "beg");
+      expect(amountField().value).toBe("6.5");
+    } finally {
+      raw.creditTransactions.pop();
+      raw.enrollments.length = 0;
+      raw.enrollments.push(...ENROLMENTS);
+    }
+  });
+
+  /* The regression, exactly: a payment left over from a deleted enrolment must
+     not become the price list for a course it was never bought for. */
+  it("is not thrown off by a payment detached from a deleted enrolment", async () => {
+    raw.enrollments.length = 0;
+    raw.enrollments.push({
+      enrollment_id: "e_solo_int", student_id: "chai", class_id: "int",
+      status: "Active", enrolled_date: "2026-02-01",
+    });
+    raw.creditTransactions.push({
+      credit_transaction_id: "t_solo", enrollment_id: "e_solo_int", amount: 4,
+      transaction_date: "2026-02-01", transaction_type: "purchase",
+    });
+    /* Bought for Intermediate, and its enrolment has since been deleted. */
+    raw.payments.push({
+      payment_id: "pay_orphan", enrollment_id: null, student_id: "chai",
+      credit_package_id: "p_int", status: "Paid", final_amount: 20000,
+    });
+    try {
+      const user = renderList();
+      await openChangeFrom(user, "Chai", "Intermediate");
+      await user.selectOptions(screen.getByLabelText("Move them to"), "beg");
+      /* Beginner's own package, not the orphan's. Reading the orphan would
+         price Beginner at 1,000 an hour and hand back 4 credits instead of
+         6.5 — the "moving to a cheaper course gave fewer credits" the office
+         reported. */
+      expect(amountField().value).toBe("6.5");
+    } finally {
+      raw.payments.pop();
+      raw.creditTransactions.pop();
+      raw.enrollments.length = 0;
+      raw.enrollments.push(...ENROLMENTS);
+    }
+  });
+});
