@@ -290,23 +290,42 @@ function StudentDetail({
         .filter((e) => String(e["student_id"]) === student.id)
         .map((e) => {
           const cls = raw.classes.find((c) => String(c["class_id"]) === String(e["class_id"]));
+          /* Where they came from, if they came from anywhere. A retired course
+             still resolves — that is why the column points at the class rather
+             than at an enrolment, which can be deleted. */
+          const fromId = String(e["moved_from_class_id"] ?? "");
+          const fromCls = fromId
+            ? raw.classes.find((c) => String(c["class_id"]) === fromId)
+            : undefined;
           return {
             id: String(e["enrollment_id"]),
             classId: String(e["class_id"] ?? ""),
             className: cls ? String(cls["name"] ?? "") : "—",
             enrolledDate: String(e["enrolled_date"] ?? ""),
             status: String(e["status"] ?? ""),
+            movedFrom: fromCls ? String(fromCls["name"] ?? "") : "",
           };
         }),
     [raw.enrollments, raw.classes, student.id],
   );
 
-  /* Enrolling and leaving are the two things that happen to an enrolment, and
-     both have their own button. There is no third one that edits the row in
-     place: retyping the class on an enrolment with a term of credits behind it
-     moves that ledger to a class it was never spent in, and flipping its
-     status by hand is a withdrawal that skips everything a withdrawal does. */
+  /* Four things happen to an enrolment, and each has its own button.
+     Deliberately none of them edits the row in place: retyping the course on
+     an enrolment with a term of credits behind it moves that ledger to a
+     course it was never spent in, and flipping its status by hand is a
+     withdrawal that skips everything a withdrawal does.
+       · Add      — a course they are joining
+       · Change   — leaving one for another, which is one act, not two
+       · Withdraw — leaving, and staying left
+       · Delete   — undoing a row that should never have existed */
   const [addingEnrolment, setAddingEnrolment] = useState(false);
+  const [changing, setChanging] = useState<(typeof enrolments)[number] | null>(null);
+  const [changeTo, setChangeTo] = useState("");
+  /* Whether the balance follows them. Ticked by default: an hour paid for is
+     an hour owed whichever course it is taken in, and leaving it behind on a
+     course the child has left is how a balance goes missing. */
+  const [changeCarry, setChangeCarry] = useState(true);
+  const [deletingEnrolment, setDeletingEnrolment] = useState<(typeof enrolments)[number] | null>(null);
   const [enrolmentValues, setEnrolmentValues] = useState<CrudValues>({});
   const [withdrawing, setWithdrawing] = useState<(typeof enrolments)[number] | null>(null);
   const [movingCredits, setMovingCredits] = useState<(typeof enrolments)[number] | null>(null);
@@ -395,6 +414,95 @@ function StudentDetail({
   async function leaveClass(id: string) {
     if (enrolmentHasHistory(id)) await update("enrollments", id, { status: "Withdrawn" });
     else await remove("enrollments", id);
+  }
+
+  /**
+   * The courses a child could move to from this enrolment.
+   *
+   * Every course the academy still runs, less the one they are moving out of
+   * and any they are already in — moving a child to a course they attend would
+   * make a second enrolment for the same pair, and then two balances and two
+   * rosters for one child in one room.
+   */
+  function changeTargets(from: (typeof enrolments)[number]) {
+    const alreadyIn = new Set(
+      enrolments.filter((e) => isActiveEnrolment({ status: e.status })).map((e) => e.classId),
+    );
+    return liveClasses({ classes: raw.classes })
+      .map((c) => ({ id: String(c["class_id"]), name: String(c["name"] ?? "") }))
+      .filter((c) => c.id !== from.classId && !alreadyIn.has(c.id));
+  }
+
+  /**
+   * Moves a child from one course to another as a single act.
+   *
+   * Order matters. The new enrolment is written first because the credits need
+   * somewhere to land; then the balance is converted across at the two
+   * courses' rates ([[credits-follow-the-child]]); then the old enrolment is
+   * left. Leaving it last also decides its fate correctly: the outgoing ledger
+   * entry gives it a history, so `leaveClass` withdraws it and keeps the
+   * record instead of deleting a row a receipt still points at.
+   *
+   * The new row carries `moved_from_class_id`. Without it a move is a
+   * Withdrawn row and an Active row with nothing joining them, and "why did
+   * this child stop attending Beginner" cannot be told apart from "they left
+   * the academy" — least of all when there was no balance to move and the
+   * ledger notes that used to be the only trace were never written.
+   */
+  async function changeCourse(
+    from: (typeof enrolments)[number],
+    toClassId: string,
+    carryCredits: boolean,
+  ) {
+    const target = changeTargets(from).find((c) => c.id === toClassId);
+    if (!target) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const balance = balanceOf(from.id);
+    const expiry = expiryOf(from.id);
+    const plan = planTransfer({
+      balance,
+      from: rateOf(from.id, from.classId),
+      /* No enrolment id: it does not exist yet, so the rate is the course's
+         own package price, which is what a new balance there would cost. */
+      to: rateOf("", target.id),
+    });
+
+    await batch(async () => {
+      const created = await create("enrollments", {
+        student_id: student.id,
+        class_id: target.id,
+        enrolled_date: today,
+        moved_from_class_id: from.classId,
+      });
+      const toId = String(created["enrollment_id"]);
+
+      if (carryCredits && balance > 0) {
+        /* Two entries, as in every other transfer: the ledger has to show
+           where the hours went and where they came from, or a balance appears
+           to have changed on its own. Where no rate says what an hour is worth
+           in either course, the balance moves across unconverted rather than
+           being dropped — the office can correct a number, but it cannot
+           recover credits the console quietly declined to carry. */
+        const landing = plan.ok ? plan.credits : roundCredits(balance);
+        await create("credit-transactions", {
+          enrollment_id: from.id,
+          transaction_type: "manual_adjustment",
+          amount: -balance,
+          transaction_date: today,
+          notes: t("movedOut", { className: target.name }),
+        });
+        await create("credit-transactions", {
+          enrollment_id: toId,
+          transaction_type: "manual_adjustment",
+          amount: landing,
+          transaction_date: today,
+          ...(expiry ? { expiry_date: expiry } : {}),
+          notes: t("movedIn", { className: from.className }),
+        });
+      }
+
+      await leaveClass(from.id);
+    });
   }
 
   const enrolmentFields: CrudField[] = useMemo(
@@ -1012,8 +1120,17 @@ function StudentDetail({
                   }}
                 >
                   <ClassDot color={classDotColor(e.className)} />
-                  <span style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 14.5, fontWeight: 600 }}>
-                    {e.className}
+                  <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+                    <span style={{ fontFamily: FONT, fontSize: 14.5, fontWeight: 600 }}>
+                      {e.className}
+                    </span>
+                    {/* The whole point of recording it: months later, this is
+                        what separates a child who moved up from one who left. */}
+                    {e.movedFrom && (
+                      <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+                        {t("movedFromCourse", { className: e.movedFrom })}
+                      </span>
+                    )}
                   </span>
                   <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
                     {fmtDate(e.enrolledDate)}
@@ -1043,6 +1160,25 @@ function StudentDetail({
                       {t("moveCredits", { credits: fmtCredits(balanceOf(e.id)) })}
                     </button>
                   )}
+                  {/* Moving up a level is one act, not "withdraw, then
+                      remember to enrol them again" — which left two unrelated
+                      rows and no way to tell a child who moved from one who
+                      left. Only from a course they are actually in. */}
+                  {isActiveEnrolment({ status: e.status }) && changeTargets(e).length > 0 && (
+                    <button
+                      type="button"
+                      className="jt-btn-ghost"
+                      aria-label={t("changeCourseFrom", { className: e.className })}
+                      style={{ ...secondaryButtonStyle, padding: "5px 11px", fontSize: 12.5 }}
+                      onClick={() => {
+                        setChangeTo(changeTargets(e)[0]?.id ?? "");
+                        setChangeCarry(true);
+                        setChanging(e);
+                      }}
+                    >
+                      {t("changeCourse")}
+                    </button>
+                  )}
                   {/* Only on a class they are actually in. Withdrawing from
                       one they already left is a dialog that asks a question
                       with no answer. */}
@@ -1060,6 +1196,29 @@ function StudentDetail({
                       onClick={() => setWithdrawing(e)}
                     >
                       {t("withdraw")}
+                    </button>
+                  )}
+                  {/* Deleting is for a row that should not exist — a course
+                      picked by mistake this morning. It is offered only where
+                      nothing hangs off it, because `credit_transaction` and
+                      `payment` both point at this row and the database refuses
+                      to drop one they reference. An enrolment with a term
+                      behind it is withdrawn, which is the honest word for what
+                      happened to it. */}
+                  {!enrolmentHasHistory(e.id) && (
+                    <button
+                      type="button"
+                      className="jt-btn-ghost"
+                      aria-label={t("deleteEnrolmentFrom", { className: e.className })}
+                      style={{
+                        ...secondaryButtonStyle,
+                        padding: "5px 11px",
+                        fontSize: 12.5,
+                        color: COLORS.danger,
+                      }}
+                      onClick={() => setDeletingEnrolment(e)}
+                    >
+                      {tCommon("delete")}
                     </button>
                   )}
                 </div>
@@ -1261,6 +1420,125 @@ function StudentDetail({
           onConfirm={() => leaveClass(withdrawing.id)}
         />
       )}
+
+      {deletingEnrolment && (
+        <ConfirmDeleteModal
+          what={t("enrolmentIn", { className: deletingEnrolment.className })}
+          note={t("enrolmentDeleteNote")}
+          onClose={() => setDeletingEnrolment(null)}
+          onConfirm={() => remove("enrollments", deletingEnrolment.id)}
+        />
+      )}
+
+      {changing && (() => {
+        const targets = changeTargets(changing);
+        const target = targets.find((c) => c.id === changeTo) ?? targets[0];
+        const balance = balanceOf(changing.id);
+        const plan = target
+          ? planTransfer({
+              balance,
+              from: rateOf(changing.id, changing.classId),
+              to: rateOf("", target.id),
+            })
+          : ({ ok: false, problem: "rateUnknown" } as const);
+        return (
+          <Modal
+            title={t("changeCourseTitle")}
+            width={460}
+            onClose={() => setChanging(null)}
+            footer={
+              <>
+                <button
+                  type="button"
+                  className="jt-btn-ghost"
+                  style={secondaryButtonStyle}
+                  onClick={() => setChanging(null)}
+                >
+                  {tCommon("cancel")}
+                </button>
+                <ActionButton
+                  className="jt-btn-primary"
+                  style={primaryButtonStyle}
+                  disabled={!target}
+                  busyLabel={tCommon("saving")}
+                  onClick={async () => {
+                    if (!target) return;
+                    await changeCourse(changing, target.id, changeCarry);
+                    setChanging(null);
+                  }}
+                >
+                  {t("changeCourseConfirm")}
+                </ActionButton>
+              </>
+            }
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
+                {t("changeCourseIntro", { className: changing.className })}
+              </p>
+              <div>
+                <label style={labelStyle} htmlFor="ch-target">{t("changeCourseTo")}</label>
+                <select
+                  id="ch-target"
+                  value={target?.id ?? ""}
+                  onChange={(e) => setChangeTo(e.target.value)}
+                  style={selectStyle}
+                >
+                  {targets.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Only when there is a balance to decide about. A tick box over
+                  zero credits is a question with one answer. */}
+              {balance > 0 && (
+                <>
+                  <label
+                    style={{ display: "flex", alignItems: "flex-start", gap: 9, cursor: "pointer" }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={changeCarry}
+                      onChange={(e) => setChangeCarry(e.target.checked)}
+                      style={{ marginTop: 3, cursor: "pointer" }}
+                    />
+                    <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.text }}>
+                      {t("changeCourseCarry", { credits: fmtCredits(balance) })}
+                    </span>
+                  </label>
+                  {changeCarry && target && (
+                    <InfoGrid
+                      rows={[
+                        { label: t("moveFrom"), value: `${fmtCredits(balance)} · ${changing.className}` },
+                        {
+                          label: t("moveTo"),
+                          value: `${fmtCredits(plan.ok ? plan.credits : roundCredits(balance))} · ${target.name}`,
+                        },
+                      ]}
+                    />
+                  )}
+                  {changeCarry && !plan.ok && (
+                    /* No priced package on one side or the other, so there is
+                       no rate to convert at. The hours move across as they
+                       stand rather than being quietly dropped, and the office
+                       is told so it can correct the figure on the Credits tab. */
+                    <p style={{ margin: 0, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
+                      {t("changeCourseNoRate")}
+                    </p>
+                  )}
+                </>
+              )}
+
+              <p style={{ margin: 0, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
+                {enrolmentHasHistory(changing.id) || (changeCarry && balance > 0)
+                  ? t("changeCourseKeepsOld", { className: changing.className })
+                  : t("changeCourseDropsOld", { className: changing.className })}
+              </p>
+            </div>
+          </Modal>
+        );
+      })()}
 
       {tab === "Credits" && (
         <Card style={{ padding: 0, overflow: "hidden" }}>
