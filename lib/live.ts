@@ -150,7 +150,10 @@ export function toStudents(c: LiveCollections): Student[] {
       id: sid,
       name: s(st, "name"),
       email: s(st, "email"),
-      branch: "Bangkok",
+      /* Stored since 0024. Rows written before that migration backfilled to
+         Bangkok, which is where all of them are — it is the only branch the
+         academy has ever had. */
+      branch: s(st, "branch") || "Bangkok",
       className: cls ? s(cls, "name") : "—",
       credit,
       expires: fmtDate(expiry),
@@ -168,9 +171,6 @@ export function toStudents(c: LiveCollections): Student[] {
       parentPhone: contact("phone"),
       parentEmail: contact("email"),
       parentLineId: contact("line_id"),
-      parentLineIdNo: "",
-      studentLineId: "",
-      studentLineIdNo: "",
       membershipType: cls ? s(cls, "class_type") : "—",
       joinedDate: enr ? fmtDate(s(enr, "enrolled_date")) : "",
     };

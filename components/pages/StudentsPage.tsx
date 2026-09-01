@@ -56,6 +56,13 @@ const TEMPLATE = equalTemplate(5, 90);
 const VIEWS = ["list", "card"] as const;
 const ATTENDANCE_TEMPLATE = equalTemplate(2, 120);
 const CLASS_OPTIONS = ["Group Class", "Private Class", "Master Class", "Weekend Class"];
+
+/* One branch today, and the academy expects more. It is asked at registration
+   rather than after a second site exists, because reconstructing where every
+   child on the roster belongs is a job nobody will want then. Stored since
+   backend migration 0024 — the picker that used to be here had no column and
+   threw the answer away, which is why it was removed in #92. */
+const BRANCH_OPTIONS = ["Bangkok"];
 const STATUS_VALUES = ["Normal", "Low Credit", "Expiring", "Expired", "Inactive"] as const;
 const LEVEL_OPTIONS = ["Beginner", "Intermediate", "Advanced"];
 const RELATION_OPTIONS = ["Mother", "Father", "Guardian"];
@@ -78,6 +85,33 @@ function saveFailureText(e: unknown, fallback: string): string {
   const text = errorText(e, fallback);
   const status = e instanceof ApiError ? e.status : 0;
   return status ? `${text} (${status})` : text;
+}
+
+/**
+ * Which of the fields we just sent did not come back the way we sent them.
+ *
+ * A write is meant to fail loudly, and mostly it does — a refusal is a 4xx and
+ * says why. What no error can catch is a write that is *accepted* and does not
+ * take: a 200, an untouched row, and a screen that goes back to showing what
+ * it showed before. That is indistinguishable from a save that worked, and it
+ * is the only shape left that matches "I changed it and it did not change"
+ * after the refusals, the roles, the date format and the sleeping backend have
+ * all been ruled out.
+ *
+ * The backend answers a PATCH with the row it wrote, so the check is free:
+ * compare it against what was asked for. A column the response does not carry
+ * at all is named separately — that is a server that has never heard of the
+ * field, which is a different problem from one that ignored it.
+ */
+function disagreements(
+  sent: Record<string, string | null>,
+  written: Record<string, unknown>,
+): string[] {
+  const same = (a: unknown, b: unknown) => String(a ?? "") === String(b ?? "");
+  return Object.keys(sent).filter((key) => {
+    if (!(key in written)) return true;
+    return !same(sent[key], written[key]);
+  });
 }
 
 
@@ -662,6 +696,22 @@ function StudentDetail({
                     style={fieldStyle}
                   />
                 </div>
+                {/* Back, and this time with a column behind it. A child can
+                    move between sites, and the answer registration collects
+                    has to be correctable somewhere. */}
+                <div>
+                  <label style={labelStyle} htmlFor="ed-branch">{tCommon("branch")}</label>
+                  <select
+                    id="ed-branch"
+                    value={draft.branch}
+                    onChange={(e) => setField("branch", e.target.value)}
+                    style={selectStyle}
+                  >
+                    {BRANCH_OPTIONS.map((b) => (
+                      <option key={b} value={b}>{b}</option>
+                    ))}
+                  </select>
+                </div>
                 <div>
                   <label style={labelStyle} htmlFor="ed-level">{t("level")}</label>
                   <select id="ed-level" value={draft.level} onChange={(e) => setField("level", e.target.value)} style={selectStyle}>
@@ -820,8 +870,16 @@ function StudentDetail({
                 { label: t("membership"), value: student.membershipType },
                 { label: tCommon("email"), value: student.email || t("noAccountYet") },
                 { label: t("joined"), value: student.joinedDate },
-                { label: t("creditsExpire"), value: student.expires },
-                { label: tCommon("lineId"), value: student.studentLineId },
+                /* Credits expire and the student's LINE ID used to sit here.
+                   Neither is a fact about the child. An expiry belongs to the
+                   credits that were bought and is counted from the payment
+                   that bought them — one child can hold several with different
+                   dates, so a single row on their profile is at best the
+                   latest of them and at worst a number the desk plans around.
+                   It is on the Credits tab, per entry, where it means
+                   something. The LINE ID was never collected at registration
+                   and has no column: an empty row that no screen can ever
+                   fill. */
               ]}
             />
           </Card>
@@ -1320,6 +1378,7 @@ type Draft = {
      Beginner" beside imported ones that had both. */
   dateOfBirth: string;
   level: string;
+  branch: string;
   school: string;
   fideId: string;
   fideRating: string;
@@ -1339,6 +1398,7 @@ const EMPTY_DRAFT: Draft = {
   className: "Group Class",
   dateOfBirth: "",
   level: LEVEL_OPTIONS[0],
+  branch: BRANCH_OPTIONS[0],
   school: "",
   fideId: "",
   fideRating: "",
@@ -1559,6 +1619,14 @@ function AddStudentWizard({
                 <select id="w-level" value={draft.level} onChange={(e) => set("level", e.target.value)} style={selectStyle}>
                   {LEVEL_OPTIONS.map((l) => (
                     <option key={l} value={l}>{l}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle} htmlFor="w-branch">{tCommon("branch")}</label>
+                <select id="w-branch" value={draft.branch} onChange={(e) => set("branch", e.target.value)} style={selectStyle}>
+                  {BRANCH_OPTIONS.map((b) => (
+                    <option key={b} value={b}>{b}</option>
                   ))}
                 </select>
               </div>
@@ -1859,6 +1927,7 @@ export function StudentsPage({
              the desk typed the child's school and their FIDE ID into a box
              that forgot them the moment it closed. */
           current_school: draft.school.trim() || null,
+          branch: draft.branch || BRANCH_OPTIONS[0],
           fide_id: draft.fideId.trim() || null,
           fide_rating: draft.fideRating ? Number(draft.fideRating) : null,
         });
@@ -1961,15 +2030,19 @@ export function StudentsPage({
                refused write closed the form and looked exactly like a save
                that worked. The card shows the failure itself now, and can only
                do that if it is told. */
-            await update("students", next.id, {
+            const sent: Record<string, string | null> = {
               name: next.name,
               /* Normalised on the way out too, so a row that arrived in some
                  other shape leaves in the one every reader can handle. */
               date_of_birth: toDateInput(next.dateOfBirth) || null,
               current_level: next.level,
               current_school: next.school.trim() || null,
+              branch: next.branch || null,
               fide_id: next.fideId.trim() || null,
-            });
+            };
+            const written = await update("students", next.id, sent);
+            const wrong = disagreements(sent, written);
+            if (wrong.length) throw new Error(t("notStored", { fields: wrong.join(", ") }));
           }}
           onDelete={(id, alsoParent) =>
             /* One request: the backend removes the attendance, credits,
