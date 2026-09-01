@@ -8,7 +8,7 @@ import { generateTempPassword } from "@/lib/credentials";
 import { type Student } from "@/lib/data";
 import { useData } from "@/components/DataProvider";
 import { fmtCredits, fmtDate, fmtTHB, isActiveEnrolment, liveClasses, practiceStrip, toDateInput } from "@/lib/live";
-import { planTransfer, roundCredits, type CreditRate } from "@/lib/credit-transfer";
+import { creditsForValue, planTransfer, ratePerCredit, roundCredits, valueOfLots, type CreditRate } from "@/lib/credit-transfer";
 import { opensCreate } from "@/lib/quick-actions";
 import { classFilterOptions, classNamesOfStudent, isInClass } from "@/lib/student-classes";
 import { Icon } from "@/lib/icons";
@@ -369,11 +369,42 @@ function StudentDetail({
     [raw.creditTransactions, student.id],
   );
   const looseBalance = looseCredits.reduce((sum, tx) => sum + Number(tx["amount"] ?? 0), 0);
-  /* The course they were bought for, so the conversion has a rate to work
-     from. The newest entry wins where a child has held credits from two. */
-  const looseClassId = String(looseCredits.at(-1)?.["class_id"] ?? "");
+
+  /**
+   * What the loose hours are worth, each entry priced in its own course.
+   *
+   * A balance held outside any course is rarely one purchase. Twenty hours of
+   * Beginner, moved to Intermediate at a different rate, then both enrolments
+   * deleted, leaves three entries — +20 Beginner, −20 Beginner, +16.5
+   * Intermediate — and the *number* left is 16.5 while what it is worth is
+   * Intermediate money.
+   *
+   * This used to read the course off `looseCredits.at(-1)`, one arbitrary
+   * entry standing in for the whole balance. Rejoining Beginner then priced
+   * Intermediate hours at Beginner's rate and handed back the same 16.5
+   * instead of the larger number that money buys.
+   */
+  const looseLots = useMemo(
+    () =>
+      looseCredits.map((tx) => ({
+        credits: Number(tx["amount"] ?? 0),
+        rate: rateOf("", String(tx["class_id"] ?? "")),
+      })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [looseCredits, raw.creditPackages],
+  );
+  const looseValue = valueOfLots(looseLots);
+
+  /* Named where they all came from one course; a balance built from several
+     has no single course to name, and saying one of them would be the same
+     mistake in prose. */
+  const looseClassIds = Array.from(
+    new Set(looseCredits.map((tx) => String(tx["class_id"] ?? "")).filter(Boolean)),
+  );
   const looseClassName =
-    raw.classes.find((c) => String(c["class_id"]) === looseClassId)?.["name"]?.toString() ?? "";
+    looseClassIds.length === 1
+      ? raw.classes.find((c) => String(c["class_id"]) === looseClassIds[0])?.["name"]?.toString() ?? ""
+      : "";
   const looseExpiry =
     looseCredits.map((tx) => String(tx["expiry_date"] ?? "")).filter(Boolean).sort().at(-1) ?? "";
   /* Where loose hours can go: a course the child is actually in. */
@@ -392,15 +423,30 @@ function StudentDetail({
     const target = enrolments.find((e) => e.id === toEnrolmentId);
     if (!target || looseBalance <= 0) return;
     const today = new Date().toISOString().slice(0, 10);
+
+    /* One settling entry per course, not one for the lot. A single −16.5 row
+       would have to name a course, and naming any of them re-tells the lie
+       this change exists to stop: it would be Intermediate hours filed under
+       Beginner, priceable at the wrong rate for ever after. Netting each
+       course separately keeps every row worth exactly what it says. */
+    const byCourse = new Map<string, number>();
+    for (const tx of looseCredits) {
+      const classId = String(tx["class_id"] ?? "");
+      byCourse.set(classId, (byCourse.get(classId) ?? 0) + Number(tx["amount"] ?? 0));
+    }
+
     await batch(async () => {
-      await create("credit-transactions", {
-        student_id: student.id,
-        ...(looseClassId ? { class_id: looseClassId } : {}),
-        transaction_type: "manual_adjustment",
-        amount: -looseBalance,
-        transaction_date: today,
-        notes: t("movedOut", { className: target.className }),
-      });
+      for (const [classId, net] of byCourse) {
+        if (net === 0) continue;
+        await create("credit-transactions", {
+          student_id: student.id,
+          ...(classId ? { class_id: classId } : {}),
+          transaction_type: "manual_adjustment",
+          amount: -net,
+          transaction_date: today,
+          notes: t("movedOut", { className: target.className }),
+        });
+      }
       await create("credit-transactions", {
         enrollment_id: target.id,
         student_id: student.id,
@@ -1446,18 +1492,13 @@ function StudentDetail({
 
       {claiming && (() => {
         const target = activeEnrolmentTargets.find((e) => e.id === claimTo) ?? activeEnrolmentTargets[0];
-        const plan = target
-          ? planTransfer({
-              balance: looseBalance,
-              /* No enrolment on either side of this one: the loose hours are
-                 priced by the course they were bought for, which the entry
-                 still carries, and the destination by the course it is going
-                 into. */
-              from: rateOf("", looseClassId),
-              to: rateOf(target.id, target.classId),
-            })
-          : ({ ok: false, problem: "rateUnknown" } as const);
-        const suggested = String(plan.ok ? plan.credits : roundCredits(looseBalance));
+        /* Money in, hours out. Each loose entry is priced in its own course
+           and the total is converted into the one being joined — which is the
+           only sum that survives a balance built from more than one course. */
+        const toRate = target ? rateOf(target.id, target.classId) : null;
+        const landing =
+          looseValue !== null && toRate ? creditsForValue(looseValue, toRate) : null;
+        const suggested = String(landing ?? roundCredits(looseBalance));
         const amountText = moveAmount ?? suggested;
         const amount = Number(amountText);
         const amountOk = amountText.trim() !== "" && Number.isFinite(amount) && amount > 0;
@@ -1533,26 +1574,22 @@ function StudentDetail({
                 </div>
               </div>
 
-              {plan.ok ? (
+              {/* The sum in full. What is preserved is the money, so the money
+                  is the line in the middle — a family shown only two credit
+                  counts has no way to see why one is larger. */}
+              {landing !== null && looseValue !== null ? (
                 <InfoGrid
                   rows={[
-                    {
-                      label: t("moveFrom"),
-                      value: t("creditsAtRate", {
-                        credits: fmtCredits(looseBalance),
-                        className: looseClassName || t("looseNoCourse"),
-                        rate: fmtTHB(plan.fromRate),
-                      }),
-                    },
+                    { label: t("moveFrom"), value: fmtCredits(looseBalance) },
+                    { label: t("moveValue"), value: fmtTHB(looseValue) },
                     {
                       label: t("moveTo"),
                       value: t("creditsAtRate", {
                         credits: fmtCredits(roundCredits(amount) || 0),
                         className: target!.className,
-                        rate: fmtTHB(plan.toRate),
+                        rate: fmtTHB(ratePerCredit(toRate!) ?? 0),
                       }),
                     },
-                    { label: t("moveValue"), value: fmtTHB(plan.value) },
                   ]}
                 />
               ) : (

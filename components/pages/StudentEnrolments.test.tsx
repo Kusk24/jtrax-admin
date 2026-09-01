@@ -713,3 +713,136 @@ describe("credits with no course", () => {
     }
   });
 });
+
+/**
+ * The reported round trip.
+ *
+ * Bought twenty hours of Beginner, moved to Intermediate and became 16.5, had
+ * every course deleted, then rejoined Beginner — and was handed 16.5 back
+ * instead of the hours that money is worth.
+ *
+ * The balance is three entries by then: +20 Beginner, −20 Beginner, +16.5
+ * Intermediate. The console read the course off whichever one happened to be
+ * last, so Intermediate hours were priced as Beginner ones and the conversion
+ * became a no-op. The number left and what it is worth are different
+ * questions.
+ */
+describe("credits that came from more than one course", () => {
+  const BOUGHT_BEGINNER = { credit_transaction_id: "l1", enrollment_id: null, student_id: "chai", class_id: "beg", amount: 20, transaction_date: "2026-01-06", transaction_type: "purchase" };
+  const LEFT_BEGINNER = { credit_transaction_id: "l2", enrollment_id: null, student_id: "chai", class_id: "beg", amount: -20, transaction_date: "2026-05-01", transaction_type: "manual_adjustment" };
+  const LANDED_INTERMEDIATE = { credit_transaction_id: "l3", enrollment_id: null, student_id: "chai", class_id: "int", amount: 16.5, transaction_date: "2026-05-01", transaction_type: "manual_adjustment" };
+
+  /**
+   * `order` is the point of the parameter, not a detail.
+   *
+   * The old code read the whole balance's course off `looseCredits.at(-1)`, so
+   * the answer depended on which row the API happened to return last — and the
+   * office's 16.5 is what comes back when that row is a Beginner one. A
+   * balance is worth what it is worth; nothing about it may depend on the
+   * order rows arrive in.
+   */
+  function afterAMoveAndTwoDeletes(order: Row[] = [BOUGHT_BEGINNER, LANDED_INTERMEDIATE, LEFT_BEGINNER]) {
+    raw.enrollments.length = 0;
+    /* Rejoined Beginner, with nothing bought against it yet. */
+    raw.enrollments.push({
+      enrollment_id: "e_chai_back", student_id: "chai", class_id: "beg",
+      status: "Active", enrolled_date: "2026-09-02",
+    });
+    raw.creditTransactions.push(...order);
+  }
+  function restore() {
+    raw.creditTransactions.splice(-3, 3);
+    raw.enrollments.length = 0;
+    raw.enrollments.push(...ENROLMENTS);
+  }
+
+  it("shows the number left, which is the Intermediate hours", async () => {
+    afterAMoveAndTwoDeletes();
+    try {
+      const user = renderList();
+      await openStudent(user, "Chai");
+      expect(screen.getByText(/16.5 credits not in any course/)).toBeDefined();
+    } finally {
+      restore();
+    }
+  });
+
+  /* 16.5 hours of Intermediate at 1,000 is 16,500, which buys 27.5 hours of
+     Beginner at 600. Not 16.5 — that was Intermediate hours priced as
+     Beginner ones, and it is what the office reported. */
+  it("converts on what the hours are worth, not on the count", async () => {
+    afterAMoveAndTwoDeletes();
+    try {
+      const user = renderList();
+      await openStudent(user, "Chai");
+      await user.click(screen.getByRole("button", { name: "Move into a course" }));
+      const amount = (screen.getByLabelText("Credits to add") as HTMLInputElement).value;
+      expect(amount).toBe("27.5");
+      /* 16.5 is what pricing Intermediate hours as Beginner ones gives back —
+         the office's report, exactly. */
+      expect(amount).not.toBe("16.5");
+    } finally {
+      restore();
+    }
+  });
+
+  /* The reported failure, reproduced: with a Beginner row last, reading the
+     course off the final entry priced the whole balance as Beginner and handed
+     back the same number. The sum must not know what order rows arrived in. */
+  it.each([
+    ["Intermediate last", [BOUGHT_BEGINNER, LEFT_BEGINNER, LANDED_INTERMEDIATE]],
+    ["Beginner last", [BOUGHT_BEGINNER, LANDED_INTERMEDIATE, LEFT_BEGINNER]],
+    ["purchase last", [LANDED_INTERMEDIATE, LEFT_BEGINNER, BOUGHT_BEGINNER]],
+  ])("gives the same answer with the rows in any order (%s)", async (_name, order) => {
+    afterAMoveAndTwoDeletes([...(order as Row[])]);
+    try {
+      const user = renderList();
+      await openStudent(user, "Chai");
+      await user.click(screen.getByRole("button", { name: "Move into a course" }));
+      expect((screen.getByLabelText("Credits to add") as HTMLInputElement).value).toBe("27.5");
+    } finally {
+      restore();
+    }
+  });
+
+  /* No single course to name, so it does not name one — saying "bought for
+     Beginner" over a balance that is really Intermediate money is the same
+     mistake told in prose. */
+  it("does not claim the balance came from one course", async () => {
+    afterAMoveAndTwoDeletes();
+    try {
+      const user = renderList();
+      await openStudent(user, "Chai");
+      expect(screen.queryByText(/Bought for/)).toBeNull();
+    } finally {
+      restore();
+    }
+  });
+
+  /* One settling entry per course. A single −16.5 row would have to name a
+     course, and naming any of them files Intermediate hours under Beginner —
+     priceable at the wrong rate for ever after. */
+  it("settles each course separately, so every entry stays worth what it says", async () => {
+    afterAMoveAndTwoDeletes();
+    try {
+      const user = renderList();
+      await openStudent(user, "Chai");
+      await user.click(screen.getByRole("button", { name: "Move into a course" }));
+      await user.click(screen.getAllByRole("button", { name: "Move into a course", hidden: true }).at(-1)!);
+
+      const written = create.mock.calls
+        .filter(([path]) => path === "credit-transactions")
+        .map(([, body]) => body);
+      /* Beginner nets to zero and is skipped; Intermediate settles at −16.5;
+         Beginner receives 27.5. */
+      expect(written).toHaveLength(2);
+      expect(written[0]).toMatchObject({ class_id: "int", amount: -16.5 });
+      expect(written[0]).not.toHaveProperty("enrollment_id");
+      expect(written[1]).toMatchObject({
+        enrollment_id: "e_chai_back", class_id: "beg", amount: 27.5,
+      });
+    } finally {
+      restore();
+    }
+  });
+});

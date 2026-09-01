@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { planTransfer, ratePerCredit, roundCredits, roundToHalfCredit } from "./credit-transfer";
+import {
+  creditsForValue,
+  planTransfer,
+  ratePerCredit,
+  roundCredits,
+  roundToHalfCredit,
+  valueOfLots,
+} from "./credit-transfer";
 
 /* Two classes' own packages. Beginner sells 20 credits for 12,000 — 600 an
    hour — and Intermediate 20 for 20,000, which is 1,000. Nothing here is a
@@ -164,5 +171,62 @@ describe("the conversion lands on the half-credit grid", () => {
   it("is not fooled by floating-point dust", () => {
     expect(roundToHalfCredit(16.500000000000004)).toBe(16.5);
     expect(roundToHalfCredit(0.1 + 0.2 + 0.2)).toBe(0.5);
+  });
+});
+
+/**
+ * A balance held outside any course.
+ *
+ * Reported: a child bought twenty hours of Beginner, moved to Intermediate and
+ * became 16.5, had every course deleted, then rejoined Beginner — and was
+ * given 16.5 back instead of the ~19.5 their money was worth. The console read
+ * the course off whichever ledger entry happened to be last, so Intermediate
+ * hours were priced as Beginner ones and the conversion was a no-op.
+ *
+ * The number left is one question; what it is worth is another, and only the
+ * second one survives a move.
+ */
+describe("a balance made of several courses", () => {
+  /* The reported ledger exactly: bought 20 of Beginner, moved out, landed as
+     16.5 of Intermediate, then both enrolments deleted. */
+  const lots = [
+    { credits: 20, rate: BEGINNER },
+    { credits: -20, rate: BEGINNER },
+    { credits: 16.5, rate: INTERMEDIATE },
+  ];
+
+  it("is worth what the surviving hours cost, not what the count suggests", () => {
+    /* 16.5 hours of Intermediate at 1,000 = 16,500. The two Beginner entries
+       cancel, as they should — the move already spent them. */
+    expect(valueOfLots(lots)).toBe(16500);
+  });
+
+  it("buys back the hours that money is worth in a cheaper course", () => {
+    /* 16,500 at Beginner's 600 an hour is 27.5 — more hours, because the
+       course is cheaper. Not 16.5, which is what pricing Intermediate hours as
+       Beginner ones produced. */
+    expect(creditsForValue(valueOfLots(lots)!, BEGINNER)).toBe(27.5);
+  });
+
+  it("is not simply the number of credits left", () => {
+    const left = lots.reduce((sum, l) => sum + l.credits, 0);
+    expect(left).toBe(16.5);
+    expect(creditsForValue(valueOfLots(lots)!, BEGINNER)).not.toBe(left);
+  });
+
+  /* Round-tripping through a dearer course and back should return roughly what
+     was bought — the only loss is the half-credit rounding of each hop. */
+  it("returns close to the original purchase after a round trip", () => {
+    const there = creditsForValue(valueOfLots([{ credits: 20, rate: BEGINNER }])!, INTERMEDIATE)!;
+    const back = creditsForValue(valueOfLots([{ credits: there, rate: INTERMEDIATE }])!, BEGINNER)!;
+    expect(back).toBe(20);
+  });
+
+  it("has no value when one of its lots has no rate", () => {
+    expect(valueOfLots([...lots, { credits: 3, rate: { credits: 0, price: 0 } }])).toBeNull();
+  });
+
+  it("cannot be converted into a course with no rate", () => {
+    expect(creditsForValue(16500, { credits: 20, price: 0 })).toBeNull();
   });
 });

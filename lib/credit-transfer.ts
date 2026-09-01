@@ -108,3 +108,51 @@ export function planTransfer(opts: {
     value,
   };
 }
+
+/**
+ * One part of a loose balance: some hours, and the course they were bought in.
+ *
+ * A balance held outside any course is rarely one purchase. A child who bought
+ * twenty hours of Beginner, moved to Intermediate at a different rate, and then
+ * had both enrolments deleted holds three entries: +20 Beginner, −20 Beginner,
+ * +16.5 Intermediate. The *number* left is 16.5; what those 16.5 are worth
+ * depends on which course each entry was priced in, and the two are not the
+ * same question.
+ */
+export type CreditLot = { credits: number; rate: CreditRate };
+
+/**
+ * What a set of lots is worth, each priced in its own course.
+ *
+ * This is the thing that survives a move — the money — and summing the credit
+ * *counts* instead is how a balance silently changes value. Taking the whole
+ * balance to be one course's is worse: the console did that, reading the class
+ * off whichever entry happened to be last, so a child holding Intermediate
+ * hours converted into Beginner at Beginner's own rate and got the same number
+ * back rather than the larger one their money bought.
+ *
+ * Null when any lot has no rate. A total that quietly skipped an entry would
+ * convert a family's hours into fewer hours, and a wrong number that looks
+ * right is worse here than no number at all.
+ */
+export function valueOfLots(lots: CreditLot[]): number | null {
+  let total = 0;
+  for (const lot of lots) {
+    const rate = ratePerCredit(lot.rate);
+    if (rate === null) return null;
+    total += lot.credits * rate;
+  }
+  return total;
+}
+
+/**
+ * What that money buys in a course, on the half-credit grid.
+ *
+ * Same rounding as every other conversion — the academy charges in half hours,
+ * so a balance that cannot be spent down to zero is dust nobody can use.
+ */
+export function creditsForValue(value: number, to: CreditRate): number | null {
+  const rate = ratePerCredit(to);
+  if (rate === null) return null;
+  return roundToHalfCredit(value / rate);
+}
