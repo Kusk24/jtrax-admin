@@ -296,14 +296,18 @@ const contactPillStyle = {
 
 /* ------------------------------------------------------------------ list --- */
 
-export function ParentsPage() {
+/* `detailId` opens straight onto one parent. The student card sends the office
+   here to change a guardian's own details — a parent is their own record, and
+   editing one through a child's page edits a person nobody is looking at — so
+   the link has to land on them rather than on a list to search again. */
+export function ParentsPage({ detailId }: { detailId?: string }) {
   const t = useTranslations("parents");
   /* The temporary-password modal reuses the students namespace, which is where
      that string already lives. */
   const tStudents = useTranslations("students");
   const tCommon = useTranslations("common");
   const { parents, students, raw, loading, error, batch, create, update, remove, removePerson } = useData();
-  const [view, setView] = useState<View>({ kind: "list" });
+  const [view, setView] = useState<View>(detailId ? { kind: "detail", id: detailId } : { kind: "list" });
   const [mode, setMode] = useViewMode("parents", VIEWS);
   const [search, setSearch] = useState("");
   /* "" is "all", so the label can be localised without changing the compare. */
