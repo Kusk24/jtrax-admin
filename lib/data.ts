@@ -40,9 +40,10 @@ export type Student = {
   parentPhone: string;
   parentEmail: string;
   parentLineId: string;
-  parentLineIdNo: string;
-  studentLineId: string;
-  studentLineIdNo: string;
+  /* `parentLineIdNo`, `studentLineId` and `studentLineIdNo` used to sit here.
+     All three were set to "" on every row and had no column to come from, so
+     the screens that showed them showed an empty line the console could never
+     fill. A field nothing can populate is not data. */
   membershipType: string;
   joinedDate: string;
 };

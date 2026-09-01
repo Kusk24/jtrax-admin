@@ -15,10 +15,18 @@ import en from "@/messages/en.json";
 
 const db: Record<string, Record<string, unknown>[]> = {};
 const patches: Array<{ path: string; body: Record<string, unknown> }> = [];
+/* Makes the fake backend accept a write and quietly not perform it — a 200
+   over an untouched row, which is the one failure no error code reports. */
+let swallowWrites = false;
+/* Makes it answer without the column at all, the way a server that has never
+   heard of the field would. */
+let dropColumn = "";
 
 function reset() {
   for (const key of Object.keys(db)) delete db[key];
   patches.length = 0;
+  swallowWrites = false;
+  dropColumn = "";
   Object.assign(db, {
     students: [
       {
@@ -26,6 +34,7 @@ function reset() {
         name: "Anong Sri",
         date_of_birth: "2011-05-02",
         current_level: "Beginner",
+        branch: "Bangkok",
       },
     ],
     classes: [{ class_id: "cls_group", name: "Group Class", class_type: "Group" }],
@@ -47,8 +56,10 @@ vi.mock("@/lib/api", () => ({
       const row = (db[collection] ?? []).find((r) => Object.values(r).includes(id));
       /* The backend drops nulls rather than writing them; what matters here is
          that a real value arrives and sticks. */
-      if (row) Object.assign(row, body);
-      return row ?? {};
+      if (row && !swallowWrites) Object.assign(row, body);
+      const echoed: Record<string, unknown> = { ...(row ?? {}) };
+      if (dropColumn) delete echoed[dropColumn];
+      return echoed;
     },
     post: async () => ({}),
     del: async () => ({}),
@@ -138,5 +149,67 @@ describe("a child's date of birth", () => {
     await user.click(screen.getByRole("button", { name: en.common.save }));
 
     await waitFor(() => expect(screen.getByText(new RegExp(after))).toBeTruthy());
+  });
+});
+
+/**
+ * The failure no status code reports.
+ *
+ * A refusal is a 4xx and says why. A write that is *accepted* and does not take
+ * is a 200, an untouched row, and a screen that goes back to showing what it
+ * showed before — indistinguishable from a save that worked, and the only
+ * shape left that matches "I changed it and it did not change" once refusals,
+ * roles, the date format and a sleeping backend are ruled out.
+ *
+ * The backend answers a PATCH with the row it wrote, so the check is free.
+ */
+describe("a write the server accepts and does not perform", () => {
+  it("is reported instead of passing as a save", async () => {
+    swallowWrites = true;
+    const user = await openTheChild();
+    await user.click(screen.getByRole("button", { name: en.common.edit }));
+    await user.clear(dobField());
+    await user.type(dobField(), "2014-03-09");
+    await user.click(screen.getByRole("button", { name: en.common.save }));
+
+    await waitFor(() => expect(screen.getByText(/did not store it/)).toBeTruthy());
+    /* And it names the field, so the report says something useful. */
+    expect(screen.getByText(/date_of_birth/)).toBeTruthy();
+  });
+
+  it("keeps the form open so the typing is not lost", async () => {
+    swallowWrites = true;
+    const user = await openTheChild();
+    await user.click(screen.getByRole("button", { name: en.common.edit }));
+    await user.clear(dobField());
+    await user.type(dobField(), "2014-03-09");
+    await user.click(screen.getByRole("button", { name: en.common.save }));
+
+    await waitFor(() => expect(screen.getByText(/did not store it/)).toBeTruthy());
+    expect(dobField().value).toBe("2014-03-09");
+  });
+
+  /* A server that has never heard of the column is a different problem from
+     one that ignored it, and the office should not have to tell them apart. */
+  it("catches a column the server does not have at all", async () => {
+    dropColumn = "branch";
+    const user = await openTheChild();
+    await user.click(screen.getByRole("button", { name: en.common.edit }));
+    await user.clear(dobField());
+    await user.type(dobField(), "2014-03-09");
+    await user.click(screen.getByRole("button", { name: en.common.save }));
+
+    await waitFor(() => expect(screen.getByText(/branch/)).toBeTruthy());
+  });
+
+  it("stays quiet when the write really did take", async () => {
+    const user = await openTheChild();
+    await user.click(screen.getByRole("button", { name: en.common.edit }));
+    await user.clear(dobField());
+    await user.type(dobField(), "2014-03-09");
+    await user.click(screen.getByRole("button", { name: en.common.save }));
+
+    await waitFor(() => expect(screen.queryByLabelText(en.students.dateOfBirth)).toBeNull());
+    expect(screen.queryByText(/did not store it/)).toBeNull();
   });
 });

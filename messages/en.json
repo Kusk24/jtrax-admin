@@ -396,7 +396,8 @@
     "courseOnEnrolments": "Which course this child is in is set on the Enrolments tab, which carries their credits across with them.",
     "noGuardianOption": "No guardian",
     "parentDetailsOnParents": "A parent is their own record, shared with their other children. Their name and contact details are changed on the Parents screen.",
-    "openParent": "Open {name} on Parents"
+    "openParent": "Open {name} on Parents",
+    "notStored": "The server accepted the change but did not store it: {fields}. Please send this message to whoever maintains JTrax."
   },
   "parents": {
     "title": "Parents",
