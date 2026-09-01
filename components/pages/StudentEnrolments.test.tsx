@@ -18,9 +18,13 @@ import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
 
-const create = vi.fn(async () => ({ enrollment_id: "e_new" }));
-const update = vi.fn(async () => ({}));
-const remove = vi.fn(async () => undefined);
+/* Typed by their arguments, not just their return: the tests read
+   `create.mock.calls` to check which collection each write went to, and an
+   untyped mock makes those an empty tuple. */
+type Row = Record<string, unknown>;
+const create = vi.fn<(path: string, body: Row) => Promise<Row>>(async () => ({ enrollment_id: "e_new" }));
+const update = vi.fn<(path: string, id: string, body: Row) => Promise<Row>>(async () => ({}));
+const remove = vi.fn<(path: string, id: string) => Promise<void>>(async () => undefined);
 
 /* Anong is in two classes — the case the roster's single Class column cannot
    show and the class filter exists for. Boon has left Beginner for
@@ -31,7 +35,7 @@ const STUDENTS = [
   { id: "chai", name: "Chai", className: "Beginner", status: "Normal", branch: "Bangkok", credit: 0, parentPhone: "0803333333", parentName: "Wichai", level: "Beginner", expires: "" },
 ];
 
-const ENROLMENTS = [
+const ENROLMENTS: Row[] = [
   { enrollment_id: "e_anong_beg", student_id: "anong", class_id: "beg", status: "Active", enrolled_date: "2026-01-06" },
   { enrollment_id: "e_anong_int", student_id: "anong", class_id: "int", status: "Active", enrolled_date: "2026-05-04" },
   { enrollment_id: "e_boon_beg", student_id: "boon", class_id: "beg", status: "Withdrawn", enrolled_date: "2025-09-01" },
@@ -65,7 +69,7 @@ const raw = {
     { credit_package_id: "p_beg", class_id: "beg", credit_amount: 20, standard_price: 12000 },
     { credit_package_id: "p_int", class_id: "int", credit_amount: 20, standard_price: 20000 },
   ],
-  payments: [],
+  payments: [] as Row[],
   teachers: [],
   admins: [],
   accounts: [],
@@ -140,12 +144,23 @@ beforeEach(() => {
   update.mockClear();
   remove.mockClear();
 });
-
+/* The row carries exactly two actions now: move them somewhere else, or take
+   the record away. Withdraw is gone — the office asked for it to go, because
+   the only reason to end an enrolment without starting another is that the
+   record should not be there, and that is Delete. */
 describe("an enrolment row", () => {
-  it("offers Withdraw", async () => {
+  it("offers Change course and Delete", async () => {
     const user = renderList();
     await openStudent(user, "Anong");
-    expect(within(enrolmentRow("Beginner")).getByRole("button", { name: "Withdraw from Beginner" })).toBeDefined();
+    const row = enrolmentRow("Beginner");
+    expect(within(row).getByRole("button", { name: "Change Beginner to another course" })).toBeDefined();
+    expect(within(row).getByRole("button", { name: "Delete the enrolment in Beginner" })).toBeDefined();
+  });
+
+  it("no longer offers Withdraw", async () => {
+    const user = renderList();
+    await openStudent(user, "Anong");
+    expect(within(enrolmentRow("Beginner")).queryByRole("button", { name: /Withdraw/ })).toBeNull();
   });
 
   /* Retyping the class on a row with a term of credits behind it moves that
@@ -156,41 +171,21 @@ describe("an enrolment row", () => {
     expect(within(enrolmentRow("Beginner")).queryByRole("button", { name: "Edit Beginner" })).toBeNull();
   });
 
-  it("does not offer to withdraw from a class already left", async () => {
+  /* There is no moving out of a course they already left. */
+  it("does not offer Change on a course already left", async () => {
     const user = renderList();
     await openStudent(user, "Boon");
-    expect(within(enrolmentRow("Beginner")).queryByRole("button", { name: /Withdraw/ })).toBeNull();
-  });
-});
-
-describe("withdrawing", () => {
-  it("keeps the record and the ledger with it", async () => {
-    const user = renderList();
-    await openStudent(user, "Anong");
-    await user.click(within(enrolmentRow("Beginner")).getByRole("button", { name: "Withdraw from Beginner" }));
-    await user.click(screen.getByRole("button", { name: "Withdraw", hidden: true }));
-
-    /* Eight credits and a term of attendance hang off this row; deleting it
-       would take a receipt's meaning with it. */
-    expect(update).toHaveBeenCalledWith("enrollments", "e_anong_beg", { status: "Withdrawn" });
-    expect(remove).not.toHaveBeenCalled();
+    expect(within(enrolmentRow("Beginner")).queryByRole("button", { name: /Change/ })).toBeNull();
   });
 
-  it("removes one nothing has happened against", async () => {
+  /* Delete is the tidy-up, and the rows most in need of tidying are exactly
+     the ones a change leaves behind — each carrying the ledger entry that
+     moved its credits out. Hiding Delete where anything hung off the row hid
+     it on all of them. */
+  it("offers Delete on a course already left", async () => {
     const user = renderList();
-    await openStudent(user, "Chai");
-    await user.click(within(enrolmentRow("Beginner")).getByRole("button", { name: "Withdraw from Beginner" }));
-    await user.click(screen.getByRole("button", { name: "Withdraw", hidden: true }));
-
-    expect(remove).toHaveBeenCalledWith("enrollments", "e_chai_beg");
-    expect(update).not.toHaveBeenCalled();
-  });
-
-  it("says which of the two is about to happen", async () => {
-    const user = renderList();
-    await openStudent(user, "Chai");
-    await user.click(within(enrolmentRow("Beginner")).getByRole("button", { name: "Withdraw from Beginner" }));
-    expect(screen.getByText(en.students.enrolmentDeleteNote)).toBeDefined();
+    await openStudent(user, "Boon");
+    expect(within(enrolmentRow("Beginner")).getByRole("button", { name: "Delete the enrolment in Beginner" })).toBeDefined();
   });
 });
 
@@ -263,213 +258,150 @@ describe("filtering the roster by class", () => {
   });
 });
 
-/* Moving a balance between classes. The dialog computes the conversion, but
-   what is written is what is in the field — the office can type over it — and
-   the incoming entry carries an expiry, prefilled from the balance being
-   moved. It used to write none at all, so moved credits quietly stopped
-   expiring. */
-describe("moving credits", () => {
-  async function openMoveDialog(user: ReturnType<typeof userEvent.setup>) {
-    await openStudent(user, "Anong");
-    await user.click(screen.getByRole("button", { name: /Move 8 credits/ }));
-  }
-  const confirm = () => screen.getByRole("button", { name: "Move credits" });
-  const amountField = () => screen.getByLabelText("Credits to add") as HTMLInputElement;
-  const expiryField = () => screen.getByLabelText("Expires") as HTMLInputElement;
-  /* The mock is argless to vitest, so the call tuples need their real shape
-     back before the payloads can be read. */
-  const payloads = () =>
-    (create.mock.calls as unknown as [string, Record<string, unknown>][]).map((c) => c[1]);
-  const incomingEntry = () => payloads().find((p) => Number(p.amount) > 0)!;
-
-  it("writes the computed conversion, with the old balance's expiry", async () => {
-    const user = renderList();
-    await openMoveDialog(user);
-    /* 8 credits at ฿600 an hour are ฿4,800 — 4.8 hours at Intermediate's
-       ฿1,000, landed on the next half credit because a session costs 0.5 or
-       1 and nothing can spend a 0.3. The field starts on the sum's answer. */
-    expect(amountField().value).toBe("5");
-    expect(expiryField().value).toBe("2026-12-31");
-    await user.click(confirm());
-    expect(create).toHaveBeenCalledTimes(2);
-    expect(incomingEntry()).toMatchObject({
-      enrollment_id: "e_anong_int",
-      amount: 5,
-      expiry_date: "2026-12-31",
-    });
-  });
-
-  it("a hand-typed amount is what lands", async () => {
-    const user = renderList();
-    await openMoveDialog(user);
-    await user.clear(amountField());
-    await user.type(amountField(), "5");
-    await user.click(confirm());
-    expect(incomingEntry()).toMatchObject({ enrollment_id: "e_anong_int", amount: 5 });
-    /* The outgoing side always clears the whole balance, typed or not. */
-    const outgoing = payloads().find((p) => Number(p.amount) < 0)!;
-    expect(outgoing).toMatchObject({ enrollment_id: "e_anong_beg", amount: -8 });
-  });
-
-  it("the expiry can be changed before it moves", async () => {
-    const user = renderList();
-    await openMoveDialog(user);
-    await user.clear(expiryField());
-    await user.type(expiryField(), "2027-01-31");
-    await user.click(confirm());
-    expect(incomingEntry()).toMatchObject({ expiry_date: "2027-01-31" });
-  });
-
-  it("an emptied amount cannot be saved", async () => {
-    const user = renderList();
-    await openMoveDialog(user);
-    await user.clear(amountField());
-    expect((confirm() as HTMLButtonElement).disabled).toBe(true);
-  });
-
-  /* A class with no payment and no priced package has no rate. The automatic
-     path refuses to guess; a figure the office types is a decision, not a
-     guess, and goes through. */
-  it("still moves into a class with no rate, once an amount is typed", async () => {
-    raw.classes.push({ class_id: "priv", name: "Private Coaching" });
-    raw.enrollments.push({ enrollment_id: "e_anong_priv", student_id: "anong", class_id: "priv", status: "Active", enrolled_date: "2026-07-01" });
-    try {
-      const user = renderList();
-      await openMoveDialog(user);
-      await user.selectOptions(screen.getByLabelText("Move them to"), "e_anong_priv");
-      expect(amountField().value).toBe("");
-      expect((confirm() as HTMLButtonElement).disabled).toBe(true);
-      await user.type(amountField(), "6");
-      await user.click(confirm());
-      expect(incomingEntry()).toMatchObject({ enrollment_id: "e_anong_priv", amount: 6 });
-    } finally {
-      raw.classes.pop();
-      raw.enrollments.pop();
-    }
-  });
-});
 
 /**
  * Changing course.
  *
- * Moving a child up a level was two acts done by hand — withdraw, then
- * remember to enrol them again — and the result was two unrelated rows: a
- * Withdrawn enrolment in the old course and an Active one in the new, with
- * nothing saying the second happened because of the first. Months later, "why
- * did this child stop attending Beginner" could not be told apart from "they
- * left the academy".
+ * One act, and the only way a child now leaves a course while staying at the
+ * academy. It carries the credits with the same arithmetic the old Move
+ * Credits dialog used — the conversion is computed at both courses' rates,
+ * rounded to the half-credit grid the academy charges on, and the office can
+ * type over it. The incoming entry carries an expiry, prefilled from the
+ * balance being moved; it used to write none at all, so moved credits quietly
+ * stopped expiring.
  */
 describe("changing course", () => {
   const changeButton = (className: string) =>
     within(enrolmentRow(className)).getByRole("button", { name: `Change ${className} to another course` });
+  const amountField = () => screen.getByLabelText("Credits to add") as HTMLInputElement;
+  const expiryField = () => screen.getByLabelText("Expires") as HTMLInputElement;
+  const confirmChange = () => screen.getByRole("button", { name: "Change course", hidden: true }) as HTMLButtonElement;
+  const ledger = () => create.mock.calls.filter(([path]) => path === "credit-transactions");
+  const incoming = () => ledger()[1]?.[1];
+  const outgoing = () => ledger()[0]?.[1];
 
   async function openChange(user: ReturnType<typeof userEvent.setup>, who = "Anong", from = "Beginner") {
     await openStudent(user, who);
     await user.click(changeButton(from));
   }
-  const confirmChange = () => screen.getByRole("button", { name: "Change course", hidden: true });
 
-  it("is offered on a course the child is in", async () => {
-    const user = renderList();
-    await openStudent(user, "Anong");
-    expect(changeButton("Beginner")).toBeDefined();
-  });
-
-  /* A course they already left is not one they can move out of. */
-  it("is not offered on a course already left", async () => {
-    const user = renderList();
-    await openStudent(user, "Boon");
-    expect(within(enrolmentRow("Beginner")).queryByRole("button", { name: /Change/ })).toBeNull();
-  });
-
-  /* Moving them into a course they already attend would make a second
-     enrolment for the same pair — two balances and two rosters for one child
-     in one room. Anong is in Beginner and Intermediate, so neither is offered. */
-  it("does not offer a course they are already in", async () => {
+  it("offers the courses they are not already in, and no retired one", async () => {
     const user = renderList();
     await openChange(user);
     const options = Array.from(
       (screen.getByLabelText("Move them to") as HTMLSelectElement).options,
     ).map((o) => o.textContent);
-    expect(options).not.toContain("Intermediate");
-    expect(options).not.toContain("Beginner");
-  });
-
-  it("does not offer a retired course", async () => {
-    const user = renderList();
-    await openChange(user);
-    const options = Array.from(
-      (screen.getByLabelText("Move them to") as HTMLSelectElement).options,
-    ).map((o) => o.textContent);
-    expect(options).not.toContain("Saturday Camp");
+    expect(options).toEqual(["Advanced"]);
   });
 
   it("writes the new enrolment with the course they came from", async () => {
-    {
-      const user = renderList();
-      await openChange(user);
-      await user.selectOptions(screen.getByLabelText("Move them to"), "adv");
-      await user.click(confirmChange());
+    const user = renderList();
+    await openChange(user);
+    await user.click(confirmChange());
 
-      expect(create).toHaveBeenCalledWith(
-        "enrollments",
-        expect.objectContaining({ student_id: "anong", class_id: "adv", moved_from_class_id: "beg" }),
-      );
-    }
+    expect(create).toHaveBeenCalledWith(
+      "enrollments",
+      expect.objectContaining({ student_id: "anong", class_id: "adv", moved_from_class_id: "beg" }),
+    );
   });
 
   /* The outgoing entry gives the old row a ledger, so it is withdrawn and
      kept rather than deleted — a receipt still points at it. */
-  it("leaves the old course behind it", async () => {
-    {
+  it("leaves the old course behind it as a record", async () => {
+    const user = renderList();
+    await openChange(user);
+    await user.click(confirmChange());
+
+    expect(update).toHaveBeenCalledWith("enrollments", "e_anong_beg", { status: "Withdrawn" });
+  });
+
+  /* Beginner is 12,000 for 20 credits and Advanced 20,000 for 20, so eight
+     credits of Beginner is 4,800 baht, which buys 4.8 credits of Advanced —
+     5 on the half-credit grid the academy charges on, rounded to the nearest
+     half rather than down. */
+  it("converts the balance at both courses' rates, on the half-credit grid", async () => {
+    raw.creditPackages.push({ credit_package_id: "p_adv", class_id: "adv", credit_amount: 20, standard_price: 20000 });
+    try {
       const user = renderList();
       await openChange(user);
-      await user.selectOptions(screen.getByLabelText("Move them to"), "adv");
+      expect(amountField().value).toBe("5");
       await user.click(confirmChange());
 
-      expect(update).toHaveBeenCalledWith("enrollments", "e_anong_beg", { status: "Withdrawn" });
+      expect(outgoing()).toMatchObject({ enrollment_id: "e_anong_beg", amount: -8 });
+      expect(incoming()).toMatchObject({ enrollment_id: "e_new", amount: 5 });
+    } finally {
+      raw.creditPackages.pop();
     }
   });
 
-  /* An hour paid for is an hour owed whichever course it is taken in. */
-  it("carries the balance across, as a matching pair of entries", async () => {
-    {
-      const user = renderList();
-      await openChange(user);
-      await user.selectOptions(screen.getByLabelText("Move them to"), "adv");
-      await user.click(confirmChange());
+  it("carries the old balance's expiry onto the incoming entry", async () => {
+    const user = renderList();
+    await openChange(user);
+    expect(expiryField().value).toBe("2026-12-31");
+    await user.click(confirmChange());
 
-      const ledger = create.mock.calls.filter(([path]) => path === "credit-transactions");
-      expect(ledger).toHaveLength(2);
-      expect(ledger[0][1]).toMatchObject({ enrollment_id: "e_anong_beg", amount: -8 });
-      expect(ledger[1][1]).toMatchObject({ enrollment_id: "e_new" });
-    }
+    expect(incoming()).toMatchObject({ expiry_date: "2026-12-31" });
+    /* Only the incoming entry: an expiry says how long added credits are good
+       for, which a removal is not. */
+    expect(outgoing()).not.toHaveProperty("expiry_date");
+  });
+
+  it("writes a hand-typed amount over the computed one", async () => {
+    const user = renderList();
+    await openChange(user);
+    await user.clear(amountField());
+    await user.type(amountField(), "6");
+    await user.click(confirmChange());
+
+    expect(incoming()).toMatchObject({ amount: 6 });
+  });
+
+  it("takes a changed expiry", async () => {
+    const user = renderList();
+    await openChange(user);
+    await user.clear(expiryField());
+    await user.type(expiryField(), "2027-06-30");
+    await user.click(confirmChange());
+
+    expect(incoming()).toMatchObject({ expiry_date: "2027-06-30" });
+  });
+
+  /* Advanced has no priced package in this fixture, so there is no rate to
+     convert at — the hours carry across as they stand rather than the dialog
+     refusing to proceed. The office came here to move a child. */
+  it("carries the balance unconverted when no rate says otherwise", async () => {
+    const user = renderList();
+    await openChange(user);
+    expect(amountField().value).toBe("8");
+    expect(screen.getByText(en.students.changeCourseNoRate)).toBeDefined();
+  });
+
+  it("will not move an amount it cannot read", async () => {
+    const user = renderList();
+    await openChange(user);
+    await user.clear(amountField());
+    expect(confirmChange().disabled).toBe(true);
   });
 
   it("leaves the balance where it is when the office unticks it", async () => {
-    {
-      const user = renderList();
-      await openChange(user);
-      await user.selectOptions(screen.getByLabelText("Move them to"), "adv");
-      await user.click(screen.getByRole("checkbox"));
-      await user.click(confirmChange());
+    const user = renderList();
+    await openChange(user);
+    await user.click(screen.getByRole("checkbox"));
+    await user.click(confirmChange());
 
-      expect(create.mock.calls.filter(([path]) => path === "credit-transactions")).toHaveLength(0);
-      /* The row still carries the term that was already spent against it, so
-         it is withdrawn and kept — unticking moves no credits, it does not
-         make the history go away. */
-      expect(update).toHaveBeenCalledWith("enrollments", "e_anong_beg", { status: "Withdrawn" });
-    }
+    expect(ledger()).toHaveLength(0);
+    /* The row still carries the term already spent against it, so it is
+       withdrawn and kept — unticking moves no credits, it does not make the
+       history go away. */
+    expect(update).toHaveBeenCalledWith("enrollments", "e_anong_beg", { status: "Withdrawn" });
   });
 
   /* Chai was enrolled by mistake this morning: nothing bought, nothing
      attended, so there is no balance to decide about. */
   it("asks nothing about credits when there are none", async () => {
-    {
-      const user = renderList();
-      await openChange(user, "Chai");
-      expect(screen.queryByRole("checkbox")).toBeNull();
-    }
+    const user = renderList();
+    await openChange(user, "Chai");
+    expect(screen.queryByRole("checkbox")).toBeNull();
   });
 
   it("shows where a moved enrolment came from", async () => {
@@ -480,7 +412,7 @@ describe("changing course", () => {
     try {
       const user = renderList();
       await openStudent(user, "Chai");
-      expect(screen.getByText("Moved from Beginner")).toBeDefined();
+      expect(screen.getByText(/Moved from Beginner/)).toBeDefined();
     } finally {
       raw.enrollments.pop();
     }
@@ -490,38 +422,74 @@ describe("changing course", () => {
 /**
  * Deleting an enrolment.
  *
- * Distinct from withdrawing, which is what happens to a term that really ran.
- * This is for a row that should never have existed — a course picked by
- * mistake — and it is offered only where nothing hangs off it, because
- * `credit_transaction` and `payment` both point at the row and the database
- * refuses to drop one they reference.
+ * The list's tidy-up. It has to work on the rows a change leaves behind, and
+ * every one of those carries the ledger entry that moved its credits out —
+ * `credit_transaction.enrollment_id` is NOT NULL, so a plain delete is refused
+ * by the database. The dependants go first: payments are *detached* (they
+ * carry their own names and were built to outlive what they point at), credit
+ * entries are deleted with the row.
  */
 describe("deleting an enrolment", () => {
   const deleteButton = (className: string) =>
-    within(enrolmentRow(className)).queryByRole("button", { name: `Delete the enrolment in ${className}` });
-
-  it("is offered on a row nothing has happened against", async () => {
-    const user = renderList();
-    await openStudent(user, "Chai");
-    expect(deleteButton("Beginner")).not.toBeNull();
-  });
-
-  /* Eight credits and a term of attendance hang off Anong's Beginner row. */
-  it("is not offered where a ledger points at the row", async () => {
-    const user = renderList();
-    await openStudent(user, "Anong");
-    expect(deleteButton("Beginner")).toBeNull();
-  });
-
-  it("removes the row outright", async () => {
-    const user = renderList();
-    await openStudent(user, "Chai");
-    await user.click(deleteButton("Beginner")!);
+    within(enrolmentRow(className)).getByRole("button", { name: `Delete the enrolment in ${className}` });
+  const confirmDelete = async (user: ReturnType<typeof userEvent.setup>) =>
     /* The detail header carries a Delete for the child themselves; the
        dialog's confirm is the one that mounted last. */
-    await user.click(screen.getAllByRole("button", { name: "Delete", hidden: true }).at(-1)!);
+    user.click(screen.getAllByRole("button", { name: "Delete", hidden: true }).at(-1)!);
+
+  it("removes a row nothing hangs off", async () => {
+    const user = renderList();
+    await openStudent(user, "Chai");
+    await user.click(deleteButton("Beginner"));
+    await confirmDelete(user);
 
     expect(remove).toHaveBeenCalledWith("enrollments", "e_chai_beg");
-    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("takes the credit entries with it", async () => {
+    const user = renderList();
+    await openStudent(user, "Anong");
+    await user.click(deleteButton("Beginner"));
+    await confirmDelete(user);
+
+    expect(remove).toHaveBeenCalledWith("credit-transactions", "t1");
+    expect(remove).toHaveBeenCalledWith("credit-transactions", "t2");
+    expect(remove).toHaveBeenCalledWith("enrollments", "e_anong_beg");
+  });
+
+  /* Money is never deleted here. A payment carries its own student_name and
+     class_name and was built to outlive the rows it points at, so the receipt
+     still reads afterwards. */
+  it("detaches payments instead of deleting them", async () => {
+    raw.payments.push({ payment_id: "pay_1", enrollment_id: "e_anong_beg", student_id: "anong", final_amount: 12000 });
+    try {
+      const user = renderList();
+      await openStudent(user, "Anong");
+      await user.click(deleteButton("Beginner"));
+      await confirmDelete(user);
+
+      expect(update).toHaveBeenCalledWith("payments", "pay_1", { enrollment_id: null });
+      expect(remove).not.toHaveBeenCalledWith("payments", "pay_1");
+    } finally {
+      raw.payments.pop();
+    }
+  });
+
+  /* "Tidying up the list" and "deleting a term of credit history" are the
+     same click, and only one of them is what the office had in mind. */
+  it("says what goes with the row before it goes", async () => {
+    const user = renderList();
+    await openStudent(user, "Anong");
+    await user.click(deleteButton("Beginner"));
+
+    expect(screen.getByText(/2 credit entries/)).toBeDefined();
+  });
+
+  it("says nothing alarming about a row that is already empty", async () => {
+    const user = renderList();
+    await openStudent(user, "Chai");
+    await user.click(deleteButton("Beginner"));
+
+    expect(screen.getByText(en.students.enrolmentDeleteNote)).toBeDefined();
   });
 });
