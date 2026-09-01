@@ -270,7 +270,13 @@ function StudentDetail({
 
   const creditRows = useMemo(() => {
     return raw.creditTransactions
-      .filter((tx) => enrolmentIds.includes(String(tx["enrollment_id"])))
+      /* Their enrolments' entries, and the ones no enrolment claims — those
+         are still the child's hours and still on the balance. */
+      .filter(
+        (tx) =>
+          enrolmentIds.includes(String(tx["enrollment_id"])) ||
+          (!String(tx["enrollment_id"] ?? "") && String(tx["student_id"] ?? "") === student.id),
+      )
       .map((tx) => ({
         id: String(tx["credit_transaction_id"]),
         enrollmentId: String(tx["enrollment_id"]),
@@ -281,7 +287,7 @@ function StudentDetail({
         notes: String(tx["notes"] ?? ""),
       }))
       .sort((a, b) => b.date.localeCompare(a.date));
-  }, [raw.creditTransactions, enrolmentIds]);
+  }, [raw.creditTransactions, enrolmentIds, student.id]);
 
   const enrolments = useMemo(
     () =>
@@ -325,6 +331,9 @@ function StudentDetail({
      course the child has left is how a balance goes missing. */
   const [changeCarry, setChangeCarry] = useState(true);
   const [deletingEnrolment, setDeletingEnrolment] = useState<(typeof enrolments)[number] | null>(null);
+  /* Putting unspent hours back into a course the child has joined. */
+  const [claiming, setClaiming] = useState(false);
+  const [claimTo, setClaimTo] = useState("");
   const [enrolmentValues, setEnrolmentValues] = useState<CrudValues>({});
   /* What lands on the new enrolment. null means "follow the computed
      conversion" — the field shows the sum's answer until the office types
@@ -341,6 +350,70 @@ function StudentDetail({
     return raw.creditTransactions
       .filter((tx) => String(tx["enrollment_id"]) === enrolmentId)
       .reduce((sum, tx) => sum + Number(tx["amount"] ?? 0), 0);
+  }
+
+  /**
+   * The entries no enrolment claims — hours this child holds, unspent.
+   *
+   * They are what deleting an enrolment leaves behind. `credit_transaction`
+   * carries its own `student_id` and `class_id` since backend 0026, so a
+   * detached entry still says whose it is and what it was bought for, which is
+   * what lets it be converted into a course later.
+   */
+  const looseCredits = useMemo(
+    () =>
+      raw.creditTransactions.filter(
+        (tx) =>
+          !String(tx["enrollment_id"] ?? "") && String(tx["student_id"] ?? "") === student.id,
+      ),
+    [raw.creditTransactions, student.id],
+  );
+  const looseBalance = looseCredits.reduce((sum, tx) => sum + Number(tx["amount"] ?? 0), 0);
+  /* The course they were bought for, so the conversion has a rate to work
+     from. The newest entry wins where a child has held credits from two. */
+  const looseClassId = String(looseCredits.at(-1)?.["class_id"] ?? "");
+  const looseClassName =
+    raw.classes.find((c) => String(c["class_id"]) === looseClassId)?.["name"]?.toString() ?? "";
+  const looseExpiry =
+    looseCredits.map((tx) => String(tx["expiry_date"] ?? "")).filter(Boolean).sort().at(-1) ?? "";
+  /* Where loose hours can go: a course the child is actually in. */
+  const activeEnrolmentTargets = enrolments.filter((e) => isActiveEnrolment({ status: e.status }));
+
+  /**
+   * Puts unspent hours into a course the child has joined.
+   *
+   * The same act as a transfer between two enrolments, with the same
+   * arithmetic — the balance is worth what it was worth, and the hours change
+   * with the rate. What differs is only where it starts: nothing, rather than
+   * another enrolment. So the outgoing side is a matching entry against the
+   * loose balance, keeping the ledger's habit of showing where hours went.
+   */
+  async function claimLooseCredits(toEnrolmentId: string, amount: number, expiry: string) {
+    const target = enrolments.find((e) => e.id === toEnrolmentId);
+    if (!target || looseBalance <= 0) return;
+    const today = new Date().toISOString().slice(0, 10);
+    await batch(async () => {
+      await create("credit-transactions", {
+        student_id: student.id,
+        ...(looseClassId ? { class_id: looseClassId } : {}),
+        transaction_type: "manual_adjustment",
+        amount: -looseBalance,
+        transaction_date: today,
+        notes: t("movedOut", { className: target.className }),
+      });
+      await create("credit-transactions", {
+        enrollment_id: target.id,
+        student_id: student.id,
+        class_id: target.classId,
+        transaction_type: "manual_adjustment",
+        amount,
+        transaction_date: today,
+        ...(expiry ? { expiry_date: expiry } : {}),
+        notes: looseClassName
+          ? t("movedIn", { className: looseClassName })
+          : t("looseMovedIn"),
+      });
+    });
   }
 
   /** The latest expiry on an enrolment's ledger — the same "last date any of
@@ -487,8 +560,13 @@ function StudentDetail({
            changed on its own. The expiry rides on the incoming entry only — it
            says how long the added credits are good for, which a removal is
            not. */
+        /* `student_id` and `class_id` on every entry, so it still says whose
+           the hours are and what they were bought for if the enrolment is
+           deleted out from under it later. */
         await create("credit-transactions", {
           enrollment_id: from.id,
+          student_id: student.id,
+          class_id: from.classId,
           transaction_type: "manual_adjustment",
           amount: -balance,
           transaction_date: today,
@@ -496,6 +574,8 @@ function StudentDetail({
         });
         await create("credit-transactions", {
           enrollment_id: toId,
+          student_id: student.id,
+          class_id: target.id,
           transaction_type: "manual_adjustment",
           amount: credits.credits,
           transaction_date: today,
@@ -509,27 +589,26 @@ function StudentDetail({
   }
 
   /**
-   * Removes an enrolment and everything that would hold it in place.
+   * Removes an enrolment, without removing what the family paid for.
    *
-   * This is the list's tidy-up: a course a child left months ago, kept only
-   * because the row it left behind carries the ledger entry that moved its
-   * credits out. That entry is what made the plain delete impossible —
-   * `credit_transaction.enrollment_id` is NOT NULL, so the database refuses to
-   * drop a row it points at — and it is also why the button was previously
-   * hidden on exactly the rows the office wanted gone.
+   * This is the list's tidy-up: a course a child left, kept only because the
+   * row carries its ledger. The first version of this deleted that ledger, and
+   * a child whose only enrolment went took their balance to zero with it —
+   * thirteen paid-for hours, gone, with no way to put them back.
    *
-   * So the dependants go first, in the order the foreign keys allow:
+   * So the dependants are moved aside rather than destroyed:
    *
-   * 1. **Payments are detached, not deleted.** `payment.enrollment_id` is
-   *    nullable, and since `0006` a payment carries its own `student_name` and
-   *    `class_name` — it was built to outlive the rows it points at, so a
-   *    receipt still reads afterwards. Money is never deleted here.
-   * 2. **Credit entries go with the row.** They cannot be detached, and they
-   *    are meaningless without the enrolment they were spent against.
+   * 1. **Payments are detached.** `payment.enrollment_id` is nullable and a
+   *    payment has carried its own `student_name` and `class_name` since
+   *    `0006` — it was built to outlive what it points at, so the receipt
+   *    still reads.
+   * 2. **Credit entries are detached too**, since backend `0026`. They keep
+   *    `student_id` and `class_id`, so the hours stay on the child's balance,
+   *    still know what they were bought for, and can be converted into a
+   *    course whenever the child joins one.
    *
-   * The dialog says both of those out loud before anyone presses it, because
-   * "cleaning up the list" and "deleting a term of credit history" are the
-   * same click and only one of them is what the office had in mind.
+   * Nothing here deletes money or hours. The enrolment row is the only thing
+   * that goes, which is all the office asked for.
    */
   function enrolmentDependants(id: string) {
     return {
@@ -539,13 +618,22 @@ function StudentDetail({
   }
 
   async function deleteEnrolment(id: string) {
+    const enrolment = enrolments.find((e) => e.id === id);
     const { credits, payments } = enrolmentDependants(id);
     await batch(async () => {
       for (const p of payments) {
         await update("payments", String(p["payment_id"]), { enrollment_id: null });
       }
       for (const tx of credits) {
-        await remove("credit-transactions", String(tx["credit_transaction_id"]));
+        await update("credit-transactions", String(tx["credit_transaction_id"]), {
+          enrollment_id: null,
+          /* Written explicitly rather than trusted: rows created before 0026
+             were backfilled, but one written by an older console in between
+             would have neither, and a detached entry without them is a credit
+             belonging to nobody. */
+          student_id: student.id,
+          ...(enrolment?.classId ? { class_id: enrolment.classId } : {}),
+        });
       }
       await remove("enrollments", id);
     });
@@ -1127,8 +1215,20 @@ function StudentDetail({
           onChange={setCreditValues}
           onClose={() => setCreditModal(null)}
           onSubmit={async (payload) => {
-            if (creditModal === "new") await create("credit-transactions", payload);
-            else await update("credit-transactions", creditModal.id, payload);
+            /* Stamped with whose hours these are and which course they were
+               bought for, so the entry survives its enrolment being deleted
+               and still has a rate to convert at afterwards. The class is read
+               off the enrolment the form chose. */
+            const chosen = raw.enrollments.find(
+              (e) => String(e["enrollment_id"]) === String(payload["enrollment_id"] ?? ""),
+            );
+            const stamped = {
+              ...payload,
+              student_id: student.id,
+              ...(chosen ? { class_id: String(chosen["class_id"] ?? "") } : {}),
+            };
+            if (creditModal === "new") await create("credit-transactions", stamped);
+            else await update("credit-transactions", creditModal.id, stamped);
           }}
         />
       )}
@@ -1147,9 +1247,55 @@ function StudentDetail({
             <SectionTitle>{t("enrolments")}</SectionTitle>
             <AddButton label={t("addEnrolment")} onClick={openAddEnrolment} />
           </div>
+          {/* Hours the child holds and has not spent anywhere — what is left
+              when the enrolment that recorded them is deleted. They used to
+              vanish with it; now they sit here, on the balance, waiting for a
+              course to be put into. */}
+          {looseBalance > 0 && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                flexWrap: "wrap",
+                padding: "12px 14px",
+                borderRadius: 10,
+                border: `1px dashed ${COLORS.blue}`,
+                background: COLORS.light,
+              }}
+            >
+              <Icon name="wallet" size={17} color={COLORS.blue} />
+              <span style={{ flex: "1 1 200px", minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
+                <span style={{ fontFamily: FONT, fontSize: 14.5, fontWeight: 600, color: COLORS.text }}>
+                  {t("looseCredits", { credits: fmtCredits(looseBalance) })}
+                </span>
+                <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+                  {looseClassName ? t("looseFrom", { className: looseClassName }) : t("looseNoCourse")}
+                </span>
+              </span>
+              <button
+                type="button"
+                className="jt-btn-primary"
+                style={{ ...primaryButtonStyle, padding: "6px 13px", fontSize: 12.5 }}
+                disabled={activeEnrolmentTargets.length === 0}
+                title={activeEnrolmentTargets.length === 0 ? t("looseNeedsCourse") : undefined}
+                onClick={() => {
+                  setClaimTo(activeEnrolmentTargets[0]?.id ?? "");
+                  setMoveAmount(null);
+                  setMoveExpiry(looseExpiry);
+                  setClaiming(true);
+                }}
+              >
+                {t("looseMoveIn")}
+              </button>
+            </div>
+          )}
+          {/* A child with nothing but loose credits has no enrolments to list,
+              and saying so under a balance they can still spend would read as
+              a contradiction. */}
           {enrolments.length === 0 ? (
             <p style={{ margin: 0, fontFamily: FONT, fontSize: 14, color: COLORS.textSecondary }}>
-              {t("noEnrolments")}
+              {looseBalance > 0 ? t("noEnrolmentsYetCredits") : t("noEnrolments")}
             </p>
           ) : (
             <div style={{ display: "grid", gap: 10 }}>
@@ -1295,6 +1441,130 @@ function StudentDetail({
             onClose={() => setDeletingEnrolment(null)}
             onConfirm={() => deleteEnrolment(deletingEnrolment.id)}
           />
+        );
+      })()}
+
+      {claiming && (() => {
+        const target = activeEnrolmentTargets.find((e) => e.id === claimTo) ?? activeEnrolmentTargets[0];
+        const plan = target
+          ? planTransfer({
+              balance: looseBalance,
+              /* No enrolment on either side of this one: the loose hours are
+                 priced by the course they were bought for, which the entry
+                 still carries, and the destination by the course it is going
+                 into. */
+              from: rateOf("", looseClassId),
+              to: rateOf(target.id, target.classId),
+            })
+          : ({ ok: false, problem: "rateUnknown" } as const);
+        const suggested = String(plan.ok ? plan.credits : roundCredits(looseBalance));
+        const amountText = moveAmount ?? suggested;
+        const amount = Number(amountText);
+        const amountOk = amountText.trim() !== "" && Number.isFinite(amount) && amount > 0;
+        return (
+          <Modal
+            title={t("looseMoveInTitle")}
+            width={470}
+            onClose={() => setClaiming(false)}
+            footer={
+              <>
+                <button type="button" className="jt-btn-ghost" style={secondaryButtonStyle} onClick={() => setClaiming(false)}>
+                  {tCommon("cancel")}
+                </button>
+                <ActionButton
+                  className="jt-btn-primary"
+                  style={primaryButtonStyle}
+                  disabled={!target || !amountOk}
+                  busyLabel={tCommon("saving")}
+                  onClick={async () => {
+                    if (!target || !amountOk) return;
+                    await claimLooseCredits(target.id, roundCredits(amount), moveExpiry);
+                    setClaiming(false);
+                  }}
+                >
+                  {t("looseMoveIn")}
+                </ActionButton>
+              </>
+            }
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
+                {looseClassName
+                  ? t("looseMoveInIntro", { credits: fmtCredits(looseBalance), className: looseClassName })
+                  : t("looseMoveInIntroNoCourse", { credits: fmtCredits(looseBalance) })}
+              </p>
+
+              <div>
+                <label style={labelStyle} htmlFor="cl-target">{t("moveCreditsTo")}</label>
+                <select
+                  id="cl-target"
+                  value={target?.id ?? ""}
+                  onChange={(e) => { setClaimTo(e.target.value); setMoveAmount(null); }}
+                  style={selectStyle}
+                >
+                  {activeEnrolmentTargets.map((e) => (
+                    <option key={e.id} value={e.id}>{e.className}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: "flex", gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={labelStyle} htmlFor="cl-amount">{t("moveAmount")}</label>
+                  <input
+                    id="cl-amount"
+                    type="number"
+                    min={0}
+                    step={0.5}
+                    value={amountText}
+                    onChange={(e) => setMoveAmount(e.target.value)}
+                    style={fieldStyle}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={labelStyle} htmlFor="cl-expiry">{t("expires")}</label>
+                  <input
+                    id="cl-expiry"
+                    type="date"
+                    value={moveExpiry}
+                    onChange={(e) => setMoveExpiry(e.target.value)}
+                    style={fieldStyle}
+                  />
+                </div>
+              </div>
+
+              {plan.ok ? (
+                <InfoGrid
+                  rows={[
+                    {
+                      label: t("moveFrom"),
+                      value: t("creditsAtRate", {
+                        credits: fmtCredits(looseBalance),
+                        className: looseClassName || t("looseNoCourse"),
+                        rate: fmtTHB(plan.fromRate),
+                      }),
+                    },
+                    {
+                      label: t("moveTo"),
+                      value: t("creditsAtRate", {
+                        credits: fmtCredits(roundCredits(amount) || 0),
+                        className: target!.className,
+                        rate: fmtTHB(plan.toRate),
+                      }),
+                    },
+                    { label: t("moveValue"), value: fmtTHB(plan.value) },
+                  ]}
+                />
+              ) : (
+                /* The course they were bought for may be retired, or never
+                   have been priced. The hours carry across as they stand
+                   rather than being held hostage to a price list. */
+                <p style={{ margin: 0, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
+                  {t("changeCourseNoRate")}
+                </p>
+              )}
+            </div>
+          </Modal>
         );
       })()}
 

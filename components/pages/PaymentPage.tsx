@@ -727,8 +727,13 @@ export function PaymentPage({
       const enrollmentId = String(before["enrollment_id"] ?? "");
       if (!pkg || !enrollmentId) return;
       const day = String(payload.payment_date ?? before["payment_date"] ?? "");
+      /* Stamped so the hours survive their enrolment being deleted:
+         `student_id` says whose they are, `class_id` what they were bought for
+         and therefore what rate they convert at. */
       await create("credit-transactions", {
         enrollment_id: enrollmentId,
+        student_id: String(before["student_id"] ?? "") || null,
+        class_id: String(pkg["class_id"] ?? "") || null,
         transaction_type: "purchase",
         amount: Number(pkg["credit_amount"] ?? 0),
         transaction_date: day,
@@ -818,6 +823,8 @@ export function PaymentPage({
               if (p.status === "Paid" && pkg && enr) {
                 await create("credit-transactions", {
                   enrollment_id: String(enr["enrollment_id"]),
+                  student_id: String(enr["student_id"] ?? "") || null,
+                  class_id: String(pkg["class_id"] ?? "") || null,
                   transaction_type: "purchase",
                   amount: Number(pkg["credit_amount"] ?? 0),
                   transaction_date: today,
