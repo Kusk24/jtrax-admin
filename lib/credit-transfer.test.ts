@@ -4,7 +4,7 @@ import {
   planTransfer,
   ratePerCredit,
   roundCredits,
-  roundToHalfCredit,
+  floorToHalfCredit,
   valueOfLots,
 } from "./credit-transfer";
 
@@ -44,9 +44,10 @@ describe("moving a balance to a dearer class", () => {
     expect(plan.ok).toBe(true);
     if (!plan.ok) return;
     // 8 hours at 600 is 4,800 baht; at 1,000 an hour that is 4.8 hours —
-    // which no session can spend, so it lands on the next half: 5.
+    // which no session can spend, so it lands on the half below: 4.5.
+    // Not 5: that would be 5,000 baht of teaching for 4,800 paid.
     expect(plan.value).toBe(4800);
-    expect(plan.credits).toBe(5);
+    expect(plan.credits).toBe(4.5);
   });
 
   it("reports both rates, so the desk can see the sum", () => {
@@ -62,8 +63,8 @@ describe("moving a balance to a dearer class", () => {
     expect(p.ok).toBe(true);
     if (!p.ok) return;
     expect(p.toRate).toBe(2000);
-    // 4,800 baht at 2,000 an hour is 2.4 hours → the next half is 2.5.
-    expect(p.credits).toBe(2.5);
+    // 4,800 baht at 2,000 an hour is 2.4 hours → the half below is 2.
+    expect(p.credits).toBe(2);
   });
 });
 
@@ -135,20 +136,29 @@ describe("rounding a typed figure", () => {
   });
 });
 
-/* A session costs 0.5 or 1 — the academy has no smaller unit of teaching, so
-   a converted balance must land where it can actually be spent. The result is
-   rounded, never the rates, and to the NEAREST half: rounding up was tried
-   and rejected, because it hands out up to half an hour free on every move. */
+/**
+ * Where a converted balance lands.
+ *
+ * A session costs 0.5 or 1 — the academy has no smaller unit of teaching, so a
+ * converted balance must land where it can actually be spent. The result is
+ * rounded, never the rates.
+ *
+ * **Down**, and the direction has now been changed twice. Up was rejected for
+ * handing out free hours. Nearest replaced it and was reported from the desk:
+ * twenty hours of a 600/hr course moved to a 900/hr course and back came out
+ * at twenty and a half. Rounding a rate conversion up creates money nobody
+ * paid, and each hop compounds the last.
+ */
 describe("the conversion lands on the half-credit grid", () => {
-  it("rounds the awkward division to the nearest half", () => {
+  it("takes the half below, never the one above", () => {
     const plan = planTransfer({ balance: 10, from: BEGINNER, to: { credits: 10, price: 18000 } });
     expect(plan.ok).toBe(true);
     if (!plan.ok) return;
-    // 10 at 600 is 6,000; at 1,800 an hour that is 3.333... hours → 3.5.
-    expect(plan.credits).toBe(3.5);
+    // 10 at 600 is 6,000; at 1,800 an hour that is 3.333… hours → 3, not 3.5.
+    expect(plan.credits).toBe(3);
   });
 
-  it("rounds down when down is nearer — nothing is given away", () => {
+  it("gives nothing away on a near-miss", () => {
     // 4,800 baht at 4,700 an hour is 1.02 hours: 1, not 1.5.
     const plan = planTransfer({ balance: 8, from: BEGINNER, to: { credits: 1, price: 4700 } });
     expect(plan.ok).toBe(true);
@@ -156,21 +166,83 @@ describe("the conversion lands on the half-credit grid", () => {
     expect(plan.credits).toBe(1);
   });
 
-  /* The rule as the academy stated it. */
-  it("13.2 is 13; 13.3 and 13.4 are 13.5", () => {
-    expect(roundToHalfCredit(13.2)).toBe(13);
-    expect(roundToHalfCredit(13.3)).toBe(13.5);
-    expect(roundToHalfCredit(13.4)).toBe(13.5);
+  it("13.2, 13.3 and 13.4 are all 13", () => {
+    expect(floorToHalfCredit(13.2)).toBe(13);
+    expect(floorToHalfCredit(13.3)).toBe(13);
+    expect(floorToHalfCredit(13.4)).toBe(13);
+    expect(floorToHalfCredit(13.6)).toBe(13.5);
   });
 
   it("leaves a balance already on the grid alone", () => {
-    expect(roundToHalfCredit(16.5)).toBe(16.5);
-    expect(roundToHalfCredit(7)).toBe(7);
+    expect(floorToHalfCredit(16.5)).toBe(16.5);
+    expect(floorToHalfCredit(7)).toBe(7);
   });
 
+  /* 12000/900*2 is 26.666666666666668, and 19.5*2 is 38.99999999999999 —
+     flooring the second raw would cost half a credit that is really there. */
   it("is not fooled by floating-point dust", () => {
-    expect(roundToHalfCredit(16.500000000000004)).toBe(16.5);
-    expect(roundToHalfCredit(0.1 + 0.2 + 0.2)).toBe(0.5);
+    expect(floorToHalfCredit(16.500000000000004)).toBe(16.5);
+    expect(floorToHalfCredit(19.499999999999996)).toBe(19.5);
+    expect(floorToHalfCredit(0.1 + 0.2 + 0.2)).toBe(0.5);
+  });
+});
+
+/**
+ * The property the direction exists for.
+ *
+ * Reported from the desk: 20 credits of Beginner moved to Master came back as
+ * 20.5, so the academy handed over half an hour it had never been paid for.
+ *
+ * A conversion is an exchange, not a measurement. What lands must be worth no
+ * more than what left — otherwise a balance grows by being moved, and a
+ * patient office could mint hours by moving one back and forth.
+ */
+describe("a conversion never creates value", () => {
+  const MASTER = { credits: 20, price: 18000 }; // 900 an hour
+
+  it("does not give half an hour away on the reported round trip", () => {
+    const there = planTransfer({ balance: 20, from: BEGINNER, to: MASTER });
+    expect(there.ok && there.credits).toBe(13);
+
+    const back = planTransfer({ balance: 13, from: MASTER, to: BEGINNER });
+    /* 13 at 900 is 11,700; at 600 an hour that is 19.5 exactly. */
+    expect(back.ok && back.credits).toBe(19.5);
+    /* And the thing that matters: not more than the twenty that went in. */
+    expect(back.ok && back.credits).toBeLessThanOrEqual(20);
+  });
+
+  /* Across every pair of rates the academy could plausibly set, and every
+     balance it could hold, converting must never be worth more than holding. */
+  it("holds for any rates and any balance", () => {
+    const rates = [
+      { credits: 20, price: 12000 }, { credits: 20, price: 14000 },
+      { credits: 20, price: 18000 }, { credits: 20, price: 20000 },
+      { credits: 10, price: 9500 }, { credits: 1, price: 4700 },
+      { credits: 8, price: 16000 },
+    ];
+    for (const from of rates) {
+      for (const to of rates) {
+        for (const balance of [0.5, 1, 4, 7.5, 13, 16.5, 20, 33.5, 100]) {
+          const plan = planTransfer({ balance, from, to });
+          if (!plan.ok) continue;
+          expect(plan.credits * plan.toRate).toBeLessThanOrEqual(plan.value + 1e-9);
+        }
+      }
+    }
+  });
+
+  /* Moving a balance around cannot grow it, however many hops. */
+  it("cannot be pumped by moving a balance back and forth", () => {
+    let credits = 20;
+    let rate = BEGINNER;
+    for (let hop = 0; hop < 12; hop += 1) {
+      const to = rate === BEGINNER ? MASTER : BEGINNER;
+      const plan = planTransfer({ balance: credits, from: rate, to });
+      if (!plan.ok) break;
+      credits = plan.credits;
+      rate = to;
+      expect(credits * plan.toRate).toBeLessThanOrEqual(12000 + 1e-9);
+    }
   });
 });
 
