@@ -317,18 +317,19 @@ describe("changing course", () => {
 
   /* Beginner is 12,000 for 20 credits and Advanced 20,000 for 20, so eight
      credits of Beginner is 4,800 baht, which buys 4.8 credits of Advanced —
-     5 on the half-credit grid the academy charges on, rounded to the nearest
-     half rather than down. */
+     4.5 on the half-credit grid, taking the half below. Five would be 5,000
+     baht of teaching for 4,800 paid, and a balance moved back and forth would
+     grow. */
   it("converts the balance at both courses' rates, on the half-credit grid", async () => {
     raw.creditPackages.push({ credit_package_id: "p_adv", class_id: "adv", credit_amount: 20, standard_price: 20000 });
     try {
       const user = renderList();
       await openChange(user);
-      expect(amountField().value).toBe("5");
+      expect(amountField().value).toBe("4.5");
       await user.click(confirmChange());
 
       expect(outgoing()).toMatchObject({ enrollment_id: "e_anong_beg", amount: -8 });
-      expect(incoming()).toMatchObject({ enrollment_id: "e_new", amount: 5 });
+      expect(incoming()).toMatchObject({ enrollment_id: "e_new", amount: 4.5 });
     } finally {
       raw.creditPackages.pop();
     }

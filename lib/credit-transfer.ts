@@ -40,29 +40,53 @@ export function ratePerCredit(rate: CreditRate): number | null {
  * point of writing keeps the sum on screen equal to the sum in the database.
  *
  * This is for a figure the office typed. A *computed* conversion goes through
- * roundToHalfCredit instead — see there for why.
+ * floorToHalfCredit instead — see there for why.
  */
 export function roundCredits(credits: number): number {
   return Math.round(credits * 100) / 100;
 }
 
 /**
- * Rounded to the nearest half credit.
+ * Rounded **down** to the half credit.
  *
  * A session costs 0.5 for a half hour or 1 for a full one — nothing at the
  * academy ever charges 0.29 of a credit, so a balance like 16.29 is not
- * spendable down to zero: the dust below a half step could never be used.
- * The *result* of the conversion therefore lands on the half-credit grid;
- * the rates themselves are never rounded, or the sum would drift.
+ * spendable down to zero and the dust below a half step could never be used.
+ * The *result* of a conversion therefore lands on the half-credit grid; the
+ * rates themselves are never rounded, or the sum would drift.
  *
- * Nearest, not up: 13.2 becomes 13 and 13.3 becomes 13.5. Rounding up was
- * tried and rejected by the academy — it hands out up to half an hour free
- * on every single move. Nearest caps what either side gives at a quarter
- * credit, and it evens out across moves instead of always costing the
- * academy.
+ * Down, not nearest — and this is the second time the direction has been
+ * changed, so the reasoning is worth keeping.
+ *
+ * Rounding **up** was tried first and rejected: it hands out up to half an hour
+ * free on every move. Rounding to **nearest** replaced it, on the theory that
+ * it evens out across moves. It does not, because a conversion is not a
+ * measurement — it is an exchange, and rounding a *rate conversion* up creates
+ * money that was never paid:
+ *
+ *     20 credits of a 600/hr course      = 12,000 THB
+ *       -> 900/hr course: 13.33, nearest = 13.5   worth 12,150   (+150 THB)
+ *       -> back to 600/hr: 20.25, nearest = 20.5
+ *
+ * Twenty hours in, twenty and a half out, and the academy is half an hour down
+ * for a move that should have cost the family a little, not paid them. Nearest
+ * rounds up whenever the remainder is a quarter credit or more, which is most
+ * of the time, and each hop compounds the last.
+ *
+ * Down is the only direction with the property that matters: **a conversion
+ * never creates value.** What lands is always worth no more than what left, so
+ * a balance cannot grow by being moved, and no sequence of moves can mint
+ * hours. The family gives up under half a credit per move; the alternative is
+ * the academy giving away the same and unboundedly so.
  */
-export function roundToHalfCredit(credits: number): number {
-  return Math.round(credits * 2) / 2;
+export function floorToHalfCredit(credits: number): number {
+  /* Through hundredths first: 12000/900*2 is 26.666666666666668 in binary
+     floating point, and flooring that raw would be right — but 19.5*2 is
+     38.99999999999999 for values that ought to be exact, and flooring *that*
+     silently costs half a credit. Snapping to the hundredth removes the
+     representation error without touching any real remainder, since nothing
+     here is priced below a hundredth of an hour. */
+  return Math.floor(Math.round(credits * 100) / 100 * 2) / 2;
 }
 
 export type TransferPlan =
@@ -104,7 +128,7 @@ export function planTransfer(opts: {
     balance: opts.balance,
     fromRate,
     toRate,
-    credits: roundToHalfCredit(value / toRate),
+    credits: floorToHalfCredit(value / toRate),
     value,
   };
 }
@@ -154,5 +178,5 @@ export function valueOfLots(lots: CreditLot[]): number | null {
 export function creditsForValue(value: number, to: CreditRate): number | null {
   const rate = ratePerCredit(to);
   if (rate === null) return null;
-  return roundToHalfCredit(value / rate);
+  return floorToHalfCredit(value / rate);
 }
