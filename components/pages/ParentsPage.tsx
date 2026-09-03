@@ -40,6 +40,7 @@ import {
 } from "../page-kit";
 import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
 import { BackLink, DeleteButton, DetailHeader, EditButton } from "../detail";
+import { ResetPasswordButton } from "../ResetPassword";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 
@@ -82,6 +83,7 @@ function ParentDetail({
 }) {
   const t = useTranslations("parents");
   const tCommon = useTranslations("common");
+  const { update } = useData();
   const [linking, setLinking] = useState(false);
   const [childId, setChildId] = useState("");
   const [relation, setRelation] = useState("Mother");
@@ -133,6 +135,18 @@ function ParentDetail({
         }
         actions={
           <>
+            {/* A parent has a real address and can use the sign-in page's own
+                Forgot-password link, which never puts their password in a
+                third person's hands. This is for the desk visit where that has
+                not worked — a full mailbox, a typo in the address, a family
+                standing at the counter now. */}
+            <ResetPasswordButton
+              accountId={parent.accountId ?? ""}
+              identifier={parent.loginEmail || parent.email}
+              name={parent.name}
+              update={update}
+              onError={() => setError(tCommon("saveFailed"))}
+            />
             <EditButton onClick={onEdit} />
             <DeleteButton onClick={onDelete} />
           </>
@@ -152,6 +166,18 @@ function ParentDetail({
               { label: tCommon("lineId"), value: parent.lineId || "—" },
             ]}
           />
+          {/* Registration used to invent an address when the box was left
+              empty, so rows written before it started asking still carry one.
+              Nothing can be sent there, which means the forgot-password link
+              silently does nothing for these families — and the only way the
+              office would find out is a parent saying the email never came.
+              Said here, where it can be fixed, rather than left to be
+              discovered. */}
+          {parent.loginEmail.endsWith("@parent.jca.ac.th") && (
+            <p style={{ margin: "10px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.warning }}>
+              {t("inventedLogin")}
+            </p>
+          )}
         </Card>
 
         <Card>

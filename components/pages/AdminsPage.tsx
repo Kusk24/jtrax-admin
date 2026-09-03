@@ -27,6 +27,7 @@ import {
 } from "../page-kit";
 import { Avatar, Badge, Card, SectionTitle } from "../ui";
 import { DangerPanel, DeleteButton, DetailHeader, EditButton } from "../detail";
+import { ResetPasswordButton } from "../ResetPassword";
 import { CardGrid, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 import { useErrorToast } from "../ErrorToast";
@@ -236,8 +237,20 @@ export function AdminsPage({ level = 1 }: { level?: 1 | 2 }) {
                         .finally(() => setResetting(false));
                     }}
                   >
-                    {t("resetPassword")}
+                    {t("sendResetLink")}
                   </button>
+                  {/* Two routes, because they fail in different ways. The link
+                      is better — it never puts a password in a colleague's
+                      hands — but it needs a mailbox the person can actually
+                      reach, and "I never got the email" is why somebody is
+                      standing at the desk. */}
+                  <ResetPasswordButton
+                    accountId={detail.accountId ?? ""}
+                    identifier={detail.email}
+                    name={detail.name}
+                    update={update}
+                    onError={(e) => showError(tCommon("saveFailed"), e)}
+                  />
                   <EditButton
                     onClick={() => {
                       openAdminModal(detail);

@@ -373,8 +373,8 @@
     "linkGuardian": "Link guardian",
     "unlinkGuardian": "Unlink",
     "fideIdLabel": "FIDE ID",
-    "guardianEmailHelp": "Optional. Leave it blank and the guardian still gets a portal login, on an address the academy makes up — hand it over at the desk.",
-    "parentLoginGenerated": "This address was made up because no email was given, so nothing can be sent to it. Hand the password over in person, and add a real address on the Parents screen when the family gives one.",
+    "guardianEmailHelp": "Required. This is what the guardian signs in with, and where a forgotten-password link is sent — so it has to be an address they can actually read.",
+    "emailRequired": "Email (required)",
     "dateOfBirth": "Date of Birth",
     "moveFrom": "From",
     "moveTo": "To",
@@ -433,6 +433,7 @@
     "noChildren": "No children are linked to this parent yet.",
     "contactInfo": "Contact information",
     "loginEmail": "Login email",
+    "inventedLogin": "This login was made up because no email was recorded. Nothing can be sent to it, so this guardian cannot use the forgot-password link. Edit it to the address the family gives.",
     "lineId": "LINE ID",
     "creditsShort": "{count, plural, one {# credit} other {# credits}}",
     "call": "Call",
@@ -701,6 +702,7 @@
     "create": "Create Admin",
     "lastLoginLabel": "Last login",
     "resetPassword": "Reset Password",
+    "sendResetLink": "Send reset link",
     "resetSent": "A password reset link has been sent to {email}.",
     "deleteTitle": "Delete {name}?",
     "deleteBody": "This removes their admin access immediately. This cannot be undone.",
@@ -1001,5 +1003,18 @@
     "quoted": "quoted {fee}",
     "studentMatched": "JCA student — {name}",
     "studentUnverified": "Claimed JCA student, no match"
+  },
+  "resetPassword": {
+    "action": "Reset password",
+    "confirmTitle": "Reset password?",
+    "confirmBody": "This sets a new temporary password for {name} and shows it once. The old one stops working immediately, and anyone already signed in on a device stays signed in until they sign out.",
+    "confirm": "Reset it",
+    "cancel": "Cancel",
+    "working": "Resetting…",
+    "doneTitle": "New password set",
+    "doneHint": "Copy this now — it is not shown again. Hand it over in person and ask them to change it.",
+    "signInWith": "Signs in with",
+    "newPassword": "New password",
+    "copy": "Copy both"
   }
 }
