@@ -31,7 +31,12 @@ const fieldStyle = {
   outline: "none",
 } as const;
 
-export function LineChannelCard() {
+/**
+ * `heading` is off when the card sits under a section title that already names
+ * it — printing "LINE Official Account" again inside the card reads as two
+ * sections that happen to share a name. Same reason `LichessPanel` has it.
+ */
+export function LineChannelCard({ heading = true }: { heading?: boolean }) {
   const t = useTranslations("settings");
   const tCommon = useTranslations("common");
 
@@ -118,8 +123,17 @@ export function LineChannelCard() {
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 15 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
-        <Icon name="chat" size={18} color={COLORS.line} />
-        <SectionTitle style={{ flex: 1 }}>{t("lineTitle")}</SectionTitle>
+        {heading ? (
+          <>
+            <Icon name="chat" size={18} color={COLORS.line} />
+            <SectionTitle style={{ flex: 1 }}>{t("lineTitle")}</SectionTitle>
+          </>
+        ) : (
+          /* Nothing to say — the column above already said it — but the badge
+             still belongs at the right-hand end rather than bunched against
+             the left edge. Same shape as LichessPanel under its page header. */
+          <span style={{ flex: 1 }} />
+        )}
         {channel && (
           <Badge
             color={channel.configured ? COLORS.line : COLORS.textSecondary}

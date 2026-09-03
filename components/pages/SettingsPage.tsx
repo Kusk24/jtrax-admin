@@ -215,8 +215,13 @@ export function SettingsPage() {
             <ThemeCard />
           </div>
 
+          {/* Headed like the column beside it, so the two read as a pair
+              rather than one titled section and one card that starts with a
+              title of its own. The card drops its internal heading, the way
+              LichessPanel does under a page header that names it. */}
           <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
-            <LineChannelCard />
+            <SectionTitle>{t("lineTitle")}</SectionTitle>
+            <LineChannelCard heading={false} />
           </div>
         </div>
       ) : (
