@@ -9,7 +9,6 @@
     "tournament": "Tournament",
     "announcement": "Announcement",
     "chat": "Messages",
-    "profile": "Profile",
     "settings": "Settings",
     "logout": "Logout",
     "brandSub": "Chess School",
@@ -756,7 +755,7 @@
   },
   "settings": {
     "title": "Academy Rules",
-    "sub": "The academy's rules, its LINE channel, and who can sign in.",
+    "sub": "The follow-up thresholds the dashboard uses, and the certificate milestone the parent portal counts toward.",
     "lowCreditTitle": "Low Credit Warning",
     "lowCreditDesc": "Students will appear in \"Needs Follow-up\" when their remaining credits are below this value.",
     "expiringTitle": "Expiring Soon",
@@ -787,7 +786,10 @@
     "certTitle": "Certificate Milestone",
     "certDesc": "A student is awarded a certificate after attending this many classes. The parent portal shows progress toward it.",
     "unitClasses": "classes",
-    "pageTitle": "Settings"
+    "themeTitle": "Appearance",
+    "themeDesc": "Light, dark, or follow this device. Saved to your account, so it follows you to any machine.",
+    "pageTitle": "Settings",
+    "subStaff": "How the console looks on your account."
   },
   "games": {
     "title": "Games",
@@ -1014,14 +1016,5 @@
     "signInWith": "Signs in with",
     "newPassword": "New password",
     "copy": "Copy both"
-  },
-  "profile": {
-    "pageTitle": "Profile",
-    "sub": "Your account, and how this console looks to you.",
-    "accountTitle": "Account",
-    "signInEmail": "Sign-in email",
-    "passwordHint": "To change your password, use the Forgot password link on the sign-in page, or ask an admin to set a new one.",
-    "appearanceTitle": "Appearance",
-    "appearanceDesc": "Light, dark, or follow this device. Saved to your account, so it follows you to any machine."
   }
 }
