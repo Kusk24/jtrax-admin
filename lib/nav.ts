@@ -28,11 +28,18 @@ export const NAV_STRUCTURE: NavItem[] = [
   { id: "tournament", icon: "tournament" },
   { id: "announcement", icon: "announcement" },
   { id: "chat", icon: "chat" },
-  /* Both roles: the theme is a per-account preference and lives here, so a
-     receptionist who cannot open Settings cannot change how their own screen
-     looks. What is *on* the page is still split by role — the academy's rules,
-     the LINE credentials and the staff accounts are the admin's. */
-  { id: "settings", icon: "settings" },
+  /* Two pages, the way the parent portal divides them: Profile is who you are,
+     Settings is what the academy runs on.
+     
+     Profile is for both roles — the theme is a per-account preference, and a
+     desk that cannot reach it cannot change how its own screen looks. That one
+     card was the whole reason Settings used to be open to the front desk, and
+     it held the door open on the academy's rules, the LINE credentials and the
+     staff accounts. Now nothing on Settings is a receptionist's, so the tab is
+     not theirs either — a page whose every block is gated is a page that
+     should not be in the nav. */
+  { id: "profile", icon: "parents" },
+  { id: "settings", icon: "settings", adminOnly: true },
 ];
 
 /**
@@ -46,6 +53,23 @@ export const NAV_STRUCTURE: NavItem[] = [
 export const MERGED_SECTIONS: Record<string, string> = {
   lichess: "games",
   admins: "settings",
+};
+
+/**
+ * Where a role that cannot open a section should be sent instead, when there
+ * is somewhere better than a refusal.
+ *
+ * Only Settings, and only for the front desk. They could open it yesterday —
+ * for the theme — and the theme is now on Profile, so a bookmark or a habit
+ * that lands them on /settings is asking for a screen that still exists and is
+ * still theirs. Telling them "not allowed" would be true and useless.
+ *
+ * Deliberately not a general redirect table. Every other refusal in the
+ * console is a section with no counterpart for that role, and quietly landing
+ * somebody somewhere they did not ask for is worse than saying no.
+ */
+export const REROUTE_WHEN_BLOCKED: Record<string, Partial<Record<JtraxRole, string>>> = {
+  settings: { Receptionist: "profile" },
 };
 
 export function navItemsForRole(role: JtraxRole): NavItem[] {

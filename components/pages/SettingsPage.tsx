@@ -1,16 +1,23 @@
 "use client";
 
+/**
+ * What the academy runs on: its credit thresholds, its LINE channel, and who
+ * is allowed to sign in.
+ *
+ * Admin only, all of it. The theme used to be here too, which is why this
+ * section was open to the front desk — one personal preference holding the
+ * door open on three pages of academy configuration. It moved to Profile, and
+ * with it the only reason a receptionist had to be here. See `lib/nav.ts`.
+ */
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { DEFAULT_CREDIT_RULES, type CreditRules } from "@/lib/derive";
 import { Icon, type IconName } from "@/lib/icons";
 import { COLORS, FONT } from "@/lib/theme";
 import { useData } from "../DataProvider";
-import { useJtrax } from "../JtraxContext";
 import { ErrorNote, errorText } from "../crud";
 import { PageHeader, primaryButtonStyle, secondaryButtonStyle } from "../page-kit";
 import { LineChannelCard } from "../settings/LineChannelCard";
-import { ThemeToggle } from "../ThemeToggle";
 import { Card, SectionTitle } from "../ui";
 import { AdminsPage } from "./AdminsPage";
 
@@ -25,8 +32,6 @@ const RULES: Array<{ key: RuleKey; icon: IconName; titleKey: string; descKey: st
 
 export function SettingsPage() {
   const { creditRules, saveCreditRules } = useData();
-  const { role } = useJtrax();
-  const isAdmin = role === "Admin";
   const t = useTranslations("settings");
   const tCommon = useTranslations("common");
   /* null until the user types. The saved values only arrive after the first
@@ -64,16 +69,15 @@ export function SettingsPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 26 }}>
-      {/* The rules and the preferences read as prose and are capped at 820 so
-          the lines stay readable. Staff accounts are a table and a card grid,
-          so they sit outside the cap and get the whole width. */}
+      {/* The rules read as prose and are capped at 820 so the lines stay
+          readable. Staff accounts are a table and a card grid, so they sit
+          outside the cap and get the whole width. */}
       <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 820 }}>
-      <PageHeader title={t("pageTitle")} sub={isAdmin ? t("sub") : t("subStaff")} />
+      <PageHeader title={t("pageTitle")} sub={t("sub")} />
 
       {error && <ErrorNote>{error}</ErrorNote>}
 
-      {isAdmin && <SectionTitle>{t("title")}</SectionTitle>}
-      {isAdmin && (
+      <SectionTitle>{t("title")}</SectionTitle>
       <Card style={{ padding: 0 }}>
         {RULES.map((rule, i) => (
           <div
@@ -194,47 +198,13 @@ export function SettingsPage() {
           </div>
         </div>
       </Card>
-      )}
 
-      {/* Appearance is a preference, not an academy rule, so it gets its own
-          card rather than a row among the thresholds — and it lives here
-          rather than in the header, where a control nobody changes twice a
-          year sat beside the date and the account. */}
-      <Card style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-        <span
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 36,
-            height: 36,
-            borderRadius: "50%",
-            background: COLORS.light,
-            flexShrink: 0,
-          }}
-        >
-          <Icon name="settings" size={18} color={COLORS.blue} />
-        </span>
-        <div style={{ flex: "1 1 260px", minWidth: 0 }}>
-          <SectionTitle>{t("themeTitle")}</SectionTitle>
-          <p style={{ margin: "3px 0 0", fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
-            {t("themeDesc")}
-          </p>
-        </div>
-        <ThemeToggle />
-      </Card>
-
-      {isAdmin && <LineChannelCard />}
+      <LineChannelCard />
       </div>
 
-      {/* Admin only, and the reason the whole section is not: the theme above
-          belongs to whoever is signed in, but who *can* sign in is the office's
-          to decide. A receptionist reaching Settings must not reach this. */}
-      {isAdmin && (
-        <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 24 }}>
-          <AdminsPage level={2} />
-        </div>
-      )}
+      <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 24 }}>
+        <AdminsPage level={2} />
+      </div>
     </div>
   );
 }
