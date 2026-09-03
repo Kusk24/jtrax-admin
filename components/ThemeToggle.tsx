@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { COLORS, FONT } from "@/lib/theme";
+import { COLORS, FONT, type Theme } from "@/lib/theme";
+import { useJtrax } from "./JtraxContext";
 
-/** The account's saved preference; System follows the OS. */
-type Theme = "System" | "Light" | "Dark";
 const THEMES: Theme[] = ["System", "Light", "Dark"];
 
 /* Module scope on purpose, like LanguageToggle's cookie write: touching the
@@ -25,19 +24,24 @@ function apply(theme: Theme) {
  */
 export function ThemeToggle() {
   const t = useTranslations("nav");
-  /* Lazy initialiser, not an effect: the stored value is known synchronously,
-     and setting state inside the effect would render System for a frame. */
-  /* Same pill shape and the same active blue as LanguageToggle — they are
-     the same kind of control and were reading as two different ones. */
-  /* Read back what the server already rendered, so the pill agrees with the
-     screen without asking the backend a second time. A lazy initialiser, not
-     an effect: the attribute is there before React runs, and setting state in
-     an effect would render the wrong pill for a frame. */
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof document === "undefined") return "System";
-    const attr = document.documentElement.dataset.theme;
-    return attr === "dark" ? "Dark" : attr === "light" ? "Light" : "System";
-  });
+  /* Same pill shape and the same active blue as LanguageToggle — they are the
+     same kind of control and were reading as two different ones. */
+
+  /* Seeded from the session, which the server resolved.
+
+     This used to read `<html data-theme>` in a `useState` initialiser, on the
+     reasoning that the attribute is there before React runs. It is — in the
+     browser. But a client component is server-rendered too, where `document`
+     does not exist, so the server always sent HTML with Auto pressed; and
+     React does not repair attribute mismatches when it hydrates, which it
+     says out loud: *"some attributes of the server rendered HTML didn't match
+     the client properties. This won't be patched up."*
+
+     So the pill sat on Auto over a dark screen, permanently, while the theme
+     itself was saved and applied correctly. **A value the server renders has
+     to come from something the server can see.** */
+  const { theme: saved } = useJtrax();
+  const [theme, setTheme] = useState<Theme>(saved);
 
   function choose(next: Theme) {
     if (next === theme) return;

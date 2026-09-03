@@ -93,6 +93,14 @@ export const FONT_DISPLAY =
     the console, so there is no third label to keep in step with. */
 export type JtraxRole = "Admin" | "Receptionist";
 
+/** The account's saved appearance. `System` follows the machine. */
+export type Theme = "System" | "Light" | "Dark";
+
+/** Whatever the backend sent, as one of the three the console knows. */
+export function toTheme(preference: string | undefined): Theme {
+  return preference === "Dark" ? "Dark" : preference === "Light" ? "Light" : "System";
+}
+
 export const ROLE_COLORS: Record<JtraxRole, { color: string; bg: string }> = {
   /* Blue, not navy: the console's real blue, the one the primary buttons
      use. Navy is dark enough to read as a filled shape rather than a chip. */

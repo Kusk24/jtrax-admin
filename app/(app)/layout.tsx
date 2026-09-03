@@ -4,7 +4,8 @@ import { JtraxProvider } from "@/components/JtraxContext";
 import { ErrorToastProvider } from "@/components/ErrorToast";
 import { DataProvider } from "@/components/DataProvider";
 import { JtraxShell } from "@/components/JtraxShell";
-import { SESSION_COOKIE, fetchMe } from "@/lib/auth";
+import { SESSION_COOKIE, fetchIdentity, identityToPerson } from "@/lib/auth";
+import { toTheme } from "@/lib/theme";
 
 /**
  * The guard for every signed-in screen: no session cookie, no shell — straight
@@ -15,11 +16,15 @@ import { SESSION_COOKIE, fetchMe } from "@/lib/auth";
  */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const store = await cookies();
-  const person = await fetchMe(store.get(SESSION_COOKIE)?.value);
-  if (!person) redirect("/login");
+  /* The identity rather than just the person, because the account's saved
+     theme has to reach the picker from the server. Resolving it in the browser
+     is what left the pill stuck on Auto: see JtraxContext. */
+  const me = await fetchIdentity(store.get(SESSION_COOKIE)?.value).catch(() => undefined);
+  if (!me) redirect("/login");
+  const person = identityToPerson(me);
 
   return (
-    <JtraxProvider person={person}>
+    <JtraxProvider person={person} theme={toTheme(me.themePreference)}>
       <ErrorToastProvider>
         <DataProvider>
           <JtraxShell>{children}</JtraxShell>
