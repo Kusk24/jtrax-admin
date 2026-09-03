@@ -182,4 +182,24 @@ describe("the shape of Settings", () => {
     renderAs("Admin");
     expect(screen.getAllByText(en.settings.themeTitle)).toHaveLength(1);
   });
+
+  /* Both columns are headed now, so the LINE card drops the title it used to
+     print inside itself — a heading above a card that starts with the same
+     heading reads as two sections that happen to share a name. */
+  it("heads the LINE column, and names it once", () => {
+    renderAs("Admin");
+    const right = duo()!.children[1] as HTMLElement;
+    expect(right.textContent).toContain(en.settings.lineTitle);
+    expect(screen.getAllByText(en.settings.lineTitle)).toHaveLength(1);
+  });
+
+  /* Both columns open the same way: a heading, then the card it names. */
+  it("gives both columns a heading", () => {
+    renderAs("Admin");
+    const [left, right] = [...duo()!.children] as HTMLElement[];
+    for (const [column, title] of [[left, en.settings.title], [right, en.settings.lineTitle]] as const) {
+      const heading = column.querySelector("h2, h3");
+      expect(heading?.textContent).toBe(title);
+    }
+  });
 });
