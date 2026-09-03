@@ -1,15 +1,17 @@
 /**
- * Settings is open to both roles, and shows each of them a different page.
+ * The two pages Settings became: yours, and the academy's.
  *
- * The theme is a per-account preference that lives here, so shutting the
- * receptionist out of the whole section shut them out of their own screen's
- * appearance. The academy's rules, the LINE credentials and the staff accounts
- * stay the admin's — the nav opening up must not open those with it.
+ * It used to be one scroll holding four unrelated blocks — the credit
+ * thresholds, the LINE credentials, the staff accounts, and the theme. Only the
+ * last is a personal preference, and it was the whole reason the section had to
+ * be open to the front desk: shutting them out of Settings shut them out of
+ * their own screen's appearance.
  *
- * Staff accounts matter most of the three: it used to be its own `adminOnly`
- * tab, so the nav alone kept the desk out of it. Now it is a block inside a
- * section the desk can open, and `isAdmin` in the page is the only thing left
- * standing between a receptionist and the Create Admin button.
+ * So the theme moved to Profile and Settings became admin-only. That makes the
+ * nav the gate now, where it used to be `isAdmin` inside the page — which is
+ * why these tests care about both halves. A receptionist must not reach the
+ * Create Admin button, and the thing standing in the way is no longer a
+ * conditional in the component.
  */
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
@@ -46,72 +48,120 @@ vi.mock("@/components/DataProvider", () => ({
   }),
 }));
 
-/* The card fetches its channel on mount; this test is about who sees it. */
+/* The card fetches its channel on mount; these tests are about who sees it. */
 vi.mock("@/lib/line", () => ({
   getChannel: vi.fn(async () => null),
   saveChannel: vi.fn(async () => undefined),
   removeChannel: vi.fn(async () => undefined),
 }));
 
-const { SettingsPage } = await import("./SettingsPage");
+const { SectionRouter } = await import("@/components/SectionRouter");
 const { JtraxProvider } = await import("@/components/JtraxContext");
-/* The staff-accounts block reports failed writes through the toast, so the
-   page now needs its provider to render at all. */
 const { ErrorToastProvider } = await import("@/components/ErrorToast");
 
-function renderAs(role: "Admin" | "Receptionist") {
-  const person = { id: "p1", name: "Test", role, email: "t@jca.ac.th", initials: "T" } as AdminPerson;
+/* Rendered through the router rather than the component directly, because the
+   router is where the gate lives now. Reaching past it would test a page
+   nobody in that role can open. */
+function open(section: string, role: "Admin" | "Receptionist") {
+  const person = {
+    id: "p1",
+    name: "Dao Srisai",
+    role,
+    email: "dao@jca.ac.th",
+    phone: "081-222-3333",
+    branch: "Bangkok",
+    initials: "DS",
+  } as AdminPerson;
   render(
     <NextIntlClientProvider locale="en" messages={en}>
       <ErrorToastProvider>
         <JtraxProvider person={person}>
-          <SettingsPage />
+          <SectionRouter section={section} />
         </JtraxProvider>
       </ErrorToastProvider>
     </NextIntlClientProvider>,
   );
 }
 
-describe("the receptionist's Settings", () => {
-  it("offers the theme", () => {
-    renderAs("Receptionist");
-    expect(screen.getByText(en.settings.themeTitle)).toBeDefined();
-    expect(screen.getByRole("group", { name: en.nav.theme })).toBeDefined();
-  });
-
-  it("does not offer the academy's rules", () => {
-    renderAs("Receptionist");
-    expect(screen.queryByText(en.settings.title)).toBeNull();
-    expect(screen.queryByText(en.settings.lowCreditTitle)).toBeNull();
-    expect(screen.queryByText(en.settings.certTitle)).toBeNull();
-  });
-
-  it("does not offer the LINE credentials", () => {
-    renderAs("Receptionist");
-    expect(screen.queryByText(en.settings.lineTitle)).toBeNull();
-  });
-
-  it("does not offer the staff accounts", () => {
-    renderAs("Receptionist");
-    expect(screen.queryByText(en.admins.title)).toBeNull();
-    expect(screen.queryByText(en.admins.create)).toBeNull();
-    /* Not just the button — the roster itself must not be on the page. */
-    expect(screen.queryByText("Office Admin")).toBeNull();
-  });
-});
-
-describe("the admin's Settings", () => {
-  it("offers all four", () => {
-    renderAs("Admin");
-    expect(screen.getByText(en.settings.themeTitle)).toBeDefined();
+describe("the academy's Settings", () => {
+  it("holds the three things that are the academy's", () => {
+    open("settings", "Admin");
     expect(screen.getByText(en.settings.title)).toBeDefined();
     expect(screen.getByText(en.settings.lineTitle)).toBeDefined();
     expect(screen.getByText(en.admins.title)).toBeDefined();
   });
 
-  it("keeps Settings' own heading as the page's h1", () => {
-    renderAs("Admin");
+  /* The move, asserted from the side that lost it. */
+  it("no longer holds the theme, which is nobody's business but yours", () => {
+    open("settings", "Admin");
+    expect(screen.queryByText(en.profile.appearanceTitle)).toBeNull();
+    expect(screen.queryByRole("group", { name: en.nav.theme })).toBeNull();
+  });
+
+  it("keeps its own heading as the page's h1", () => {
+    open("settings", "Admin");
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(en.settings.pageTitle);
     expect(screen.getByRole("heading", { level: 2, name: en.admins.title })).toBeDefined();
+  });
+});
+
+describe("a receptionist aiming at Settings", () => {
+  /* The one that would matter most if it broke: staff accounts were an
+     `adminOnly` tab, then a block behind `isAdmin`, and are now behind the nav
+     again. Three arrangements, one thing that must stay true. */
+  it("never reaches the staff accounts", () => {
+    open("settings", "Receptionist");
+    expect(screen.queryByText(en.admins.title)).toBeNull();
+    expect(screen.queryByText(en.admins.create)).toBeNull();
+    expect(screen.queryByText("Office Admin")).toBeNull();
+  });
+
+  it("never reaches the academy's rules or the LINE credentials", () => {
+    open("settings", "Receptionist");
+    expect(screen.queryByText(en.settings.title)).toBeNull();
+    expect(screen.queryByText(en.settings.lowCreditTitle)).toBeNull();
+    expect(screen.queryByText(en.settings.lineTitle)).toBeNull();
+  });
+
+  /* They could open this address yesterday, for the theme. Refusing them is
+     true and useless when the screen they wanted still exists. */
+  it("lands on Profile rather than a refusal", () => {
+    open("settings", "Receptionist");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(en.profile.pageTitle);
+    expect(screen.getByText(en.profile.appearanceTitle)).toBeDefined();
+  });
+});
+
+describe("Profile", () => {
+  it.each(["Admin", "Receptionist"] as const)("is open to a %s", (role) => {
+    open("profile", role);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(en.profile.pageTitle);
+  });
+
+  it("carries the theme, which is the reason it exists", () => {
+    open("profile", "Receptionist");
+    expect(screen.getByText(en.profile.appearanceTitle)).toBeDefined();
+    expect(screen.getByRole("group", { name: en.nav.theme })).toBeDefined();
+  });
+
+  it("shows who is signed in and how they sign in", () => {
+    open("profile", "Receptionist");
+    expect(screen.getByText("Dao Srisai")).toBeDefined();
+    expect(screen.getByText("dao@jca.ac.th")).toBeDefined();
+    expect(screen.getByText(en.roles.Receptionist)).toBeDefined();
+  });
+
+  /* A profile page is exactly where somebody looks for a password field, and
+     this console has never had one. Saying so beats leaving them to hunt. */
+  it("says where a new password comes from, since it is not here", () => {
+    open("profile", "Admin");
+    expect(screen.getByText(en.profile.passwordHint)).toBeDefined();
+  });
+
+  it("does not leak the academy's configuration onto a personal page", () => {
+    open("profile", "Admin");
+    expect(screen.queryByText(en.settings.lowCreditTitle)).toBeNull();
+    expect(screen.queryByText(en.settings.lineTitle)).toBeNull();
+    expect(screen.queryByText(en.admins.title)).toBeNull();
   });
 });

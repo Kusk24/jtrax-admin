@@ -1,6 +1,6 @@
 "use client";
 
-import { canRoleAccess } from "@/lib/nav";
+import { canRoleAccess, REROUTE_WHEN_BLOCKED } from "@/lib/nav";
 import { opensCreate } from "@/lib/quick-actions";
 import { useJtrax } from "./JtraxContext";
 import { SectionPlaceholder } from "./SectionPlaceholder";
@@ -11,6 +11,7 @@ import { GamesPage } from "./pages/GamesPage";
 import { MessagesPage } from "./pages/MessagesPage";
 import { ParentsPage } from "./pages/ParentsPage";
 import { PaymentPage } from "./pages/PaymentPage";
+import { ProfilePage } from "./pages/ProfilePage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { StudentsPage } from "./pages/StudentsPage";
 import { TournamentPage } from "./pages/TournamentPage";
@@ -47,6 +48,11 @@ export function SectionRouter({
   const { role } = useJtrax();
 
   if (!canRoleAccess(role, section)) {
+    /* A refusal is right when there is nothing else to offer. Settings for a
+       receptionist is the exception: the theme they used to come here for is
+       on Profile now, so send them to the screen they were actually after. */
+    const instead = REROUTE_WHEN_BLOCKED[section]?.[role];
+    if (instead) return <SectionRouter section={instead} />;
     return <SectionPlaceholder section={section} noAccess />;
   }
 
@@ -96,6 +102,8 @@ export function SectionRouter({
       return <AnnouncementPage key={newKey} startNew={opensCreate(startNew)} />;
     case "settings":
       return <SettingsPage />;
+    case "profile":
+      return <ProfilePage />;
     case "academy":
       return <AcademyPage />;
     case "chat":
