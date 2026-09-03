@@ -80,6 +80,11 @@ export function SettingsPage() {
           existed so lines of prose stayed short, and a half-width column does
           that on its own. Keeping both would have made each column 410px.
 
+          The rules and Appearance share the left column; LINE has the right to
+          itself. Both are short and LINE is a tall form, so putting one short
+          card beside it left a hole under the rules and made the two sides
+          finish a long way apart.
+
           A receptionist sees only Appearance, so for them the left column has
           nothing in it — `duo` collapses to a single flow rather than leaving
           a blank half beside one card. */}
@@ -207,10 +212,10 @@ export function SettingsPage() {
           </div>
         </div>
             </Card>
+            <ThemeCard />
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
-            <ThemeCard />
             <LineChannelCard />
           </div>
         </div>

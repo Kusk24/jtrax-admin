@@ -134,15 +134,29 @@ describe("the shape of Settings", () => {
     expect(grid!.children.length).toBe(2);
   });
 
-  it("splits them the way the page's own rule does", () => {
+  /* The rules and Appearance are both short; the LINE form is tall. Splitting
+     them the other way — one short card beside the tall one — left a hole
+     under the rules and finished the two sides a long way apart. */
+  it("stacks the two short blocks against the tall one", () => {
     renderAs("Admin");
     const [left, right] = [...duo()!.children] as HTMLElement[];
-    /* The academy's thresholds on one side; what is yours, and the credentials
-       that are neither prose nor a roster, on the other. */
     expect(left.textContent).toContain(en.settings.title);
     expect(left.textContent).toContain(en.settings.lowCreditTitle);
-    expect(right.textContent).toContain(en.settings.themeTitle);
+    expect(left.textContent).toContain(en.settings.themeTitle);
     expect(right.textContent).toContain(en.settings.lineTitle);
+    /* And Appearance really did leave the right column, rather than being
+       rendered into both. */
+    expect(right.textContent).not.toContain(en.settings.themeTitle);
+  });
+
+  /* Appearance sits under the rules, not above them: the academy's thresholds
+     are what the page is for, and a personal preference should not be the
+     first thing an admin scrolls past to reach them. */
+  it("puts Appearance below the rules, not above", () => {
+    renderAs("Admin");
+    const left = duo()!.children[0] as HTMLElement;
+    const text = left.textContent ?? "";
+    expect(text.indexOf(en.settings.title)).toBeLessThan(text.indexOf(en.settings.themeTitle));
   });
 
   /* A table halved is a roster in a 400px box. It belongs under both columns,
