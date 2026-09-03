@@ -22,7 +22,11 @@ import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
 
 const db: Record<string, Record<string, unknown>[]> = {};
-const writes: Array<{ verb: string; path: string; body?: Record<string, unknown> }> = [];
+const writes: Array<{
+  verb: string;
+  path: string;
+  body?: Record<string, unknown>;
+}> = [];
 /** Set to make the next student PATCH fail, the way a refused write does. */
 let refuseStudentWrite = "";
 const push = vi.fn();
@@ -34,18 +38,35 @@ function reset() {
   push.mockClear();
   Object.assign(db, {
     students: [
-      { student_id: "stu_1", name: "Anong Sri", date_of_birth: "2013-04-01", current_level: "Beginner" },
+      {
+        student_id: "stu_1",
+        name: "Anong Sri",
+        date_of_birth: "2013-04-01",
+        current_level: "Beginner",
+      },
     ],
-    classes: [{ class_id: "cls_group", name: "Group Class", class_type: "Group" }],
+    classes: [
+      { class_id: "cls_group", name: "Group Class", class_type: "Group" },
+    ],
     enrollments: [
-      { enrollment_id: "enr_1", student_id: "stu_1", class_id: "cls_group", status: "Active" },
+      {
+        enrollment_id: "enr_1",
+        student_id: "stu_1",
+        class_id: "cls_group",
+        status: "Active",
+      },
     ],
     parents: [
       { parent_id: "par_1", user_account_id: "usr_p1", name: "Malee Sri" },
       { parent_id: "par_2", user_account_id: "usr_p2", name: "Somchai Sri" },
     ],
     "parent-contacts": [
-      { parent_contact_id: "pct_1", parent_id: "par_1", contact_type: "phone", value: "0801111111" },
+      {
+        parent_contact_id: "pct_1",
+        parent_id: "par_1",
+        contact_type: "phone",
+        value: "0801111111",
+      },
     ],
     "student-parents": [
       { student_id: "stu_1", parent_id: "par_1", relationship_type: "Mother" },
@@ -60,10 +81,13 @@ vi.mock("@/lib/api", () => ({
       return (db[path] ?? []).map((row) => ({ ...row }));
     },
     patch: async (path: string, body: Record<string, unknown>) => {
-      if (refuseStudentWrite && path.startsWith("students/")) throw new Error(refuseStudentWrite);
+      if (refuseStudentWrite && path.startsWith("students/"))
+        throw new Error(refuseStudentWrite);
       writes.push({ verb: "PATCH", path, body });
       const [collection, id] = path.split("/");
-      const row = (db[collection] ?? []).find((r) => Object.values(r).includes(id));
+      const row = (db[collection] ?? []).find((r) =>
+        Object.values(r).includes(id),
+      );
       if (row) Object.assign(row, body);
       return row ?? {};
     },
@@ -75,7 +99,9 @@ vi.mock("@/lib/api", () => ({
     del: async (path: string) => {
       writes.push({ verb: "DELETE", path });
       const [collection, id] = path.split("/");
-      db[collection] = (db[collection] ?? []).filter((r) => !Object.values(r).includes(id));
+      db[collection] = (db[collection] ?? []).filter(
+        (r) => !Object.values(r).includes(id),
+      );
       return {};
     },
     put: async () => ({}),
@@ -91,6 +117,7 @@ vi.mock("next/navigation", () => ({
 const { DataProvider } = await import("../DataProvider");
 const { StudentsPage } = await import("./StudentsPage");
 const { ErrorToastProvider } = await import("../ErrorToast");
+const { SignedInAs } = await import("./signed-in-as");
 
 beforeEach(reset);
 
@@ -99,15 +126,19 @@ async function openEditor() {
   render(
     <NextIntlClientProvider locale="en" messages={en}>
       <ErrorToastProvider>
-        <DataProvider>
-          <StudentsPage />
-        </DataProvider>
+        <SignedInAs>
+          <DataProvider>
+            <StudentsPage />
+          </DataProvider>
+        </SignedInAs>
       </ErrorToastProvider>
     </NextIntlClientProvider>,
   );
   await waitFor(() => expect(screen.getByText("Anong Sri")).toBeTruthy());
   await user.click(screen.getByText("Anong Sri"));
-  await waitFor(() => expect(screen.getByText(en.students.backToStudents)).toBeTruthy());
+  await waitFor(() =>
+    expect(screen.getByText(en.students.backToStudents)).toBeTruthy(),
+  );
   await user.click(screen.getByRole("button", { name: en.common.edit }));
   return user;
 }
@@ -115,13 +146,18 @@ async function openEditor() {
 const save = (user: ReturnType<typeof userEvent.setup>) =>
   user.click(screen.getByRole("button", { name: en.common.save }));
 
-const link = () => db["student-parents"].find((r) => r["student_id"] === "stu_1");
+const link = () =>
+  db["student-parents"].find((r) => r["student_id"] === "stu_1");
 
 describe("choosing the guardian", () => {
   it("offers the parents on file", async () => {
     await openEditor();
-    const picker = screen.getByLabelText(en.students.chooseGuardian) as HTMLSelectElement;
-    expect(Array.from(picker.options).map((o) => o.textContent)).toContain("Somchai Sri");
+    const picker = screen.getByLabelText(
+      en.students.chooseGuardian,
+    ) as HTMLSelectElement;
+    expect(Array.from(picker.options).map((o) => o.textContent)).toContain(
+      "Somchai Sri",
+    );
     expect(picker.value).toBe("par_1");
   });
 
@@ -129,17 +165,29 @@ describe("choosing the guardian", () => {
      create rather than a field. */
   it("moves the child to another parent", async () => {
     const user = await openEditor();
-    await user.selectOptions(screen.getByLabelText(en.students.chooseGuardian), "par_2");
+    await user.selectOptions(
+      screen.getByLabelText(en.students.chooseGuardian),
+      "par_2",
+    );
     await save(user);
 
     await waitFor(() => expect(link()?.["parent_id"]).toBe("par_2"));
-    expect(writes.some((w) => w.verb === "DELETE" && w.path === "student-parents/stu_1")).toBe(true);
-    expect(writes.some((w) => w.verb === "POST" && w.path === "student-parents")).toBe(true);
+    expect(
+      writes.some(
+        (w) => w.verb === "DELETE" && w.path === "student-parents/stu_1",
+      ),
+    ).toBe(true);
+    expect(
+      writes.some((w) => w.verb === "POST" && w.path === "student-parents"),
+    ).toBe(true);
   });
 
   it("saves the relationship, which belongs to the link and nowhere else", async () => {
     const user = await openEditor();
-    await user.selectOptions(screen.getByLabelText(en.students.relation), "Father");
+    await user.selectOptions(
+      screen.getByLabelText(en.students.relation),
+      "Father",
+    );
     await save(user);
 
     await waitFor(() => expect(link()?.["relationship_type"]).toBe("Father"));
@@ -147,7 +195,10 @@ describe("choosing the guardian", () => {
 
   it("can detach a guardian without touching the parent", async () => {
     const user = await openEditor();
-    await user.selectOptions(screen.getByLabelText(en.students.chooseGuardian), "");
+    await user.selectOptions(
+      screen.getByLabelText(en.students.chooseGuardian),
+      "",
+    );
     await save(user);
 
     await waitFor(() => expect(link()).toBeUndefined());
@@ -183,12 +234,17 @@ describe("the parent's own details", () => {
 
   it("is left alone by a save", async () => {
     const user = await openEditor();
-    await user.selectOptions(screen.getByLabelText(en.students.relation), "Father");
+    await user.selectOptions(
+      screen.getByLabelText(en.students.relation),
+      "Father",
+    );
     await save(user);
 
     await waitFor(() => expect(link()?.["relationship_type"]).toBe("Father"));
     expect(writes.some((w) => w.path.startsWith("parents/"))).toBe(false);
-    expect(writes.some((w) => w.path.startsWith("parent-contacts"))).toBe(false);
+    expect(writes.some((w) => w.path.startsWith("parent-contacts"))).toBe(
+      false,
+    );
   });
 });
 
@@ -201,7 +257,9 @@ describe("a save that fails", () => {
     const user = await openEditor();
     await save(user);
 
-    await waitFor(() => expect(screen.getByLabelText(en.students.dateOfBirth)).toBeTruthy());
+    await waitFor(() =>
+      expect(screen.getByLabelText(en.students.dateOfBirth)).toBeTruthy(),
+    );
   });
 
   it("writes what went wrong on the form", async () => {
@@ -209,13 +267,17 @@ describe("a save that fails", () => {
     const user = await openEditor();
     await save(user);
 
-    await waitFor(() => expect(screen.getByText(/the backend said no/)).toBeTruthy());
+    await waitFor(() =>
+      expect(screen.getByText(/the backend said no/)).toBeTruthy(),
+    );
   });
 
   it("closes on a save that works", async () => {
     const user = await openEditor();
     await save(user);
 
-    await waitFor(() => expect(screen.queryByLabelText(en.students.dateOfBirth)).toBeNull());
+    await waitFor(() =>
+      expect(screen.queryByLabelText(en.students.dateOfBirth)).toBeNull(),
+    );
   });
 });

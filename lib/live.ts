@@ -160,6 +160,7 @@ export function toStudents(c: LiveCollections): Student[] {
       id: sid,
       name: s(st, "name"),
       email: s(st, "email"),
+      accountId: s(st, "user_account_id"),
       /* Stored since 0024. Rows written before that migration backfilled to
          Bangkok, which is where all of them are — it is the only branch the
          academy has ever had. */
@@ -215,6 +216,7 @@ export function toParents(c: LiveCollections): ParentPerson[] {
       id: pid,
       name: s(p, "name"),
       loginEmail: s(p, "email"),
+      accountId: s(p, "user_account_id"),
       phone: contact("phone"),
       email: contact("email"),
       lineId: contact("line_id"),
@@ -265,6 +267,7 @@ export function toAdmins(c: LiveCollections): AdminPerson[] {
     return {
       id: s(a, "admin_id"),
       name,
+      accountId: s(a, "user_account_id"),
       role: acct ? CONSOLE_ROLE[s(acct, "role")] ?? "Admin" : "Admin",
       phone: s(a, "phone"),
       email: s(a, "email") || (acct ? s(acct, "email") : ""),

@@ -37,9 +37,16 @@ function reset() {
         branch: "Bangkok",
       },
     ],
-    classes: [{ class_id: "cls_group", name: "Group Class", class_type: "Group" }],
+    classes: [
+      { class_id: "cls_group", name: "Group Class", class_type: "Group" },
+    ],
     enrollments: [
-      { enrollment_id: "enr_1", student_id: "stu_1", class_id: "cls_group", status: "Active" },
+      {
+        enrollment_id: "enr_1",
+        student_id: "stu_1",
+        class_id: "cls_group",
+        status: "Active",
+      },
     ],
   });
 }
@@ -53,7 +60,9 @@ vi.mock("@/lib/api", () => ({
     patch: async (path: string, body: Record<string, unknown>) => {
       patches.push({ path, body });
       const [collection, id] = path.split("/");
-      const row = (db[collection] ?? []).find((r) => Object.values(r).includes(id));
+      const row = (db[collection] ?? []).find((r) =>
+        Object.values(r).includes(id),
+      );
       /* The backend drops nulls rather than writing them; what matters here is
          that a real value arrives and sticks. */
       if (row && !swallowWrites) Object.assign(row, body);
@@ -76,6 +85,7 @@ vi.mock("next/navigation", () => ({
 const { DataProvider } = await import("../DataProvider");
 const { StudentsPage } = await import("./StudentsPage");
 const { ErrorToastProvider } = await import("../ErrorToast");
+const { SignedInAs } = await import("./signed-in-as");
 
 beforeEach(reset);
 
@@ -93,19 +103,24 @@ async function openTheChild() {
   render(
     <NextIntlClientProvider locale="en" messages={en}>
       <ErrorToastProvider>
-        <DataProvider>
-          <StudentsPage />
-        </DataProvider>
+        <SignedInAs>
+          <DataProvider>
+            <StudentsPage />
+          </DataProvider>
+        </SignedInAs>
       </ErrorToastProvider>
     </NextIntlClientProvider>,
   );
   await waitFor(() => expect(screen.getByText("Anong Sri")).toBeTruthy());
   await user.click(screen.getByText("Anong Sri"));
-  await waitFor(() => expect(screen.getByText(en.students.backToStudents)).toBeTruthy());
+  await waitFor(() =>
+    expect(screen.getByText(en.students.backToStudents)).toBeTruthy(),
+  );
   return user;
 }
 
-const dobField = () => screen.getByLabelText(en.students.dateOfBirth) as HTMLInputElement;
+const dobField = () =>
+  screen.getByLabelText(en.students.dateOfBirth) as HTMLInputElement;
 
 describe("a child's date of birth", () => {
   it("arrives in the form as the date on file", async () => {
@@ -148,7 +163,9 @@ describe("a child's date of birth", () => {
     await user.type(dobField(), "2014-03-09");
     await user.click(screen.getByRole("button", { name: en.common.save }));
 
-    await waitFor(() => expect(screen.getByText(new RegExp(after))).toBeTruthy());
+    await waitFor(() =>
+      expect(screen.getByText(new RegExp(after))).toBeTruthy(),
+    );
   });
 });
 
@@ -172,7 +189,9 @@ describe("a write the server accepts and does not perform", () => {
     await user.type(dobField(), "2014-03-09");
     await user.click(screen.getByRole("button", { name: en.common.save }));
 
-    await waitFor(() => expect(screen.getByText(/did not store it/)).toBeTruthy());
+    await waitFor(() =>
+      expect(screen.getByText(/did not store it/)).toBeTruthy(),
+    );
     /* And it names the field, so the report says something useful. */
     expect(screen.getByText(/date_of_birth/)).toBeTruthy();
   });
@@ -185,7 +204,9 @@ describe("a write the server accepts and does not perform", () => {
     await user.type(dobField(), "2014-03-09");
     await user.click(screen.getByRole("button", { name: en.common.save }));
 
-    await waitFor(() => expect(screen.getByText(/did not store it/)).toBeTruthy());
+    await waitFor(() =>
+      expect(screen.getByText(/did not store it/)).toBeTruthy(),
+    );
     expect(dobField().value).toBe("2014-03-09");
   });
 
@@ -209,7 +230,9 @@ describe("a write the server accepts and does not perform", () => {
     await user.type(dobField(), "2014-03-09");
     await user.click(screen.getByRole("button", { name: en.common.save }));
 
-    await waitFor(() => expect(screen.queryByLabelText(en.students.dateOfBirth)).toBeNull());
+    await waitFor(() =>
+      expect(screen.queryByLabelText(en.students.dateOfBirth)).toBeNull(),
+    );
     expect(screen.queryByText(/did not store it/)).toBeNull();
   });
 });

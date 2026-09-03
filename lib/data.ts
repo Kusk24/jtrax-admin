@@ -15,6 +15,10 @@ export type Student = {
       Optional because a student registered at the desk has no account until
       someone issues one, and the mock fixtures below predate the field. */
   email?: string;
+  /** Their `user_account_id`, or "" when nobody has issued them a login. The
+      office needs it to reset the password, which for a child is the only way
+      back in — an ID cannot be sent a link. */
+  accountId?: string;
   branch: string;
   className: string;
   credit: number;
@@ -57,6 +61,8 @@ export type ParentPerson = {
   id: string;
   name: string;
   loginEmail: string;
+  /** Their `user_account_id`, so the office can reset the password. */
+  accountId?: string;
   phone: string;
   email: string;
   lineId: string;
@@ -119,6 +125,8 @@ export type ClassDef = {
 export type AdminPerson = {
   id: string;
   name: string;
+  /** Their `user_account_id`, so the office can reset the password. */
+  accountId?: string;
   role: JtraxRole;
   phone: string;
   email: string;

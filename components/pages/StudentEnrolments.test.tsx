@@ -17,30 +17,100 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
+import { SignedInAs } from "./signed-in-as";
 
 /* Typed by their arguments, not just their return: the tests read
    `create.mock.calls` to check which collection each write went to, and an
    untyped mock makes those an empty tuple. */
 type Row = Record<string, unknown>;
-const create = vi.fn<(path: string, body: Row) => Promise<Row>>(async () => ({ enrollment_id: "e_new" }));
-const update = vi.fn<(path: string, id: string, body: Row) => Promise<Row>>(async () => ({}));
-const remove = vi.fn<(path: string, id: string) => Promise<void>>(async () => undefined);
+const create = vi.fn<(path: string, body: Row) => Promise<Row>>(async () => ({
+  enrollment_id: "e_new",
+}));
+const update = vi.fn<(path: string, id: string, body: Row) => Promise<Row>>(
+  async () => ({}),
+);
+const remove = vi.fn<(path: string, id: string) => Promise<void>>(
+  async () => undefined,
+);
 
 /* Anong is in two classes — the case the roster's single Class column cannot
    show and the class filter exists for. Boon has left Beginner for
    Intermediate. Chai was enrolled by mistake this morning. */
 const STUDENTS = [
-  { id: "anong", name: "Anong", className: "Beginner", status: "Normal", branch: "Bangkok", credit: 8, parentPhone: "0801111111", parentName: "Malee", level: "Beginner", expires: "" },
-  { id: "boon", name: "Boon", className: "Intermediate", status: "Normal", branch: "Bangkok", credit: 4, parentPhone: "0802222222", parentName: "Nid", level: "Intermediate", expires: "" },
-  { id: "chai", name: "Chai", className: "Beginner", status: "Normal", branch: "Bangkok", credit: 0, parentPhone: "0803333333", parentName: "Wichai", level: "Beginner", expires: "" },
+  {
+    id: "anong",
+    name: "Anong",
+    className: "Beginner",
+    status: "Normal",
+    branch: "Bangkok",
+    credit: 8,
+    parentPhone: "0801111111",
+    parentName: "Malee",
+    level: "Beginner",
+    expires: "",
+  },
+  {
+    id: "boon",
+    name: "Boon",
+    className: "Intermediate",
+    status: "Normal",
+    branch: "Bangkok",
+    credit: 4,
+    parentPhone: "0802222222",
+    parentName: "Nid",
+    level: "Intermediate",
+    expires: "",
+  },
+  {
+    id: "chai",
+    name: "Chai",
+    className: "Beginner",
+    status: "Normal",
+    branch: "Bangkok",
+    credit: 0,
+    parentPhone: "0803333333",
+    parentName: "Wichai",
+    level: "Beginner",
+    expires: "",
+  },
 ];
 
 const ENROLMENTS: Row[] = [
-  { enrollment_id: "e_anong_beg", student_id: "anong", class_id: "beg", status: "Active", enrolled_date: "2026-01-06" },
-  { enrollment_id: "e_anong_int", student_id: "anong", class_id: "int", status: "Active", enrolled_date: "2026-05-04" },
-  { enrollment_id: "e_boon_beg", student_id: "boon", class_id: "beg", status: "Withdrawn", enrolled_date: "2025-09-01" },
-  { enrollment_id: "e_boon_int", student_id: "boon", class_id: "int", status: "Active", enrolled_date: "2026-06-01" },
-  { enrollment_id: "e_chai_beg", student_id: "chai", class_id: "beg", status: "Active", enrolled_date: "2026-08-22" },
+  {
+    enrollment_id: "e_anong_beg",
+    student_id: "anong",
+    class_id: "beg",
+    status: "Active",
+    enrolled_date: "2026-01-06",
+  },
+  {
+    enrollment_id: "e_anong_int",
+    student_id: "anong",
+    class_id: "int",
+    status: "Active",
+    enrolled_date: "2026-05-04",
+  },
+  {
+    enrollment_id: "e_boon_beg",
+    student_id: "boon",
+    class_id: "beg",
+    status: "Withdrawn",
+    enrolled_date: "2025-09-01",
+  },
+  {
+    enrollment_id: "e_boon_int",
+    student_id: "boon",
+    class_id: "int",
+    status: "Active",
+    enrolled_date: "2026-06-01",
+  },
+  {
+    enrollment_id: "e_chai_beg",
+    student_id: "chai",
+    class_id: "beg",
+    status: "Active",
+    enrolled_date: "2026-08-22",
+  },
 ];
 
 const raw = {
@@ -62,12 +132,35 @@ const raw = {
   /* Anong has spent credits in Beginner; Chai has spent nothing anywhere.
      The purchase carries an expiry, because a moved balance has to keep one. */
   creditTransactions: [
-    { credit_transaction_id: "t1", enrollment_id: "e_anong_beg", amount: 20, transaction_date: "2026-01-06", transaction_type: "purchase", expiry_date: "2026-12-31" },
-    { credit_transaction_id: "t2", enrollment_id: "e_anong_beg", amount: -12, transaction_date: "2026-06-02", transaction_type: "consumption" },
+    {
+      credit_transaction_id: "t1",
+      enrollment_id: "e_anong_beg",
+      amount: 20,
+      transaction_date: "2026-01-06",
+      transaction_type: "purchase",
+      expiry_date: "2026-12-31",
+    },
+    {
+      credit_transaction_id: "t2",
+      enrollment_id: "e_anong_beg",
+      amount: -12,
+      transaction_date: "2026-06-02",
+      transaction_type: "consumption",
+    },
   ] as Row[],
   creditPackages: [
-    { credit_package_id: "p_beg", class_id: "beg", credit_amount: 20, standard_price: 12000 },
-    { credit_package_id: "p_int", class_id: "int", credit_amount: 20, standard_price: 20000 },
+    {
+      credit_package_id: "p_beg",
+      class_id: "beg",
+      credit_amount: 20,
+      standard_price: 12000,
+    },
+    {
+      credit_package_id: "p_int",
+      class_id: "int",
+      credit_amount: 20,
+      standard_price: 20000,
+    },
   ],
   payments: [] as Row[],
   teachers: [],
@@ -108,7 +201,9 @@ function renderList() {
   render(
     <NextIntlClientProvider locale="en" messages={en}>
       <ErrorToastProvider>
-        <StudentsPage />
+        <SignedInAs>
+          <StudentsPage />
+        </SignedInAs>
       </ErrorToastProvider>
     </NextIntlClientProvider>,
   );
@@ -116,7 +211,10 @@ function renderList() {
 }
 
 /** Opens a child's detail page from the roster. */
-async function openStudent(user: ReturnType<typeof userEvent.setup>, name: string) {
+async function openStudent(
+  user: ReturnType<typeof userEvent.setup>,
+  name: string,
+) {
   await user.click(screen.getByText(name));
 }
 
@@ -133,7 +231,11 @@ function enrolmentRow(className: string): HTMLElement {
   const card = heading.closest("div")!.parentElement!;
   const name = within(card).getAllByText(className)[0];
   let node: HTMLElement | null = name.parentElement;
-  while (node && node !== card && node.querySelectorAll("button").length === 0) {
+  while (
+    node &&
+    node !== card &&
+    node.querySelectorAll("button").length === 0
+  ) {
     node = node.parentElement;
   }
   return (node ?? name.parentElement) as HTMLElement;
@@ -153,14 +255,26 @@ describe("an enrolment row", () => {
     const user = renderList();
     await openStudent(user, "Anong");
     const row = enrolmentRow("Beginner");
-    expect(within(row).getByRole("button", { name: "Change Beginner to another course" })).toBeDefined();
-    expect(within(row).getByRole("button", { name: "Delete the enrolment in Beginner" })).toBeDefined();
+    expect(
+      within(row).getByRole("button", {
+        name: "Change Beginner to another course",
+      }),
+    ).toBeDefined();
+    expect(
+      within(row).getByRole("button", {
+        name: "Delete the enrolment in Beginner",
+      }),
+    ).toBeDefined();
   });
 
   it("no longer offers Withdraw", async () => {
     const user = renderList();
     await openStudent(user, "Anong");
-    expect(within(enrolmentRow("Beginner")).queryByRole("button", { name: /Withdraw/ })).toBeNull();
+    expect(
+      within(enrolmentRow("Beginner")).queryByRole("button", {
+        name: /Withdraw/,
+      }),
+    ).toBeNull();
   });
 
   /* Retyping the class on a row with a term of credits behind it moves that
@@ -168,14 +282,22 @@ describe("an enrolment row", () => {
   it("no longer offers Edit", async () => {
     const user = renderList();
     await openStudent(user, "Anong");
-    expect(within(enrolmentRow("Beginner")).queryByRole("button", { name: "Edit Beginner" })).toBeNull();
+    expect(
+      within(enrolmentRow("Beginner")).queryByRole("button", {
+        name: "Edit Beginner",
+      }),
+    ).toBeNull();
   });
 
   /* There is no moving out of a course they already left. */
   it("does not offer Change on a course already left", async () => {
     const user = renderList();
     await openStudent(user, "Boon");
-    expect(within(enrolmentRow("Beginner")).queryByRole("button", { name: /Change/ })).toBeNull();
+    expect(
+      within(enrolmentRow("Beginner")).queryByRole("button", {
+        name: /Change/,
+      }),
+    ).toBeNull();
   });
 
   /* Delete is the tidy-up, and the rows most in need of tidying are exactly
@@ -185,7 +307,11 @@ describe("an enrolment row", () => {
   it("offers Delete on a course already left", async () => {
     const user = renderList();
     await openStudent(user, "Boon");
-    expect(within(enrolmentRow("Beginner")).getByRole("button", { name: "Delete the enrolment in Beginner" })).toBeDefined();
+    expect(
+      within(enrolmentRow("Beginner")).getByRole("button", {
+        name: "Delete the enrolment in Beginner",
+      }),
+    ).toBeDefined();
   });
 });
 
@@ -215,19 +341,28 @@ describe("enrolling", () => {
 describe("filtering the roster by class", () => {
   const filter = () => screen.getByLabelText("Course") as HTMLSelectElement;
   const namesOnScreen = () =>
-    STUDENTS.filter((s) => screen.queryByText(s.name) !== null).map((s) => s.name);
+    STUDENTS.filter((s) => screen.queryByText(s.name) !== null).map(
+      (s) => s.name,
+    );
 
   it("offers the live classes with how many are in each", () => {
     renderList();
     const labels = Array.from(filter().options).map((o) => o.textContent);
     /* Advanced is live and has nobody in it — a course the academy runs is a
        filter you can pick even when it is empty. */
-    expect(labels).toEqual(["All Courses", "Beginner (2)", "Intermediate (2)", "Advanced (0)"]);
+    expect(labels).toEqual([
+      "All Courses",
+      "Beginner (2)",
+      "Intermediate (2)",
+      "Advanced (0)",
+    ]);
   });
 
   it("does not offer a class the academy has retired", () => {
     renderList();
-    expect(Array.from(filter().options).map((o) => o.textContent)).not.toContain("Saturday Camp (0)");
+    expect(
+      Array.from(filter().options).map((o) => o.textContent),
+    ).not.toContain("Saturday Camp (0)");
   });
 
   it("narrows the list to that class", async () => {
@@ -258,7 +393,6 @@ describe("filtering the roster by class", () => {
   });
 });
 
-
 /**
  * Changing course.
  *
@@ -272,15 +406,28 @@ describe("filtering the roster by class", () => {
  */
 describe("changing course", () => {
   const changeButton = (className: string) =>
-    within(enrolmentRow(className)).getByRole("button", { name: `Change ${className} to another course` });
-  const amountField = () => screen.getByLabelText("Credits to add") as HTMLInputElement;
-  const expiryField = () => screen.getByLabelText("Expires") as HTMLInputElement;
-  const confirmChange = () => screen.getByRole("button", { name: "Change course", hidden: true }) as HTMLButtonElement;
-  const ledger = () => create.mock.calls.filter(([path]) => path === "credit-transactions");
+    within(enrolmentRow(className)).getByRole("button", {
+      name: `Change ${className} to another course`,
+    });
+  const amountField = () =>
+    screen.getByLabelText("Credits to add") as HTMLInputElement;
+  const expiryField = () =>
+    screen.getByLabelText("Expires") as HTMLInputElement;
+  const confirmChange = () =>
+    screen.getByRole("button", {
+      name: "Change course",
+      hidden: true,
+    }) as HTMLButtonElement;
+  const ledger = () =>
+    create.mock.calls.filter(([path]) => path === "credit-transactions");
   const incoming = () => ledger()[1]?.[1];
   const outgoing = () => ledger()[0]?.[1];
 
-  async function openChange(user: ReturnType<typeof userEvent.setup>, who = "Anong", from = "Beginner") {
+  async function openChange(
+    user: ReturnType<typeof userEvent.setup>,
+    who = "Anong",
+    from = "Beginner",
+  ) {
     await openStudent(user, who);
     await user.click(changeButton(from));
   }
@@ -301,7 +448,11 @@ describe("changing course", () => {
 
     expect(create).toHaveBeenCalledWith(
       "enrollments",
-      expect.objectContaining({ student_id: "anong", class_id: "adv", moved_from_class_id: "beg" }),
+      expect.objectContaining({
+        student_id: "anong",
+        class_id: "adv",
+        moved_from_class_id: "beg",
+      }),
     );
   });
 
@@ -312,7 +463,9 @@ describe("changing course", () => {
     await openChange(user);
     await user.click(confirmChange());
 
-    expect(update).toHaveBeenCalledWith("enrollments", "e_anong_beg", { status: "Withdrawn" });
+    expect(update).toHaveBeenCalledWith("enrollments", "e_anong_beg", {
+      status: "Withdrawn",
+    });
   });
 
   /* Beginner is 12,000 for 20 credits and Advanced 20,000 for 20, so eight
@@ -321,14 +474,22 @@ describe("changing course", () => {
      baht of teaching for 4,800 paid, and a balance moved back and forth would
      grow. */
   it("converts the balance at both courses' rates, on the half-credit grid", async () => {
-    raw.creditPackages.push({ credit_package_id: "p_adv", class_id: "adv", credit_amount: 20, standard_price: 20000 });
+    raw.creditPackages.push({
+      credit_package_id: "p_adv",
+      class_id: "adv",
+      credit_amount: 20,
+      standard_price: 20000,
+    });
     try {
       const user = renderList();
       await openChange(user);
       expect(amountField().value).toBe("4.5");
       await user.click(confirmChange());
 
-      expect(outgoing()).toMatchObject({ enrollment_id: "e_anong_beg", amount: -8 });
+      expect(outgoing()).toMatchObject({
+        enrollment_id: "e_anong_beg",
+        amount: -8,
+      });
       expect(incoming()).toMatchObject({ enrollment_id: "e_new", amount: 4.5 });
     } finally {
       raw.creditPackages.pop();
@@ -394,7 +555,9 @@ describe("changing course", () => {
     /* The row still carries the term already spent against it, so it is
        withdrawn and kept — unticking moves no credits, it does not make the
        history go away. */
-    expect(update).toHaveBeenCalledWith("enrollments", "e_anong_beg", { status: "Withdrawn" });
+    expect(update).toHaveBeenCalledWith("enrollments", "e_anong_beg", {
+      status: "Withdrawn",
+    });
   });
 
   /* Chai was enrolled by mistake this morning: nothing bought, nothing
@@ -407,8 +570,12 @@ describe("changing course", () => {
 
   it("shows where a moved enrolment came from", async () => {
     raw.enrollments.push({
-      enrollment_id: "e_chai_int", student_id: "chai", class_id: "int",
-      status: "Active", enrolled_date: "2026-09-01", moved_from_class_id: "beg",
+      enrollment_id: "e_chai_int",
+      student_id: "chai",
+      class_id: "int",
+      status: "Active",
+      enrolled_date: "2026-09-01",
+      moved_from_class_id: "beg",
     });
     try {
       const user = renderList();
@@ -432,11 +599,15 @@ describe("changing course", () => {
  */
 describe("deleting an enrolment", () => {
   const deleteButton = (className: string) =>
-    within(enrolmentRow(className)).getByRole("button", { name: `Delete the enrolment in ${className}` });
+    within(enrolmentRow(className)).getByRole("button", {
+      name: `Delete the enrolment in ${className}`,
+    });
   const confirmDelete = async (user: ReturnType<typeof userEvent.setup>) =>
     /* The detail header carries a Delete for the child themselves; the
        dialog's confirm is the one that mounted last. */
-    user.click(screen.getAllByRole("button", { name: "Delete", hidden: true }).at(-1)!);
+    user.click(
+      screen.getAllByRole("button", { name: "Delete", hidden: true }).at(-1)!,
+    );
 
   it("removes a row nothing hangs off", async () => {
     const user = renderList();
@@ -457,10 +628,14 @@ describe("deleting an enrolment", () => {
     await confirmDelete(user);
 
     expect(update).toHaveBeenCalledWith("credit-transactions", "t1", {
-      enrollment_id: null, student_id: "anong", class_id: "beg",
+      enrollment_id: null,
+      student_id: "anong",
+      class_id: "beg",
     });
     expect(update).toHaveBeenCalledWith("credit-transactions", "t2", {
-      enrollment_id: null, student_id: "anong", class_id: "beg",
+      enrollment_id: null,
+      student_id: "anong",
+      class_id: "beg",
     });
     expect(remove).not.toHaveBeenCalledWith("credit-transactions", "t1");
     expect(remove).toHaveBeenCalledWith("enrollments", "e_anong_beg");
@@ -470,14 +645,21 @@ describe("deleting an enrolment", () => {
      class_name and was built to outlive the rows it points at, so the receipt
      still reads afterwards. */
   it("detaches payments instead of deleting them", async () => {
-    raw.payments.push({ payment_id: "pay_1", enrollment_id: "e_anong_beg", student_id: "anong", final_amount: 12000 });
+    raw.payments.push({
+      payment_id: "pay_1",
+      enrollment_id: "e_anong_beg",
+      student_id: "anong",
+      final_amount: 12000,
+    });
     try {
       const user = renderList();
       await openStudent(user, "Anong");
       await user.click(deleteButton("Beginner"));
       await confirmDelete(user);
 
-      expect(update).toHaveBeenCalledWith("payments", "pay_1", { enrollment_id: null });
+      expect(update).toHaveBeenCalledWith("payments", "pay_1", {
+        enrollment_id: null,
+      });
       expect(remove).not.toHaveBeenCalledWith("payments", "pay_1");
     } finally {
       raw.payments.pop();
@@ -492,7 +674,9 @@ describe("deleting an enrolment", () => {
     await openStudent(user, "Anong");
     await user.click(deleteButton("Beginner"));
 
-    expect(screen.getByText(/2 credit entries stay with the child/)).toBeDefined();
+    expect(
+      screen.getByText(/2 credit entries stay with the child/),
+    ).toBeDefined();
   });
 
   it("says nothing alarming about a row that is already empty", async () => {
@@ -523,12 +707,19 @@ describe("deleting an enrolment", () => {
  * tidies the list, the more wrong the next conversion gets.
  */
 describe("what a change converts against", () => {
-  const amountField = () => screen.getByLabelText("Credits to add") as HTMLInputElement;
+  const amountField = () =>
+    screen.getByLabelText("Credits to add") as HTMLInputElement;
 
-  async function openChangeFrom(user: ReturnType<typeof userEvent.setup>, who: string, from: string) {
+  async function openChangeFrom(
+    user: ReturnType<typeof userEvent.setup>,
+    who: string,
+    from: string,
+  ) {
     await openStudent(user, who);
     await user.click(
-      within(enrolmentRow(from)).getByRole("button", { name: `Change ${from} to another course` }),
+      within(enrolmentRow(from)).getByRole("button", {
+        name: `Change ${from} to another course`,
+      }),
     );
   }
 
@@ -540,12 +731,18 @@ describe("what a change converts against", () => {
   it("gives more credits moving to a cheaper course", async () => {
     raw.enrollments.length = 0;
     raw.enrollments.push({
-      enrollment_id: "e_solo_int", student_id: "chai", class_id: "int",
-      status: "Active", enrolled_date: "2026-02-01",
+      enrollment_id: "e_solo_int",
+      student_id: "chai",
+      class_id: "int",
+      status: "Active",
+      enrolled_date: "2026-02-01",
     });
     raw.creditTransactions.push({
-      credit_transaction_id: "t_solo", enrollment_id: "e_solo_int", amount: 4,
-      transaction_date: "2026-02-01", transaction_type: "purchase",
+      credit_transaction_id: "t_solo",
+      enrollment_id: "e_solo_int",
+      amount: 4,
+      transaction_date: "2026-02-01",
+      transaction_type: "purchase",
     });
     try {
       const user = renderList();
@@ -564,17 +761,27 @@ describe("what a change converts against", () => {
   it("is not thrown off by a payment detached from a deleted enrolment", async () => {
     raw.enrollments.length = 0;
     raw.enrollments.push({
-      enrollment_id: "e_solo_int", student_id: "chai", class_id: "int",
-      status: "Active", enrolled_date: "2026-02-01",
+      enrollment_id: "e_solo_int",
+      student_id: "chai",
+      class_id: "int",
+      status: "Active",
+      enrolled_date: "2026-02-01",
     });
     raw.creditTransactions.push({
-      credit_transaction_id: "t_solo", enrollment_id: "e_solo_int", amount: 4,
-      transaction_date: "2026-02-01", transaction_type: "purchase",
+      credit_transaction_id: "t_solo",
+      enrollment_id: "e_solo_int",
+      amount: 4,
+      transaction_date: "2026-02-01",
+      transaction_type: "purchase",
     });
     /* Bought for Intermediate, and its enrolment has since been deleted. */
     raw.payments.push({
-      payment_id: "pay_orphan", enrollment_id: null, student_id: "chai",
-      credit_package_id: "p_int", status: "Paid", final_amount: 20000,
+      payment_id: "pay_orphan",
+      enrollment_id: null,
+      student_id: "chai",
+      credit_package_id: "p_int",
+      status: "Paid",
+      final_amount: 20000,
     });
     try {
       const user = renderList();
@@ -594,7 +801,6 @@ describe("what a change converts against", () => {
   });
 });
 
-
 /**
  * Credits that outlived their enrolment.
  *
@@ -612,9 +818,14 @@ describe("credits with no course", () => {
   function withLooseCredits(classId: string | null = "int"): void {
     raw.enrollments.length = 0;
     raw.creditTransactions.push({
-      credit_transaction_id: "t_loose", enrollment_id: null, student_id: "chai",
-      class_id: classId, amount: 13, transaction_date: "2026-03-01",
-      transaction_type: "purchase", expiry_date: "2026-12-31",
+      credit_transaction_id: "t_loose",
+      enrollment_id: null,
+      student_id: "chai",
+      class_id: classId,
+      amount: 13,
+      transaction_date: "2026-03-01",
+      transaction_type: "purchase",
+      expiry_date: "2026-12-31",
     });
   }
   function restore() {
@@ -642,7 +853,13 @@ describe("credits with no course", () => {
     try {
       const user = renderList();
       await openStudent(user, "Chai");
-      expect((screen.getByRole("button", { name: "Move into a course" }) as HTMLButtonElement).disabled).toBe(true);
+      expect(
+        (
+          screen.getByRole("button", {
+            name: "Move into a course",
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(true);
     } finally {
       restore();
     }
@@ -654,16 +871,25 @@ describe("credits with no course", () => {
   it("convert at both courses' rates when moved in", async () => {
     withLooseCredits();
     raw.enrollments.push({
-      enrollment_id: "e_chai_new", student_id: "chai", class_id: "beg",
-      status: "Active", enrolled_date: "2026-09-02",
+      enrollment_id: "e_chai_new",
+      student_id: "chai",
+      class_id: "beg",
+      status: "Active",
+      enrolled_date: "2026-09-02",
     });
     try {
       const user = renderList();
       await openStudent(user, "Chai");
-      await user.click(screen.getByRole("button", { name: "Move into a course" }));
-      expect((screen.getByLabelText("Credits to add") as HTMLInputElement).value).toBe("21.5");
+      await user.click(
+        screen.getByRole("button", { name: "Move into a course" }),
+      );
+      expect(
+        (screen.getByLabelText("Credits to add") as HTMLInputElement).value,
+      ).toBe("21.5");
       /* And the expiry comes across from the balance being moved. */
-      expect((screen.getByLabelText("Expires") as HTMLInputElement).value).toBe("2026-12-31");
+      expect((screen.getByLabelText("Expires") as HTMLInputElement).value).toBe(
+        "2026-12-31",
+      );
     } finally {
       restore();
     }
@@ -672,16 +898,27 @@ describe("credits with no course", () => {
   it("are written as a matching pair, so the ledger still balances", async () => {
     withLooseCredits();
     raw.enrollments.push({
-      enrollment_id: "e_chai_new", student_id: "chai", class_id: "beg",
-      status: "Active", enrolled_date: "2026-09-02",
+      enrollment_id: "e_chai_new",
+      student_id: "chai",
+      class_id: "beg",
+      status: "Active",
+      enrolled_date: "2026-09-02",
     });
     try {
       const user = renderList();
       await openStudent(user, "Chai");
-      await user.click(screen.getByRole("button", { name: "Move into a course" }));
-      await user.click(screen.getAllByRole("button", { name: "Move into a course", hidden: true }).at(-1)!);
+      await user.click(
+        screen.getByRole("button", { name: "Move into a course" }),
+      );
+      await user.click(
+        screen
+          .getAllByRole("button", { name: "Move into a course", hidden: true })
+          .at(-1)!,
+      );
 
-      const written = create.mock.calls.filter(([path]) => path === "credit-transactions");
+      const written = create.mock.calls.filter(
+        ([path]) => path === "credit-transactions",
+      );
       expect(written).toHaveLength(2);
       /* Out of the loose balance — no enrolment on this side, because there
          never was one. */
@@ -689,7 +926,10 @@ describe("credits with no course", () => {
       expect(written[0][1]).not.toHaveProperty("enrollment_id");
       /* And into the course they have joined. */
       expect(written[1][1]).toMatchObject({
-        enrollment_id: "e_chai_new", student_id: "chai", class_id: "beg", amount: 21.5,
+        enrollment_id: "e_chai_new",
+        student_id: "chai",
+        class_id: "beg",
+        amount: 21.5,
       });
     } finally {
       restore();
@@ -701,14 +941,21 @@ describe("credits with no course", () => {
   it("carry across unconverted when the old course has no rate", async () => {
     withLooseCredits(null);
     raw.enrollments.push({
-      enrollment_id: "e_chai_new", student_id: "chai", class_id: "beg",
-      status: "Active", enrolled_date: "2026-09-02",
+      enrollment_id: "e_chai_new",
+      student_id: "chai",
+      class_id: "beg",
+      status: "Active",
+      enrolled_date: "2026-09-02",
     });
     try {
       const user = renderList();
       await openStudent(user, "Chai");
-      await user.click(screen.getByRole("button", { name: "Move into a course" }));
-      expect((screen.getByLabelText("Credits to add") as HTMLInputElement).value).toBe("13");
+      await user.click(
+        screen.getByRole("button", { name: "Move into a course" }),
+      );
+      expect(
+        (screen.getByLabelText("Credits to add") as HTMLInputElement).value,
+      ).toBe("13");
     } finally {
       restore();
     }
@@ -729,9 +976,33 @@ describe("credits with no course", () => {
  * questions.
  */
 describe("credits that came from more than one course", () => {
-  const BOUGHT_BEGINNER = { credit_transaction_id: "l1", enrollment_id: null, student_id: "chai", class_id: "beg", amount: 20, transaction_date: "2026-01-06", transaction_type: "purchase" };
-  const LEFT_BEGINNER = { credit_transaction_id: "l2", enrollment_id: null, student_id: "chai", class_id: "beg", amount: -20, transaction_date: "2026-05-01", transaction_type: "manual_adjustment" };
-  const LANDED_INTERMEDIATE = { credit_transaction_id: "l3", enrollment_id: null, student_id: "chai", class_id: "int", amount: 16.5, transaction_date: "2026-05-01", transaction_type: "manual_adjustment" };
+  const BOUGHT_BEGINNER = {
+    credit_transaction_id: "l1",
+    enrollment_id: null,
+    student_id: "chai",
+    class_id: "beg",
+    amount: 20,
+    transaction_date: "2026-01-06",
+    transaction_type: "purchase",
+  };
+  const LEFT_BEGINNER = {
+    credit_transaction_id: "l2",
+    enrollment_id: null,
+    student_id: "chai",
+    class_id: "beg",
+    amount: -20,
+    transaction_date: "2026-05-01",
+    transaction_type: "manual_adjustment",
+  };
+  const LANDED_INTERMEDIATE = {
+    credit_transaction_id: "l3",
+    enrollment_id: null,
+    student_id: "chai",
+    class_id: "int",
+    amount: 16.5,
+    transaction_date: "2026-05-01",
+    transaction_type: "manual_adjustment",
+  };
 
   /**
    * `order` is the point of the parameter, not a detail.
@@ -742,12 +1013,17 @@ describe("credits that came from more than one course", () => {
    * balance is worth what it is worth; nothing about it may depend on the
    * order rows arrive in.
    */
-  function afterAMoveAndTwoDeletes(order: Row[] = [BOUGHT_BEGINNER, LANDED_INTERMEDIATE, LEFT_BEGINNER]) {
+  function afterAMoveAndTwoDeletes(
+    order: Row[] = [BOUGHT_BEGINNER, LANDED_INTERMEDIATE, LEFT_BEGINNER],
+  ) {
     raw.enrollments.length = 0;
     /* Rejoined Beginner, with nothing bought against it yet. */
     raw.enrollments.push({
-      enrollment_id: "e_chai_back", student_id: "chai", class_id: "beg",
-      status: "Active", enrolled_date: "2026-09-02",
+      enrollment_id: "e_chai_back",
+      student_id: "chai",
+      class_id: "beg",
+      status: "Active",
+      enrolled_date: "2026-09-02",
     });
     raw.creditTransactions.push(...order);
   }
@@ -776,8 +1052,12 @@ describe("credits that came from more than one course", () => {
     try {
       const user = renderList();
       await openStudent(user, "Chai");
-      await user.click(screen.getByRole("button", { name: "Move into a course" }));
-      const amount = (screen.getByLabelText("Credits to add") as HTMLInputElement).value;
+      await user.click(
+        screen.getByRole("button", { name: "Move into a course" }),
+      );
+      const amount = (
+        screen.getByLabelText("Credits to add") as HTMLInputElement
+      ).value;
       expect(amount).toBe("27.5");
       /* 16.5 is what pricing Intermediate hours as Beginner ones gives back —
          the office's report, exactly. */
@@ -791,20 +1071,30 @@ describe("credits that came from more than one course", () => {
      course off the final entry priced the whole balance as Beginner and handed
      back the same number. The sum must not know what order rows arrived in. */
   it.each([
-    ["Intermediate last", [BOUGHT_BEGINNER, LEFT_BEGINNER, LANDED_INTERMEDIATE]],
+    [
+      "Intermediate last",
+      [BOUGHT_BEGINNER, LEFT_BEGINNER, LANDED_INTERMEDIATE],
+    ],
     ["Beginner last", [BOUGHT_BEGINNER, LANDED_INTERMEDIATE, LEFT_BEGINNER]],
     ["purchase last", [LANDED_INTERMEDIATE, LEFT_BEGINNER, BOUGHT_BEGINNER]],
-  ])("gives the same answer with the rows in any order (%s)", async (_name, order) => {
-    afterAMoveAndTwoDeletes([...(order as Row[])]);
-    try {
-      const user = renderList();
-      await openStudent(user, "Chai");
-      await user.click(screen.getByRole("button", { name: "Move into a course" }));
-      expect((screen.getByLabelText("Credits to add") as HTMLInputElement).value).toBe("27.5");
-    } finally {
-      restore();
-    }
-  });
+  ])(
+    "gives the same answer with the rows in any order (%s)",
+    async (_name, order) => {
+      afterAMoveAndTwoDeletes([...(order as Row[])]);
+      try {
+        const user = renderList();
+        await openStudent(user, "Chai");
+        await user.click(
+          screen.getByRole("button", { name: "Move into a course" }),
+        );
+        expect(
+          (screen.getByLabelText("Credits to add") as HTMLInputElement).value,
+        ).toBe("27.5");
+      } finally {
+        restore();
+      }
+    },
+  );
 
   /* No single course to name, so it does not name one — saying "bought for
      Beginner" over a balance that is really Intermediate money is the same
@@ -828,8 +1118,14 @@ describe("credits that came from more than one course", () => {
     try {
       const user = renderList();
       await openStudent(user, "Chai");
-      await user.click(screen.getByRole("button", { name: "Move into a course" }));
-      await user.click(screen.getAllByRole("button", { name: "Move into a course", hidden: true }).at(-1)!);
+      await user.click(
+        screen.getByRole("button", { name: "Move into a course" }),
+      );
+      await user.click(
+        screen
+          .getAllByRole("button", { name: "Move into a course", hidden: true })
+          .at(-1)!,
+      );
 
       const written = create.mock.calls
         .filter(([path]) => path === "credit-transactions")
@@ -840,7 +1136,9 @@ describe("credits that came from more than one course", () => {
       expect(written[0]).toMatchObject({ class_id: "int", amount: -16.5 });
       expect(written[0]).not.toHaveProperty("enrollment_id");
       expect(written[1]).toMatchObject({
-        enrollment_id: "e_chai_back", class_id: "beg", amount: 27.5,
+        enrollment_id: "e_chai_back",
+        class_id: "beg",
+        amount: 27.5,
       });
     } finally {
       restore();

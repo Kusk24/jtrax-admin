@@ -10,7 +10,7 @@ import { useData } from "@/components/DataProvider";
 import { fmtCredits, fmtDate, fmtTHB, isActiveEnrolment, liveClasses, practiceStrip, toDateInput } from "@/lib/live";
 import { creditsForValue, planTransfer, ratePerCredit, roundCredits, valueOfLots, type CreditRate } from "@/lib/credit-transfer";
 import { opensCreate } from "@/lib/quick-actions";
-import { createStudentAccount, slugOf } from "@/lib/student-login-id";
+import { createStudentAccount } from "@/lib/student-login-id";
 import { classFilterOptions, classNamesOfStudent, isInClass } from "@/lib/student-classes";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
@@ -48,6 +48,7 @@ import {
 } from "../page-kit";
 import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
 import { BackLink, DangerPanel, DeleteButton, DetailHeader, EditButton } from "../detail";
+import { ResetPasswordButton } from "../ResetPassword";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 import { useErrorToast } from "../ErrorToast";
@@ -123,16 +124,6 @@ function creditChipFor(credit: number): { color: string; bg: string } {
   return { color: COLORS.success, bg: COLORS.successBg };
 }
 
-/* A guardian given at the desk as a name and a phone number still needs a way
-   into the parent portal, so their login gets the same kind of made-up address
-   the roster gives a student. It is a username, not a mailbox — the address the
-   academy actually writes to is the email *contact*, which stays empty until
-   the family gives one, and can be filled in later on the Parents screen. */
-function parentEmailFor(name: string): string {
-  return `${slugOf(name) || "parent"}@parent.jca.ac.th`;
-}
-
-
 type View =
   | { kind: "list" }
   /* `edit` / `remove` are set when the card's own buttons were used: the card
@@ -190,6 +181,7 @@ function StudentDetail({
      open — see the Save button. */
   const [saveError, setSaveError] = useState<string | null>(null);
   const router = useRouter();
+  const { showError } = useErrorToast();
 
   function setField<K extends keyof Student>(key: K, value: Student[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
@@ -842,6 +834,16 @@ function StudentDetail({
         actions={
           !editing && (
             <>
+              {/* A child's ID has no mailbox, so the forgot-password link that
+                  serves everyone else cannot reach them. This is the only way
+                  back in, and it is why it sits on the child's own card. */}
+              <ResetPasswordButton
+                accountId={student.accountId ?? ""}
+                identifier={student.email ?? ""}
+                name={student.name}
+                update={update}
+                onError={(e) => showError(tCommon("saveFailed"), e)}
+              />
               <EditButton
                 onClick={() => {
                   setDraft(student);
@@ -2001,9 +2003,17 @@ function AddStudentWizard({
      created from what is typed here, and a guardian with no name cannot be
      created at all — which is what the phone-only form used to attempt before
      giving up without saying so. */
+  /* An existing guardian is already an account; a new one is being created
+     here, and their address is the login it is created with. Requiring it at
+     the button rather than discovering it at the server is the difference
+     between a form that will not submit yet and a registration that half
+     happened. */
   const canSubmit =
     draft.name.trim() !== "" &&
-    (draft.parentId !== "" || (draft.parentName.trim() !== "" && draft.parentPhone.trim() !== ""));
+    (draft.parentId !== "" ||
+      (draft.parentName.trim() !== "" &&
+        draft.parentPhone.trim() !== "" &&
+        draft.parentEmail.trim() !== ""));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 820 }}>
@@ -2269,7 +2279,7 @@ function AddStudentWizard({
                   <input id="w-pphone" value={draft.parentPhone} onChange={(e) => set("parentPhone", e.target.value)} style={fieldStyle} />
                 </div>
                 <div>
-                  <label style={labelStyle} htmlFor="w-pmail">{tCommon("email")}</label>
+                  <label style={labelStyle} htmlFor="w-pmail">{t("emailRequired")}</label>
                   <input id="w-pmail" type="email" value={draft.parentEmail} onChange={(e) => set("parentEmail", e.target.value)} style={fieldStyle} />
                   <p style={{ margin: "5px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
                     {t("guardianEmailHelp")}
@@ -2337,7 +2347,7 @@ export function StudentsPage({
   const [createdLogins, setCreatedLogins] = useState<{
     studentId: string;
     student: { email: string; password: string };
-    parent: { email: string; password: string; generated: boolean } | null;
+    parent: { email: string; password: string } | null;
   } | null>(null);
   const [search, setSearch] = useState("");
   /* One control for the student's condition. There used to be two — a raw
@@ -2480,7 +2490,7 @@ export function StudentsPage({
           });
         }
 
-        let parentCredentials: { email: string; password: string; generated: boolean } | null = null;
+        let parentCredentials: { email: string; password: string } | null = null;
         if (draft.parentId) {
           /* An existing guardian: link, and leave their account alone. */
           await create("student-parents", {
@@ -2489,13 +2499,16 @@ export function StudentsPage({
             relationship_type: draft.parentRelation || "Guardian",
           });
         } else if (draft.parentName.trim()) {
-          /* A name is enough. The guardian used to need an email address as
-             well, and the form never said so — a family who left one and gave
-             a phone number instead registered a child with nobody attached to
-             them, silently. The login falls back to a made-up address the same
-             way a student's does. */
-          const givenEmail = draft.parentEmail.trim();
-          const loginEmail = givenEmail || parentEmailFor(draft.parentName);
+          /* The guardian's own address is their login. It used to fall back to
+             a made-up `@parent.jca.ac.th` when the family left the box empty —
+             the same fiction the children have just been rid of, and with less
+             excuse, because a parent *has* a mailbox. What it cost was the
+             reset link: an adult who could have let themselves back in was
+             quietly given an address that receives nothing.
+
+             So the form asks, and means it. The email is required beside the
+             phone number rather than optional under it. */
+          const loginEmail = draft.parentEmail.trim();
           const parentPassword = generateTempPassword();
           const parentAccount = await create("user-accounts", {
             email: loginEmail,
@@ -2523,7 +2536,7 @@ export function StudentsPage({
             parent_id: parentId,
             relationship_type: draft.parentRelation || "Guardian",
           });
-          parentCredentials = { email: loginEmail, password: parentPassword, generated: givenEmail === "" };
+          parentCredentials = { email: loginEmail, password: parentPassword };
         }
 
         setCreatedLogins({
@@ -2665,14 +2678,6 @@ export function StudentsPage({
                     },
                   ]}
                 />
-                {/* Nothing can be emailed to an address the academy invented,
-                    so the desk has to hand this one over in person — and it
-                    only says so when that is actually the case. */}
-                {createdLogins.parent.generated && (
-                  <p style={{ margin: "8px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-                    {t("parentLoginGenerated")}
-                  </p>
-                )}
               </div>
             )}
           </div>
