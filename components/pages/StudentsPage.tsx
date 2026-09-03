@@ -10,6 +10,7 @@ import { useData } from "@/components/DataProvider";
 import { fmtCredits, fmtDate, fmtTHB, isActiveEnrolment, liveClasses, practiceStrip, toDateInput } from "@/lib/live";
 import { creditsForValue, planTransfer, ratePerCredit, roundCredits, valueOfLots, type CreditRate } from "@/lib/credit-transfer";
 import { opensCreate } from "@/lib/quick-actions";
+import { createStudentAccount, slugOf } from "@/lib/student-login-id";
 import { classFilterOptions, classNamesOfStudent, isInClass } from "@/lib/student-classes";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
@@ -122,12 +123,6 @@ function creditChipFor(credit: number): { color: string; bg: string } {
   return { color: COLORS.success, bg: COLORS.successBg };
 }
 
-/* Same convention the roster import uses, so an address created here and one
-   imported in bulk look alike: first.last@student.jca.ac.th. */
-function studentEmailFor(name: string): string {
-  return `${slugOf(name) || "student"}@student.jca.ac.th`;
-}
-
 /* A guardian given at the desk as a name and a phone number still needs a way
    into the parent portal, so their login gets the same kind of made-up address
    the roster gives a student. It is a username, not a mailbox — the address the
@@ -137,13 +132,6 @@ function parentEmailFor(name: string): string {
   return `${slugOf(name) || "parent"}@parent.jca.ac.th`;
 }
 
-function slugOf(name: string): string {
-  return name
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ".")
-    .replace(/^\.|\.$/g, "");
-}
 
 type View =
   | { kind: "list" }
@@ -965,9 +953,9 @@ function StudentDetail({
                 </div>
                 {/* Course, Branch and Membership used to be fields here. None
                     of them is a column on the student: the course comes from
-                    the enrolment, membership from the course's own type, and
-                    Branch has exactly one value and nowhere to store it. They
-                    were editable, and every edit was discarded. Which of a
+                    the enrolment, membership is not a thing the academy has,
+                    and Branch had nowhere to store it. They were editable, and
+                    every edit was discarded. Which of a
                     child's courses they are in is a real question with a real
                     answer — it is the Enrolments tab, which moves the credits
                     with them. */}
@@ -1155,10 +1143,22 @@ function StudentDetail({
                 { label: t("level"), value: student.level },
                 { label: t("currentSchool"), value: student.school || "—" },
                 { label: t("fideIdLabel"), value: student.fideId || "—" },
-                { label: t("membership"), value: student.membershipType },
-                { label: tCommon("email"), value: student.email || t("noAccountYet") },
+                /* One identifier, two kinds of thing: an ID for the children,
+                   who have no mailbox, and a real address for an older student
+                   who gave one. Labelled by what this row actually holds
+                   rather than by which is more common, because the answer
+                   decides whether the desk can write to it. */
+                {
+                  label: student.email && !student.email.includes("@") ? t("loginId") : tCommon("email"),
+                  value: student.email || t("noAccountYet"),
+                },
                 { label: t("joined"), value: student.joinedDate },
-                /* Credits expire and the student's LINE ID used to sit here.
+                /* Membership, credits expire and the student's LINE ID used to
+                   sit here. Membership was never a thing the academy has:
+                   registration does not ask for it, no table records it, and
+                   the row was filled with the course's own `class_type` — so
+                   a child in Beginner had a "Beginner" membership, which is
+                   the course said twice and a tier the office might act on.
                    Neither is a fact about the child. An expiry belongs to the
                    credits that were bought and is counted from the payment
                    that bought them — one child can hold several with different
@@ -2396,7 +2396,17 @@ export function StudentsPage({
       if (status && s.status !== status) return false;
       if (branch && s.branch !== branch) return false;
       if (!isInClass(raw.enrollments, s.id, classId)) return false;
-      if (q && !s.name.toLowerCase().includes(q) && !s.parentPhone.includes(q)) return false;
+      /* The ID is searchable because it is now the thing a family arrives
+         holding — it is printed on the card they were given, and a child who
+         cannot sign in reads it out rather than spelling their name. */
+      if (
+        q &&
+        !s.name.toLowerCase().includes(q) &&
+        !s.parentPhone.includes(q) &&
+        !(s.email ?? "").toLowerCase().includes(q)
+      ) {
+        return false;
+      }
       return true;
     });
   }, [students, search, status, branch, classId, raw.enrollments]);
@@ -2441,17 +2451,13 @@ export function StudentsPage({
     try {
       await batch(async () => {
         /* A student who can sign in to the portal, not just a row on a list.
-           The address follows the roster convention so the office can predict
-           it; the password is shown once, at the end. */
+           The ID is built from their name so the office can predict it, and
+           stepped along if another child already holds it; the password is
+           shown once, at the end. */
         const studentPassword = generateTempPassword();
-        const studentAccount = await create("user-accounts", {
-          email: studentEmailFor(draft.name),
-          password: studentPassword,
-          role: "Student",
-          display_name: draft.name,
-        });
+        const studentAccount = await createStudentAccount(create, draft.name, studentPassword);
         const created = await create("students", {
-          user_account_id: studentAccount.user_account_id,
+          user_account_id: studentAccount.accountId,
           name: draft.name,
           date_of_birth: draft.dateOfBirth || null,
           current_level: draft.level || "Beginner",
@@ -2522,7 +2528,10 @@ export function StudentsPage({
 
         setCreatedLogins({
           studentId: String(created.student_id),
-          student: { email: studentEmailFor(draft.name), password: studentPassword },
+          /* The ID that was actually taken, not the one that was asked for.
+             Rebuilding it from the name here would hand a second John Smith
+             the *first* one's ID on the card the family walks out with. */
+          student: { email: studentAccount.loginId, password: studentPassword },
           parent: parentCredentials,
         });
       });
@@ -2629,13 +2638,20 @@ export function StudentsPage({
               <SectionTitle>{t("studentLogin")}</SectionTitle>
               <InfoGrid
                 rows={[
-                  { label: tCommon("email"), value: createdLogins.student.email },
+                  /* Labelled for what it is. It said "Email" while holding an
+                     address at a domain that receives nothing, which told the
+                     desk to send the password to a mailbox that was never
+                     going to exist. */
+                  { label: t("loginId"), value: <strong>{createdLogins.student.email}</strong> },
                   {
                     label: t("tempPassword"),
                     value: <strong style={{ letterSpacing: "0.04em" }}>{createdLogins.student.password}</strong>,
                   },
                 ]}
               />
+              <p style={{ margin: "8px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+                {t("studentLoginIdHint")}
+              </p>
             </div>
             {createdLogins.parent && (
               <div>

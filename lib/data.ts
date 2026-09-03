@@ -43,8 +43,11 @@ export type Student = {
   /* `parentLineIdNo`, `studentLineId` and `studentLineIdNo` used to sit here.
      All three were set to "" on every row and had no column to come from, so
      the screens that showed them showed an empty line the console could never
-     fill. A field nothing can populate is not data. */
-  membershipType: string;
+     fill. A field nothing can populate is not data.
+
+     `membershipType` went the same way for the opposite reason: it was always
+     populated, from the course's `class_type`, and the academy has no
+     memberships at all. A field nothing asks for is not data either. */
   joinedDate: string;
 };
 

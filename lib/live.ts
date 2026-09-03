@@ -181,7 +181,6 @@ export function toStudents(c: LiveCollections): Student[] {
       parentPhone: contact("phone"),
       parentEmail: contact("email"),
       parentLineId: contact("line_id"),
-      membershipType: cls ? s(cls, "class_type") : "—",
       joinedDate: enr ? fmtDate(s(enr, "enrolled_date")) : "",
     };
   });
