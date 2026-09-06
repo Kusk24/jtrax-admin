@@ -34,7 +34,22 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   return data as T;
 }
 
+/** Posts a file. Deliberately does not set Content-Type: the browser has to
+    write it, because only the browser knows the multipart boundary. */
+async function upload<T>(path: string, form: FormData): Promise<T> {
+  const res = await fetch(`/api/${path}`, { method: "POST", body: form, cache: "no-store" });
+  if (res.status === 401 && typeof window !== "undefined") {
+    window.location.href = "/login";
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new ApiError(res.status, (data as { error?: string }).error ?? `upload failed (${res.status})`, data);
+  }
+  return data as T;
+}
+
 export const api = {
+  upload,
   get: <T>(path: string) => request<T>("GET", path),
   post: <T>(path: string, body: unknown) => request<T>("POST", path, body),
   patch: <T>(path: string, body: unknown) => request<T>("PATCH", path, body),

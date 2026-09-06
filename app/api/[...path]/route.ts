@@ -15,16 +15,22 @@ async function forward(req: NextRequest, params: Promise<{ path: string[] }>) {
   const token = store.get(SESSION_COOKIE)?.value;
 
   const url = `${API_BASE}/api/v1/${path.join("/")}${req.nextUrl.search}`;
+  // Almost every call here is JSON, but a scanned registration form arrives as
+  // multipart. That body must be forwarded byte for byte with its own content
+  // type: overwriting the type drops the multipart boundary, and reading an
+  // image with text() corrupts it.
+  const contentType = req.headers.get("content-type") ?? "";
+  const isJSON = contentType === "" || contentType.includes("application/json");
   const init: RequestInit = {
     method: req.method,
     headers: {
-      "Content-Type": "application/json",
+      "Content-Type": isJSON ? "application/json" : contentType,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     cache: "no-store",
   };
   if (req.method !== "GET" && req.method !== "HEAD") {
-    init.body = await req.text();
+    init.body = isJSON ? await req.text() : await req.arrayBuffer();
   }
 
   // A game's event stream never ends, so it must not be buffered — and it must

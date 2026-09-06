@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { ApiError } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { generateTempPassword } from "@/lib/credentials";
 import { type Student } from "@/lib/data";
 import { useData } from "@/components/DataProvider";
@@ -12,6 +12,7 @@ import { creditsForValue, planTransfer, ratePerCredit, roundCredits, valueOfLots
 import { opensCreate } from "@/lib/quick-actions";
 import { createStudentAccount } from "@/lib/student-login-id";
 import { classFilterOptions, classNamesOfStudent, isInClass } from "@/lib/student-classes";
+import { draftFromScan, type ScanResult } from "@/lib/scan-to-draft";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
 import {
@@ -1973,6 +1974,12 @@ function AddStudentWizard({
   });
   const [docName, setDocName] = useState("");
   const [extracting, setExtracting] = useState(false);
+  /* What the scan could not place, and what it read but was unsure of. Both are
+     shown rather than dropped: a value nobody can see is a value nobody can
+     correct, and this is a child's record. */
+  const [scanNotes, setScanNotes] = useState<Array<{ label: string; value: string }>>([]);
+  const [scanCheck, setScanCheck] = useState<string[]>([]);
+  const [scanError, setScanError] = useState("");
   /* Registering writes nine rows. Until they all land the button has to stop
      accepting clicks, or a second press starts the whole thing again and the
      only sign of it is "email must be unique". */
@@ -1982,21 +1989,31 @@ function AddStudentWizard({
     setDraft((d) => ({ ...d, [key]: value }));
   }
 
-  /* Mirrors the mockup's fake OCR: guess a name from the filename, pause, then
-     drop the user into a pre-filled form. */
-  function extractFrom(file: File) {
+  /* Sends the photograph to the backend, which reads it with a vision model
+     and returns the fields. Nothing is saved by that call — it answers with a
+     suggestion, and the form below is where a person confirms it. */
+  async function extractFrom(file: File) {
     setDocName(file.name);
+    setScanError("");
     setExtracting(true);
-    const guessed = file.name
-      .replace(/\.[^.]+$/, "")
-      .replace(/[_-]+/g, " ")
-      .replace(/\b\w/g, (c) => c.toUpperCase())
-      .trim();
-    setTimeout(() => {
-      setDraft((d) => ({ ...d, name: guessed || d.name }));
-      setExtracting(false);
+    try {
+      const body = new FormData();
+      body.append("image", file);
+      const result = await api.upload<ScanResult>("registrations/scan", body);
+      const { patch, needsCheck, unmapped } = draftFromScan(result.fields, LEVEL_OPTIONS);
+      setDraft((d) => ({ ...d, ...patch }));
+      setScanCheck(needsCheck);
+      setScanNotes(unmapped);
       setStage("form");
-    }, 900);
+    } catch (err) {
+      /* Straight to the form on failure rather than a dead end: the point of
+         scanning is to save typing, and not saving any is not a reason to stop
+         registering the child. */
+      setScanError(err instanceof ApiError ? err.message : t("scanFailed"));
+      setStage("form");
+    } finally {
+      setExtracting(false);
+    }
   }
 
   /* An existing guardian already has their details on file; a new one is
@@ -2100,7 +2117,7 @@ function AddStudentWizard({
                 {t("chooseFile")}
                 <input
                   type="file"
-                  accept=".pdf,.png,.jpg,.jpeg"
+                  accept="image/jpeg,image/png,image/webp,image/heic"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) extractFrom(file);
@@ -2122,12 +2139,50 @@ function AddStudentWizard({
 
       {stage === "form" && (
         <>
-          {docName && (
+          {docName && !scanError && (
             <Card style={{ display: "flex", alignItems: "center", gap: 9, padding: "11px 14px" }}>
               <Icon name="check" size={15} color={COLORS.success} />
               <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
                 {t("prefilled", { file: docName })}
               </span>
+            </Card>
+          )}
+
+          {/* Reading the form failed. Say so and let them type: a scan is a
+              shortcut, not a prerequisite for registering a child. */}
+          {scanError && (
+            <Card style={{ display: "flex", alignItems: "center", gap: 9, padding: "11px 14px" }}>
+              <Icon name="alertTriangle" size={15} color={COLORS.danger} />
+              <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
+                {scanError}
+              </span>
+            </Card>
+          )}
+
+          {/* The model was unsure of these. They are filled in, so the work is
+              still saved, but named here so somebody looks before saving. */}
+          {scanCheck.length > 0 && (
+            <Card style={{ display: "flex", alignItems: "flex-start", gap: 9, padding: "11px 14px" }}>
+              <Icon name="alertTriangle" size={15} color={COLORS.warning} />
+              <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
+                {t("checkFields", { fields: scanCheck.map((f) => t(`scanField.${f}`)).join(", ") })}
+              </span>
+            </Card>
+          )}
+
+          {/* Read off the paper with nowhere to go in the console yet. Shown so
+              the answers are not lost between the form and the record. */}
+          {scanNotes.length > 0 && (
+            <Card style={{ display: "flex", flexDirection: "column", gap: 6, padding: "11px 14px" }}>
+              <span style={{ fontFamily: FONT, fontSize: 12.5, fontWeight: 600, color: COLORS.textSecondary }}>
+                {t("alsoOnForm")}
+              </span>
+              {scanNotes.map((note) => (
+                <span key={note.label} style={{ fontFamily: FONT, fontSize: 13, color: COLORS.text }}>
+                  <span style={{ color: COLORS.textSecondary }}>{note.label}: </span>
+                  {note.value}
+                </span>
+              ))}
             </Card>
           )}
 
