@@ -5,10 +5,10 @@ import { useTranslations } from "next-intl";
 import type { ClassDef } from "@/lib/data";
 import { useJtrax } from "../JtraxContext";
 import { Card, SectionTitle } from "../ui";
+import { ChartsRow } from "./ChartsRow";
 import { CheckinTable } from "./CheckinTable";
 import { FindStudent } from "./FindStudent";
 import { FollowUps } from "./FollowUps";
-import { KpiStrip } from "./KpiStrip";
 import { RevenueTrend } from "./RevenueTrend";
 import {
   ADMIN_QUICK_ACTIONS,
@@ -16,6 +16,7 @@ import {
   RECEPTIONIST_QUICK_ACTIONS,
 } from "./QuickActions";
 import { SessionPanel, type PanelState } from "./SessionPanel";
+import { TodaySummary } from "./TodaySummary";
 import { TodaysClasses } from "./TodaysClasses";
 
 /**
@@ -54,11 +55,12 @@ export function DashboardHome() {
         </>
       ) : (
         <>
-          <KpiStrip />
+          <TodaySummary />
           <div className="jt-split">
             <RevenueTrend />
             <FollowUps />
           </div>
+          <ChartsRow />
           <QuickActions actions={ADMIN_QUICK_ACTIONS} />
         </>
       )}
