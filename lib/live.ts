@@ -464,6 +464,26 @@ export function toCheckins(c: LiveCollections, day = todayISO()): CheckinDef[] {
     .sort((a, b) => a.timeIn.localeCompare(b.timeIn));
 }
 
+/**
+ * How many children today's registers expect — the active enrolments on every
+ * class that meets today, counted once per child per session.
+ *
+ * Not the same as the roster on `toTodaysClasses`, which is built from
+ * attendance and so can only ever count who actually turned up. The gap
+ * between the two is the point: it is who is missing.
+ */
+export function expectedToday(c: LiveCollections, day = todayISO()): number {
+  const classIds = c.classSessions
+    .filter((session) => s(session, "session_date") === day)
+    .map((session) => s(session, "class_id"));
+  return classIds.reduce(
+    (sum, classId) =>
+      sum +
+      c.enrollments.filter((e) => s(e, "class_id") === classId && isActiveEnrolment(e)).length,
+    0,
+  );
+}
+
 /** "2026-08-13T09:58:00" -> "9:58 AM". */
 /** The clock time out of a timestamp — "14:05" from an ISO check-in stamp.
     Exported because Class History shows the same times the dashboard does, and

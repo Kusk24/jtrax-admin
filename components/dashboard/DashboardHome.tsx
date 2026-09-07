@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import type { ClassDef } from "@/lib/data";
 import { useJtrax } from "../JtraxContext";
 import { Card, SectionTitle } from "../ui";
+import { ChartsRow } from "./ChartsRow";
 import { CheckinTable } from "./CheckinTable";
 import { FindStudent } from "./FindStudent";
 import { FollowUps } from "./FollowUps";
@@ -59,6 +60,7 @@ export function DashboardHome() {
             <RevenueTrend />
             <FollowUps />
           </div>
+          <ChartsRow />
           <QuickActions actions={ADMIN_QUICK_ACTIONS} />
         </>
       )}
