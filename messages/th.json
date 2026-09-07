@@ -247,7 +247,8 @@
     "howTheyPaid": "ช่องทางการชำระเงิน",
     "howTheyPaidSub": "ยอดชำระเดือนนี้แยกตามช่องทาง",
     "plusMoreMethods": "5 อันดับแรก · อีก {count} ช่องทางไม่ได้แสดง",
-    "noPaymentsThisMonth": "เดือนนี้ยังไม่มีการชำระเงิน"
+    "noPaymentsThisMonth": "เดือนนี้ยังไม่มีการชำระเงิน",
+    "vsSamePoint": "เทียบกับ{month}ช่วงเวลาเดียวกัน"
   },
   "find": {
     "title": "ค้นหานักเรียน",

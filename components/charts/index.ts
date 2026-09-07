@@ -5,5 +5,6 @@
 export { BarChart, type Bar } from "./BarChart";
 export { Donut, type DonutDatum } from "./Donut";
 export { ProgressRing } from "./ProgressRing";
+export { Sparkline } from "./Sparkline";
 export { RankedBars, type Ranked } from "./RankedBars";
 export { arcPath, donutSlices, fmtAxis, niceTicks, pct, polar, type Slice } from "./geometry";

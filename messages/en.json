@@ -247,7 +247,8 @@
     "howTheyPaid": "How They Paid",
     "howTheyPaidSub": "This month's takings by method",
     "plusMoreMethods": "Top 5 · {count} more not shown",
-    "noPaymentsThisMonth": "No payments this month"
+    "noPaymentsThisMonth": "No payments this month",
+    "vsSamePoint": "vs {month} at the same point"
   },
   "find": {
     "title": "Find a Student",

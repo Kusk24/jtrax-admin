@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
-  attendanceSplit, byCourse, byMethod, parseAmount, STATUS_ORDER, statusCounts,
+  attendanceSplit, byCourse, byMethod, monthToDate, parseAmount, STATUS_ORDER, statusCounts,
 } from "./dashboard-charts";
 import { arcPath, donutSlices, niceTicks, pct } from "@/components/charts/geometry";
 
@@ -130,5 +130,44 @@ describe("chart geometry", () => {
     expect(pct(1, 500)).toBe(1);
     expect(pct(0, 500)).toBe(0);
     expect(pct(1, 4)).toBe(25);
+  });
+});
+
+describe("monthToDate", () => {
+  const now = new Date(2026, 8, 8); // 8 September 2026
+  const paid = (isoDate: string, amount: string) => ({ isoDate, amount, status: "Paid" as const });
+
+  it("compares like for like — both sides cut at today's day of the month", () => {
+    const d = monthToDate([
+      paid("2026-09-02", "4000"),
+      paid("2026-09-20", "9999"), // later this month: cannot have happened yet
+      paid("2026-08-03", "1000"),
+      paid("2026-08-25", "5000"), // after the 8th of August: not comparable
+    ], now);
+    expect(d.current).toBe(4000);
+    expect(d.previous).toBe(1000);
+    expect(d.pct).toBe(300);
+  });
+
+  it("counts only money the academy actually has", () => {
+    const d = monthToDate([
+      paid("2026-09-01", "1000"),
+      { isoDate: "2026-09-02", amount: "500", status: "Pending" as const },
+      { isoDate: "2026-09-03", amount: "700", status: "Refunded" as const },
+    ], now);
+    expect(d.current).toBe(1000);
+  });
+
+  it("has no percentage to report when last month took nothing", () => {
+    // "+100%" from zero would be an invention, not a measurement.
+    expect(monthToDate([paid("2026-09-01", "5000")], now).pct).toBeNull();
+  });
+
+  it("crosses the year boundary into December", () => {
+    const jan = new Date(2026, 0, 10);
+    const d = monthToDate([paid("2026-01-05", "200"), paid("2025-12-04", "100")], jan);
+    expect(d.previous).toBe(100);
+    expect(d.previousMonth.getFullYear()).toBe(2025);
+    expect(d.previousMonth.getMonth()).toBe(11);
   });
 });

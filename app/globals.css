@@ -137,17 +137,20 @@ textarea {
   }
 }
 
-/* The four dashboard stat tiles: two up on a phone, four across once there's
-   room, and never a half-empty trailing row. */
-.jt-kpi-strip {
+/* The dashboard headline: revenue large on the left, the other three numbers
+   stacked beside it. Four equal tiles in a row gave every number the same
+   weight, so nothing led and the reader had to scan all four. */
+.jt-hero {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
 }
 
-@media (width >= 1100px) {
-  .jt-kpi-strip {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+@media (width >= 860px) {
+  .jt-hero {
+    /* The hero takes the larger share; the three stacked rows beside it need
+       only enough width for a label and a number. */
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
   }
 }
 

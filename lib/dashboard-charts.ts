@@ -93,3 +93,44 @@ function top(rows: Grouped[], limit: number): { rows: Grouped[]; hidden: number 
   const sorted = rows.sort((a, b) => b.value - a.value || a.label.localeCompare(b.label));
   return { rows: sorted.slice(0, limit), hidden: Math.max(0, sorted.length - limit) };
 }
+
+/**
+ * This month's takings against the same stretch of last month.
+ *
+ * Month-to-date on both sides, not this month against all of last month: on
+ * the 8th of September, August has had thirty days to accumulate and
+ * September has had eight, so a whole-month comparison reports a collapse
+ * every month and is right about none of them.
+ *
+ * `pct` is null when last month took nothing — there is no percentage change
+ * from zero, and "+100%" would be an invention.
+ */
+export function monthToDate(
+  payments: Pick<Payment, "amount" | "isoDate" | "status">[],
+  now = new Date(),
+): { current: number; previous: number; pct: number | null; previousMonth: Date } {
+  const day = now.getDate();
+  const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+  const upTo = (year: number, month: number) => {
+    const prefix = `${year}-${String(month + 1).padStart(2, "0")}`;
+    return payments
+      .filter((p) => {
+        /* Money the academy has: pending has not cleared, refunded went back
+           out. Same rule as the revenue total the tile shows. */
+        if ((p.status || "Paid") !== "Paid") return false;
+        const iso = p.isoDate ?? "";
+        return iso.startsWith(prefix) && Number(iso.slice(8, 10)) <= day;
+      })
+      .reduce((sum, p) => sum + parseAmount(p.amount), 0);
+  };
+
+  const current = upTo(now.getFullYear(), now.getMonth());
+  const previous = upTo(previousMonth.getFullYear(), previousMonth.getMonth());
+  return {
+    current,
+    previous,
+    pct: previous > 0 ? Math.round(((current - previous) / previous) * 100) : null,
+    previousMonth,
+  };
+}
