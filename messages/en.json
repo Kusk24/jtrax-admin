@@ -414,7 +414,20 @@
     "looseMovedIn": "Moved in from credits held outside a course",
     "looseNeedsCourse": "Add this child to a course first, then their credits can be moved into it.",
     "noEnrolmentsYetCredits": "Not in any course yet. Their credits are waiting above — add a course and move them in.",
-    "moveCreditsTo": "Move them to"
+    "moveCreditsTo": "Move them to",
+    "scanFailed": "Could not read that photo — try a clearer, straighter one, or type the details below.",
+    "checkFields": "Please check: {fields}",
+    "alsoOnForm": "Also on the form (not saved here yet)",
+    "scanField": {
+      "name": "name",
+      "dateOfBirth": "date of birth",
+      "level": "chess level",
+      "school": "school",
+      "fideId": "FIDE ID",
+      "fideRating": "FIDE rating",
+      "parentEmail": "email",
+      "parentPhone": "contact number"
+    }
   },
   "parents": {
     "title": "Parents",
