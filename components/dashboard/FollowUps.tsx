@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { api } from "@/lib/api";
 import { BUCKET_STATUS, buildFollowUps, type FollowUpBucket } from "@/lib/derive";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT } from "@/lib/theme";
+import { ConfirmModal } from "../crud";
 import { useData } from "../DataProvider";
 import { Card, SectionTitle } from "../ui";
 
@@ -30,6 +33,19 @@ export function FollowUps({ style, wide = false }: { style?: React.CSSProperties
      rows behind it are the same set. */
   const followUps = buildFollowUps(students);
 
+  /* The credit-expiry notification is manual by design: the backend has no
+     schedule, so nothing reaches a parent unless a person presses this and
+     confirms. The academy asked for a decision, not an automation. */
+  const [confirming, setConfirming] = useState(false);
+  const [notified, setNotified] = useState<number | null>(null);
+  const sendReminders = async () => {
+    const res = await api.post<{ students_notified: number }>(
+      `notifications/credit-expiry?days=${creditRules.expiringDays}`,
+      {},
+    );
+    setNotified(res.students_notified);
+  };
+
   const description = (key: FollowUpBucket) =>
     key === "low"
       ? t("lowCreditDesc", { count: creditRules.lowCredit })
@@ -41,7 +57,41 @@ export function FollowUps({ style, wide = false }: { style?: React.CSSProperties
 
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 12, ...style }}>
-      <SectionTitle>{t("needsFollowUp")}</SectionTitle>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+        <SectionTitle>{t("needsFollowUp")}</SectionTitle>
+        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+          {notified !== null && (
+            <span
+              role="status"
+              style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}
+            >
+              {notified > 0 ? t("remindersSent", { count: notified }) : t("nobodyToRemind")}
+            </span>
+          )}
+          <button
+            type="button"
+            className="jt-btn-ghost"
+            onClick={() => setConfirming(true)}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 7,
+              padding: "7px 13px",
+              borderRadius: 9,
+              border: `1px solid ${COLORS.border}`,
+              background: COLORS.surface,
+              fontFamily: FONT,
+              fontSize: 13,
+              fontWeight: 600,
+              color: COLORS.text,
+              cursor: "pointer",
+            }}
+          >
+            <Icon name="send" size={14} color={COLORS.textSecondary} />
+            {t("sendCreditReminders")}
+          </button>
+        </div>
+      </div>
       {/* Stacked in a narrow column, three across when the card owns the full
           width — otherwise a full-width card leaves two thirds of each row empty. */}
       <div
@@ -118,6 +168,21 @@ export function FollowUps({ style, wide = false }: { style?: React.CSSProperties
           </button>
         ))}
       </div>
+
+      {confirming && (
+        <ConfirmModal
+          title={t("sendCreditReminders")}
+          prompt={t("sendCreditRemindersPrompt", { days: creditRules.expiringDays })}
+          note={t("sendCreditRemindersNote")}
+          confirmLabel={t("sendNow")}
+          failedText={t("sendFailed")}
+          onClose={() => setConfirming(false)}
+          onConfirm={async () => {
+            await sendReminders();
+            setConfirming(false);
+          }}
+        />
+      )}
     </Card>
   );
 }

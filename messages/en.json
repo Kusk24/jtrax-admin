@@ -221,7 +221,14 @@
     "classesToday": "Classes Today",
     "classesTodaySub": "Ongoing of today's classes",
     "expiredCredits": "Expired Credits",
-    "expiredCreditsDesc": "Credits have already run out"
+    "expiredCreditsDesc": "Credits have already run out",
+    "sendCreditReminders": "Send credit reminders",
+    "sendCreditRemindersPrompt": "Notify the parents of every student whose credits expire within {days} days?",
+    "sendCreditRemindersNote": "Nothing is ever sent automatically — parents only hear about expiring credits when someone presses this.",
+    "sendNow": "Send now",
+    "sendFailed": "Could not send the reminders.",
+    "remindersSent": "{count, plural, =1 {1 family notified} other {# families notified}}",
+    "nobodyToRemind": "No expiring credits to notify anyone about"
   },
   "find": {
     "title": "Find a Student",

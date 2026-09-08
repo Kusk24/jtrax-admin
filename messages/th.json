@@ -221,7 +221,14 @@
     "classesToday": "คลาสวันนี้",
     "classesTodaySub": "กำลังเรียนจากคลาสทั้งหมดวันนี้",
     "expiredCredits": "เครดิตหมดอายุ",
-    "expiredCreditsDesc": "เครดิตหมดอายุไปแล้ว"
+    "expiredCreditsDesc": "เครดิตหมดอายุไปแล้ว",
+    "sendCreditReminders": "ส่งแจ้งเตือนเครดิต",
+    "sendCreditRemindersPrompt": "แจ้งผู้ปกครองของนักเรียนทุกคนที่เครดิตจะหมดอายุภายใน {days} วันหรือไม่?",
+    "sendCreditRemindersNote": "ระบบไม่ส่งแจ้งเตือนอัตโนมัติ — ผู้ปกครองจะได้รับแจ้งก็ต่อเมื่อมีเจ้าหน้าที่กดส่งเท่านั้น",
+    "sendNow": "ส่งเลย",
+    "sendFailed": "ส่งแจ้งเตือนไม่สำเร็จ",
+    "remindersSent": "แจ้งแล้ว {count} ครอบครัว",
+    "nobodyToRemind": "ไม่มีเครดิตใกล้หมดอายุที่ต้องแจ้ง"
   },
   "find": {
     "title": "ค้นหานักเรียน",
