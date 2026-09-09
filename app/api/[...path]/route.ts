@@ -59,6 +59,22 @@ async function forward(req: NextRequest, params: Promise<{ path: string[] }>) {
     });
   }
 
+  // Almost every reply is JSON, but a tournament regulation is a PDF or a
+  // photo. Reading those with text() corrupts them, and answering
+  // application/json makes the browser save the bytes instead of showing
+  // them — so anything that is not JSON passes through untouched, with the
+  // type and filename the backend chose.
+  const upstreamType = upstream.headers.get("content-type") ?? "";
+  if (upstreamType && !upstreamType.includes("application/json")) {
+    const headers = new Headers({ "Content-Type": upstreamType });
+    const disposition = upstream.headers.get("content-disposition");
+    if (disposition) headers.set("Content-Disposition", disposition);
+    return new NextResponse(await upstream.arrayBuffer(), {
+      status: upstream.status,
+      headers,
+    });
+  }
+
   const body = await upstream.text();
   return new NextResponse(body, {
     status: upstream.status,

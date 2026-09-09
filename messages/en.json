@@ -114,7 +114,8 @@
     "saving": "Saving…",
     "deleting": "Deleting…",
     "loadFailed": "Could not load. Please try again.",
-    "checkInFailed": "Could not add the student to this class."
+    "checkInFailed": "Could not add the student to this class.",
+    "regulationUploadFailed": "Tournament created, but the regulation could not be attached."
   },
   "share": {
     "copy": "Copy link",
@@ -670,7 +671,17 @@
     "noCategories": "No categories yet.",
     "categoryPlaceholder": "Category name, e.g. Under 10",
     "categoryDeleteNote": "Participants registered in this category keep their registration, but lose the category.",
-    "tabResults": "results"
+    "tabResults": "results",
+    "regulationTitle": "Regulation",
+    "regulationAttachedSub": "Parents can read this from the registration page.",
+    "regulationEmptySub": "The organiser's rules — schedule, categories, prizes. Parents see it on the registration page.",
+    "regulationView": "View regulation",
+    "regulationAttach": "Attach regulation",
+    "regulationReplace": "Replace",
+    "regulationWrongType": "A regulation must be a PDF or a photo (JPEG, PNG, WebP).",
+    "regulationAttached": "Regulation attached: {file}",
+    "earlyBirdUntil": "Early bird until",
+    "earlyBirdHint": "Optional. For outside participants — JCA students get the student discount instead."
   },
   "announcement": {
     "title": "Announcement",
