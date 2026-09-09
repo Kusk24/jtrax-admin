@@ -541,7 +541,14 @@
     "payerManyChildren": "The student list is narrowed to their {count} children. Clear the payer to search every student.",
     "childrenOfPayer": "{name}’s children",
     "noMatchInFamily": "No child of {payer} matches “{query}”.",
-    "studentNoGuardian": "No guardian is linked to {name}, so nobody is recorded as paying. Link one on the Students screen."
+    "studentNoGuardian": "No guardian is linked to {name}, so nobody is recorded as paying. Link one on the Students screen.",
+    "cardLink": "Card payment link",
+    "cardLinkHint": "A Stripe page where the parent pays by card. The payment marks itself Paid and releases its credits once the money clears.",
+    "cardLinkGet": "Get card payment link",
+    "cardLinkCopy": "Copy link",
+    "cardLinkCopied": "Copied",
+    "cardLinkOff": "Card payments are not set up on the server yet.",
+    "cardLinkFailed": "Could not create the payment link."
   },
   "classHistory": {
     "title": "Class History",
