@@ -64,9 +64,29 @@ export type LinkedResults = {
   stage?: string;
   fetchedAt?: string;
   /** The arbiter's per-round pairings, mirrored by the backend. */
-  rounds?: { round: number; played: boolean; pairings: unknown[] }[];
+  rounds?: LinkedRound[];
   chessResultsId: number;
   standings: ExternalStanding[];
+};
+
+export type LinkedPairing = {
+  board: number;
+  white: string;
+  whiteRating?: number;
+  black: string;
+  blackRating?: number;
+  result?: string;
+  whiteStudentId?: string;
+  whiteStudentName?: string;
+  blackStudentId?: string;
+  blackStudentName?: string;
+};
+
+export type LinkedRound = {
+  round: number;
+  date?: string;
+  played: boolean;
+  pairings: LinkedPairing[];
 };
 
 export const linkChessResults = (tournamentId: string, url: string) =>
