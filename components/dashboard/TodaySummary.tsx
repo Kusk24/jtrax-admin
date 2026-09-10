@@ -141,6 +141,14 @@ export function TodaySummary() {
               from: revenueTrend[0]?.value.toLocaleString() ?? "0",
               to: revenueTrend[revenueTrend.length - 1]?.value.toLocaleString() ?? "0",
             })}
+            /* The trend point carries an English month name; the reader's
+               month comes from the locale, the same way `lastMonth` does
+               above. Index 5 is the current month, each step back one more. */
+            detail={(p, i) =>
+              `${new Intl.DateTimeFormat(locale, { month: "short" }).format(
+                new Date(new Date().getFullYear(), new Date().getMonth() - (revenueTrend.length - 1 - i), 1),
+              )} · ${fmtTHB(p.value)}`
+            }
           />
         </div>
       </Card>
