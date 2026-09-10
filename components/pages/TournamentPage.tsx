@@ -100,7 +100,6 @@ function CreateWizard({
   const t = useTranslations("tournament");
   const tCommon = useTranslations("common");
   const [step, setStep] = useState(1);
-  const [fileName, setFileName] = useState("");
   /* The regulation the organiser sent. Held until the tournament exists —
      it is attached to a tournament id, which there is not one of until
      Publish — and then uploaded. */
@@ -127,7 +126,6 @@ function CreateWizard({
      empty and the file is kept for what it is worth: the regulation itself,
      attached to the tournament and readable by parents. */
   function accept(file: File) {
-    setFileName(file.name);
     setRegulation(file);
     setStep(2);
   }
