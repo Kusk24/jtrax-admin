@@ -277,7 +277,9 @@ function CreateWizard({
           </Card>
           <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <SectionTitle>{t("venueLocation")}</SectionTitle>
-            <div style={{ display: "grid", gridTemplateColumns: "minmax(220px, 1fr) minmax(220px, 1fr)", gap: 13 }}>
+            {/* auto-fit, like the sections either side: two fixed columns are
+                440px wide before the gap and run off a 390px phone. */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 13 }}>
               {renderField(fields[3])}
               <div style={{ minHeight: 78, border: `1px dashed ${COLORS.border}`, borderRadius: 10, background: COLORS.light, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, color: COLORS.textSecondary, fontFamily: FONT, fontSize: 13 }}><Icon name="pin" size={16} color={COLORS.blue} />{t("mapHint")}</div>
             </div>
