@@ -200,7 +200,7 @@
     "revenueChartLabel": "Revenue over the last 6 months, from {from} to {to} THB",
     "overview": "Overview",
     "revenueThisMonth": "Revenue This Month",
-    "fromPayments": "From {count} payments",
+    "fromPayments": "From {count, plural, one {# payment} other {# payments}}",
     "totalStudents": "Total Students",
     "enrolledAcross": "Enrolled across all courses",
     "todaysClasses": "Today's Classes",
