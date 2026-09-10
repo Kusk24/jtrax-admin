@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
+import { GlobalSearch } from "./GlobalSearch";
 import { LanguageToggle } from "./LanguageToggle";
 import { signOut } from "@/app/actions/auth";
 import { Icon } from "@/lib/icons";
@@ -323,6 +324,7 @@ export function JtraxShell({ children }: { children: React.ReactNode }) {
             )}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <GlobalSearch />
             <LanguageToggle />
             <AccountChip />
           </div>
