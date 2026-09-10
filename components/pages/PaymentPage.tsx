@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { api, ApiError } from "@/lib/api";
 import { type Payment } from "@/lib/data";
 import {
   childIdsOf,
@@ -548,7 +549,7 @@ export function RecordPaymentForm({
  * One payment, in full. A row can only show six columns; this is where the
  * reference number, the discount and the guardian who paid actually live.
  */
-function PaymentDetail({
+export function PaymentDetail({
   payment,
   onClose,
   onEdit,
@@ -562,6 +563,27 @@ function PaymentDetail({
   const t = useTranslations("payment");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
+
+  /* The card link. Fetched on demand, never automatically: pressing the
+     button is what creates a chargeable session, so opening the detail to
+     read a payment must not quietly mint one. */
+  const [cardLink, setCardLink] = useState<string | null>(null);
+  const [cardErr, setCardErr] = useState<string | null>(null);
+  const [cardBusy, setCardBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const fetchCardLink = async () => {
+    if (!payment.id) return;
+    setCardBusy(true);
+    setCardErr(null);
+    try {
+      const res = await api.post<{ url: string }>(`payments/${payment.id}/stripe-link`, {});
+      setCardLink(res.url);
+    } catch (e) {
+      setCardErr(e instanceof ApiError && e.status === 503 ? t("cardLinkOff") : t("cardLinkFailed"));
+    }
+    setCardBusy(false);
+  };
+
   return (
     <Modal title={t("detailTitle")} onClose={onClose} width={560}>
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -615,6 +637,72 @@ function PaymentDetail({
             { label: t("reference"), value: payment.reference || "—" },
           ]}
         />
+        {payment.id && payment.status === "Pending" && (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+              padding: "12px 14px",
+              borderRadius: 11,
+              border: `1px solid ${COLORS.border}`,
+              background: COLORS.light,
+            }}
+          >
+            <span style={{ fontFamily: FONT, fontSize: 13.5, fontWeight: 600, color: COLORS.text }}>
+              {t("cardLink")}
+            </span>
+            {cardLink ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <code
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    fontSize: 12.5,
+                    color: COLORS.textSecondary,
+                  }}
+                >
+                  {cardLink}
+                </code>
+                <button
+                  type="button"
+                  style={{ ...secondaryButtonStyle, flexShrink: 0 }}
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(cardLink);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                >
+                  {copied ? t("cardLinkCopied") : t("cardLinkCopy")}
+                </button>
+              </div>
+            ) : (
+              <>
+                <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+                  {t("cardLinkHint")}
+                </span>
+                <div>
+                  <button
+                    type="button"
+                    style={{ ...secondaryButtonStyle, opacity: cardBusy ? 0.7 : 1 }}
+                    disabled={cardBusy}
+                    onClick={fetchCardLink}
+                  >
+                    {t("cardLinkGet")}
+                  </button>
+                </div>
+              </>
+            )}
+            {cardErr && (
+              <span role="alert" style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.danger }}>
+                {cardErr}
+              </span>
+            )}
+          </div>
+        )}
       </div>
     </Modal>
   );

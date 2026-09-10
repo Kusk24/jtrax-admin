@@ -10,6 +10,7 @@ import { useJtrax } from "../JtraxContext";
 import { ErrorNote, errorText } from "../crud";
 import { PageHeader, primaryButtonStyle, secondaryButtonStyle } from "../page-kit";
 import { LineChannelCard } from "../settings/LineChannelCard";
+import { NotificationSwitchboard } from "../settings/NotificationSwitchboard";
 import { ThemeToggle } from "../ThemeToggle";
 import { Card, SectionTitle } from "../ui";
 import { AdminsPage } from "./AdminsPage";
@@ -215,14 +216,17 @@ export function SettingsPage() {
             <ThemeCard />
           </div>
 
-          {/* Headed like the column beside it, so the two read as a pair
-              rather than one titled section and one card that starts with a
-              title of its own. The card drops its internal heading, the way
-              LichessPanel does under a page header that names it. */}
+          {/* What the school sends at all — the parent-facing catalogue, each
+              type with its own switch. Sits beside the rules rather than under
+              them so the two decision panels are visible at once. */}
           <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
             <SectionTitle>{t("lineTitle")}</SectionTitle>
             <LineChannelCard heading={false} />
+            <SectionTitle>{t("notifyTitle")}</SectionTitle>
+            <NotificationSwitchboard />
           </div>
+
+
         </div>
       ) : (
         /* Nothing else on this page is theirs, so there is no second column to

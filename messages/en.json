@@ -116,7 +116,8 @@
     "saving": "Saving…",
     "deleting": "Deleting…",
     "loadFailed": "Could not load. Please try again.",
-    "checkInFailed": "Could not add the student to this class."
+    "checkInFailed": "Could not add the student to this class.",
+    "regulationUploadFailed": "Tournament created, but the regulation could not be attached."
   },
   "share": {
     "copy": "Copy link",
@@ -224,7 +225,14 @@
     "classesTodaySub": "Ongoing of today's classes",
     "expiredCredits": "Expired Credits",
     "expiredCreditsDesc": "Credits have already run out",
-    "rosterHealth": "Student Status",
+    "sendCreditReminders": "Send credit reminders",
+    "sendCreditRemindersPrompt": "Notify the parents of every student whose credits expire within {days} days?",
+    "sendCreditRemindersNote": "Nothing is ever sent automatically — parents only hear about expiring credits when someone presses this.",
+    "sendNow": "Send now",
+    "sendFailed": "Could not send the reminders.",
+    "remindersSent": "{count, plural, =1 {1 family notified} other {# families notified}}",
+    "nobodyToRemind": "No expiring credits to notify anyone about",
+    "rosterHealth": "Roster Health",
     "rosterHealthSub": "Every student by credit condition",
     "statusFilterHint": "Select a status to open those students",
     "studentStatusLabel": "Student status for {count} students",
@@ -552,7 +560,14 @@
     "payerManyChildren": "The student list is narrowed to their {count} children. Clear the payer to search every student.",
     "childrenOfPayer": "{name}’s children",
     "noMatchInFamily": "No child of {payer} matches “{query}”.",
-    "studentNoGuardian": "No guardian is linked to {name}, so nobody is recorded as paying. Link one on the Students screen."
+    "studentNoGuardian": "No guardian is linked to {name}, so nobody is recorded as paying. Link one on the Students screen.",
+    "cardLink": "Card payment link",
+    "cardLinkHint": "A Stripe page where the parent pays by card. The payment marks itself Paid and releases its credits once the money clears.",
+    "cardLinkGet": "Get card payment link",
+    "cardLinkCopy": "Copy link",
+    "cardLinkCopied": "Copied",
+    "cardLinkOff": "Card payments are not set up on the server yet.",
+    "cardLinkFailed": "Could not create the payment link."
   },
   "classHistory": {
     "title": "Class History",
@@ -681,7 +696,17 @@
     "noCategories": "No categories yet.",
     "categoryPlaceholder": "Category name, e.g. Under 10",
     "categoryDeleteNote": "Participants registered in this category keep their registration, but lose the category.",
-    "tabResults": "results"
+    "tabResults": "results",
+    "regulationTitle": "Regulation",
+    "regulationAttachedSub": "Parents can read this from the registration page.",
+    "regulationEmptySub": "The organiser's rules — schedule, categories, prizes. Parents see it on the registration page.",
+    "regulationView": "View regulation",
+    "regulationAttach": "Attach regulation",
+    "regulationReplace": "Replace",
+    "regulationWrongType": "A regulation must be a PDF or a photo (JPEG, PNG, WebP).",
+    "regulationAttached": "Regulation attached: {file}",
+    "earlyBirdUntil": "Early bird until",
+    "earlyBirdHint": "Optional. For outside participants — JCA students get the student discount instead."
   },
   "announcement": {
     "title": "Announcement",
@@ -840,7 +865,20 @@
     "themeTitle": "Appearance",
     "themeDesc": "Light, dark, or follow this device. Saved to your account, so it follows you to any machine.",
     "pageTitle": "Settings",
-    "subStaff": "How the console looks on your account."
+    "subStaff": "How the console looks on your account.",
+    "notifyTitle": "Notifications the school sends",
+    "notifyCheckIn": "Check-in alerts",
+    "notifyCheckInDesc": "Parents are told when their child arrives for class",
+    "notifyDeducted": "Credit deduction",
+    "notifyDeductedDesc": "At check-out: class time, credits used, credits left",
+    "notifyLowCredit": "Low credit",
+    "notifyLowCreditDesc": "A top-up nudge after a deduction. Parents must also opt in themselves",
+    "notifyExpiry": "Credit expiry",
+    "notifyExpiryDesc": "The manual reminder the dashboard button sends",
+    "notifyAnnounce": "School announcements",
+    "notifyAnnounceDesc": "Every new announcement, to all students and parents",
+    "notifyPayment": "Payment receipts",
+    "notifyPaymentDesc": "When a payment is recorded as paid — in-app and email"
   },
   "games": {
     "title": "Games",
