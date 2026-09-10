@@ -266,7 +266,10 @@ export function JtraxShell({ children }: { children: React.ReactNode }) {
   const section = sectionFromPath(pathname);
   const { person, role } = useJtrax();
   const t = useTranslations("shell");
-  const [navExpanded, setNavExpanded] = useState(false);
+  /* Open on arrival: the labels are the navigation for anyone who has not
+     memorised eleven icons. Collapsing to the rail is the reader's choice,
+     made with the chevron, not the default. */
+  const [navExpanded, setNavExpanded] = useState(true);
 
   const isHome = section === "home";
   const firstName = person.name.split(" ").filter((p) => !p.includes("."))[0] ?? "there";
