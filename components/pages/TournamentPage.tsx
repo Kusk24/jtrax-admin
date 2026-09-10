@@ -5,7 +5,9 @@ import { ResultsTab } from "../tournament/ResultsTab";
 import { ExternalTournaments } from "../tournament/ExternalTournaments";
 import { RegistrationCard } from "../tournament/RegistrationCard";
 import { RegistrationQueue } from "../tournament/RegistrationQueue";
+import { RegulationCard } from "../tournament/RegulationCard";
 import { useTranslations } from "next-intl";
+import { api } from "@/lib/api";
 import { removeIfPresent } from "@/lib/credentials";
 import { type Participant, type Tournament } from "@/lib/data";
 import { useData } from "@/components/DataProvider";
@@ -90,51 +92,68 @@ function CreateWizard({
   onPublish,
 }: {
   onCancel: () => void;
-  /* Awaited by Publish, so a second press cannot open a second tournament. */
-  onPublish: (t: Tournament) => Promise<void>;
+  /* Awaited by Publish, so a second press cannot open a second tournament.
+     The regulation rides along: it can only be stored once the tournament it
+     belongs to has an id. */
+  onPublish: (t: Tournament, regulation: File | null) => Promise<void>;
 }) {
   const t = useTranslations("tournament");
   const tCommon = useTranslations("common");
   const [step, setStep] = useState(1);
-  const [extracting, setExtracting] = useState(false);
   const [fileName, setFileName] = useState("");
+  /* The regulation the organiser sent. Held until the tournament exists —
+     it is attached to a tournament id, which there is not one of until
+     Publish — and then uploaded. */
+  const [regulation, setRegulation] = useState<File | null>(null);
   const [draft, setDraft] = useState({
     name: "",
-    date: "",
+    startDate: "",
+    endDate: "",
     venue: "",
     format: "Swiss System",
     timeControl: "",
     chiefArbiter: "",
     maxParticipants: "100",
+    regularFee: "",
+    earlyBirdFee: "",
+    earlyBirdDeadline: "",
+    registrationDeadline: "",
   });
 
-  /* Fake extraction, matching the mockup's 1.8s simulated parse. */
-  function extract(file: File) {
+  /* Takes the regulation and moves on. It used to wait 1.8 seconds and then
+     fill the form with a tournament that does not exist — "JCA Youth Monthly
+     Rapid Chess Tournament" at "Paradise Park" — which reads exactly like a
+     document having been parsed. Nothing parses it yet, so the fields stay
+     empty and the file is kept for what it is worth: the regulation itself,
+     attached to the tournament and readable by parents. */
+  function accept(file: File) {
     setFileName(file.name);
-    setExtracting(true);
-    setTimeout(() => {
-      setDraft({
-        name: "JCA Youth Monthly Rapid Chess Tournament",
-        date: "12–13 Sep 2026",
-        venue: "Paradise Park",
-        format: "Swiss System",
-        timeControl: "25 min + 10 sec",
-        chiefArbiter: "Somchai Prasert (FIDE Arbiter)",
-        maxParticipants: "120",
-      });
-      setExtracting(false);
-      setStep(2);
-    }, 1800);
+    setRegulation(file);
+    setStep(2);
   }
 
-  const fields: Array<{ key: keyof typeof draft; labelKey: string }> = [
+  /* `kind` because a date typed as free text is a date nothing can compare:
+     "12–13 Sep 2026" went into the database as NULL every time. */
+  const fields: Array<{
+    key: keyof typeof draft;
+    labelKey: string;
+    kind?: "text" | "date" | "number";
+    hintKey?: string;
+  }> = [
     { key: "name", labelKey: "fieldName" },
-    { key: "date", labelKey: "fieldDate" },
+    { key: "startDate", labelKey: "fieldDate", kind: "date" },
+    { key: "endDate", labelKey: "endDate", kind: "date" },
     { key: "venue", labelKey: "fieldVenue" },
     { key: "format", labelKey: "fieldFormat" },
     { key: "timeControl", labelKey: "fieldTimeControl" },
     { key: "chiefArbiter", labelKey: "fieldChiefArbiter" },
-    { key: "maxParticipants", labelKey: "fieldMaxParticipants" },
+    { key: "maxParticipants", labelKey: "fieldMaxParticipants", kind: "number" },
+    { key: "registrationDeadline", labelKey: "registrationCloses", kind: "date" },
+    { key: "regularFee", labelKey: "entryFee", kind: "number" },
+    /* Optional, and paired: a discount with no end date can never be charged,
+       which is how early_bird_fee sat unused in the schema for months. */
+    { key: "earlyBirdFee", labelKey: "earlyBirdFee", kind: "number", hintKey: "earlyBirdHint" },
+    { key: "earlyBirdDeadline", labelKey: "earlyBirdUntil", kind: "date" },
   ];
 
   return (
@@ -206,25 +225,7 @@ function CreateWizard({
 
       {step === 1 && (
         <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 13, padding: 34 }}>
-          {extracting ? (
-            <>
-              <span
-                style={{
-                  width: 30,
-                  height: 30,
-                  borderRadius: "50%",
-                  border: `3px solid ${COLORS.border}`,
-                  borderTopColor: COLORS.blue,
-                  animation: "jtrax-spin 0.8s linear infinite",
-                }}
-              />
-              <span style={{ fontFamily: FONT, fontSize: 14.5, color: COLORS.textSecondary }}>
-                {t("extracting", { file: fileName })}
-              </span>
-            </>
-          ) : (
-            <>
-              <Icon name="fileText" size={30} color={COLORS.blue} />
+          <Icon name="fileText" size={30} color={COLORS.blue} />
               <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 600, color: COLORS.text }}>
                 {t("uploadPrompt")}
               </span>
@@ -238,20 +239,18 @@ function CreateWizard({
                   accept=".pdf,.png,.jpg,.jpeg"
                   onChange={(e) => {
                     const f = e.target.files?.[0];
-                    if (f) extract(f);
+                    if (f) accept(f);
                   }}
                   style={{ display: "none" }}
                 />
               </label>
-              <button
-                type="button"
-                onClick={() => setStep(2)}
-                style={{ border: "none", background: "transparent", cursor: "pointer", fontFamily: FONT, fontSize: 13.5, color: COLORS.blue }}
-              >
-                {t("skipManual")}
-              </button>
-            </>
-          )}
+          <button
+            type="button"
+            onClick={() => setStep(2)}
+            style={{ border: "none", background: "transparent", cursor: "pointer", fontFamily: FONT, fontSize: 13.5, color: COLORS.blue }}
+          >
+            {t("skipManual")}
+          </button>
         </Card>
       )}
 
@@ -264,12 +263,24 @@ function CreateWizard({
                 <label style={labelStyle} htmlFor={`tw-${f.key}`}>{t(f.labelKey)}</label>
                 <input
                   id={`tw-${f.key}`}
+                  type={f.kind ?? "text"}
+                  min={f.kind === "number" ? 0 : undefined}
                   value={draft[f.key]}
                   onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })}
                   style={fieldStyle}
                 />
+                {f.hintKey && (
+                  <p style={{ margin: "4px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+                    {t(f.hintKey)}
+                  </p>
+                )}
               </div>
             ))}
+            {regulation && (
+              <p style={{ margin: 0, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+                {t("regulationAttached", { file: regulation.name })}
+              </p>
+            )}
           </Card>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
             <button type="button" className="jt-btn-ghost" style={secondaryButtonStyle} onClick={() => setStep(1)}>
@@ -324,7 +335,7 @@ function CreateWizard({
                 id: `t-${Date.now()}`,
                 name: draft.name,
                 status: "Ongoing",
-                date: draft.date || "TBC",
+                date: draft.startDate || "TBC",
                 venue: draft.venue || "TBC",
                 format: draft.format,
                 published: true,
@@ -334,9 +345,11 @@ function CreateWizard({
                 categories: [],
                 organizer: "JCA Chess Academy",
                 chiefArbiter: draft.chiefArbiter,
-                registrationDeadline: "TBC",
+                registrationDeadline: draft.registrationDeadline || "TBC",
                 timeControl: draft.timeControl,
-                entryFeeMember: "—",
+                entryFeeMember: draft.regularFee || "—",
+                earlyBirdFeeMember: draft.earlyBirdFee || undefined,
+                earlyBirdEnd: draft.earlyBirdDeadline || undefined,
                 entryFeeNonMember: "—",
                 address: draft.venue,
                 contactPerson: "—",
@@ -345,7 +358,7 @@ function CreateWizard({
                 rounds: 0,
                 revenue: "0 THB",
                 participants: [],
-              })
+              }, regulation)
             }
           >
             {t("viewTournament")}
@@ -551,6 +564,8 @@ function TournamentDetail({
           onConfirm={() => remove("tournament-categories", deletingCategory.id)}
         />
       )}
+
+      <RegulationCard tournamentId={tournament.id} />
 
       <RegistrationCard
         tournamentId={tournament.id}
@@ -1093,7 +1108,7 @@ export function TournamentPage({
     return (
       <CreateWizard
         onCancel={() => setWizardOpen(false)}
-        onPublish={async (t) => {
+        onPublish={async (t, regulation) => {
           const iso = (v: string) => {
             const d = new Date(v);
             return isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
@@ -1112,11 +1127,26 @@ export function TournamentPage({
               organizer_name: t.organizer,
               registration_deadline: iso(t.registrationDeadline),
               early_bird_fee: money(t.earlyBirdFeeMember),
+              /* Without a deadline the early price can never be charged, so
+                 the two are written together or not at all. */
+              early_bird_deadline: t.earlyBirdFeeMember ? iso(t.earlyBirdEnd ?? "") : null,
               regular_fee: money(t.entryFeeMember),
               max_participants: t.maxParticipants || null,
             });
             for (const name of t.categories) {
               await create("tournament-categories", { tournament_id: created.tournament_id, name });
+            }
+            /* The regulation needs the id, so it goes up last. A failure here
+               must not lose the tournament that was just created — it is
+               reported, and the file can be attached again from the detail. */
+            if (regulation) {
+              const form = new FormData();
+              form.append("file", regulation);
+              try {
+                await api.upload(`tournaments/${created.tournament_id}/regulation`, form);
+              } catch (e) {
+                showError(tCommon("regulationUploadFailed"), e);
+              }
             }
             setSelectedId(String(created.tournament_id));
           } catch (e) {
