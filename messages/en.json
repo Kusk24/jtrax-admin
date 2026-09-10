@@ -228,7 +228,7 @@
     "sendNow": "Send now",
     "sendFailed": "Could not send the reminders.",
     "remindersSent": "{count, plural, =1 {1 family notified} other {# families notified}}",
-    "nobodyToRemind": "No expiring credits to notify anyone about"
+    "nobodyToRemind": "No expiring credits to notify anyone about",
     "rosterHealth": "Roster Health",
     "rosterHealthSub": "Every student by credit condition",
     "students": "students",
