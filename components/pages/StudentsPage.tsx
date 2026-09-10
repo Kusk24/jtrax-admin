@@ -2380,6 +2380,7 @@ function AddStudentWizard({
 export function StudentsPage({
   startWizard,
   startStatus,
+  startDetailId,
 }: {
   /* Present means the registration wizard opens; its value prefills the name.
      Present-and-empty is the dashboard's "Register Student" pill — nothing
@@ -2388,6 +2389,9 @@ export function StudentsPage({
   /* The condition the dashboard's follow-up card was clicked on, if we got
      here from one. */
   startStatus?: string;
+  /* The student the header search picked: `/students?id=…` lands on their
+     detail. An id the roster doesn't know falls through to the list. */
+  startDetailId?: string;
 }) {
   const t = useTranslations("students");
   const tCommon = useTranslations("common");
@@ -2395,7 +2399,11 @@ export function StudentsPage({
   const tStatus = useTranslations("status");
   const { students, raw, batch, create, update, remove, removePerson, loading, error } = useData();
   const [view, setView] = useState<View>(
-    opensCreate(startWizard) ? { kind: "wizard" } : { kind: "list" },
+    opensCreate(startWizard)
+      ? { kind: "wizard" }
+      : startDetailId
+        ? { kind: "detail", id: startDetailId }
+        : { kind: "list" },
   );
   const [mode, setMode] = useViewMode("students", VIEWS);
   const router = useRouter();

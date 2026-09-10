@@ -67,9 +67,10 @@ export function SectionRouter({
          rather than keeping the state of the previous visit. */
       return (
         <StudentsPage
-          key={`${newKey}|${status ?? ""}`}
+          key={`${newKey}|${status ?? ""}|${detailId ?? ""}`}
           startWizard={startNew}
           startStatus={status}
+          startDetailId={detailId}
         />
       );
     case "parents":
