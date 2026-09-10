@@ -156,8 +156,23 @@ function CreateWizard({
     { key: "earlyBirdDeadline", labelKey: "earlyBirdUntil", kind: "date" },
   ];
 
+  const renderField = (f: (typeof fields)[number]) => (
+    <div key={f.key}>
+      <label style={labelStyle} htmlFor={`tw-${f.key}`}>{t(f.labelKey)}</label>
+      <input
+        id={`tw-${f.key}`}
+        type={f.kind ?? "text"}
+        min={f.kind === "number" ? 0 : undefined}
+        value={draft[f.key]}
+        onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })}
+        style={fieldStyle}
+      />
+      {f.hintKey && <p style={{ margin: "4px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>{t(f.hintKey)}</p>}
+    </div>
+  );
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18, maxWidth: 780 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 18, maxWidth: 1060 }}>
       <button
         type="button"
         onClick={onCancel}
@@ -256,31 +271,29 @@ function CreateWizard({
 
       {step === 2 && (
         <>
-          <Card style={{ display: "flex", flexDirection: "column", gap: 13 }}>
-            <SectionTitle>{t("reviewTitle")}</SectionTitle>
-            {fields.map((f) => (
-              <div key={f.key}>
-                <label style={labelStyle} htmlFor={`tw-${f.key}`}>{t(f.labelKey)}</label>
-                <input
-                  id={`tw-${f.key}`}
-                  type={f.kind ?? "text"}
-                  min={f.kind === "number" ? 0 : undefined}
-                  value={draft[f.key]}
-                  onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })}
-                  style={fieldStyle}
-                />
-                {f.hintKey && (
-                  <p style={{ margin: "4px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-                    {t(f.hintKey)}
-                  </p>
-                )}
-              </div>
-            ))}
-            {regulation && (
-              <p style={{ margin: 0, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-                {t("regulationAttached", { file: regulation.name })}
-              </p>
-            )}
+          <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <SectionTitle>{t("tournamentInformation")}</SectionTitle>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 13 }}>
+              {[fields[0], fields[1], fields[2], fields[4], fields[5], fields[6], fields[7]].map(renderField)}
+            </div>
+          </Card>
+          <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <SectionTitle>{t("venueLocation")}</SectionTitle>
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(220px, 1fr) minmax(220px, 1fr)", gap: 13 }}>
+              {renderField(fields[3])}
+              <div style={{ minHeight: 78, border: `1px dashed ${COLORS.border}`, borderRadius: 10, background: COLORS.light, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, color: COLORS.textSecondary, fontFamily: FONT, fontSize: 13 }}><Icon name="pin" size={16} color={COLORS.blue} />{t("mapHint")}</div>
+            </div>
+          </Card>
+          <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <SectionTitle>{t("registrationPricing")}</SectionTitle>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 13 }}>
+              {fields.slice(8).map(renderField)}
+            </div>
+          </Card>
+          <Card style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <span style={{ display: "flex", width: 38, height: 38, alignItems: "center", justifyContent: "center", borderRadius: 10, background: COLORS.light }}><Icon name="fileText" size={18} color={COLORS.blue} /></span>
+            <span style={{ flex: 1, minWidth: 200 }}><SectionTitle>{t("regulationDocument")}</SectionTitle><span style={{ display: "block", marginTop: 3, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>{regulation ? t("regulationAttached", { file: regulation.name }) : t("regulationOptional")}</span></span>
+            <label className="jt-btn-ghost" style={{ ...secondaryButtonStyle, cursor: "pointer" }}>{regulation ? t("replaceFile") : t("chooseFile")}<input type="file" accept=".pdf,.png,.jpg,.jpeg" onChange={(e) => { const f = e.target.files?.[0]; if (f) accept(f); }} style={{ display: "none" }} /></label>
           </Card>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
             <button type="button" className="jt-btn-ghost" style={secondaryButtonStyle} onClick={() => setStep(1)}>
@@ -565,8 +578,6 @@ function TournamentDetail({
         />
       )}
 
-      <RegulationCard tournamentId={tournament.id} />
-
       <RegistrationCard
         tournamentId={tournament.id}
         tournamentName={tournament.name}
@@ -577,6 +588,8 @@ function TournamentDetail({
           await update("tournaments", tournament.id, patch);
         }}
       />
+
+      <RegulationCard tournamentId={tournament.id} />
 
       <div style={{ display: "flex", gap: 18, borderBottom: `1px solid ${COLORS.border}` }}>
         {(["overview", "participants", "results"] as const).map((tab_) => (
