@@ -3,19 +3,18 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { fmtCredits } from "@/lib/live";
+import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
 import { ActionButton } from "../crud";
 import { useData } from "../DataProvider";
 import { useErrorToast } from "../ErrorToast";
-import { equalTemplate, Table, TableRow } from "../page-kit";
+import { Table, TableRow } from "../page-kit";
 import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
 
 const COLLAPSED_ROWS = 5;
-/* Shared with every other list on purpose — this table used to roll its own
-   grid and padding, which made its rows a different height from the rest. The
-   fixed first column is the tick box; it does not share the flexible width
-   because a checkbox does not grow. */
-const GRID = `34px ${equalTemplate(7, 90)}`;
+/* The fixed first column is the tick box; names and courses get the flexible
+   room while the short operational fields keep compact, predictable widths. */
+const GRID = "32px minmax(116px, 1.5fr) 58px minmax(104px, 1fr) 72px 72px 78px 82px";
 
 function creditColors(credit: number) {
   if (credit <= 0) return { color: COLORS.danger, bg: COLORS.dangerBg };
@@ -93,7 +92,7 @@ export function CheckinTable() {
   }
 
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 12, padding: 0, overflow: "hidden" }}>
+    <Card className="jt-dashboard-checkins" style={{ display: "flex", flexDirection: "column", gap: 12, padding: 0, overflow: "hidden" }}>
       <div
         style={{
           display: "flex",
@@ -187,8 +186,17 @@ export function CheckinTable() {
         </div>
       )}
 
-      <Table
-        columns={[
+      {rows.length === 0 ? (
+        <div className="jt-dashboard-empty jt-checkin-empty">
+          <span className="jt-dashboard-empty-icon">
+            <Icon name="userCheck" size={20} color={COLORS.blue} />
+          </span>
+          <strong>{t("noCheckinsToday")}</strong>
+          <span>{t("noCheckinsTodaySub")}</span>
+        </div>
+      ) : (
+        <Table
+          columns={[
           <input
             key="all"
             type="checkbox"
@@ -212,11 +220,11 @@ export function CheckinTable() {
           t("colDismissal"),
           tCommon("status"),
           tCommon("action"),
-        ]}
-        template={GRID}
-        minWidth={894}
-      >
-        {visible.map((row) => {
+          ]}
+          template={GRID}
+          minWidth={728}
+        >
+          {visible.map((row) => {
           const credit = creditColors(row.credit);
           const status = statusChipColors(row.status === "In class" ? "Ongoing" : "Dismissed");
           const canCheckOut = row.status === "In class" && Boolean(row.attendanceId);
@@ -293,8 +301,9 @@ export function CheckinTable() {
               </span>
             </TableRow>
           );
-        })}
-      </Table>
+          })}
+        </Table>
+      )}
 
     </Card>
   );

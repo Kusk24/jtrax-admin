@@ -5,17 +5,15 @@ import { useTranslations } from "next-intl";
 import type { ClassDef } from "@/lib/data";
 import { useJtrax } from "../JtraxContext";
 import { Card, SectionTitle } from "../ui";
-import { ChartsRow } from "./ChartsRow";
 import { CheckinTable } from "./CheckinTable";
 import { FindStudent } from "./FindStudent";
-import { FollowUps } from "./FollowUps";
-import { RevenueTrend } from "./RevenueTrend";
 import {
   ADMIN_QUICK_ACTIONS,
   QuickActionPill,
   RECEPTIONIST_QUICK_ACTIONS,
 } from "./QuickActions";
 import { SessionPanel, type PanelState } from "./SessionPanel";
+import { StudentStatus } from "./StudentStatus";
 import { TodaySummary } from "./TodaySummary";
 import { TodaysClasses } from "./TodaysClasses";
 
@@ -45,32 +43,24 @@ export function DashboardHome() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {isReceptionist ? (
-        <>
-          {/* The desk's whole job starts here, so the search owns the top of
-              the screen and its results have the full width to open into. */}
-          <FindStudent />
-          <QuickActions actions={RECEPTIONIST_QUICK_ACTIONS} />
-          <FollowUps wide />
-        </>
-      ) : (
-        <>
-          <TodaySummary />
-          <div className="jt-split">
-            <RevenueTrend />
-            <FollowUps />
-          </div>
-          <ChartsRow />
-          <QuickActions actions={ADMIN_QUICK_ACTIONS} />
-        </>
-      )}
+      <div className="jt-dashboard-overview">
+        <TodaySummary />
+        <StudentStatus />
+      </div>
 
-      <TodaysClasses
-        onCreateSession={() => setPanel({ mode: "create" })}
-        onViewClass={(def: ClassDef) => setPanel({ mode: "view", def })}
-      />
+      {/* The desk's whole job starts with a name; management roles can use the
+          denser overview without carrying a search result between tasks. */}
+      {isReceptionist && <FindStudent />}
 
-      <CheckinTable />
+      <QuickActions actions={isReceptionist ? RECEPTIONIST_QUICK_ACTIONS : ADMIN_QUICK_ACTIONS} />
+
+      <div className="jt-dashboard-workspace">
+        <CheckinTable />
+        <TodaysClasses
+          onCreateSession={() => setPanel({ mode: "create" })}
+          onViewClass={(def: ClassDef) => setPanel({ mode: "view", def })}
+        />
+      </div>
 
       <SessionPanel state={panel} onClose={() => setPanel(null)} />
     </div>
