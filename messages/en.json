@@ -17,7 +17,9 @@
     "theme": "Theme",
     "themeSystem": "Auto",
     "themeLight": "Light",
-    "themeDark": "Dark"
+    "themeDark": "Dark",
+    "expandNav": "Expand navigation",
+    "collapseNav": "Collapse navigation"
   },
   "roles": {
     "Admin": "Admin",
@@ -232,6 +234,9 @@
     "nobodyToRemind": "No expiring credits to notify anyone about",
     "rosterHealth": "Roster Health",
     "rosterHealthSub": "Every student by credit condition",
+    "statusFilterHint": "Select a status to open those students",
+    "studentStatusLabel": "Student status for {count} students",
+    "filterStudentsByStatus": "Show students with status {status}",
     "students": "students",
     "noStudents": "No students yet",
     "status": {
@@ -256,7 +261,13 @@
     "howTheyPaidSub": "This month's takings by method",
     "plusMoreMethods": "Top 5 · {count} more not shown",
     "noPaymentsThisMonth": "No payments this month",
-    "vsSamePoint": "vs {month} at the same point"
+    "vsSamePoint": "vs {month} at the same point",
+    "classCount": "{count, plural, one {# class} other {# classes}}",
+    "classListLabel": "Today's class list",
+    "noClassesToday": "No classes today",
+    "noClassesTodaySub": "Take a breather — or create today's first class.",
+    "noCheckinsToday": "No students checked in yet",
+    "noCheckinsTodaySub": "Check-ins will appear here as students arrive."
   },
   "find": {
     "title": "Find a Student",

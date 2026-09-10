@@ -17,7 +17,9 @@
     "theme": "ธีม",
     "themeSystem": "ระบบ",
     "themeLight": "สว่าง",
-    "themeDark": "มืด"
+    "themeDark": "มืด",
+    "expandNav": "ขยายเมนูนำทาง",
+    "collapseNav": "ย่อเมนูนำทาง"
   },
   "roles": {
     "Admin": "ผู้ดูแล",
@@ -232,6 +234,9 @@
     "nobodyToRemind": "ไม่มีเครดิตใกล้หมดอายุที่ต้องแจ้ง",
     "rosterHealth": "สถานะนักเรียน",
     "rosterHealthSub": "นักเรียนทั้งหมดแยกตามสถานะเครดิต",
+    "statusFilterHint": "เลือกสถานะเพื่อเปิดรายชื่อนักเรียน",
+    "studentStatusLabel": "สถานะของนักเรียน {count} คน",
+    "filterStudentsByStatus": "แสดงนักเรียนที่มีสถานะ {status}",
     "students": "นักเรียน",
     "noStudents": "ยังไม่มีนักเรียน",
     "status": {
@@ -256,7 +261,13 @@
     "howTheyPaidSub": "ยอดชำระเดือนนี้แยกตามช่องทาง",
     "plusMoreMethods": "5 อันดับแรก · อีก {count} ช่องทางไม่ได้แสดง",
     "noPaymentsThisMonth": "เดือนนี้ยังไม่มีการชำระเงิน",
-    "vsSamePoint": "เทียบกับ{month}ช่วงเวลาเดียวกัน"
+    "vsSamePoint": "เทียบกับ{month}ช่วงเวลาเดียวกัน",
+    "classCount": "{count, plural, other {# คลาส}}",
+    "classListLabel": "รายชื่อคลาสวันนี้",
+    "noClassesToday": "วันนี้ไม่มีคลาสเรียน",
+    "noClassesTodaySub": "พักสักครู่ หรือสร้างคลาสแรกของวันนี้",
+    "noCheckinsToday": "ยังไม่มีนักเรียนเช็คอิน",
+    "noCheckinsTodaySub": "รายชื่อเช็คอินจะแสดงที่นี่เมื่อนักเรียนมาถึง"
   },
   "find": {
     "title": "ค้นหานักเรียน",

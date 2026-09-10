@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 import { LanguageToggle } from "./LanguageToggle";
 import { signOut } from "@/app/actions/auth";
@@ -19,7 +19,15 @@ function sectionFromPath(pathname: string): string {
   return rest === "" ? "home" : rest.split("/")[0];
 }
 
-function Sidebar({ section }: { section: string }) {
+function Sidebar({
+  section,
+  expanded,
+  onToggle,
+}: {
+  section: string;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
   const { role } = useJtrax();
   const t = useTranslations("nav");
   const items = navItemsForRole(role);
@@ -29,11 +37,12 @@ function Sidebar({ section }: { section: string }) {
        the viewport, and an inline style cannot carry a media query — nor be
        overridden by one, which is the trap. Only the colours stay inline. */
     <aside
-      className="jt-sidebar"
+      className={`jt-sidebar${expanded ? " is-expanded" : ""}`}
       style={{ background: COLORS.surface, zIndex: 20 }}
     >
       <Link
         href="/"
+        aria-label={`JCA ${t("brandSub")}`}
         style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 4px", textDecoration: "none" }}
       >
         <Image
@@ -43,7 +52,7 @@ function Sidebar({ section }: { section: string }) {
           height={38}
           style={{ borderRadius: 9, objectFit: "contain" }}
         />
-        <span>
+        <span className="jt-sidebar-brand-copy">
           <span
             style={{
               display: "block",
@@ -70,6 +79,17 @@ function Sidebar({ section }: { section: string }) {
         </span>
       </Link>
 
+      <button
+        type="button"
+        className="jt-sidebar-toggle"
+        onClick={onToggle}
+        aria-expanded={expanded}
+        aria-label={t(expanded ? "collapseNav" : "expandNav")}
+        title={t(expanded ? "collapseNav" : "expandNav")}
+      >
+        <Icon name={expanded ? "chevronLeft" : "chevronRight"} size={15} color={COLORS.blue} />
+      </button>
+
       {/* Layout (direction, flex, overflow) lives in `.jt-sidebar nav` in
           globals.css — it changes between the phone strip and the desktop
           column, and an inline style would beat both media-query variants. */}
@@ -81,8 +101,10 @@ function Sidebar({ section }: { section: string }) {
             <Link
               key={item.id}
               href={href}
+              aria-label={t(item.id)}
               aria-current={active ? "page" : undefined}
               className="jt-nav-row"
+              data-tooltip={t(item.id)}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -97,6 +119,7 @@ function Sidebar({ section }: { section: string }) {
                 <Icon name={item.icon} size={18} color={active ? COLORS.blue : COLORS.text} />
               </span>
               <span
+                className="jt-nav-label"
                 style={{
                   fontFamily: FONT,
                   fontSize: 15,
@@ -116,7 +139,9 @@ function Sidebar({ section }: { section: string }) {
       <form action={signOut}>
         <button
           type="submit"
+          aria-label={t("logout")}
           className="jt-nav-row"
+          data-tooltip={t("logout")}
           style={{
             display: "flex",
             alignItems: "center",
@@ -133,7 +158,7 @@ function Sidebar({ section }: { section: string }) {
           <span style={{ display: "flex", width: 18, height: 18 }}>
             <Icon name="logout" size={18} color={COLORS.textSecondary} />
           </span>
-          <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 500, color: COLORS.textSecondary }}>
+          <span className="jt-nav-label" style={{ fontFamily: FONT, fontSize: 15, fontWeight: 500, color: COLORS.textSecondary }}>
             {t("logout")}
           </span>
         </button>
@@ -241,6 +266,7 @@ export function JtraxShell({ children }: { children: React.ReactNode }) {
   const section = sectionFromPath(pathname);
   const { person, role } = useJtrax();
   const t = useTranslations("shell");
+  const [navExpanded, setNavExpanded] = useState(false);
 
   const isHome = section === "home";
   const firstName = person.name.split(" ").filter((p) => !p.includes("."))[0] ?? "there";
@@ -257,9 +283,13 @@ export function JtraxShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <Sidebar section={section} />
+      <Sidebar
+        section={section}
+        expanded={navExpanded}
+        onToggle={() => setNavExpanded((value) => !value)}
+      />
       <main
-        className="jt-main"
+        className={`jt-main${navExpanded ? " is-nav-expanded" : ""}`}
         style={{ minHeight: "100vh", display: "flex", flexDirection: "column", gap: 18 }}
       >
         <header
