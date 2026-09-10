@@ -114,189 +114,6 @@ textarea {
   align-items: stretch;
 }
 
-/* Dashboard: two decisions at the top, two working surfaces underneath.
-   This follows the reference layout and keeps a normal two-class day inside
-   one desktop viewport instead of repeating the same numbers down the page. */
-.jt-dashboard-overview,
-.jt-dashboard-workspace {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 14px;
-  align-items: stretch;
-}
-
-.jt-revenue-summary,
-.jt-student-status {
-  min-height: 190px;
-}
-
-.jt-revenue-icon,
-.jt-dashboard-empty-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 11px;
-  flex-shrink: 0;
-}
-
-.jt-status-content {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-top: auto;
-}
-
-.jt-status-rings {
-  position: relative;
-  flex-shrink: 0;
-}
-
-.jt-status-centre {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-}
-
-.jt-status-legend {
-  display: flex;
-  flex: 1;
-  min-width: 150px;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.jt-status-link {
-  display: grid;
-  grid-template-columns: 8px minmax(0, 1fr) auto 10px;
-  align-items: center;
-  gap: 8px;
-  min-height: 25px;
-  padding: 3px 5px;
-  border-radius: 7px;
-  color: var(--jt-textSecondary) !important;
-  font-family: var(--font-jtrax-sans), var(--font-jtrax-thai), sans-serif;
-  font-size: 12px;
-  text-decoration: none !important;
-  transition: background 160ms ease, color 160ms ease;
-}
-
-.jt-status-link:hover,
-.jt-status-link:focus-visible {
-  background: var(--jt-light);
-  color: var(--jt-text) !important;
-}
-
-.jt-status-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.jt-status-arrow {
-  color: var(--jt-blue);
-  font-size: 18px;
-  line-height: 1;
-}
-
-.jt-classes-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.jt-class-count {
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--jt-light);
-  color: var(--jt-blue);
-  font-size: 11px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.jt-class-list {
-  display: grid;
-  gap: 10px;
-}
-
-.jt-class-list.is-scrollable {
-  max-height: 226px;
-  overflow-y: auto;
-  padding-right: 5px;
-  overscroll-behavior: contain;
-}
-
-.jt-add-class-button {
-  transition: background 160ms ease, border-color 160ms ease;
-}
-
-.jt-add-class-button:hover {
-  background: var(--jt-surface) !important;
-  border-color: var(--jt-blue) !important;
-}
-
-.jt-dashboard-empty {
-  display: flex;
-  min-height: 218px;
-  flex: 1;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  padding: 26px;
-  color: var(--jt-textSecondary);
-  text-align: center;
-}
-
-.jt-dashboard-empty strong {
-  color: var(--jt-text);
-  font-size: 14px;
-}
-
-.jt-dashboard-empty > span:last-child {
-  max-width: 320px;
-  font-size: 12.5px;
-  line-height: 1.45;
-}
-
-.jt-dashboard-empty-icon {
-  background: var(--jt-light);
-}
-
-@media (width >= 760px) {
-  .jt-dashboard-overview {
-    grid-template-columns: minmax(0, 1.45fr) minmax(330px, 0.9fr);
-  }
-}
-
-@media (width >= 1080px) {
-  .jt-dashboard-workspace {
-    grid-template-columns: minmax(0, 1.9fr) minmax(270px, 0.72fr);
-  }
-}
-
-@media (width < 520px) {
-  .jt-status-content {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .jt-status-rings {
-    align-self: center;
-  }
-
-  .jt-add-class-button span {
-    display: none;
-  }
-}
-
 @media (width >= 1040px) {
   .jt-split {
     grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
@@ -769,15 +586,6 @@ textarea {
   border-bottom: 1px solid var(--jt-border);
 }
 
-.jt-sidebar-toggle {
-  display: none;
-}
-
-.jt-sidebar-brand-copy,
-.jt-nav-label {
-  display: inline;
-}
-
 /* The brand block is the one thing worth losing on a phone: the academy knows
    whose console it is, and the strip is for getting somewhere. */
 .jt-sidebar > a:first-child {
@@ -817,55 +625,23 @@ textarea {
 
 @media (width >= 1024px) {
   .jt-main {
-    margin-left: 76px;
-    padding: 20px 24px 40px;
-    transition: margin-left 200ms ease;
-  }
-
-  .jt-main.is-nav-expanded {
     margin-left: 232px;
+    padding: 20px 24px 40px;
   }
 
   .jt-sidebar {
     position: fixed;
     inset-block: 0;
     left: 0;
-    width: 76px;
+    width: 232px;
     flex-direction: column;
     flex-wrap: nowrap;
     align-items: stretch;
-    gap: 18px;
-    padding: 18px 10px;
+    gap: 24px;
+    padding: 20px 14px;
     border-right: 1px solid var(--jt-border);
     border-bottom: none;
     overflow-x: visible;
-    transition: width 200ms ease;
-  }
-
-  .jt-sidebar.is-expanded {
-    width: 232px;
-    padding-inline: 14px;
-  }
-
-  .jt-sidebar > a:first-child {
-    justify-content: center;
-    min-height: 40px;
-    padding: 0 !important;
-  }
-
-  .jt-sidebar.is-expanded > a:first-child {
-    justify-content: flex-start;
-    padding-inline: 4px !important;
-  }
-
-  .jt-sidebar-brand-copy,
-  .jt-nav-label {
-    display: none;
-  }
-
-  .jt-sidebar.is-expanded .jt-sidebar-brand-copy,
-  .jt-sidebar.is-expanded .jt-nav-label {
-    display: inline;
   }
 
   .jt-sidebar nav {
@@ -875,70 +651,6 @@ textarea {
     overflow-y: auto;
     gap: 4px;
     mask-image: none;
-  }
-
-  .jt-sidebar .jt-nav-row {
-    position: relative;
-    justify-content: center;
-    width: 100%;
-    min-height: 40px;
-    padding: 10px !important;
-  }
-
-  .jt-sidebar.is-expanded .jt-nav-row {
-    justify-content: flex-start;
-    padding-inline: 12px !important;
-  }
-
-  .jt-sidebar-toggle {
-    position: absolute;
-    top: 68px;
-    right: -12px;
-    display: flex;
-    width: 24px;
-    height: 24px;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    border: 1px solid var(--jt-border);
-    border-radius: 50%;
-    background: var(--jt-surface);
-    box-shadow: 0 4px 12px rgb(26 43 74 / 0.14);
-    cursor: pointer;
-    transition: background 160ms ease, border-color 160ms ease;
-  }
-
-  .jt-sidebar-toggle:hover {
-    border-color: var(--jt-blue);
-    background: var(--jt-light);
-  }
-
-  .jt-sidebar:not(.is-expanded) .jt-nav-row::after {
-    position: absolute;
-    left: calc(100% + 12px);
-    top: 50%;
-    z-index: 30;
-    padding: 6px 9px;
-    border: 1px solid var(--jt-border);
-    border-radius: 7px;
-    background: var(--jt-text);
-    box-shadow: 0 5px 16px rgb(26 43 74 / 0.2);
-    color: var(--jt-surface);
-    content: attr(data-tooltip);
-    font-size: 12px;
-    font-weight: 600;
-    line-height: 1;
-    opacity: 0;
-    pointer-events: none;
-    transform: translate(4px, -50%);
-    transition: opacity 140ms ease, transform 140ms ease;
-    white-space: nowrap;
-  }
-
-  .jt-sidebar:not(.is-expanded) .jt-nav-row:hover::after,
-  .jt-sidebar:not(.is-expanded) .jt-nav-row:focus-visible::after {
-    opacity: 1;
-    transform: translate(0, -50%);
   }
 }
 
