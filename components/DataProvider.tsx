@@ -102,7 +102,10 @@ type DataContextValue = {
   setConfig: (key: string, value: string) => Promise<void>;
 };
 
-const DataContext = createContext<DataContextValue | null>(null);
+/* Exported for the shell's search, which renders inside and outside the
+   provider (the auth pages share the shell's chrome) and must simply not
+   render rather than throw when the data is absent. */
+export const DataContext = createContext<DataContextValue | null>(null);
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const [raw, setRaw] = useState<LiveCollections>(EMPTY);

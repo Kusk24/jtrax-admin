@@ -134,7 +134,10 @@
     "dashboard": "Dashboard",
     "dashboardSub": "Overview of your academy today.",
     "greeting": "Good morning, {name}!",
-    "receptionistSub": "What are we doing today?"
+    "receptionistSub": "What are we doing today?",
+    "searchLabel": "Search the academy",
+    "searchPlaceholder": "Search students, parents, tournaments…",
+    "searchNoResults": "Nothing matches “{q}”"
   },
   "auth": {
     "brandSub": "JCA Chess School",

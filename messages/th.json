@@ -134,7 +134,10 @@
     "dashboard": "แดชบอร์ด",
     "dashboardSub": "ภาพรวมของสถาบันวันนี้",
     "greeting": "สวัสดีตอนเช้า คุณ{name}!",
-    "receptionistSub": "วันนี้เราจะทำอะไรกันดี"
+    "receptionistSub": "วันนี้เราจะทำอะไรกันดี",
+    "searchLabel": "ค้นหาในระบบ",
+    "searchPlaceholder": "ค้นหานักเรียน ผู้ปกครอง ทัวร์นาเมนต์…",
+    "searchNoResults": "ไม่พบผลลัพธ์สำหรับ “{q}”"
   },
   "auth": {
     "brandSub": "โรงเรียนหมากรุก JCA",
