@@ -12,6 +12,7 @@ import type { Student } from "@/lib/data";
 import { ACCENTS, COLORS, FONT, FONT_DISPLAY } from "@/lib/theme";
 import { useData } from "../DataProvider";
 import { Card, SectionTitle } from "../ui";
+import { CreditReminders } from "./CreditReminders";
 
 const STATUS_COLOR: Record<Student["status"], string> = {
   Normal: ACCENTS.green,
@@ -33,11 +34,16 @@ export function StudentStatus() {
 
   return (
     <Card className="jt-student-status" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <div>
-        <SectionTitle>{t("rosterHealth")}</SectionTitle>
-        <p style={{ margin: "3px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-          {t("statusFilterHint")}
-        </p>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+        <div>
+          <SectionTitle>{t("rosterHealth")}</SectionTitle>
+          <p style={{ margin: "3px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+            {t("statusFilterHint")}
+          </p>
+        </div>
+        {/* The action lives on the card that shows who needs it: the amber and
+            plum rings are the families this reaches. */}
+        <CreditReminders />
       </div>
 
       <div className="jt-status-content">
