@@ -611,9 +611,17 @@ export function practiceStrip(
   studentId: string,
   now = new Date(),
 ): { days: boolean[]; streak: number } {
+  /* Practised means the pupil did something that day — solved puzzles or sat
+     with the board. Minutes alone used to be the test, which now hides every
+     real solve: the backend records puzzles honestly and leaves minutes at 0,
+     because nothing measures how long a child sat with a position. */
   const done = new Set(
     c.practiceActivities
-      .filter((a) => s(a, "student_id") === studentId && n(a, "minutes_practiced") > 0)
+      .filter(
+        (a) =>
+          s(a, "student_id") === studentId &&
+          (n(a, "puzzles_completed") > 0 || n(a, "minutes_practiced") > 0),
+      )
       .map((a) => s(a, "activity_date")),
   );
   const days: boolean[] = [];
