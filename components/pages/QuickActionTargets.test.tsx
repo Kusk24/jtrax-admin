@@ -91,7 +91,7 @@ describe("a section arrived at from a Quick Action", () => {
   it("opens the tournament wizard", () => {
     show(<TournamentPage startNew />);
     expect(
-      screen.getByText("Upload the regulation and we'll pre-fill the details."),
+      screen.getByText("Add the key details, pricing, venue and official regulation."),
     ).toBeDefined();
   });
 });
@@ -118,7 +118,7 @@ describe("a section arrived at any other way", () => {
   it("shows the tournaments", () => {
     show(<TournamentPage />);
     expect(
-      screen.queryByText("Upload the regulation and we'll pre-fill the details."),
+      screen.queryByText("Add the key details, pricing, venue and official regulation."),
     ).toBeNull();
   });
 });
@@ -143,7 +143,7 @@ describe("arriving at a section that is already on screen", () => {
   const sections = [
     { section: "payment", opens: "Log a credit purchase against a student." },
     { section: "students", opens: "Upload a registration form or enter the details manually." },
-    { section: "tournament", opens: "Upload the regulation and we'll pre-fill the details." },
+    { section: "tournament", opens: "Add the key details, pricing, venue and official regulation." },
   ];
 
   for (const { section, opens } of sections) {

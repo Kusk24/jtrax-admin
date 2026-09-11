@@ -177,14 +177,6 @@ textarea {
   flex-wrap: wrap;
 }
 
-/* The three follow-up buckets sit across a full-width card instead of stacking
-   in a column that would leave most of the row empty. */
-.jt-follow-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 9px;
-}
-
 /* Quick-action pills stretch to fill their row rather than leaving a gap
    beside the last one. */
 .jt-qa-grid {
@@ -396,32 +388,6 @@ textarea {
 }
 .qa-pill-3:hover .qa-label {
   color: #5c4a8a;
-}
-
-/* --- Needs Follow-up rows --- */
-.jt-follow {
-  transition:
-    transform 0.18s ease,
-    box-shadow 0.18s ease,
-    border-color 0.18s ease;
-}
-
-.jt-follow-low:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 18px rgb(192 57 43 / 0.18);
-  border-color: #e8a9a6 !important;
-}
-
-.jt-follow-exp:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 18px rgb(183 121 31 / 0.18);
-  border-color: #e3b98d !important;
-}
-
-.jt-follow-inactive:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 18px rgb(96 110 130 / 0.16);
-  border-color: #c3ccdf !important;
 }
 
 /* --- Cards and row actions --- */
