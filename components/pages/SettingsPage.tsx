@@ -315,7 +315,7 @@ function ThemeCard({ fill = false }: { fill?: boolean } = {}) {
             flexShrink: 0,
           }}
         >
-          <Icon name="settings" size={18} color={COLORS.blue} />
+          <Icon name="sun" size={18} color={COLORS.blue} />
         </span>
         <p style={{ flex: "1 1 260px", minWidth: 0, margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
           {t("themeDesc")}

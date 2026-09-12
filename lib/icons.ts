@@ -331,6 +331,25 @@ const ICON_DATA = {
     ["line", { "x1": 9, "y1": 12, "x2": 20, "y2": 12 }],
     ["line", { "x1": 4.5, "y1": 17.5, "x2": 4.51, "y2": 17.5 }],
     ["line", { "x1": 9, "y1": 17.5, "x2": 20, "y2": 17.5 }],
+  ],
+  /* Appearance. A gear says "settings" — which is the section this card is
+     already inside, so it named the page rather than the one card on it.
+     Light is what the control actually picks between.
+
+     The rays stop at 21 rather than the 22 there is room for: at 18px the
+     four diagonals land on half-pixels, and a ray reaching the edge of the
+     box blurs into the circle's own antialiasing. The disc is r=4 for the
+     same reason — r=4.5 leaves under two pixels of gap to the rays. */
+  "sun": [
+    ["circle", { "cx": 12, "cy": 12, "r": 4 }],
+    ["line", { "x1": 12, "y1": 3, "x2": 12, "y2": 5 }],
+    ["line", { "x1": 12, "y1": 19, "x2": 12, "y2": 21 }],
+    ["line", { "x1": 3, "y1": 12, "x2": 5, "y2": 12 }],
+    ["line", { "x1": 19, "y1": 12, "x2": 21, "y2": 12 }],
+    ["line", { "x1": 5.6, "y1": 5.6, "x2": 7, "y2": 7 }],
+    ["line", { "x1": 17, "y1": 17, "x2": 18.4, "y2": 18.4 }],
+    ["line", { "x1": 18.4, "y1": 5.6, "x2": 17, "y2": 7 }],
+    ["line", { "x1": 7, "y1": 17, "x2": 5.6, "y2": 18.4 }],
   ],} satisfies Record<string, IconPart[]>;
 
 export type IconName = keyof typeof ICON_DATA;
