@@ -32,6 +32,9 @@ import { Badge, Card, SectionTitle } from "../ui";
 export function LichessPanel({ heading = true }: { heading?: boolean }) {
   const t = useTranslations("lichessAdmin");
   const tCommon = useTranslations("common");
+  /* Read once, outside the effect that reports it: a translator is not a
+     stable dependency, and a string is. */
+  const loadFailed = tCommon("loadFailed");
 
   const [links, setLinks] = useState<LichessLink[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,8 +51,11 @@ export function LichessPanel({ heading = true }: { heading?: boolean }) {
       try {
         const next = await listLichessLinks();
         if (!cancelled) setLinks(next);
-      } catch {
-        /* The empty state covers it; a cold API is not an error worth showing. */
+      } catch (e) {
+        /* Not "there is nothing here" — we do not know what is here. An empty
+           list and a failed request look identical on screen, and only one of
+           them is a fact. */
+        if (!cancelled) setError(errorText(e, loadFailed));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -57,7 +63,7 @@ export function LichessPanel({ heading = true }: { heading?: boolean }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadFailed]);
 
   async function sync() {
     setBusy(true);
@@ -66,7 +72,7 @@ export function LichessPanel({ heading = true }: { heading?: boolean }) {
       await syncLichess();
       await reload();
     } catch (e) {
-      setError(errorText(e, tCommon("loadFailed")));
+      setError(errorText(e, loadFailed));
     } finally {
       setBusy(false);
     }
@@ -131,6 +137,11 @@ export function LichessPanel({ heading = true }: { heading?: boolean }) {
         <p style={{ padding: 20, margin: 0, textAlign: "center", fontFamily: FONT, fontSize: 14, color: COLORS.textSecondary }}>
           {tCommon("loading")}
         </p>
+      ) : error ? (
+        /* The note above already says we could not load; an empty
+           state under it would answer a question the card has just
+           admitted it cannot answer. */
+        null
       ) : links.length === 0 ? (
         <div style={{ padding: "22px 20px", textAlign: "center" }}>
           <p style={{ margin: 0, fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text }}>
