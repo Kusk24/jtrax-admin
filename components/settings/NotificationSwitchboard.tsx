@@ -37,6 +37,12 @@ const TYPES: Array<{ type: string; icon: IconName; titleKey: string; descKey: st
  * `fill` lets the card grow into the slack under it, so the column it is the
  * last thing in ends level with the one beside it. Off by default: a card that
  * stretches when nothing is holding it to a height would just be a tall card.
+ *
+ * Filling also centres the switches in whatever height the card ends up with.
+ * Growing a card pushes its border down without moving what is inside, so the
+ * rows stayed pinned to the top with the whole difference pooled underneath —
+ * which reads as a list that has been cut short rather than a panel that
+ * matches the one beside it.
  */
 export function NotificationSwitchboard({ fill = false }: { fill?: boolean } = {}) {
   const t = useTranslations("settings");
@@ -68,7 +74,13 @@ export function NotificationSwitchboard({ fill = false }: { fill?: boolean } = {
   }
 
   return (
-    <Card style={fill ? { padding: 0, flex: 1 } : { padding: 0 }}>
+    <Card
+      style={
+        fill
+          ? { padding: 0, flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }
+          : { padding: 0 }
+      }
+    >
       {error && (
         <div style={{ padding: "12px 18px 0" }}>
           <ErrorNote>{error}</ErrorNote>
