@@ -8,13 +8,11 @@
  * at it — the worst possible failure for something whose entire job is to be
  * scanned off a poster by a parent standing in a hall.
  *
- * Encoding a QR needs Reed-Solomon error correction, so this is a dependency
- * rather than a hand-roll. Error level M: enough redundancy to survive a print
- * and a phone camera at an angle, without inflating the module count so far
- * that the code stops resolving at poster size.
+ * The colours and the quiet zone live in `lib/qr.ts`; see the note there on why
+ * they are not theme tokens.
  */
 import { useEffect, useState } from "react";
-import QRCode from "qrcode";
+import { encodeSvg, QR_COLORS } from "@/lib/qr";
 import { COLORS } from "@/lib/theme";
 
 export function QrCode({
@@ -38,18 +36,18 @@ export function QrCode({
   useEffect(() => {
     if (!value) return;
     let cancelled = false;
-    QRCode.toString(value, {
-      type: "svg",
-      errorCorrectionLevel: "M",
-      margin: 0,
-      color: { dark: COLORS.text, light: "#0000" },
-    })
+    encodeSvg(value)
       .then((out) => {
         if (!cancelled) setRendered({ value, svg: out });
       })
-      .catch(() => {
-        /* An unencodable value is not worth an error state; the link is on
-           screen beside it either way. */
+      .catch((err) => {
+        /* Swallowing this is how a themed colour token turned every QR on the
+           console into a grey square for weeks: the encoder throws inside a
+           promise, the placeholder below is indistinguishable from "still
+           loading", and nothing reaches a log. The link is on screen beside it
+           either way, so this stays out of the interface — but it does not stay
+           out of the console. */
+        console.error("QR encoding failed for", value, err);
       });
     return () => {
       cancelled = true;
@@ -84,7 +82,10 @@ export function QrCode({
         height: size,
         padding: 6,
         flexShrink: 0,
-        background: COLORS.surface,
+        /* White in both themes, like the code itself. A dark card behind a
+           dark-moduled code is the same unscannable thing as dark modules on a
+           dark field — the quiet zone has to be light too. */
+        background: QR_COLORS.light,
         border: `1px solid ${COLORS.border}`,
         borderRadius: 9,
         boxSizing: "border-box",
