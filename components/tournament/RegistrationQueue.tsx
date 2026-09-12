@@ -37,6 +37,9 @@ export function RegistrationQueue({
 }) {
   const t = useTranslations("registration");
   const tCommon = useTranslations("common");
+  /* Read once, outside the effect that reports it: a translator is not a
+     stable dependency, and a string is. */
+  const loadFailed = tCommon("loadFailed");
 
   const [rows, setRows] = useState<QueueEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,8 +56,12 @@ export function RegistrationQueue({
       try {
         const next = await listRegistrations(tournamentId);
         if (!cancelled) setRows(next);
-      } catch {
-        /* The empty state covers it; a cold API is not an error worth showing. */
+      } catch (e) {
+        /* Not "there is nothing here" — we do not know what is here. Said
+           plainly, because the alternative is the card telling the office that
+           nobody has registered while entries sit on the other side of a
+           failed request. */
+        if (!cancelled) setError(errorText(e, loadFailed));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -62,7 +69,7 @@ export function RegistrationQueue({
     return () => {
       cancelled = true;
     };
-  }, [tournamentId]);
+  }, [tournamentId, loadFailed]);
 
   async function decide(entry: QueueEntry, approve: boolean, fee?: number) {
     setBusyId(entry.id);
@@ -84,7 +91,11 @@ export function RegistrationQueue({
 
   // Nothing has ever come through the form: the card would be an empty box on
   // a screen that already has plenty.
-  if (!loading && rows.every((r) => r.source !== "Public")) return null;
+  //
+  // `error` is part of the condition because `rows` is also empty when the load
+  // failed, and `[].every()` is true — so a failed request used to hide the
+  // whole card rather than show an empty one. Staff saw no queue at all.
+  if (!loading && !error && rows.every((r) => r.source !== "Public")) return null;
 
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 13 }}>
@@ -101,6 +112,11 @@ export function RegistrationQueue({
 
       {loading ? (
         <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>{tCommon("loading")}</p>
+      ) : error ? (
+        /* The note above already says we could not load. Printing "nothing is
+           waiting" underneath it would be the card answering a question it
+           just admitted it cannot answer. */
+        null
       ) : pending.length === 0 ? (
         <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>{t("queueEmpty")}</p>
       ) : (

@@ -25,6 +25,9 @@ import { Badge, Card, SectionTitle } from "../ui";
 export function ExternalTournaments() {
   const t = useTranslations("external");
   const tCommon = useTranslations("common");
+  /* Read once, outside the effect that reports it: a translator is not a
+     stable dependency, and a string is. */
+  const loadFailed = tCommon("loadFailed");
   const locale = useLocale();
 
   const [list, setList] = useState<ExternalTournament[]>([]);
@@ -45,8 +48,11 @@ export function ExternalTournaments() {
       try {
         const next = await listExternal();
         if (!cancelled) setList(next);
-      } catch {
-        /* The empty state covers it; a cold API is not an error worth showing. */
+      } catch (e) {
+        /* Not "there is nothing here" — we do not know what is here. An empty
+           list and a failed request look identical on screen, and only one of
+           them is a fact. */
+        if (!cancelled) setError(errorText(e, loadFailed));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -54,7 +60,7 @@ export function ExternalTournaments() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadFailed]);
 
   useEffect(() => {
     if (!openId) {
@@ -67,7 +73,7 @@ export function ExternalTournaments() {
         const d = await getExternal(openId);
         if (!cancelled) setDetail(d);
       } catch (e) {
-        if (!cancelled) setError(errorText(e, tCommon("loadFailed")));
+        if (!cancelled) setError(errorText(e, loadFailed));
       }
     })();
     return () => {
@@ -159,7 +165,12 @@ export function ExternalTournaments() {
           <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
             {tCommon("loading")}
           </p>
-        ) : list.length === 0 ? (
+        ) : error ? (
+        /* The note above already says we could not load; an empty
+           state under it would answer a question the card has just
+           admitted it cannot answer. */
+        null
+      ) : list.length === 0 ? (
           <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
             {t("empty")}
           </p>
