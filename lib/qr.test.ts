@@ -12,7 +12,15 @@
  * token too.
  */
 import { describe, expect, it } from "vitest";
-import { QR_COLORS, encodePng, encodeSvg, fileNameFor } from "./qr";
+import {
+  LOGO_SCALE,
+  LOGO_SRC,
+  QR_COLORS,
+  encodePngPlain,
+  encodeSvg,
+  fileNameFor,
+  withLogo,
+} from "./qr";
 
 const URL_ = "https://jtrax-web-app.vercel.app/register/trn_wellington";
 
@@ -36,9 +44,9 @@ describe("encodeSvg", () => {
   });
 });
 
-describe("encodePng", () => {
+describe("encodePngPlain", () => {
   it("produces a PNG data URL big enough to print", async () => {
-    const href = await encodePng(URL_);
+    const href = await encodePngPlain(URL_);
     expect(href.startsWith("data:image/png;base64,")).toBe(true);
     // A 1024px code is tens of KB; a blank or tiny one would not be.
     expect(href.length).toBeGreaterThan(2000);
@@ -76,5 +84,44 @@ describe("fileNameFor", () => {
     const name = fileNameFor("https://a.test/register/..%2Fevil.sh");
     expect(name).not.toContain("/");
     expect(name.endsWith(".png")).toBe(true);
+  });
+});
+
+describe("the mark in the middle", () => {
+  it("lays a plate and the logo over the centre", async () => {
+    const svg = await encodeSvg(URL_);
+    expect(svg).toContain(`href="${LOGO_SRC}"`);
+    expect(svg).toContain("<rect");
+    // Inside the <svg>, not appended after it.
+    expect(svg.indexOf("<image")).toBeLessThan(svg.lastIndexOf("</svg>"));
+  });
+
+  it("centres them, in the module units the viewBox uses", () => {
+    // A 45-module box: a 22% plate is 9.9 wide, so it starts at (45-9.9)/2.
+    const svg = withLogo('<svg viewBox="0 0 45 45"><path d="M0 0"/></svg>', "/l.png");
+    const plate = 45 * LOGO_SCALE;
+    expect(svg).toContain(`x="${(45 - plate) / 2}"`);
+    expect(svg).toContain(`width="${plate}"`);
+  });
+
+  it("stays small enough for the error correction to carry it", () => {
+    // 22% of the width is ~5% of the area; level H recovers ~30%. Raising this
+    // is the cheapest way to ship a code that scans on a desk and fails on a
+    // wall, so the bound is asserted rather than trusted.
+    expect(LOGO_SCALE).toBeLessThanOrEqual(0.25);
+    expect(LOGO_SCALE * LOGO_SCALE).toBeLessThan(0.3);
+  });
+
+  it("leaves the code alone when it cannot measure it", () => {
+    // A plate placed against a viewBox that is not there would sit over data
+    // rather than over the middle. The bare code still scans.
+    const bare = "<svg><path d='M0 0'/></svg>";
+    expect(withLogo(bare, "/l.png")).toBe(bare);
+    expect(withLogo('<svg viewBox="nonsense">x</svg>', "/l.png")).toContain("nonsense");
+  });
+
+  it("can be turned off, and then there is no image at all", async () => {
+    const svg = await encodeSvg(URL_, "");
+    expect(svg).not.toContain("<image");
   });
 });
