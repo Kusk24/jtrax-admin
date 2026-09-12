@@ -90,7 +90,17 @@ export function SettingsPage() {
           nothing in it — `duo` collapses to a single flow rather than leaving
           a blank half beside one card. */}
       {isAdmin ? (
-        <div className="jt-duo">
+        /* `jt-duo` aligns its columns to the start, because most of the
+           console's split screens are two unrelated panels that should each be
+           only as tall as they are. Here the two *are* a pair — the academy's
+           two lists of policy — and one finishing halfway up the other leaves
+           a notch down the middle of the page. Stretching is local to this
+           instance rather than a change to the shared grid.
+
+           Stretch alone only makes the two *columns* equal; the cards inside
+           keep their own heights and the shorter one still ends early. So the
+           last card in each column grows into whatever slack is left. */
+        <div className="jt-duo" style={{ alignItems: "stretch" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
             <SectionTitle>{t("title")}</SectionTitle>
             <Card style={{ padding: 0 }}>
@@ -213,26 +223,47 @@ export function SettingsPage() {
           </div>
         </div>
             </Card>
-            <ThemeCard />
+            <ThemeCard fill />
           </div>
 
           {/* What the school sends at all — the parent-facing catalogue, each
               type with its own switch. Sits beside the rules rather than under
-              them so the two decision panels are visible at once. */}
+              them so the two decision panels are visible at once.
+
+              It has the column to itself now. Sharing it with the LINE form
+              made this side twice the height of the other, which is the same
+              imbalance #105 moved Appearance to fix — the fix there was to
+              even the two sides out, and a tall form stacked on a tall
+              switchboard undid it. */}
           <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
-            <SectionTitle>{t("lineTitle")}</SectionTitle>
-            <LineChannelCard heading={false} />
             <SectionTitle>{t("notifyTitle")}</SectionTitle>
-            <NotificationSwitchboard />
+            <NotificationSwitchboard fill />
           </div>
-
-
         </div>
       ) : (
         /* Nothing else on this page is theirs, so there is no second column to
            put beside it — one column, capped where prose stays readable. */
         <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 820 }}>
           <ThemeCard />
+        </div>
+      )}
+
+      {/* The Official Account's own band, under both columns and above the
+          roster.
+
+          It used to be the right column, and then the top of it. Either way it
+          set that side's height: it is a credentials form — token, secret,
+          webhook — and the two blocks beside it are lists of switches. Below
+          them it stops driving the comparison, and the two panels of academy
+          policy are left to balance against each other.
+
+          Full width rather than half for the same reason the roster is: the
+          webhook URL it prints is a long single line, and a 400px box wraps it
+          into something nobody can copy at a glance. */}
+      {isAdmin && (
+        <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 24, display: "flex", flexDirection: "column", gap: 16 }}>
+          <SectionTitle>{t("lineTitle")}</SectionTitle>
+          <LineChannelCard heading={false} />
         </div>
       )}
 
@@ -256,9 +287,14 @@ export function SettingsPage() {
    header, where a control nobody changes twice a year sat beside the date and
    the account.
 
-   Its own component because it is now rendered from two places: beside the
-   LINE card for an admin, alone for a receptionist. */
-function ThemeCard() {
+   Its own component because it is now rendered from two places: under the
+   academy's rules for an admin, alone for a receptionist.
+
+   `fill` is for the first of those — as the last card in its column it takes
+   up whatever height the column beside it has and this one has not. The
+   receptionist's copy has no second column to match, so it stays its own
+   size. */
+function ThemeCard({ fill = false }: { fill?: boolean } = {}) {
   const t = useTranslations("settings");
   return (
     <>
@@ -266,7 +302,7 @@ function ThemeCard() {
           the one beside it: a heading, then what it names. It used to sit in
           the card's own flex row because it had no column to head. */}
       <SectionTitle>{t("themeTitle")}</SectionTitle>
-      <Card style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+      <Card style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", ...(fill ? { flex: 1 } : {}) }}>
         <span
           style={{
             display: "flex",

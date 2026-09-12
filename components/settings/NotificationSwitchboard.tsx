@@ -33,7 +33,12 @@ const TYPES: Array<{ type: string; icon: IconName; titleKey: string; descKey: st
   { type: "payment_received", icon: "payment", titleKey: "notifyPayment", descKey: "notifyPaymentDesc" },
 ];
 
-export function NotificationSwitchboard() {
+/**
+ * `fill` lets the card grow into the slack under it, so the column it is the
+ * last thing in ends level with the one beside it. Off by default: a card that
+ * stretches when nothing is holding it to a height would just be a tall card.
+ */
+export function NotificationSwitchboard({ fill = false }: { fill?: boolean } = {}) {
   const t = useTranslations("settings");
   const tCommon = useTranslations("common");
   const { raw, refresh } = useData();
@@ -63,7 +68,7 @@ export function NotificationSwitchboard() {
   }
 
   return (
-    <Card style={{ padding: 0 }}>
+    <Card style={fill ? { padding: 0, flex: 1 } : { padding: 0 }}>
       {error && (
         <div style={{ padding: "12px 18px 0" }}>
           <ErrorNote>{error}</ErrorNote>
