@@ -179,15 +179,32 @@ describe("the shape of Settings", () => {
     }
   });
 
-  /* Growing a card moves its border down without moving what is inside, so the
-     switches pooled the whole difference underneath themselves and read as a
-     list cut short. Centred, the slack splits above and below. */
-  it("centres the notification switches in the height the card takes", () => {
+  /* Growing a card moves its border down without moving what is inside. Pooled
+     under the last switch that read as a list cut short; centred it read as
+     padding nobody asked for. The height goes into the rows instead, so the
+     card is content all the way down and the switches keep the same rhythm as
+     the rules card beside them.
+
+     Every row grows, not just one: a single grower would take the whole
+     difference and sit twice the height of its neighbours. */
+  it("puts the extra height into the switch rows, not around them", () => {
     renderAs("Admin");
     const card = (duo()!.children[1] as HTMLElement).lastElementChild as HTMLElement;
     expect(card.style.display).toBe("flex");
     expect(card.style.flexDirection).toBe("column");
-    expect(card.style.justifyContent).toBe("center");
+    /* Nothing that would park the slack in a band above or below them. */
+    expect(card.style.justifyContent).toBe("");
+
+    const rows = [...card.children] as HTMLElement[];
+    expect(rows.length).toBeGreaterThan(1);
+    for (const row of rows) expect(row.style.flexGrow).toBe("1");
+  });
+
+  /* The receptionist's card is not filling anything, so it must not be
+     stretching its rows either — that would be a tall card for no reason. */
+  it("leaves the rows alone when the card is not filling", () => {
+    renderAs("Receptionist");
+    expect(duo()).toBeNull();
   });
 
   /* Appearance sits under the rules, not above them: the academy's thresholds

@@ -38,11 +38,16 @@ const TYPES: Array<{ type: string; icon: IconName; titleKey: string; descKey: st
  * last thing in ends level with the one beside it. Off by default: a card that
  * stretches when nothing is holding it to a height would just be a tall card.
  *
- * Filling also centres the switches in whatever height the card ends up with.
- * Growing a card pushes its border down without moving what is inside, so the
- * rows stayed pinned to the top with the whole difference pooled underneath —
- * which reads as a list that has been cut short rather than a panel that
- * matches the one beside it.
+ * When it fills, the extra height goes into the *rows* rather than around
+ * them. Two earlier tries put it around them: pooled under the last switch
+ * (which reads as a list cut short) and then split evenly above and below
+ * (which reads as padding nobody asked for). Either way the card was a fixed
+ * amount of content with a band of nothing attached to it.
+ *
+ * The rows are the right place for it because they were the tight ones. The
+ * rules card beside this one runs about 80px a row and these were about 65;
+ * sharing the slack out lands them around 85, so the two columns end up with
+ * the same rhythm instead of one looking compressed next to the other.
  */
 export function NotificationSwitchboard({ fill = false }: { fill?: boolean } = {}) {
   const t = useTranslations("settings");
@@ -77,7 +82,7 @@ export function NotificationSwitchboard({ fill = false }: { fill?: boolean } = {
     <Card
       style={
         fill
-          ? { padding: 0, flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }
+          ? { padding: 0, flex: 1, display: "flex", flexDirection: "column" }
           : { padding: 0 }
       }
     >
@@ -97,6 +102,11 @@ export function NotificationSwitchboard({ fill = false }: { fill?: boolean } = {
               gap: 14,
               padding: "14px 18px",
               borderTop: i === 0 ? "none" : `1px solid ${COLORS.border}`,
+              /* An equal share of whatever the column is taller than this card
+                 — growing from its natural height rather than from zero, so a
+                 description that wraps to two lines keeps the room it needs
+                 instead of being levelled with the one-line rows. */
+              ...(fill ? { flexGrow: 1 } : {}),
             }}
           >
             <span
