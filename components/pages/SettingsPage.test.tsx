@@ -179,6 +179,17 @@ describe("the shape of Settings", () => {
     }
   });
 
+  /* Growing a card moves its border down without moving what is inside, so the
+     switches pooled the whole difference underneath themselves and read as a
+     list cut short. Centred, the slack splits above and below. */
+  it("centres the notification switches in the height the card takes", () => {
+    renderAs("Admin");
+    const card = (duo()!.children[1] as HTMLElement).lastElementChild as HTMLElement;
+    expect(card.style.display).toBe("flex");
+    expect(card.style.flexDirection).toBe("column");
+    expect(card.style.justifyContent).toBe("center");
+  });
+
   /* Appearance sits under the rules, not above them: the academy's thresholds
      are what the page is for, and a personal preference should not be the
      first thing an admin scrolls past to reach them. */
