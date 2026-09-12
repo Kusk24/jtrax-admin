@@ -618,6 +618,8 @@
     "checkedInAt": "In",
     "dismissedAt": "Out",
     "stillInClass": "still in class",
+    "checkOut": "Check Out",
+    "checkOutAttendee": "Check {name} out of this class",
     "otherCourses": "Others"
   },
   "tournament": {

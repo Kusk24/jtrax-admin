@@ -618,6 +618,8 @@
     "checkedInAt": "เข้า",
     "dismissedAt": "ออก",
     "stillInClass": "ยังอยู่ในคลาส",
+    "checkOut": "เช็คเอาท์",
+    "checkOutAttendee": "เช็คเอาท์ {name} ออกจากคลาสนี้",
     "otherCourses": "อื่น ๆ"
   },
   "tournament": {

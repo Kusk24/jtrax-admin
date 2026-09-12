@@ -134,19 +134,49 @@ describe("the shape of Settings", () => {
     expect(grid!.children.length).toBe(2);
   });
 
-  /* The rules and Appearance are both short; the LINE form is tall. Splitting
-     them the other way — one short card beside the tall one — left a hole
-     under the rules and finished the two sides a long way apart. */
-  it("stacks the two short blocks against the tall one", () => {
+  /* The columns are the academy's two lists of policy: what the thresholds
+     are on the left, what gets sent on the right. */
+  it("puts the rules and Appearance against the notification switches", () => {
     renderAs("Admin");
     const [left, right] = [...duo()!.children] as HTMLElement[];
     expect(left.textContent).toContain(en.settings.title);
     expect(left.textContent).toContain(en.settings.lowCreditTitle);
     expect(left.textContent).toContain(en.settings.themeTitle);
-    expect(right.textContent).toContain(en.settings.lineTitle);
+    expect(right.textContent).toContain(en.settings.notifyTitle);
     /* And Appearance really did leave the right column, rather than being
        rendered into both. */
     expect(right.textContent).not.toContain(en.settings.themeTitle);
+  });
+
+  /* The LINE form is a credentials form beside two lists of switches, and it
+     set the right column's height wherever in it it sat. Below both columns
+     it stops driving the comparison — and its webhook URL gets the full width
+     it needs to be copyable. */
+  it("keeps the LINE credentials out of the columns", () => {
+    renderAs("Admin");
+    expect(duo()!.textContent).not.toContain(en.settings.lineTitle);
+    expect(screen.getByText(en.settings.lineTitle)).toBeDefined();
+  });
+
+  /* Order on the page: the two columns, then LINE, then the roster. */
+  it("puts LINE below the columns and above the roster", () => {
+    renderAs("Admin");
+    const text = document.body.textContent ?? "";
+    expect(text.indexOf(en.settings.notifyTitle)).toBeLessThan(text.indexOf(en.settings.lineTitle));
+    expect(text.indexOf(en.settings.lineTitle)).toBeLessThan(text.indexOf(en.admins.title));
+  });
+
+  /* jsdom has no layout, so "same height" is asserted as the structure the
+     stylesheet acts on: the grid stretches its columns instead of aligning
+     them to the start, and the last card in each column grows into the slack.
+     Without both, one column still ends above the other. */
+  it("stretches the two columns to a common height", () => {
+    renderAs("Admin");
+    expect((duo() as HTMLElement).style.alignItems).toBe("stretch");
+    for (const column of [...duo()!.children] as HTMLElement[]) {
+      const last = column.lastElementChild as HTMLElement;
+      expect(last.style.flexGrow).toBe("1");
+    }
   });
 
   /* Appearance sits under the rules, not above them: the academy's thresholds
@@ -183,13 +213,12 @@ describe("the shape of Settings", () => {
     expect(screen.getAllByText(en.settings.themeTitle)).toHaveLength(1);
   });
 
-  /* Both columns are headed now, so the LINE card drops the title it used to
-     print inside itself — a heading above a card that starts with the same
-     heading reads as two sections that happen to share a name. */
-  it("heads the LINE column, and names it once", () => {
+  /* The LINE card still drops the title it used to print inside itself — a
+     heading above a card that starts with the same heading reads as two
+     sections that happen to share a name. Moving the block is exactly the
+     change that ends up printing it in both places. */
+  it("names LINE once", () => {
     renderAs("Admin");
-    const right = duo()!.children[1] as HTMLElement;
-    expect(right.textContent).toContain(en.settings.lineTitle);
     expect(screen.getAllByText(en.settings.lineTitle)).toHaveLength(1);
   });
 
@@ -197,7 +226,7 @@ describe("the shape of Settings", () => {
   it("gives both columns a heading", () => {
     renderAs("Admin");
     const [left, right] = [...duo()!.children] as HTMLElement[];
-    for (const [column, title] of [[left, en.settings.title], [right, en.settings.lineTitle]] as const) {
+    for (const [column, title] of [[left, en.settings.title], [right, en.settings.notifyTitle]] as const) {
       const heading = column.querySelector("h2, h3");
       expect(heading?.textContent).toBe(title);
     }
