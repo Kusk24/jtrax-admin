@@ -16,7 +16,8 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Icon } from "@/lib/icons";
-import { COLORS, FONT } from "@/lib/theme";
+import { COLORS } from "@/lib/theme";
+import { encodePng, fileNameFor } from "@/lib/qr";
 import { secondaryButtonStyle } from "../page-kit";
 import { QrCode } from "./QrCode";
 
@@ -32,6 +33,7 @@ export function ShareLink({
 }) {
   const t = useTranslations("share");
   const [copied, setCopied] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   async function copy() {
     try {
@@ -40,6 +42,24 @@ export function ShareLink({
       setTimeout(() => setCopied(false), 1800);
     } catch {
       /* Clipboard refused; the address is on screen and selectable anyway. */
+    }
+  }
+
+  /* The card's code is 96px, which is a thing to scan off a laptop at the front
+     desk and useless for anything else. A registration QR's real life is on a
+     poster in a mall or in a post, so it has to leave the screen as a file. */
+  async function download() {
+    setSaving(true);
+    try {
+      const href = await encodePng(url);
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = fileNameFor(url);
+      a.click();
+    } catch (err) {
+      console.error("QR download failed for", url, err);
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -93,6 +113,15 @@ export function ShareLink({
           >
             <Icon name="globe" size={15} /> {openLabel}
           </a>
+          <button
+            type="button"
+            className="jt-btn-ghost"
+            onClick={() => void download()}
+            disabled={saving}
+            style={{ ...secondaryButtonStyle, minHeight: 44 }}
+          >
+            <Icon name="download" size={15} /> {saving ? t("saving") : t("saveQr")}
+          </button>
         </div>
       </div>
     </div>

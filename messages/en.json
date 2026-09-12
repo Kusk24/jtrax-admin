@@ -121,7 +121,9 @@
   },
   "share": {
     "copy": "Copy link",
-    "copied": "Copied"
+    "copied": "Copied",
+    "saveQr": "Save QR code",
+    "saving": "Saving…"
   },
   "view": {
     "switchView": "Switch view",
