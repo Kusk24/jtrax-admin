@@ -37,7 +37,7 @@ function ClassCard({ def, onView }: { def: ClassDef; onView: (def: ClassDef) => 
         background: COLORS.surface,
         cursor: "pointer",
         textAlign: "left",
-        minHeight: 108,
+        minHeight: 148,
       }}
     >
       <span>
@@ -47,13 +47,13 @@ function ClassCard({ def, onView }: { def: ClassDef; onView: (def: ClassDef) => 
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              width: 28,
-              height: 28,
-              borderRadius: 8,
+              width: 32,
+              height: 32,
+              borderRadius: 9,
               background: `${accent}1A`,
             }}
           >
-            <Icon name={CATEGORY_ICON[def.category] ?? "pawn"} size={16} color={accent} />
+            <Icon name={CATEGORY_ICON[def.category] ?? "pawn"} size={18} color={accent} />
           </span>
           <span
             style={{
@@ -72,7 +72,7 @@ function ClassCard({ def, onView }: { def: ClassDef; onView: (def: ClassDef) => 
         <span
           style={{
             display: "block",
-            marginTop: 8,
+            marginTop: 11,
             fontFamily: FONT,
             fontSize: 15.5,
             fontWeight: 700,
@@ -151,61 +151,62 @@ export function TodaysClasses({
 }) {
   const t = useTranslations("dashboard");
   const { todaysClasses } = useData();
-  const scrollable = todaysClasses.length > 2;
-
   return (
-    <Card className="jt-today-classes" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div className="jt-classes-heading">
-        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-          <SectionTitle>{t("todaysClasses")}</SectionTitle>
-          <span className="jt-class-count">{t("classCount", { count: todaysClasses.length })}</span>
-        </div>
+    <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <SectionTitle>{t("todaysClasses")}</SectionTitle>
+      <div
+        /* auto-fit, not auto-fill: with five cards on a six-slot row the
+           cards stretch to fill instead of leaving a hole on the right. */
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+          gap: 12,
+        }}
+      >
         <button
           type="button"
-          className="jt-add-class-button"
+          className="jt-create-card"
           onClick={onCreateSession}
-          aria-label={t("createSession")}
           style={{
-            display: "inline-flex",
-            alignItems: "center",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-start",
             gap: 6,
-            padding: "7px 10px",
-            borderRadius: 9,
-            border: `1px solid ${COLORS.border}`,
-            background: COLORS.light,
-            color: COLORS.blue,
+            padding: 14,
+            borderRadius: 13,
+            border: `1.5px dashed ${COLORS.border}`,
+            background: COLORS.surface,
             cursor: "pointer",
-            fontFamily: FONT,
-            fontSize: 12.5,
-            fontWeight: 700,
-            whiteSpace: "nowrap",
+            textAlign: "left",
+            minHeight: 148,
+            justifyContent: "center",
           }}
         >
-          <Icon name="plus" size={15} color={COLORS.blue} />
-          <span>{t("createSession")}</span>
-        </button>
-      </div>
-
-      {todaysClasses.length === 0 ? (
-        <div className="jt-dashboard-empty">
-          <span className="jt-dashboard-empty-icon">
-            <Icon name="calendar" size={20} color={COLORS.blue} />
+          <span
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 34,
+              height: 34,
+              borderRadius: "50%",
+              background: COLORS.light,
+            }}
+          >
+            <Icon name="plus" size={19} color={COLORS.blue} />
           </span>
-          <strong>{t("noClassesToday")}</strong>
-          <span>{t("noClassesTodaySub")}</span>
-        </div>
-      ) : (
-        <div
-          className={`jt-class-list${scrollable ? " is-scrollable" : ""}`}
-          role="region"
-          aria-label={t("classListLabel")}
-          tabIndex={scrollable ? 0 : undefined}
-        >
-          {todaysClasses.map((def) => (
-            <ClassCard key={def.id ?? def.name} def={def} onView={onViewClass} />
-          ))}
-        </div>
-      )}
+          <span style={{ marginTop: 6, fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.blue }}>
+            {t("createSession")}
+          </span>
+          <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
+            {t("createSessionSub")}
+          </span>
+        </button>
+
+        {todaysClasses.map((def) => (
+          <ClassCard key={def.id ?? def.name} def={def} onView={onViewClass} />
+        ))}
+      </div>
     </Card>
   );
 }

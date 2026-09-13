@@ -84,19 +84,35 @@ export function buildFollowUps(students: Student[]): FollowUp[] {
 
 export type TrendPoint = { month: string; value: number };
 
-/** Maps a series to `points` strings for the SVG polyline and its fill polygon. */
-export function trendPointStrings(points: TrendPoint[]): { line: string; area: string } {
+/** Where each point sits, as percentages of the drawing box. Shared by the
+    polyline and by anything overlaid on it — a hover dot positioned with the
+    same numbers cannot drift off the line. */
+export function trendPointCoords(points: TrendPoint[]): { x: number; y: number }[] {
   const max = Math.max(...points.map((p) => p.value));
   const min = Math.min(...points.map((p) => p.value));
   const span = max - min || 1;
   /* Inset vertically so the stroke isn't clipped by the viewBox edges. */
-  const coords = points.map((p, i) => {
-    const x = (i / (points.length - 1)) * 100;
-    const y = 90 - ((p.value - min) / span) * 80;
-    return `${x.toFixed(2)},${y.toFixed(2)}`;
-  });
+  return points.map((p, i) => ({
+    x: (i / (points.length - 1)) * 100,
+    y: 90 - ((p.value - min) / span) * 80,
+  }));
+}
+
+/** Maps a series to `points` strings for the SVG polyline and its fill polygon. */
+export function trendPointStrings(points: TrendPoint[]): { line: string; area: string } {
+  const coords = trendPointCoords(points).map((c) => `${c.x.toFixed(2)},${c.y.toFixed(2)}`);
   return {
     line: coords.join(" "),
     area: `0,100 ${coords.join(" ")} 100,100`,
   };
+}
+
+/** Which point a pointer at `x` is nearest to, on a line `width` wide with
+    `count` evenly spaced points. Clamped, so dragging past either edge holds
+    the end point rather than losing the reading. */
+export function sparklineHitIndex(x: number, width: number, count: number): number {
+  if (count < 1) return 0;
+  if (width <= 0) return 0;
+  const i = Math.round((x / width) * (count - 1));
+  return Math.min(Math.max(i, 0), count - 1);
 }
