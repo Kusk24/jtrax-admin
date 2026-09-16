@@ -36,11 +36,9 @@ export function RegistrationCard({
   onChange: (patch: Record<string, unknown>) => Promise<void>;
 }) {
   const t = useTranslations("registration");
-  const tCommon = useTranslations("common");
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [draftDiscount, setDraftDiscount] = useState(String(discountPct));
 
   const url = registrationUrl(tournamentId);
 
@@ -56,16 +54,11 @@ export function RegistrationCard({
     }
   }
 
-  function saveDiscount() {
-    const pct = Number(draftDiscount);
-    // Bounded here as well as in the database: a typo should be a message on
-    // this screen, not a rejected write the desk has to decode.
-    if (!Number.isInteger(pct) || pct < 0 || pct > 100) {
-      setError(t("discountRange"));
-      return;
-    }
-    void run({ student_discount_pct: pct });
-  }
+  /* saveDiscount was here. The percentage is set in the Create Tournament
+     wizard now, beside the fee it comes off, so that the first person through
+     a freshly-opened form is quoted the discount the academy meant rather
+     than the zero a tournament starts with. This card still *shows* it —
+     it is one of the two prices the public form quotes. */
 
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -98,42 +91,6 @@ export function RegistrationCard({
           value={fee > 0 ? fmtTHB(studentFee(fee, discountPct)) : t("noFee")}
           note={discountPct > 0 ? t("discountOf", { pct: discountPct }) : t("noDiscount")}
         />
-        <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-          <span style={{ fontFamily: FONT, fontSize: 12.5, fontWeight: 600, color: COLORS.textSecondary }}>
-            {t("discountLabel")}
-          </span>
-          <span style={{ display: "flex", gap: 7 }}>
-            <input
-              type="number"
-              min={0}
-              max={100}
-              inputMode="numeric"
-              value={draftDiscount}
-              onChange={(e) => setDraftDiscount(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && saveDiscount()}
-              style={{
-                width: 82,
-                minHeight: 44,
-                padding: "8px 10px",
-                borderRadius: 9,
-                border: `1px solid ${COLORS.border}`,
-                fontFamily: FONT,
-                fontSize: 14,
-                color: COLORS.text,
-                background: COLORS.surface,
-              }}
-            />
-            <button
-              type="button"
-              className="jt-btn-ghost"
-              style={secondaryButtonStyle}
-              disabled={busy || draftDiscount === String(discountPct)}
-              onClick={saveDiscount}
-            >
-              {busy ? tCommon("saving") : tCommon("save")}
-            </button>
-          </span>
-        </label>
       </div>
 
       {/* ---- the link, only once there is something to link to ---- */}
