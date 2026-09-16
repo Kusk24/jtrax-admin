@@ -402,7 +402,7 @@ function TournamentDetail({
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
   const tExternal = useTranslations("external");
-  const { students, create, update, remove, refresh } = useData();
+  const { students, create, update, remove } = useData();
   /* Also in the address bar: refreshing while reading Results should not
      silently return to Overview. */
   const [tab, setTab] = useUrlBackedState<"overview" | "participants" | "results">(
@@ -740,13 +740,10 @@ function TournamentDetail({
         </>
       ) : tab === "participants" ? (
         <>
-        {/* Above the roster: people waiting to be let in come before the people
-            already in. */}
-        <RegistrationQueue
-          tournamentId={tournament.id}
-          fullFee={tournament.entryFeeAmount}
-          onDecided={refresh}
-        />
+        {/* Above the roster: the public door specifically, then everyone who
+            came through any of them. Nobody waits to be let in any more, so
+            this is a record rather than a queue. */}
+        <RegistrationQueue tournamentId={tournament.id} />
         <Card style={{ padding: 0, overflow: "hidden" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: 14, flexWrap: "wrap" }}>
             <SearchInput

@@ -1,54 +1,39 @@
 "use client";
 
-/* People who signed up through the public form and are waiting to be let in.
+/* Who has signed up through the public form.
  *
- * The column that matters is the last one. Someone ticking "I am a JCA student"
- * is quoted the discount on their word alone — the public form deliberately
- * never says whether the academy recognised their email, because a discount
- * that only appeared for real students would be a way to test whether a given
- * child is a pupil here.
+ * This was a queue with approve and reject on the end of it. The academy takes
+ * every entry, so there is nothing left to decide here and the list is a
+ * record: the same people, in the order they arrived, with what they were
+ * quoted.
  *
- * So the match surfaces here instead, and the desk decides. "Claimed, and we
- * found them" is a click; "claimed, no match" is a conversation, and the fee
- * can be corrected at the moment of approving.
+ * It is not the participants table repeated. That one is every entrant however
+ * they got in; this one is the public door specifically, and carries the one
+ * fact the table has no column for — whether the email somebody registered
+ * with belongs to a student the academy already knows. The public reply
+ * deliberately never says so (a discount that appeared only for real students
+ * would be a way to test whether a given child is a pupil here), so this is
+ * the only place it is visible.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Icon } from "@/lib/icons";
 import { COLORS, FONT } from "@/lib/theme";
 import { fmtTHB } from "@/lib/live";
-import {
-  approveRegistration, listRegistrations, rejectRegistration, type QueueEntry,
-} from "@/lib/registration";
+import { listRegistrations, type QueueEntry } from "@/lib/registration";
 import { ErrorNote, errorText } from "../crud";
-import { secondaryButtonStyle } from "../page-kit";
 import { Badge, Card, SectionTitle } from "../ui";
 
-export function RegistrationQueue({
-  tournamentId,
-  fullFee,
-  onDecided,
-}: {
-  tournamentId: string;
-  /** The undiscounted entry fee, for overriding a claim that did not hold up. */
-  fullFee: number;
-  /** Approving changes the participant count the rest of the screen shows. */
-  onDecided: () => void;
-}) {
+export function RegistrationQueue({ tournamentId }: { tournamentId: string }) {
   const t = useTranslations("registration");
   const tCommon = useTranslations("common");
+  const tStatus = useTranslations("status");
   /* Read once, outside the effect that reports it: a translator is not a
      stable dependency, and a string is. */
   const loadFailed = tCommon("loadFailed");
 
   const [rows, setRows] = useState<QueueEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const reload = useCallback(async () => {
-    setRows(await listRegistrations(tournamentId));
-  }, [tournamentId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,23 +56,9 @@ export function RegistrationQueue({
     };
   }, [tournamentId, loadFailed]);
 
-  async function decide(entry: QueueEntry, approve: boolean, fee?: number) {
-    setBusyId(entry.id);
-    setError(null);
-    try {
-      if (approve) await approveRegistration(entry.id, fee);
-      else await rejectRegistration(entry.id);
-      await reload();
-      onDecided();
-    } catch (e) {
-      setError(errorText(e, t("decisionFailed")));
-    } finally {
-      setBusyId(null);
-    }
-  }
-
-  const pending = rows.filter((r) => r.status === "Pending");
-  const decided = rows.filter((r) => r.status !== "Pending" && r.source === "Public");
+  /* Withdrawn entries stay on the list rather than vanishing: somebody who
+     pulled out is a thing the desk needs to see, not an absence. */
+  const signups = rows.filter((r) => r.source === "Public");
 
   // Nothing has ever come through the form: the card would be an empty box on
   // a screen that already has plenty.
@@ -100,10 +71,10 @@ export function RegistrationQueue({
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 13 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-        <SectionTitle>{t("queueTitle")}</SectionTitle>
-        {pending.length > 0 && (
-          <Badge color={COLORS.warning} bg={COLORS.warningBg}>
-            {t("waitingCount", { count: pending.length })}
+        <SectionTitle>{t("signupsTitle")}</SectionTitle>
+        {signups.length > 0 && (
+          <Badge color={COLORS.navy} bg={COLORS.light}>
+            {t("signupCount", { count: signups.length })}
           </Badge>
         )}
       </div>
@@ -113,15 +84,17 @@ export function RegistrationQueue({
       {loading ? (
         <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>{tCommon("loading")}</p>
       ) : error ? (
-        /* The note above already says we could not load. Printing "nothing is
-           waiting" underneath it would be the card answering a question it
+        /* The note above already says we could not load. Printing "nobody has
+           signed up" underneath it would be the card answering a question it
            just admitted it cannot answer. */
         null
-      ) : pending.length === 0 ? (
-        <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>{t("queueEmpty")}</p>
       ) : (
+        /* No empty branch: the card returns null above when nothing has come
+           through the form, so `signups` is non-empty by the time we are here.
+           An unreachable "nobody has signed up" would be a sentence waiting
+           for a bug to make it true. */
         <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
-          {pending.map((entry) => (
+          {signups.map((entry) => (
             <li
               key={entry.id}
               style={{
@@ -145,6 +118,14 @@ export function RegistrationQueue({
                     <Badge color={COLORS.navy} bg={COLORS.light}>{entry.category}</Badge>
                   )}
                   <StudentClaim entry={entry} />
+                  {/* Only when it is not the ordinary state. Every live entry
+                      reads Approved now, and a badge on all of them would be
+                      a column of the same word. */}
+                  {entry.status !== "Approved" && (
+                    <Badge color={COLORS.textSecondary} bg={COLORS.light}>
+                      {tStatus(entry.status)}
+                    </Badge>
+                  )}
                 </div>
                 <p style={{ margin: "4px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary, wordBreak: "break-word" }}>
                   {entry.contactEmail}
@@ -152,51 +133,9 @@ export function RegistrationQueue({
                   {entry.feeQuoted != null ? ` · ${t("quoted", { fee: fmtTHB(entry.feeQuoted) })}` : ""}
                 </p>
               </div>
-
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button
-                  type="button"
-                  className="jt-btn-primary"
-                  style={{ ...secondaryButtonStyle, background: COLORS.success, color: COLORS.surface, borderColor: COLORS.success }}
-                  disabled={busyId === entry.id}
-                  onClick={() => void decide(entry, true)}
-                >
-                  <Icon name="check" size={14} color={COLORS.surface} /> {t("approve")}
-                </button>
-                {/* Offered only where it is the judgement call: a claimed
-                    discount our records cannot corroborate. */}
-                {entry.claimedStudent && !entry.matchedStudentId && fullFee > 0 &&
-                  entry.feeQuoted != null && entry.feeQuoted < fullFee && (
-                  <button
-                    type="button"
-                    className="jt-btn-ghost"
-                    style={secondaryButtonStyle}
-                    disabled={busyId === entry.id}
-                    onClick={() => void decide(entry, true, fullFee)}
-                    title={t("approveFullPriceHint")}
-                  >
-                    {t("approveFullPrice", { fee: fmtTHB(fullFee) })}
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className="jt-btn-ghost"
-                  style={secondaryButtonStyle}
-                  disabled={busyId === entry.id}
-                  onClick={() => void decide(entry, false)}
-                >
-                  <Icon name="x" size={14} /> {t("reject")}
-                </button>
-              </div>
             </li>
           ))}
         </ul>
-      )}
-
-      {decided.length > 0 && (
-        <p style={{ margin: 0, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-          {t("decidedCount", { count: decided.length })}
-        </p>
       )}
     </Card>
   );

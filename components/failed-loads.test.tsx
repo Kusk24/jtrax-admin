@@ -65,36 +65,53 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe("the registration queue", () => {
+describe("the public sign-ups card", () => {
   it("says it could not load, rather than that nobody has registered", async () => {
     listRegistrations.mockImplementation(DOWN);
-    draw(<RegistrationQueue tournamentId="trn_x" fullFee={300} onDecided={() => {}} />);
+    draw(<RegistrationQueue tournamentId="trn_x" />);
 
     await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy());
-    // The whole point: it must not also claim the queue is empty.
-    expect(screen.queryByText(en.registration.queueEmpty)).toBeNull();
+    // The whole point: it must not also claim nobody has signed up.
+    expect(screen.queryByText(en.registration.signupCount.replace("{count}", "0"))).toBeNull();
   });
 
   it("does not disappear when the load fails", async () => {
     /* `rows` is empty on failure and `[].every()` is true, so the card used to
-       return null — the office saw no queue at all, which is worse than an
+       return null — the office saw no list at all, which is worse than an
        empty one. */
     listRegistrations.mockImplementation(DOWN);
-    const { container } = draw(
-      <RegistrationQueue tournamentId="trn_x" fullFee={300} onDecided={() => {}} />,
-    );
+    const { container } = draw(<RegistrationQueue tournamentId="trn_x" />);
     await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy());
-    expect(container.textContent).toContain(en.registration.queueTitle);
+    expect(container.textContent).toContain(en.registration.signupsTitle);
   });
 
-  it("still shows the empty state when the load succeeds and there is nothing", async () => {
-    // The empty state is not the bug; claiming it on a failure was.
+  it("lists a public entry that arrived already accepted", async () => {
+    /* Under the old rule this row would have been filtered out of the card
+       entirely — it only ever listed the Pending ones, and nothing is Pending
+       any more. A card that still filtered that way would be permanently
+       empty. */
     listRegistrations.mockResolvedValue([
-      { id: "r1", status: "Approved", source: "Public", name: "Mali", fee: 300 },
+      {
+        id: "r1", status: "Approved", source: "Public", participantName: "Mali",
+        contactEmail: "mali@example.com", feeQuoted: 300,
+      },
     ]);
-    draw(<RegistrationQueue tournamentId="trn_x" fullFee={300} onDecided={() => {}} />);
-    await waitFor(() => expect(screen.getByText(en.registration.queueEmpty)).toBeTruthy());
+    draw(<RegistrationQueue tournamentId="trn_x" />);
+    await waitFor(() => expect(screen.getByText("Mali")).toBeTruthy());
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("offers nothing to approve or reject", async () => {
+    listRegistrations.mockResolvedValue([
+      {
+        id: "r1", status: "Approved", source: "Public", participantName: "Mali",
+        contactEmail: "mali@example.com", feeQuoted: 300,
+      },
+    ]);
+    draw(<RegistrationQueue tournamentId="trn_x" />);
+    await waitFor(() => expect(screen.getByText("Mali")).toBeTruthy());
+    // The card is a record now; a button here would be a decision to make.
+    expect(screen.queryAllByRole("button")).toHaveLength(0);
   });
 });
 
