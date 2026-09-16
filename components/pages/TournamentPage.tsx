@@ -898,6 +898,11 @@ function TournamentDetail({
         <ResultsTab
           tournamentId={tournament.id}
           tournamentName={tournament.name}
+          /* The arbiter's standings carry no section — chess-results does not
+             know what JTrax calls its categories — so the tab joins them to
+             our own entrants to work out which is which. */
+          categories={categoryRows}
+          participants={tournament.participants}
           resultsPublic={tournament.published}
           onPublishChange={async (next) => {
             await update("tournaments", tournament.id, { results_public: next });

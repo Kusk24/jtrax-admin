@@ -1028,7 +1028,10 @@
     },
     "publicUrlMissing": "Published, but the public link is not configured on this deployment. Set NEXT_PUBLIC_PORTAL_URL to the portal's address.",
     "qrLabel": "QR code linking to the public results page for this tournament",
-    "openPage": "Open page"
+    "openPage": "Open page",
+    "byCategory": "Results by category",
+    "unplaced": "Not in a section",
+    "noneInCategory": "No results in this section yet."
   },
   "lichessAdmin": {
     "title": "Lichess at home",

@@ -12,7 +12,7 @@
  * used to live below them is gone on purpose — a second place to type results
  * is a second version of the truth.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   getChessResultsLink,
@@ -21,7 +21,10 @@ import {
 import { COLORS, FONT } from "@/lib/theme";
 import { Icon } from "@/lib/icons";
 import { errorText } from "../crud";
-import { formatPoints } from "@/lib/tournament-results";
+import {
+  formatPoints, groupStandingsByCategory, type CategoryRef,
+} from "@/lib/tournament-results";
+import { type Participant } from "@/lib/data";
 import { Drawer, primaryButtonStyle, secondaryButtonStyle } from "../page-kit";
 import { Badge, Card, SectionTitle } from "../ui";
 import { LinkedResultsCard } from "./LinkedResultsCard";
@@ -34,12 +37,18 @@ const PREVIEW_ROWS = 10;
 export function ResultsTab({
   tournamentId,
   tournamentName,
+  categories,
+  participants,
   resultsPublic,
   onPublishChange,
 }: {
   tournamentId: string;
   /** Used to search chess-results for this event by name. */
   tournamentName: string;
+  /** The event's sections, in the order the organiser entered them. */
+  categories: CategoryRef[];
+  /** Our own entrants — what tells a standing which section it is in. */
+  participants: Participant[];
   resultsPublic: boolean;
   onPublishChange: (next: boolean) => Promise<void>;
 }) {
@@ -55,6 +64,9 @@ export function ResultsTab({
   const [linkedResults, setLinkedResults] = useState<LinkedResults | null>(null);
   const [linkLoaded, setLinkLoaded] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
+  /* "" is the first group, whatever it is — not a magic "all". A stored id
+     would dangle if the organiser deleted the category it names. */
+  const [categoryTab, setCategoryTab] = useState("");
   const [playerDrawer, setPlayerDrawer] = useState<string | null>(null);
 
   useEffect(() => {
@@ -90,7 +102,27 @@ export function ResultsTab({
   const portalBase = process.env.NEXT_PUBLIC_PORTAL_URL;
   const publicUrl = portalBase ? `${portalBase.replace(/\/$/, "")}/t/${tournamentId}` : null;
   const linked = linkedResults !== null;
-  const preview = linkedResults?.standings.slice(0, PREVIEW_ROWS) ?? [];
+  /* The arbiter's standings, split into the academy's own sections. Computed
+     from everything, then sliced per tab — slicing first would show the top ten
+     overall and then filter, so a section whose best player came eleventh
+     would look empty. */
+  const groups = useMemo(
+    () => groupStandingsByCategory(
+      linkedResults?.standings ?? [], participants, categories, t("unplaced"),
+    ),
+    [linkedResults, participants, categories, t],
+  );
+  /* One section, or none defined: tabs would be a row with a single item in
+     it, which is furniture rather than navigation. */
+  const tabbed = groups.length > 1;
+  const active = groups.find((g) => (g.id ?? "") === categoryTab) ?? groups[0];
+  const preview = (tabbed ? active?.rows ?? [] : linkedResults?.standings ?? []).slice(0, PREVIEW_ROWS);
+  const shownCount = tabbed ? active?.rows.length ?? 0 : linkedResults?.standings.length ?? 0;
+  /* The card is mounted on the event having standings at all, not on the
+     selected tab having rows — otherwise picking a section nobody has a result
+     in yet takes the tab strip away with the table, and there is no way back
+     to the section that did. */
+  const hasStandings = (linkedResults?.standings.length ?? 0) > 0;
   const rounds = linkedResults?.rounds ?? [];
   const selectedStanding = linkedResults?.standings.find((row) => row.name === playerDrawer);
 
@@ -154,7 +186,7 @@ export function ResultsTab({
       </Card>
 
       {/* ---- what the public sees ---- */}
-      {linked && preview.length > 0 && (
+      {linked && hasStandings && (
         <Card style={{ display: "flex", flexDirection: "column", gap: 12, overflow: "hidden" }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
             <SectionTitle>{t("roundFlow")}</SectionTitle>
@@ -195,14 +227,53 @@ export function ResultsTab({
         </Card>
       )}
 
-      {linked && preview.length > 0 && (
+      {linked && hasStandings && (
         <Card style={{ padding: 0, overflow: "hidden" }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "14px 16px", borderBottom: `1px solid ${COLORS.border}` }}>
             <SectionTitle>{tExt("previewTitle")}</SectionTitle>
             <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-              {tExt("previewSub", { count: linkedResults!.standings.length })}
+              {tExt("previewSub", { count: shownCount })}
             </span>
           </div>
+          {tabbed && (
+            <div
+              role="tablist"
+              aria-label={t("byCategory")}
+              style={{ display: "flex", gap: 4, padding: "0 10px", borderBottom: `1px solid ${COLORS.border}`, overflowX: "auto" }}
+            >
+              {groups.map((g) => {
+                const key = g.id ?? "";
+                const current = g === active;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    role="tab"
+                    aria-selected={current}
+                    onClick={() => setCategoryTab(key)}
+                    style={{
+                      border: "none",
+                      background: "transparent",
+                      padding: "10px 12px",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                      fontFamily: FONT,
+                      fontSize: 13.5,
+                      fontWeight: current ? 700 : 600,
+                      color: current ? COLORS.blue : COLORS.textSecondary,
+                      borderBottom: `2px solid ${current ? COLORS.blue : "transparent"}`,
+                      marginBottom: -1,
+                    }}
+                  >
+                    {g.name}
+                    <span style={{ marginLeft: 6, fontWeight: 600, color: COLORS.textSecondary }}>
+                      {g.rows.length}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <div
             style={{ overflowX: "auto" }}
             tabIndex={0}
@@ -211,6 +282,16 @@ export function ResultsTab({
           >
             <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: FONT, fontSize: 14 }}>
               <tbody>
+                {preview.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={4}
+                      style={{ padding: "14px 16px", fontSize: 13.5, color: COLORS.textSecondary }}
+                    >
+                      {t("noneInCategory")}
+                    </td>
+                  </tr>
+                )}
                 {preview.map((s) => (
                   <tr key={`${s.rank}-${s.name}`} style={{ borderTop: `1px solid ${COLORS.border}` }}>
                     <td style={{ padding: "8px 14px", width: 40, fontWeight: 700, color: COLORS.textSecondary }}>{s.rank}</td>

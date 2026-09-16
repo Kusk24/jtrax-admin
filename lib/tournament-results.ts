@@ -88,3 +88,100 @@ export function resultFor(p: Pairing, registrationId: string): "win" | "draw" | 
   const whiteWon = p.result === "1-0" || p.result === "+/-";
   return whiteWon === isWhite ? "win" : "loss";
 }
+
+/* ------------------------------------------------- standings by category --- */
+
+/** The minimum of an entrant this module needs to place a standing. */
+export type CategorisedEntrant = {
+  name: string;
+  studentId?: string;
+  categoryId?: string;
+};
+
+/** The minimum of a standing row this module needs. */
+export type PlaceableStanding = {
+  name: string;
+  studentId?: string;
+};
+
+export type CategoryRef = { id: string; name: string };
+
+/** One tab's worth: a section and the rows that belong to it. */
+export type StandingsGroup<S> = {
+  /** Null for the "everyone" tab and for the unplaced tab. */
+  id: string | null;
+  name: string;
+  rows: S[];
+};
+
+/**
+ * Normalised for matching a person by the only other thing we have: a name.
+ *
+ * chess-results prints "Somchai, Jaidee" where the console holds "Somchai
+ * Jaidee", and an arbiter's list is not careful about double spaces or case.
+ * The comma is the one that matters — without it a Thai entrant matched
+ * nothing at all and every row fell into Unplaced.
+ */
+function nameKey(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/,/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Split the arbiter's standings into the academy's own categories.
+ *
+ * chess-results.com has no idea what JTrax calls its sections, so the section
+ * cannot come from the standings — it comes from the entrant the row belongs
+ * to. A row is matched to an entrant by `studentId` where the backend already
+ * recognised one, and by name otherwise.
+ *
+ * Rows that match nobody are kept, in a section of their own. An open event is
+ * mostly people the academy has never met, and dropping them would turn "the
+ * results" into "the results for our pupils" without saying so.
+ *
+ * Empty categories are kept too: a tab that disappears when nobody in it has a
+ * result yet is a tab that comes and goes during a tournament.
+ */
+export function groupStandingsByCategory<S extends PlaceableStanding>(
+  standings: S[],
+  entrants: CategorisedEntrant[],
+  categories: CategoryRef[],
+  unplacedLabel: string,
+): StandingsGroup<S>[] {
+  const byStudent = new Map<string, string>();
+  const byName = new Map<string, string>();
+  for (const e of entrants) {
+    if (!e.categoryId) continue;
+    if (e.studentId) byStudent.set(e.studentId, e.categoryId);
+    if (e.name) byName.set(nameKey(e.name), e.categoryId);
+  }
+
+  const categoryOf = (row: S): string | undefined =>
+    (row.studentId && byStudent.get(row.studentId)) || byName.get(nameKey(row.name));
+
+  const groups: StandingsGroup<S>[] = categories.map((c) => ({
+    id: c.id,
+    name: c.name,
+    rows: [],
+  }));
+  const index = new Map(groups.map((g) => [g.id, g]));
+  const unplaced: S[] = [];
+
+  for (const row of standings) {
+    const id = categoryOf(row);
+    const group = id ? index.get(id) : undefined;
+    if (group) group.rows.push(row);
+    else unplaced.push(row);
+  }
+
+  /* Only when it has something in it — unlike the real categories, this one is
+     not a section of the tournament, it is a leftover. An always-present empty
+     "Unplaced" would read as a section nobody entered. */
+  if (unplaced.length > 0) {
+    groups.push({ id: null, name: unplacedLabel, rows: unplaced });
+  }
+  return groups;
+}
