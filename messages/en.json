@@ -1030,8 +1030,8 @@
     "qrLabel": "QR code linking to the public results page for this tournament",
     "openPage": "Open page",
     "byCategory": "Results by category",
-    "unplaced": "Not in a section",
-    "noneInCategory": "No results in this section yet."
+    "noneInCategory": "No results in this section yet.",
+    "wholeEvent": "Whole event"
   },
   "lichessAdmin": {
     "title": "Lichess at home",

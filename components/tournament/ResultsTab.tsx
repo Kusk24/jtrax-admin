@@ -12,19 +12,17 @@
  * used to live below them is gone on purpose — a second place to type results
  * is a second version of the truth.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
+  getCategoryResultsLink,
   getChessResultsLink,
   type LinkedResults,
 } from "@/lib/chess-results";
 import { COLORS, FONT } from "@/lib/theme";
 import { Icon } from "@/lib/icons";
 import { errorText } from "../crud";
-import {
-  formatPoints, groupStandingsByCategory, type CategoryRef,
-} from "@/lib/tournament-results";
-import { type Participant } from "@/lib/data";
+import { formatPoints } from "@/lib/tournament-results";
 import { Drawer, primaryButtonStyle, secondaryButtonStyle } from "../page-kit";
 import { Badge, Card, SectionTitle } from "../ui";
 import { LinkedResultsCard } from "./LinkedResultsCard";
@@ -38,17 +36,14 @@ export function ResultsTab({
   tournamentId,
   tournamentName,
   categories,
-  participants,
   resultsPublic,
   onPublishChange,
 }: {
   tournamentId: string;
   /** Used to search chess-results for this event by name. */
   tournamentName: string;
-  /** The event's sections, in the order the organiser entered them. */
-  categories: CategoryRef[];
-  /** Our own entrants — what tells a standing which section it is in. */
-  participants: Participant[];
+  /** The event's age groups, in the order the organiser entered them. */
+  categories: Array<{ id: string; name: string }>;
   resultsPublic: boolean;
   onPublishChange: (next: boolean) => Promise<void>;
 }) {
@@ -61,31 +56,44 @@ export function ResultsTab({
   /* Loaded once; the card owns its own state after that. `linkLoaded` gates
      the first render so the card does not flash its empty state on a linked
      event. */
-  const [linkedResults, setLinkedResults] = useState<LinkedResults | null>(null);
-  const [linkLoaded, setLinkLoaded] = useState(false);
+  /* The result *and* the scope it was fetched for, in one piece of state.
+     Kept together so "loaded" is derived rather than toggled: a separate
+     boolean has to be set false on the way into the effect, which is a render
+     where the previous group's card is still showing — it reads as this group
+     being linked to that event. */
+  const [loaded, setLoaded] = useState<{ scope: string; link: LinkedResults | null } | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
   /* "" is the first group, whatever it is — not a magic "all". A stored id
      would dangle if the organiser deleted the category it names. */
   const [categoryTab, setCategoryTab] = useState("");
   const [playerDrawer, setPlayerDrawer] = useState<string | null>(null);
 
+  /* One fetch per tab, because each age group is a different chess-results
+     event: the arbiter publishes OPEN, U18, U12, U10 and U08 separately, with
+     separate links, pairings and ranked lists.
+
+     `setLinkLoaded(false)` on the way in, so switching group does not show the
+     previous group's card for a frame — which would read as this group being
+     linked to that event. */
   useEffect(() => {
     let cancelled = false;
+    const scope = categoryTab;
     (async () => {
+      let link: LinkedResults | null = null;
       try {
-        const link = await getChessResultsLink(tournamentId);
-        if (!cancelled) setLinkedResults(link);
+        link = scope
+          ? await getCategoryResultsLink(scope)
+          : await getChessResultsLink(tournamentId);
       } catch {
         /* Nothing linked (or an older backend): the card then offers to link,
            which is the correct thing to show. */
-      } finally {
-        if (!cancelled) setLinkLoaded(true);
       }
+      if (!cancelled) setLoaded({ scope, link });
     })();
     return () => {
       cancelled = true;
     };
-  }, [tournamentId]);
+  }, [tournamentId, categoryTab]);
 
   async function publish(next: boolean) {
     setBusy(true);
@@ -101,28 +109,21 @@ export function ResultsTab({
 
   const portalBase = process.env.NEXT_PUBLIC_PORTAL_URL;
   const publicUrl = portalBase ? `${portalBase.replace(/\/$/, "")}/t/${tournamentId}` : null;
+  /* Only trust what was fetched for the group now selected. */
+  const linkLoaded = loaded?.scope === categoryTab;
+  const linkedResults = linkLoaded ? loaded!.link : null;
   const linked = linkedResults !== null;
-  /* The arbiter's standings, split into the academy's own sections. Computed
-     from everything, then sliced per tab — slicing first would show the top ten
-     overall and then filter, so a section whose best player came eleventh
-     would look empty. */
-  const groups = useMemo(
-    () => groupStandingsByCategory(
-      linkedResults?.standings ?? [], participants, categories, t("unplaced"),
-    ),
-    [linkedResults, participants, categories, t],
-  );
-  /* One section, or none defined: tabs would be a row with a single item in
-     it, which is furniture rather than navigation. */
-  const tabbed = groups.length > 1;
-  const active = groups.find((g) => (g.id ?? "") === categoryTab) ?? groups[0];
-  const preview = (tabbed ? active?.rows ?? [] : linkedResults?.standings ?? []).slice(0, PREVIEW_ROWS);
-  const shownCount = tabbed ? active?.rows.length ?? 0 : linkedResults?.standings.length ?? 0;
-  /* The card is mounted on the event having standings at all, not on the
-     selected tab having rows — otherwise picking a section nobody has a result
-     in yet takes the tab strip away with the table, and there is no way back
-     to the section that did. */
-  const hasStandings = (linkedResults?.standings.length ?? 0) > 0;
+  /* The standings are whatever the selected group is linked to. No joining:
+     the arbiter already separated the groups, and inferring a player's group
+     by matching their name against our entrants was guessing at something
+     chess-results had told us outright. */
+  const preview = (linkedResults?.standings ?? []).slice(0, PREVIEW_ROWS);
+  const shownCount = linkedResults?.standings.length ?? 0;
+  const hasStandings = shownCount > 0;
+  /* The whole event, then each group. An event with no categories is a single
+     list and gets no tab strip — one tab is furniture, not navigation. */
+  const tabs = [{ id: "", name: t("wholeEvent") }, ...categories];
+  const tabbed = categories.length > 0;
   const rounds = linkedResults?.rounds ?? [];
   const selectedStanding = linkedResults?.standings.find((row) => row.name === playerDrawer);
 
@@ -132,8 +133,58 @@ export function ResultsTab({
         <p style={{ margin: 0, fontFamily: FONT, fontSize: 13, color: COLORS.danger }}>{error}</p>
       )}
 
-      {/* The results source. This card *is* the results feature now. */}
-      {linkLoaded && <LinkedResultsCard tournamentId={tournamentId} tournamentName={tournamentName} initial={linkedResults} />}
+      {/* The group strip comes first: it decides what everything below is
+          about, and a card that changes meaning under a control further down
+          reads as the control having done nothing. */}
+      {tabbed && (
+        <div
+          role="tablist"
+          aria-label={t("byCategory")}
+          style={{ display: "flex", gap: 4, borderBottom: `1px solid ${COLORS.border}`, overflowX: "auto" }}
+        >
+          {tabs.map((g) => {
+            const current = g.id === categoryTab;
+            return (
+              <button
+                key={g.id}
+                type="button"
+                role="tab"
+                aria-selected={current}
+                onClick={() => setCategoryTab(g.id)}
+                style={{
+                  border: "none",
+                  background: "transparent",
+                  padding: "10px 12px",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  fontFamily: FONT,
+                  fontSize: 13.5,
+                  fontWeight: current ? 700 : 600,
+                  color: current ? COLORS.blue : COLORS.textSecondary,
+                  borderBottom: `2px solid ${current ? COLORS.blue : "transparent"}`,
+                  marginBottom: -1,
+                }}
+              >
+                {g.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* The results source for whichever group is selected. This card *is*
+          the results feature now. `key` remounts it on a group change: it
+          keeps the pasted URL in its own state, and carrying that across would
+          offer one group's half-typed link on another. */}
+      {linkLoaded && (
+        <LinkedResultsCard
+          key={categoryTab || tournamentId}
+          tournamentId={tournamentId}
+          tournamentName={tournamentName}
+          categoryId={categoryTab || undefined}
+          initial={linkedResults}
+        />
+      )}
 
       {/* ---- the public page ---- */}
       <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -235,45 +286,6 @@ export function ResultsTab({
               {tExt("previewSub", { count: shownCount })}
             </span>
           </div>
-          {tabbed && (
-            <div
-              role="tablist"
-              aria-label={t("byCategory")}
-              style={{ display: "flex", gap: 4, padding: "0 10px", borderBottom: `1px solid ${COLORS.border}`, overflowX: "auto" }}
-            >
-              {groups.map((g) => {
-                const key = g.id ?? "";
-                const current = g === active;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    role="tab"
-                    aria-selected={current}
-                    onClick={() => setCategoryTab(key)}
-                    style={{
-                      border: "none",
-                      background: "transparent",
-                      padding: "10px 12px",
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
-                      fontFamily: FONT,
-                      fontSize: 13.5,
-                      fontWeight: current ? 700 : 600,
-                      color: current ? COLORS.blue : COLORS.textSecondary,
-                      borderBottom: `2px solid ${current ? COLORS.blue : "transparent"}`,
-                      marginBottom: -1,
-                    }}
-                  >
-                    {g.name}
-                    <span style={{ marginLeft: 6, fontWeight: 600, color: COLORS.textSecondary }}>
-                      {g.rows.length}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
           <div
             style={{ overflowX: "auto" }}
             tabIndex={0}
