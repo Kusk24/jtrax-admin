@@ -117,7 +117,25 @@ function CreateWizard({
     earlyBirdFee: "",
     earlyBirdDeadline: "",
     registrationDeadline: "",
+    studentDiscountPct: "0",
   });
+
+  /* Categories are set here rather than after the event exists, because they
+     are how the entry form asks "which section are you in" — and the form can
+     be open from the moment the tournament is published. An event created
+     without them had a registration link that could only collect a pile of
+     entries nobody had sorted. */
+  const [categories, setCategories] = useState<string[]>([]);
+  const [categoryDraft, setCategoryDraft] = useState("");
+
+  function addCategory() {
+    const name = categoryDraft.trim();
+    /* Case-insensitively unique: "U8 Boys" and "u8 boys" would be two
+       sections on the form and one in everybody's head. */
+    if (!name || categories.some((c) => c.toLowerCase() === name.toLowerCase())) return;
+    setCategories([...categories, name]);
+    setCategoryDraft("");
+  }
 
   /* Takes the regulation and moves on. It used to wait 1.8 seconds and then
      fill the form with a tournament that does not exist — "JCA Youth Monthly
@@ -152,6 +170,11 @@ function CreateWizard({
        which is how early_bird_fee sat unused in the schema for months. */
     { key: "earlyBirdFee", labelKey: "earlyBirdFee", kind: "number", hintKey: "earlyBirdHint" },
     { key: "earlyBirdDeadline", labelKey: "earlyBirdUntil", kind: "date" },
+    /* The other price on the form, beside the one it is a percentage of.
+       It used to be set on the tournament's own screen afterwards, which
+       meant the first people through a freshly-opened form were quoted a
+       discount of zero. */
+    { key: "studentDiscountPct", labelKey: "discountLabel", kind: "number", hintKey: "discountHint" },
   ];
 
   const renderField = (f: (typeof fields)[number]) => (
@@ -290,6 +313,66 @@ function CreateWizard({
               {fields.slice(8).map(renderField)}
             </div>
           </Card>
+          <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <SectionTitle>{t("categoriesTitle")}</SectionTitle>
+            <p style={{ margin: 0, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+              {t("categoriesHint")}
+            </p>
+            {categories.length > 0 && (
+              <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+                {categories.map((name) => (
+                  <span
+                    key={name}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 6,
+                      padding: "5px 10px", borderRadius: 999,
+                      background: COLORS.light, fontFamily: FONT, fontSize: 13.5,
+                      color: COLORS.text,
+                    }}
+                  >
+                    {name}
+                    <button
+                      type="button"
+                      aria-label={tCommon("deleteThing", { what: name })}
+                      onClick={() => setCategories(categories.filter((c) => c !== name))}
+                      style={{
+                        display: "inline-flex", border: "none", background: "transparent",
+                        padding: 0, cursor: "pointer", color: COLORS.textSecondary,
+                      }}
+                    >
+                      <Icon name="x" size={13} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <input
+                value={categoryDraft}
+                onChange={(e) => setCategoryDraft(e.target.value)}
+                /* Enter adds the category rather than submitting the step —
+                   typing four sections should not need the mouse four times. */
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addCategory();
+                  }
+                }}
+                placeholder={t("categoryPlaceholder")}
+                aria-label={t("categoryPlaceholder")}
+                style={{ ...fieldStyle, flex: "1 1 180px", width: "auto" }}
+              />
+              <button
+                type="button"
+                className="jt-btn-ghost"
+                style={secondaryButtonStyle}
+                disabled={!categoryDraft.trim()}
+                onClick={addCategory}
+              >
+                <Icon name="plus" size={13} /> {tCommon("add")}
+              </button>
+            </div>
+          </Card>
           <Card style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <span style={{ display: "flex", width: 38, height: 38, alignItems: "center", justifyContent: "center", borderRadius: 10, background: COLORS.light }}><Icon name="fileText" size={18} color={COLORS.blue} /></span>
             <span style={{ flex: 1, minWidth: 200 }}><SectionTitle>{t("regulationDocument")}</SectionTitle><span style={{ display: "block", marginTop: 3, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>{regulation ? t("regulationAttached", { file: regulation.name }) : t("regulationOptional")}</span></span>
@@ -353,9 +436,9 @@ function CreateWizard({
                 format: draft.format,
                 published: true,
                 publicRegistration: false,
-                studentDiscountPct: 0,
+                studentDiscountPct: Number(draft.studentDiscountPct) || 0,
                 entryFeeAmount: 0,
-                categories: [],
+                categories,
                 organizer: "JCA Chess Academy",
                 chiefArbiter: draft.chiefArbiter,
                 registrationDeadline: draft.registrationDeadline || "TBC",
@@ -402,7 +485,7 @@ function TournamentDetail({
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
   const tExternal = useTranslations("external");
-  const { students, create, update, remove, refresh } = useData();
+  const { students, create, update, remove } = useData();
   /* Also in the address bar: refreshing while reading Results should not
      silently return to Overview. */
   const [tab, setTab] = useUrlBackedState<"overview" | "participants" | "results">(
@@ -668,6 +751,15 @@ function TournamentDetail({
             />
           </Card>
 
+          {/* Read-only now: the sections are chosen in the Create Tournament
+              wizard, because the registration form asks which one you are
+              entering and that form can be open from the moment the event is
+              published. Editing them here meant an event could go live with a
+              link that collected a pile of unsorted entries.
+
+              Still shown, though. They are part of what the tournament *is* —
+              taking the display away with the editor would hide a fact about
+              the event rather than move where it is set. */}
           <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <SectionTitle>{t("categories")}</SectionTitle>
             {categoryRows.length === 0 ? (
@@ -682,8 +774,7 @@ function TournamentDetail({
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
-                      gap: 7,
-                      padding: "6px 8px 6px 12px",
+                      padding: "6px 12px",
                       borderRadius: 999,
                       border: `1px solid ${COLORS.border}`,
                       fontFamily: FONT,
@@ -692,61 +783,18 @@ function TournamentDetail({
                     }}
                   >
                     {c.name}
-                    <button
-                      type="button"
-                      aria-label={tCommon("deleteThing", { what: c.name })}
-                      onClick={() => setDeletingCategory(c)}
-                      style={{
-                        display: "inline-flex",
-                        border: "none",
-                        background: "transparent",
-                        padding: 0,
-                        cursor: "pointer",
-                        color: COLORS.textSecondary,
-                      }}
-                    >
-                      <Icon name="x" size={13} />
-                    </button>
                   </span>
                 ))}
               </div>
             )}
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <input
-                value={categoryDraft}
-                onChange={(e) => setCategoryDraft(e.target.value)}
-                placeholder={t("categoryPlaceholder")}
-                aria-label={t("categoryPlaceholder")}
-                style={{ ...fieldStyle, flex: "1 1 180px", width: "auto" }}
-              />
-              <ActionButton
-                className="jt-btn-ghost"
-                style={secondaryButtonStyle}
-                disabled={!categoryDraft.trim()}
-                onClick={() =>
-                  guarded(async () => {
-                    await create("tournament-categories", {
-                      tournament_id: tournament.id,
-                      name: categoryDraft.trim(),
-                    });
-                    setCategoryDraft("");
-                  })
-                }
-              >
-                <Icon name="plus" size={13} /> {tCommon("add")}
-              </ActionButton>
-            </div>
           </Card>
         </>
       ) : tab === "participants" ? (
         <>
-        {/* Above the roster: people waiting to be let in come before the people
-            already in. */}
-        <RegistrationQueue
-          tournamentId={tournament.id}
-          fullFee={tournament.entryFeeAmount}
-          onDecided={refresh}
-        />
+        {/* Above the roster: the public door specifically, then everyone who
+            came through any of them. Nobody waits to be let in any more, so
+            this is a record rather than a queue. */}
+        <RegistrationQueue tournamentId={tournament.id} />
         <Card style={{ padding: 0, overflow: "hidden" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: 14, flexWrap: "wrap" }}>
             <SearchInput
@@ -850,6 +898,9 @@ function TournamentDetail({
         <ResultsTab
           tournamentId={tournament.id}
           tournamentName={tournament.name}
+          /* Each age group is published as its own chess-results event, so the
+             tab strip is one link per group rather than one list divided up. */
+          categories={categoryRows}
           resultsPublic={tournament.published}
           onPublishChange={async (next) => {
             await update("tournaments", tournament.id, { results_public: next });
@@ -1145,6 +1196,12 @@ export function TournamentPage({
               early_bird_deadline: t.earlyBirdFeeMember ? iso(t.earlyBirdEnd ?? "") : null,
               regular_fee: money(t.entryFeeMember),
               max_participants: t.maxParticipants || null,
+              /* Clamped rather than trusted: the field is a number input, and
+                 a number input accepts -5 and 300 perfectly happily. The
+                 backend refuses anything outside 0–100, so an unclamped value
+                 would lose the whole tournament to a validation error at the
+                 last step of the wizard. */
+              student_discount_pct: Math.min(100, Math.max(0, Math.round(t.studentDiscountPct))),
             });
             for (const name of t.categories) {
               await create("tournament-categories", { tournament_id: created.tournament_id, name });

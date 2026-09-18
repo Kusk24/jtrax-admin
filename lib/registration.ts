@@ -40,14 +40,10 @@ export const listRegistrations = (tournamentId: string) =>
     .get<{ registrations: QueueEntry[] }>(`tournaments/${tournamentId}/registrations`)
     .then((r) => r.registrations);
 
-/** Approve an entry. `fee` overrides the quote when a claimed discount did not
-    hold up — the desk is the authority on that, not the form. */
-export const approveRegistration = (id: string, fee?: number) =>
-  api.post<{ status: string }>(`tournaments/registrations/${id}/approve`,
-    fee === undefined ? {} : { fee });
-
-export const rejectRegistration = (id: string) =>
-  api.post<{ status: string }>(`tournaments/registrations/${id}/reject`, {});
+/* approveRegistration and rejectRegistration were here. The academy accepts
+   every entry, so the endpoints behind them are gone — an entry is Approved
+   when it arrives. Correcting a fee or taking somebody back out is done on the
+   row itself now, through `tournament-registrations`. */
 
 /**
  * Where the public form for a tournament lives.

@@ -104,3 +104,22 @@ export const getChessResultsLink = (tournamentId: string) =>
   api
     .get<LinkedResults | { linked: false }>(`tournaments/${tournamentId}/chess-results`)
     .then((r) => ("source" in r ? r : null));
+
+/* ---------------------------------------------- one link per age group --- */
+
+/* A chessfest runs OPEN, U18, U12, U10 and U08 on the same day, and the
+   arbiter publishes each as its own chess-results event. So the group is what
+   carries a link — the tournament-level one above stays for the events that
+   really are a single list. */
+
+export const linkCategoryResults = (categoryId: string, url: string) =>
+  api.post<LinkedResults>(`tournaments/categories/${categoryId}/chess-results`, { url });
+
+export const unlinkCategoryResults = (categoryId: string) =>
+  api.del<{ linked: boolean }>(`tournaments/categories/${categoryId}/chess-results`);
+
+/** What one group is linked to. Null when it is not linked. */
+export const getCategoryResultsLink = (categoryId: string) =>
+  api
+    .get<LinkedResults | { linked: false }>(`tournaments/categories/${categoryId}/chess-results`)
+    .then((r) => ("source" in r ? r : null));

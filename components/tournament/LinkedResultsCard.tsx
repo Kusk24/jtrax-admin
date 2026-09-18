@@ -16,7 +16,8 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import {
-  linkChessResults, refreshLinkedResults, unlinkChessResults, type LinkedResults,
+  linkCategoryResults, linkChessResults, refreshLinkedResults,
+  unlinkCategoryResults, unlinkChessResults, type LinkedResults,
 } from "@/lib/chess-results";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT } from "@/lib/theme";
@@ -27,12 +28,16 @@ import { Badge, Card, SectionTitle } from "../ui";
 export function LinkedResultsCard({
   tournamentId,
   tournamentName,
+  categoryId,
   initial,
 }: {
   tournamentId: string;
   /** Searched for on chess-results, so staff never retype it. */
   tournamentName: string;
-  /** What the tournament is already linked to, when it is. */
+  /** When set, this card links that age group rather than the whole event —
+      a chessfest publishes OPEN, U18, U12, U10 and U08 separately. */
+  categoryId?: string;
+  /** What this scope is already linked to, when it is. */
   initial: LinkedResults | null;
 }) {
   const t = useTranslations("external");
@@ -43,6 +48,11 @@ export function LinkedResultsCard({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  /* One place decides the scope, so the link and unlink buttons on the same
+     card cannot end up pointing at different things. */
+  const link = (url: string) =>
+    categoryId ? linkCategoryResults(categoryId, url) : linkChessResults(tournamentId, url);
 
   async function run(fn: () => Promise<void>) {
     setBusy(true);
@@ -113,7 +123,7 @@ export function LinkedResultsCard({
               disabled={busy}
               onClick={() =>
                 void run(async () => {
-                  await unlinkChessResults(tournamentId);
+                  await (categoryId ? unlinkCategoryResults(categoryId) : unlinkChessResults(tournamentId));
                   setLinked(null);
                 })
               }
@@ -164,7 +174,7 @@ export function LinkedResultsCard({
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && url.trim() && void run(async () =>
-              setLinked(await linkChessResults(tournamentId, url.trim())))}
+              setLinked(await link(url.trim())))}
             placeholder="https://chess-results.com/tnr123456.aspx"
             aria-label={t("urlLabel")}
             style={{
@@ -186,7 +196,7 @@ export function LinkedResultsCard({
             style={primaryButtonStyle}
             disabled={busy || !url.trim()}
             onClick={() =>
-              void run(async () => setLinked(await linkChessResults(tournamentId, url.trim())))
+              void run(async () => setLinked(await link(url.trim())))
             }
           >
             <Icon name="link" size={15} color={COLORS.surface} /> {busy ? tCommon("saving") : t("link")}
