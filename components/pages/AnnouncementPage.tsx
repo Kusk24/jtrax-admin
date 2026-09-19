@@ -68,6 +68,7 @@ export function AnnouncementPage({
       {editing && (
         <CrudFormModal
           title={editing.mode === "create" ? t("new") : t("editTitle")}
+          isEdit={editing.mode !== "create"}
           fields={fields}
           values={values}
           onChange={setValues}

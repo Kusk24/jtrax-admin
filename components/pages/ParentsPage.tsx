@@ -506,6 +506,7 @@ export function ParentsPage({ detailId }: { detailId?: string }) {
       {editing && (
         <CrudFormModal
           title={editing.mode === "create" ? t("add") : t("editParent")}
+          isEdit={editing.mode !== "create"}
           fields={fields}
           values={values}
           onChange={setValues}

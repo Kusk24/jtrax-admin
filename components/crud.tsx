@@ -54,10 +54,26 @@ export function valuesFrom(fields: CrudField[], row: Record<string, unknown>): C
 
 /**
  * Turns form values into a request body: numbers parsed, checkboxes made
- * boolean, blank optional text dropped so a PATCH does not overwrite a column
- * with an empty string the user never touched.
+ * boolean.
+ *
+ * A blank optional field means two different things depending on `isEdit`,
+ * and conflating them was a real bug: clearing a package's Validity to blank
+ * and saving kept the old number, because the key was simply left out of the
+ * PATCH — and left out means "unchanged" to the backend's generic update
+ * handler, not "clear this".
+ *
+ * - **Creating** (`isEdit: false`): the key is omitted. There is nothing to
+ *   clear yet, and the registry's own `Default` substitution — and any
+ *   column-level SQL `DEFAULT` — only fires when the key is *absent* from the
+ *   insert, not when it is explicitly `null`. Sending `null` here would
+ *   silently skip a default the row was supposed to get.
+ * - **Editing** (`isEdit: true`): the key is sent as `null`. The row already
+ *   exists, there is no default left to preserve, and a PATCH only ever
+ *   changes the columns present in its body — `null` is the one value that
+ *   actually reaches the database and clears the column, an empty string
+ *   would just store the empty string itself on a text column.
  */
-export function toPayload(fields: CrudField[], values: CrudValues): Record<string, unknown> {
+export function toPayload(fields: CrudField[], values: CrudValues, isEdit: boolean): Record<string, unknown> {
   const body: Record<string, unknown> = {};
   for (const f of fields) {
     const v = values[f.name];
@@ -68,6 +84,7 @@ export function toPayload(fields: CrudField[], values: CrudValues): Record<strin
     const s = String(v ?? "").trim();
     if (s === "") {
       if (f.required) body[f.name] = "";
+      else if (isEdit) body[f.name] = null;
       continue;
     }
     body[f.name] = f.kind === "number" ? Number(s) : s;
@@ -201,6 +218,7 @@ export function CrudFormModal({
   onChange,
   onClose,
   onSubmit,
+  isEdit,
   submitLabel,
   extra,
 }: {
@@ -210,6 +228,11 @@ export function CrudFormModal({
   onChange: (values: CrudValues) => void;
   onClose: () => void;
   onSubmit: (payload: Record<string, unknown>) => Promise<void>;
+  /* Whether this save is a PATCH to an existing row rather than a fresh
+     INSERT — see toPayload for why a blank optional field is written
+     differently either way. No default: every caller decides, on purpose,
+     rather than the wrong one being silently picked for it. */
+  isEdit: boolean;
   submitLabel?: string;
   /* Anything the resource needs beyond a flat field list — child pickers,
      generated-password notices — rendered under the fields. */
@@ -228,7 +251,7 @@ export function CrudFormModal({
     setBusy(true);
     setError(null);
     try {
-      await onSubmit(toPayload(fields, values));
+      await onSubmit(toPayload(fields, values, isEdit));
       onClose();
     } catch (e) {
       setError(errorText(e, t("saveFailed")));
