@@ -3,8 +3,10 @@
 import { useMemo, useState } from "react";
 import { ResultsTab } from "../tournament/ResultsTab";
 import { ExternalTournaments } from "../tournament/ExternalTournaments";
+import { EntryFeeCard } from "../tournament/EntryFeeCard";
 import { RegistrationCard } from "../tournament/RegistrationCard";
 import { RegistrationQueue } from "../tournament/RegistrationQueue";
+import { StudentPricingChoice } from "../tournament/StudentPricingChoice";
 import { RegulationCard } from "../tournament/RegulationCard";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
@@ -127,6 +129,9 @@ function CreateWizard({
      entries nobody had sorted. */
   const [categories, setCategories] = useState<string[]>([]);
   const [categoryDraft, setCategoryDraft] = useState("");
+  /* Kept apart from `draft`, which is all text inputs. The defaults are the
+     rule every tournament had before the organiser could choose. */
+  const [studentPricing, setStudentPricing] = useState({ discount: true, earlyBird: false });
 
   function addCategory() {
     const name = categoryDraft.trim();
@@ -312,6 +317,11 @@ function CreateWizard({
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 13 }}>
               {fields.slice(8).map(renderField)}
             </div>
+            <StudentPricingChoice
+              discount={studentPricing.discount}
+              earlyBird={studentPricing.earlyBird}
+              onChange={setStudentPricing}
+            />
           </Card>
           <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <SectionTitle>{t("categoriesTitle")}</SectionTitle>
@@ -437,6 +447,8 @@ function CreateWizard({
                 published: true,
                 publicRegistration: false,
                 studentDiscountPct: Number(draft.studentDiscountPct) || 0,
+                studentGetsDiscount: studentPricing.discount,
+                studentGetsEarlyBird: studentPricing.earlyBird,
                 entryFeeAmount: 0,
                 categories,
                 organizer: "JCA Chess Academy",
@@ -562,6 +574,9 @@ function TournamentDetail({
   const [page, setPage] = useState(0);
   const [mode, setMode] = useViewMode("participants", LIST_FIRST);
   const [drawer, setDrawer] = useState<Participant | null>(null);
+  /* Re-read from the live list, so a fee saved or paid from inside the drawer
+     shows at once rather than when it is closed and opened again. */
+  const shown = drawer ? tournament.participants.find((p) => p.id === drawer.id) ?? drawer : null;
 
   const status = statusChipColors(tournament.status);
   const filled = tournament.maxParticipants
@@ -667,6 +682,9 @@ function TournamentDetail({
         open={tournament.publicRegistration}
         fee={tournament.entryFeeAmount}
         discountPct={tournament.studentDiscountPct}
+        studentFeeNow={tournament.studentFeeNow}
+        studentGetsDiscount={tournament.studentGetsDiscount ?? true}
+        studentGetsEarlyBird={tournament.studentGetsEarlyBird ?? false}
         onChange={async (patch) => {
           await update("tournaments", tournament.id, patch);
         }}
@@ -908,24 +926,24 @@ function TournamentDetail({
         />
       )}
 
-      {drawer && (
-        <Drawer title={drawer.name} onClose={() => setDrawer(null)}>
+      {shown && (
+        <Drawer title={shown.name} onClose={() => setDrawer(null)}>
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <Avatar initials={initialsOf(drawer.name)} size={52} />
+              <Avatar initials={initialsOf(shown.name)} size={52} />
               <div>
-                <div style={{ fontFamily: FONT, fontSize: 17, fontWeight: 700, color: COLORS.text }}>{drawer.name}</div>
+                <div style={{ fontFamily: FONT, fontSize: 17, fontWeight: 700, color: COLORS.text }}>{shown.name}</div>
                 <div style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
-{t("ratingLine", { age: drawer.age, rating: drawer.rating, category: drawer.category })}
+{t("ratingLine", { age: shown.age, rating: shown.rating, category: shown.category })}
                 </div>
               </div>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
               {[
-                { label: t("wins"), value: drawer.wins, color: COLORS.success },
-                { label: t("draws"), value: drawer.draws, color: COLORS.warning },
-                { label: t("losses"), value: drawer.losses, color: COLORS.danger },
+                { label: t("wins"), value: shown.wins, color: COLORS.success },
+                { label: t("draws"), value: shown.draws, color: COLORS.warning },
+                { label: t("losses"), value: shown.losses, color: COLORS.danger },
               ].map((s) => (
                 <div
                   key={s.label}
@@ -944,17 +962,31 @@ function TournamentDetail({
 
             <InfoGrid
               rows={[
-                { label: t("score"), value: drawer.score },
-                { label: t("prize"), value: drawer.prize },
-                { label: t("attendance"), value: drawer.attendance },
-                { label: t("payment"), value: tStatus(drawer.paymentStatus) },
-                { label: t("guardian"), value: drawer.guardian },
-                { label: t("contact"), value: drawer.contact },
+                { label: t("score"), value: shown.score },
+                { label: t("prize"), value: shown.prize },
+                { label: t("attendance"), value: shown.attendance },
+                { label: t("guardian"), value: shown.guardian },
+                { label: t("contact"), value: shown.contact },
               ]}
             />
 
-            {drawer.notes && (
+            {shown.id && (
+              <EntryFeeCard
+                registrationId={shown.id}
+                fee={shown.feeCharged ?? 0}
+                paid={shown.paymentStatus === "Paid"}
+              />
+            )}
+
+            {/* What the family typed on the registration form. Labelled, now
+                that there are two of them and they go to different people: an
+                allergy is for whoever is in the room on the day. */}
+            {[
+              { label: t("medicalNotes"), value: shown.medicalNotes },
+              { label: t("remarks"), value: shown.notes },
+            ].filter((x) => x.value).map((x) => (
               <div
+                key={x.label}
                 style={{
                   padding: 12,
                   borderRadius: 10,
@@ -965,9 +997,21 @@ function TournamentDetail({
                   color: COLORS.textSecondary,
                 }}
               >
-                {drawer.notes}
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: 0.6,
+                    textTransform: "uppercase",
+                    color: COLORS.text,
+                    marginBottom: 4,
+                  }}
+                >
+                  {x.label}
+                </div>
+                {x.value}
               </div>
-            )}
+            ))}
           </div>
         </Drawer>
       )}
@@ -1094,7 +1138,13 @@ export function TournamentPage({
       { name: "registration_deadline", label: t("registrationCloses"), kind: "date", half: true },
       { name: "max_participants", label: t("fieldMaxParticipants"), kind: "number", half: true, min: 0 },
       { name: "early_bird_fee", label: t("earlyBirdFee"), kind: "number", half: true, min: 0 },
+      { name: "early_bird_deadline", label: t("earlyBirdUntil"), kind: "date", half: true },
       { name: "regular_fee", label: t("regularFee"), kind: "number", half: true, min: 0 },
+      { name: "student_discount_pct", label: t("discountLabel"), kind: "number", half: true, min: 0, help: t("studentPricingHint") },
+      /* What a JCA student pays is the organiser's choice per event; the
+         server prices every entry from these two. */
+      { name: "student_gets_discount", label: t("studentGetsDiscount"), kind: "checkbox" },
+      { name: "student_gets_early_bird", label: t("studentGetsEarlyBird"), kind: "checkbox" },
     ],
     [t, tCommon, tStatus],
   );
@@ -1114,7 +1164,11 @@ export function TournamentPage({
       registration_deadline: read("registration_deadline"),
       max_participants: read("max_participants"),
       early_bird_fee: read("early_bird_fee"),
+      early_bird_deadline: read("early_bird_deadline"),
       regular_fee: read("regular_fee"),
+      student_discount_pct: read("student_discount_pct"),
+      student_gets_discount: row["student_gets_discount"] == null || Number(row["student_gets_discount"]) === 1,
+      student_gets_early_bird: Number(row["student_gets_early_bird"]) === 1,
     });
     setEditingId(tournament.id);
   }
@@ -1202,6 +1256,8 @@ export function TournamentPage({
                  would lose the whole tournament to a validation error at the
                  last step of the wizard. */
               student_discount_pct: Math.min(100, Math.max(0, Math.round(t.studentDiscountPct))),
+              student_gets_discount: t.studentGetsDiscount ?? true,
+              student_gets_early_bird: t.studentGetsEarlyBird ?? false,
             });
             for (const name of t.categories) {
               await create("tournament-categories", { tournament_id: created.tournament_id, name });
