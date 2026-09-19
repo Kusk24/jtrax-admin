@@ -25,6 +25,9 @@ export function RegistrationCard({
   open,
   fee,
   discountPct,
+  studentFeeNow,
+  studentGetsDiscount,
+  studentGetsEarlyBird,
   onChange,
 }: {
   tournamentId: string;
@@ -32,6 +35,10 @@ export function RegistrationCard({
   open: boolean;
   fee: number;
   discountPct: number;
+  /** What a JCA student is charged today, priced by the server. */
+  studentFeeNow?: number;
+  studentGetsDiscount: boolean;
+  studentGetsEarlyBird: boolean;
   /** Patches the tournament row; the parent owns the reload. */
   onChange: (patch: Record<string, unknown>) => Promise<void>;
 }) {
@@ -53,6 +60,18 @@ export function RegistrationCard({
       setBusy(false);
     }
   }
+
+  /* Which of the two reductions the organiser gave students, in words. The
+     figure beside it is the server's, so the card cannot disagree with what a
+     family is charged. */
+  const discounting = studentGetsDiscount && discountPct > 0;
+  const studentNote = discounting && studentGetsEarlyBird
+    ? t("pricingBoth", { pct: discountPct })
+    : discounting
+      ? t("discountOf", { pct: discountPct })
+      : studentGetsEarlyBird
+        ? t("pricingEarly")
+        : t("noDiscount");
 
   /* saveDiscount was here. The percentage is set in the Create Tournament
      wizard now, beside the fee it comes off, so that the first person through
@@ -88,8 +107,8 @@ export function RegistrationCard({
         <Figure label={t("publicFee")} value={fee > 0 ? fmtTHB(fee) : t("noFee")} />
         <Figure
           label={t("studentFee")}
-          value={fee > 0 ? fmtTHB(studentFee(fee, discountPct)) : t("noFee")}
-          note={discountPct > 0 ? t("discountOf", { pct: discountPct }) : t("noDiscount")}
+          value={fee > 0 ? fmtTHB(studentFeeNow ?? studentFee(fee, discountPct)) : t("noFee")}
+          note={studentNote}
         />
       </div>
 

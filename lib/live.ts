@@ -312,14 +312,23 @@ export function toTournaments(c: LiveCollections): Tournament[] {
       studentId: s(r, "student_id"),
       categoryId: s(r, "tournament_category_id"),
       dateOfBirth: s(r, "participant_date_of_birth"),
-      feeCharged: n(r, "fee_charged"),
+      /* What the entry owes: the charge once one is set, the quote before —
+         the same order the backend collects by. */
+      feeCharged: r["fee_charged"] == null ? n(r, "fee_quoted") : n(r, "fee_charged"),
       name: s(r, "participant_name"),
       rating: n(r, "fide_rating"),
       category: s(cats.find((k) => s(k, "tournament_category_id") === s(r, "tournament_category_id")) ?? {}, "name") || "—",
       score: "—",
       rank: i + 1,
       prize: "—",
-      paymentStatus: "Paid",
+      /* The real thing since 0032: a payment row against the registration,
+         marked Paid by the Stripe webhook for a card or by "Mark paid at desk"
+         for money taken at the counter. This used to read "Paid" for
+         everybody, which told the desk nothing and told it confidently. */
+      paymentStatus: s(
+        c.payments.find((p) => s(p, "tournament_registration_id") === s(r, "tournament_registration_id")) ?? {},
+        "status",
+      ) === "Paid" ? "Paid" : "Pending",
       age: 0,
       guardian: "—",
       contact: s(r, "participant_contact"),
@@ -327,7 +336,10 @@ export function toTournaments(c: LiveCollections): Tournament[] {
       losses: 0,
       draws: 0,
       attendance: "—",
-      notes: "",
+      /* What the family wrote on the registration form. Both were "" for every
+         row until 0033 gave them columns to come from. */
+      medicalNotes: s(r, "medical_notes"),
+      notes: s(r, "remarks"),
     }));
     const backendStatus = s(t, "tournament_status");
     return {
@@ -345,6 +357,9 @@ export function toTournaments(c: LiveCollections): Tournament[] {
       publicRegistration: n(t, "public_registration") === 1,
       chessResultsId: t["chess_results_id"] == null ? undefined : n(t, "chess_results_id"),
       studentDiscountPct: n(t, "student_discount_pct"),
+      studentGetsDiscount: t["student_gets_discount"] == null || n(t, "student_gets_discount") === 1,
+      studentGetsEarlyBird: n(t, "student_gets_early_bird") === 1,
+      studentFeeNow: t["student_fee"] == null ? undefined : n(t, "student_fee"),
       entryFeeAmount: t["regular_fee"] == null ? 0 : n(t, "regular_fee"),
       categories: cats.map((k) => s(k, "name")),
       categoryRows: cats.map((k) => ({ id: s(k, "tournament_category_id"), name: s(k, "name") })),

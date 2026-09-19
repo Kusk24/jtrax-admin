@@ -200,6 +200,10 @@ export type Participant = {
   losses: number;
   draws: number;
   attendance: string;
+  /** What the family typed on the registration form: anything an arbiter or a
+      first-aider would need to know on the day. */
+  medicalNotes: string;
+  /** Their remarks — a request for the office rather than for the day. */
   notes: string;
 };
 
@@ -220,6 +224,12 @@ export type Tournament = {
   chessResultsId?: number;
   /** Percent off the entry fee for one of the academy's own students. */
   studentDiscountPct: number;
+  /** Which reductions a JCA student gets here — the discount, the early-bird
+      price, both or neither. Absent means the old rule: the discount alone. */
+  studentGetsDiscount?: boolean;
+  studentGetsEarlyBird?: boolean;
+  /** What a JCA student is charged today, as the server prices it. */
+  studentFeeNow?: number;
   /** The entry fee as a number, for arithmetic. `entryFeeMember` is the same
       value already formatted, and formatted strings do not divide. */
   entryFeeAmount: number;
