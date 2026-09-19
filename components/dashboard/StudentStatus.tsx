@@ -12,13 +12,17 @@ import type { Student } from "@/lib/data";
 import { ACCENTS, COLORS, FONT, FONT_DISPLAY } from "@/lib/theme";
 import { useData } from "../DataProvider";
 import { Card, SectionTitle } from "../ui";
-import { CreditReminders } from "./CreditReminders";
 
+/* Keyed to the approved dashboard reference: the two conditions that need a
+   call today are the loud ones, and the lapsed pair sits back. Red is "ring
+   this family", not "worst case" — an expired account has already stopped
+   costing the desk anything, where a low balance is the call that still has to
+   be made. */
 const STATUS_COLOR: Record<Student["status"], string> = {
   Normal: ACCENTS.green,
-  "Low Credit": ACCENTS.amber,
-  Expiring: ACCENTS.plum,
-  Expired: ACCENTS.red,
+  "Low Credit": ACCENTS.red,
+  Expiring: ACCENTS.blue,
+  Expired: ACCENTS.amber,
   Inactive: COLORS.disabled,
 };
 
@@ -34,16 +38,11 @@ export function StudentStatus() {
 
   return (
     <Card className="jt-student-status" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-        <div>
-          <SectionTitle>{t("rosterHealth")}</SectionTitle>
-          <p style={{ margin: "3px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-            {t("statusFilterHint")}
-          </p>
-        </div>
-        {/* The action lives on the card that shows who needs it: the amber and
-            plum rings are the families this reaches. */}
-        <CreditReminders />
+      <div>
+        <SectionTitle>{t("studentStatus")}</SectionTitle>
+        <p style={{ margin: "3px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+          {t("statusFilterHint")}
+        </p>
       </div>
 
       <div className="jt-status-content">

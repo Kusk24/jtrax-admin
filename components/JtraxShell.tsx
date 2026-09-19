@@ -32,6 +32,24 @@ function Sidebar({
   const { role } = useJtrax();
   const t = useTranslations("nav");
   const items = navItemsForRole(role);
+  const [tip, setTip] = useState<{ label: string; top: number } | null>(null);
+
+  /**
+   * The collapsed rail's labels.
+   *
+   * These cannot be a CSS `::after` on the row, which is how they were first
+   * written and why they never appeared: the nav scrolls (eleven items
+   * overflow a laptop viewport), and a scroll container clips any descendant
+   * that escapes its box — which is exactly what a label to the right of a
+   * 76px rail does. So one fixed-position element lives outside the nav and
+   * follows whichever row is pointed at.
+   */
+  const showTip = (label: string) => (e: { currentTarget: HTMLElement }) => {
+    if (expanded) return;
+    const box = e.currentTarget.getBoundingClientRect();
+    setTip({ label, top: box.top + box.height / 2 });
+  };
+  const hideTip = () => setTip(null);
 
   return (
     /* Layout lives in `.jt-sidebar` in globals.css, not here: it changes with
@@ -105,7 +123,10 @@ function Sidebar({
               aria-label={t(item.id)}
               aria-current={active ? "page" : undefined}
               className="jt-nav-row"
-              data-tooltip={t(item.id)}
+              onMouseEnter={showTip(t(item.id))}
+              onMouseLeave={hideTip}
+              onFocus={showTip(t(item.id))}
+              onBlur={hideTip}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -142,7 +163,10 @@ function Sidebar({
           type="submit"
           aria-label={t("logout")}
           className="jt-nav-row"
-          data-tooltip={t("logout")}
+          onMouseEnter={showTip(t("logout"))}
+          onMouseLeave={hideTip}
+          onFocus={showTip(t("logout"))}
+          onBlur={hideTip}
           style={{
             display: "flex",
             alignItems: "center",
@@ -164,6 +188,15 @@ function Sidebar({
           </span>
         </button>
       </form>
+
+      {/* Outside the nav on purpose — inside it, the scroll container clips it.
+          Decorative: every row already carries the same text as its
+          `aria-label`, so a screen reader must not hear it twice. */}
+      {!expanded && tip && (
+        <span className="jt-nav-tip" style={{ top: tip.top }} aria-hidden>
+          {tip.label}
+        </span>
+      )}
     </aside>
   );
 }

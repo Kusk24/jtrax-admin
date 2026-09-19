@@ -7,6 +7,7 @@
  * each grouping can be checked against a handful of rows.
  */
 
+import type { TrendPoint } from "./derive";
 import type { CheckinDef, Payment, Student } from "./data";
 
 /** The five conditions a student can be in, in the order the donut draws them:
@@ -92,6 +93,62 @@ function rank(labels: string[], limit: number): { rows: Grouped[]; hidden: numbe
 function top(rows: Grouped[], limit: number): { rows: Grouped[]; hidden: number } {
   const sorted = rows.sort((a, b) => b.value - a.value || a.label.localeCompare(b.label));
   return { rows: sorted.slice(0, limit), hidden: Math.max(0, sorted.length - limit) };
+}
+
+/** The windows the revenue card's sparkline can be read over. */
+export const REVENUE_RANGES = ["7D", "30D", "Year"] as const;
+
+export type RevenueRange = (typeof REVENUE_RANGES)[number];
+
+const isoDay = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+/**
+ * Takings bucketed across a window, oldest first, for the revenue sparkline.
+ *
+ * Every bucket in the window is emitted even when it took nothing, so a quiet
+ * week draws as a line along the floor rather than as a shorter chart — a
+ * sparkline with missing days lies about the shape, which is the only thing it
+ * carries.
+ *
+ * `TrendPoint.month` holds the bucket key rather than a month name. Nothing
+ * renders it — `Sparkline` reads `value` alone — and putting a formatted month
+ * here would be the copy this module deliberately does not own.
+ */
+export function revenueSeries(
+  payments: Pick<Payment, "amount" | "isoDate" | "status">[],
+  range: RevenueRange,
+  now = new Date(),
+): TrendPoint[] {
+  const totals = new Map<string, number>();
+  for (const p of payments) {
+    /* Same rule as the headline total: pending has not cleared, refunded
+       went back out. */
+    if ((p.status || "Paid") !== "Paid") continue;
+    const iso = p.isoDate ?? "";
+    if (!iso) continue;
+    const key = range === "Year" ? iso.slice(0, 7) : iso.slice(0, 10);
+    totals.set(key, (totals.get(key) ?? 0) + parseAmount(p.amount));
+  }
+
+  const points: TrendPoint[] = [];
+  if (range === "Year") {
+    for (let back = 11; back >= 0; back--) {
+      const month = new Date(now.getFullYear(), now.getMonth() - back, 1);
+      const key = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, "0")}`;
+      points.push({ month: key, value: totals.get(key) ?? 0 });
+    }
+    return points;
+  }
+
+  const days = range === "7D" ? 7 : 30;
+  for (let back = days - 1; back >= 0; back--) {
+    /* Built from the date parts rather than by subtracting milliseconds, so
+       the series stays on calendar days across a DST change. */
+    const key = isoDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - back));
+    points.push({ month: key, value: totals.get(key) ?? 0 });
+  }
+  return points;
 }
 
 /**

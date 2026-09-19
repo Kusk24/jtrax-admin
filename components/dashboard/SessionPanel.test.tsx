@@ -51,6 +51,23 @@ vi.mock("@/components/DataProvider", () => ({
   useData: () => ({ ...state, create, batch }),
 }));
 
+/**
+ * The panel's create form opens on `nowClock()` — the real wall clock, by
+ * design. Left unmocked, these tests were quietly time-of-day dependent: late
+ * at night, the two hours the default asks for run past midnight, so mount
+ * picks a *shorter* length than the default, and every test that then only
+ * changes the start hour (keeping the length the desk already has, which is
+ * the panel's whole point — see `chooseStart`) inherited that shorter number
+ * instead of the 120 these tests assert. Pinned to the middle of the day,
+ * where two hours always has room, rather than faking the system clock —
+ * `vi.useFakeTimers()` across a file this full of `userEvent.click` calls
+ * just hangs them, since userEvent's own click delay runs on real timers.
+ */
+vi.mock("@/lib/session-draft", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/lib/session-draft")>();
+  return { ...real, nowClock: () => "10:00" };
+});
+
 const { SessionPanel } = await import("./SessionPanel");
 const { ErrorToastProvider } = await import("@/components/ErrorToast");
 
@@ -121,35 +138,55 @@ describe("choosing the times", () => {
     expect(f.startMinute.value).toBe("45");
   });
 
-  /* Not anchored to now: a session is written down when the desk gets to it. */
-  it("does not start from the current time", () => {
+  /**
+   * Opens on now, running for the default length.
+   *
+   * This reverses the panel's original rule ("not anchored to now: a session
+   * is written down when the desk gets to it"), at the user's request on
+   * 2026-09-19: in practice a class is created as it starts, so the empty
+   * form asked the desk to re-enter what the clock already knew.
+   */
+  /* nowClock()'s own rounding-to-the-picker's-step behaviour is unit-tested
+     directly in lib/session-draft.test.ts, against the real clock. This is
+     the wiring on top of it: the panel actually calls nowClock() for its
+     initial state, and it is the default 120-minute length that lands on
+     whatever that start turns out to be — proven here against the file's
+     pinned "10:00" mock, same as every other test in it. */
+  it("opens on now and the default length", () => {
     const f = renderPanel();
-    expect(f.startHour.value).toBe("");
-    expect(f.startHour.options[1].value).toBe("00");
+    expect(f.startHour.value).toBe("10");
+    expect(f.startMinute.value).toBe("00");
+    expect(f.length.value).toBe("120");
+    expect(screen.getAllByText(/Ends 12:00/).length).toBeGreaterThan(0);
   });
 
   /* Choosing 2pm means 14:00 without also having to say "and no minutes". */
   it("treats an hour on its own as a whole time", async () => {
     const user = userEvent.setup();
     const f = renderPanel();
+    await user.selectOptions(f.startMinute, "");
     await user.selectOptions(f.startHour, "14");
     /* A whole start, so the class has a length and an end to show. */
-    expect(f.length.value).toBe("60");
-    expect(screen.getAllByText(/Ends 15:00/).length).toBeGreaterThan(0);
+    expect(f.length.value).toBe("120");
+    expect(screen.getAllByText(/Ends 16:00/).length).toBeGreaterThan(0);
   });
 
-  it("has nothing to put minutes on until an hour is chosen", () => {
+  it("has nothing to put minutes on until an hour is chosen", async () => {
+    const user = userEvent.setup();
     const f = renderPanel();
+    /* The form now opens with a start already in it, so the empty state this
+       rule is about has to be got back to first. */
+    await user.selectOptions(f.startHour, "");
     expect(f.startMinute.disabled).toBe(true);
   });
 
-  /* An hour, which is what a class is and what a credit buys. */
+  /* Two hours, which is what the academy timetables — and so two credits. */
   it("offers the usual length as soon as a start is chosen", async () => {
     const user = userEvent.setup();
     const f = renderPanel();
     await setTime(user, f.startHour, f.startMinute, "14:00");
-    expect(f.length.value).toBe("60");
-    expect(screen.getAllByText(/Ends 15:00/).length).toBeGreaterThan(0);
+    expect(f.length.value).toBe("120");
+    expect(screen.getAllByText(/Ends 16:00/).length).toBeGreaterThan(0);
   });
 
   /* The whole reason for asking a length rather than an end time: moving the
@@ -167,8 +204,13 @@ describe("choosing the times", () => {
     expect(screen.getAllByText(/Ends 11:00/).length).toBeGreaterThan(0);
   });
 
-  it("has no length to offer until a start is chosen", () => {
+  it("has no length to offer once the start is cleared", async () => {
+    const user = userEvent.setup();
     const f = renderPanel();
+    /* The form now opens with a start already in it (now, rounded to the
+       picker's step) — this rule is about the empty state, so it has to be
+       got back to first. */
+    await user.selectOptions(f.startHour, "");
     expect(f.length.disabled).toBe(true);
   });
 
@@ -197,7 +239,11 @@ describe("the half-hour floor", () => {
   });
 
   it("says so while there is no length yet", async () => {
+    const user = userEvent.setup();
     const f = renderPanel();
+    /* The panel now opens with a start already chosen and so a valid length
+       — clear it to get back to the state this rule is about. */
+    await user.selectOptions(f.startHour, "");
     expect(f.button.disabled).toBe(true);
     expect(screen.getAllByText("A class runs for at least half an hour.").length).toBeGreaterThan(0);
   });
