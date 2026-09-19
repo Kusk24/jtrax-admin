@@ -117,7 +117,8 @@
     "deleting": "Deleting…",
     "loadFailed": "Could not load. Please try again.",
     "checkInFailed": "Could not add the student to this class.",
-    "regulationUploadFailed": "Tournament created, but the regulation could not be attached."
+    "regulationUploadFailed": "Tournament created, but the regulation could not be attached.",
+    "saveChanges": "Save Changes"
   },
   "share": {
     "copy": "Copy link",
@@ -243,8 +244,8 @@
     "sendFailed": "Could not send the reminders.",
     "remindersSent": "{count, plural, =1 {1 family notified} other {# families notified}}",
     "nobodyToRemind": "No expiring credits to notify anyone about",
-    "rosterHealth": "Roster Health",
-    "rosterHealthSub": "Every student by credit condition",
+    "studentStatus": "Student Status",
+    "studentStatusSub": "Every student by credit condition",
     "statusFilterHint": "Select a status to open those students",
     "studentStatusLabel": "Student status for {count} students",
     "filterStudentsByStatus": "Show students with status {status}",
@@ -278,7 +279,24 @@
     "noClassesToday": "No classes today",
     "noClassesTodaySub": "Take a breather — or create today's first class.",
     "noCheckinsToday": "No students checked in yet",
-    "noCheckinsTodaySub": "Check-ins will appear here as students arrive."
+    "noCheckinsTodaySub": "Check-ins will appear here as students arrive.",
+    "revenueRangeLabel": "Revenue range",
+    "revenueRange": {
+      "7D": "7D",
+      "30D": "30D",
+      "Year": "Year"
+    },
+    "revenueChartRangeLabel": "Revenue over the last {range}, from {from} to {to} THB",
+    "calendarToday": "Today",
+    "calendarPrevWeek": "Previous week",
+    "calendarNextWeek": "Next week",
+    "createClassTitle": "Create new class",
+    "createClassBody": "Put a new class on today's timetable.",
+    "timePassed": "Time passed",
+    "minutesOf": "{done} min / {total} min",
+    "classFilterLabel": "Filter today's classes",
+    "noClassesInFilter": "No classes match this filter.",
+    "classFilterAll": "All"
   },
   "find": {
     "title": "Find a Student",
@@ -345,7 +363,12 @@
     "lengthMinutes": "{minutes} min",
     "lengthHours": "{hours, plural, one {# hour} other {# hours}}",
     "lengthHoursMinutes": "{hours} h {minutes} min",
-    "endsAt": "Ends {time}"
+    "endsAt": "Ends {time}",
+    "cancelClass": "Cancel class",
+    "cancelConfirm": "{count, plural, =0 {Cancel this class? It will be removed from today.} one {Cancel this class? # student is checked in and their credit is refunded.} other {Cancel this class? # students are checked in and their credits are refunded.}}",
+    "cancelConfirmYes": "Yes, cancel class",
+    "cancelFailed": "Could not cancel the class.",
+    "lengthChangeFailed": "Could not change the length."
   },
   "students": {
     "title": "Students",
@@ -484,7 +507,8 @@
       "fideRating": "FIDE rating",
       "parentEmail": "email",
       "parentPhone": "contact number"
-    }
+    },
+    "neverExpires": "Never expires"
   },
   "parents": {
     "title": "Parents",
@@ -629,7 +653,7 @@
     "regulationDocument": "Regulation Document",
     "regulationOptional": "Optional — attach the organiser's official PDF or image.",
     "replaceFile": "Replace file",
-    "mapHint": "Venue map preview appears after creation",
+    "mapHint": "Type a venue name to see a map preview.",
     "title": "Tournament",
     "sub": "Upcoming and past tournaments",
     "create": "Create Tournament",
@@ -649,16 +673,9 @@
     "totalRevenue": "Total Revenue",
     "participants": "Participants",
     "registrationFilled": "Registration Filled",
-    "summary": "Tournament Summary",
     "organizer": "Organizer",
-    "chiefArbiter": "Chief Arbiter",
-    "format": "Format",
-    "timeControl": "Time Control",
-    "categories": "Categories",
     "registrationCloses": "Registration closes",
     "entryFee": "Entry fee",
-    "entryFeeValue": "{member} member / {nonMember} non-member",
-    "rounds": "Rounds",
     "address": "Address",
     "searchParticipants": "Search participants",
     "noParticipants": "No participants yet.",
@@ -699,23 +716,17 @@
     "fieldName": "Tournament Name",
     "fieldDate": "Date",
     "fieldVenue": "Venue",
-    "fieldFormat": "Format",
-    "fieldTimeControl": "Time Control",
-    "fieldChiefArbiter": "Chief Arbiter",
     "fieldMaxParticipants": "Max Participants",
     "editTitle": "Edit Tournament",
     "endDate": "End date",
     "earlyBirdFee": "Early bird fee",
-    "regularFee": "Regular fee",
     "deleteNote": "Its categories and participant registrations are removed with it.",
     "addParticipant": "Add Participant",
     "editParticipant": "Edit Participant",
     "participantStudentHelp": "Registrations are linked to a student record.",
     "dateOfBirth": "Date of birth",
     "feeCharged": "Fee charged",
-    "noCategories": "No categories yet.",
     "categoryPlaceholder": "Category name, e.g. Under 10",
-    "categoryDeleteNote": "Participants registered in this category keep their registration, but lose the category.",
     "tabResults": "results",
     "regulationTitle": "Regulation",
     "regulationAttachedSub": "Parents can read this from the registration page.",
@@ -730,7 +741,10 @@
     "discountLabel": "Student discount (%)",
     "discountHint": "Percentage off the regular fee for JCA students. 0 for none.",
     "categoriesTitle": "Categories",
-    "categoriesHint": "The sections entrants pick from on the registration form. An age in the name — \"U8 Boys\" — is enforced against the player’s date of birth."
+    "categoriesHint": "The sections entrants pick from on the registration form. An age in the name — \"U8 Boys\" — is enforced against the player’s date of birth.",
+    "mapPreviewTitle": "Venue map preview",
+    "viewOnMap": "View on Map",
+    "noCategories": "No categories yet."
   },
   "announcement": {
     "title": "Announcement",
@@ -851,7 +865,9 @@
     "packageDeleteNote": "The package is retired: it leaves the price list and the till, and cannot be sold again. Payments that bought it keep saying what they bought.",
     "firstPackageTitle": "Its first credit package",
     "firstPackageHelp": "A course cannot be sold, paid for or attended until it has one. Change it or add more on the Credit Packages card below.",
-    "firstPackageIncomplete": "Credits and validity must be more than zero. A free course is fine — leave the price at 0."
+    "firstPackageIncomplete": "Credits must be more than zero. A free course is fine — leave the price at 0.",
+    "validityForever": "Never expires",
+    "validityHelp": "Leave blank for credits that never expire."
   },
   "settings": {
     "title": "Academy Rules",

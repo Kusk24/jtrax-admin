@@ -117,7 +117,8 @@
     "deleting": "กำลังลบ…",
     "loadFailed": "โหลดไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
     "checkInFailed": "ไม่สามารถเพิ่มนักเรียนเข้าคลาสนี้ได้",
-    "regulationUploadFailed": "สร้างรายการแข่งขันแล้ว แต่แนบไฟล์ระเบียบการไม่สำเร็จ"
+    "regulationUploadFailed": "สร้างรายการแข่งขันแล้ว แต่แนบไฟล์ระเบียบการไม่สำเร็จ",
+    "saveChanges": "บันทึกการเปลี่ยนแปลง"
   },
   "share": {
     "copy": "คัดลอกลิงก์",
@@ -243,8 +244,8 @@
     "sendFailed": "ส่งแจ้งเตือนไม่สำเร็จ",
     "remindersSent": "แจ้งแล้ว {count} ครอบครัว",
     "nobodyToRemind": "ไม่มีเครดิตใกล้หมดอายุที่ต้องแจ้ง",
-    "rosterHealth": "สถานะนักเรียน",
-    "rosterHealthSub": "นักเรียนทั้งหมดแยกตามสถานะเครดิต",
+    "studentStatus": "สถานะนักเรียน",
+    "studentStatusSub": "นักเรียนทั้งหมดแยกตามสถานะเครดิต",
     "statusFilterHint": "เลือกสถานะเพื่อเปิดรายชื่อนักเรียน",
     "studentStatusLabel": "สถานะของนักเรียน {count} คน",
     "filterStudentsByStatus": "แสดงนักเรียนที่มีสถานะ {status}",
@@ -278,7 +279,24 @@
     "noClassesToday": "วันนี้ไม่มีคลาสเรียน",
     "noClassesTodaySub": "พักสักครู่ หรือสร้างคลาสแรกของวันนี้",
     "noCheckinsToday": "ยังไม่มีนักเรียนเช็คอิน",
-    "noCheckinsTodaySub": "รายชื่อเช็คอินจะแสดงที่นี่เมื่อนักเรียนมาถึง"
+    "noCheckinsTodaySub": "รายชื่อเช็คอินจะแสดงที่นี่เมื่อนักเรียนมาถึง",
+    "revenueRangeLabel": "ช่วงเวลารายได้",
+    "revenueRange": {
+      "7D": "7 วัน",
+      "30D": "30 วัน",
+      "Year": "ปี"
+    },
+    "revenueChartRangeLabel": "รายได้ในช่วง {range} ที่ผ่านมา ตั้งแต่ {from} ถึง {to} บาท",
+    "calendarToday": "วันนี้",
+    "calendarPrevWeek": "สัปดาห์ก่อนหน้า",
+    "calendarNextWeek": "สัปดาห์ถัดไป",
+    "createClassTitle": "สร้างคลาสใหม่",
+    "createClassBody": "เพิ่มคลาสใหม่ในตารางวันนี้ หรือจองล่วงหน้า",
+    "timePassed": "เวลาที่ผ่านไป",
+    "minutesOf": "{done} นาที / {total} นาที",
+    "classFilterLabel": "กรองคลาสเรียนวันนี้",
+    "noClassesInFilter": "ไม่มีคลาสที่ตรงกับตัวกรองนี้",
+    "classFilterAll": "ทั้งหมด"
   },
   "find": {
     "title": "ค้นหานักเรียน",
@@ -345,7 +363,12 @@
     "lengthMinutes": "{minutes} นาที",
     "lengthHours": "{hours} ชั่วโมง",
     "lengthHoursMinutes": "{hours} ชม. {minutes} นาที",
-    "endsAt": "สิ้นสุด {time}"
+    "endsAt": "สิ้นสุด {time}",
+    "cancelClass": "ยกเลิกคลาส",
+    "cancelConfirm": "{count, plural, =0 {ยกเลิกคลาสนี้หรือไม่ คลาสจะถูกลบออกจากวันนี้} other {ยกเลิกคลาสนี้หรือไม่ มีนักเรียนเช็คอินแล้ว # คน และจะได้รับเครดิตคืน}}",
+    "cancelConfirmYes": "ยืนยันยกเลิกคลาส",
+    "cancelFailed": "ไม่สามารถยกเลิกคลาสได้",
+    "lengthChangeFailed": "ไม่สามารถเปลี่ยนระยะเวลาได้"
   },
   "students": {
     "title": "นักเรียน",
@@ -484,7 +507,8 @@
       "fideRating": "คะแนน FIDE",
       "parentEmail": "อีเมล",
       "parentPhone": "เบอร์ติดต่อ"
-    }
+    },
+    "neverExpires": "ไม่มีวันหมดอายุ"
   },
   "parents": {
     "title": "ผู้ปกครอง",
@@ -629,7 +653,7 @@
     "regulationDocument": "เอกสารระเบียบการแข่งขัน",
     "regulationOptional": "ไม่บังคับ — แนบ PDF หรือรูปภาพระเบียบอย่างเป็นทางการ",
     "replaceFile": "เปลี่ยนไฟล์",
-    "mapHint": "ตัวอย่างแผนที่จะปรากฏหลังสร้างการแข่งขัน",
+    "mapHint": "พิมพ์ชื่อสถานที่เพื่อดูตัวอย่างแผนที่",
     "title": "การแข่งขัน",
     "sub": "การแข่งขันที่กำลังจะถึงและที่ผ่านมา",
     "create": "สร้างการแข่งขัน",
@@ -649,16 +673,9 @@
     "totalRevenue": "รายได้รวม",
     "participants": "ผู้เข้าแข่งขัน",
     "registrationFilled": "สัดส่วนการรับสมัคร",
-    "summary": "สรุปการแข่งขัน",
     "organizer": "ผู้จัดการแข่งขัน",
-    "chiefArbiter": "กรรมการหลัก",
-    "format": "รูปแบบ",
-    "timeControl": "การจับเวลา",
-    "categories": "รุ่นการแข่งขัน",
     "registrationCloses": "ปิดรับสมัคร",
     "entryFee": "ค่าสมัคร",
-    "entryFeeValue": "{member} สมาชิก / {nonMember} บุคคลทั่วไป",
-    "rounds": "จำนวนรอบ",
     "address": "สถานที่",
     "searchParticipants": "ค้นหาผู้เข้าแข่งขัน",
     "noParticipants": "ยังไม่มีผู้เข้าแข่งขัน",
@@ -699,23 +716,17 @@
     "fieldName": "ชื่อการแข่งขัน",
     "fieldDate": "วันที่",
     "fieldVenue": "สถานที่",
-    "fieldFormat": "รูปแบบ",
-    "fieldTimeControl": "การจับเวลา",
-    "fieldChiefArbiter": "กรรมการหลัก",
     "fieldMaxParticipants": "จำนวนผู้เข้าแข่งขันสูงสุด",
     "editTitle": "แก้ไขการแข่งขัน",
     "endDate": "วันสิ้นสุด",
     "earlyBirdFee": "ค่าสมัครล่วงหน้า",
-    "regularFee": "ค่าสมัครปกติ",
     "deleteNote": "ประเภทการแข่งขันและรายชื่อผู้เข้าแข่งขันจะถูกลบไปด้วย",
     "addParticipant": "เพิ่มผู้เข้าแข่งขัน",
     "editParticipant": "แก้ไขผู้เข้าแข่งขัน",
     "participantStudentHelp": "การลงทะเบียนจะเชื่อมโยงกับข้อมูลนักเรียน",
     "dateOfBirth": "วันเกิด",
     "feeCharged": "ค่าสมัครที่เรียกเก็บ",
-    "noCategories": "ยังไม่มีประเภทการแข่งขัน",
     "categoryPlaceholder": "ชื่อประเภท เช่น รุ่นอายุไม่เกิน 10 ปี",
-    "categoryDeleteNote": "ผู้เข้าแข่งขันในประเภทนี้จะยังลงทะเบียนอยู่ แต่จะไม่มีประเภทกำกับ",
     "tabResults": "ผลการแข่งขัน",
     "regulationTitle": "ระเบียบการแข่งขัน",
     "regulationAttachedSub": "ผู้ปกครองอ่านได้จากหน้าลงทะเบียน",
@@ -730,7 +741,10 @@
     "discountLabel": "ส่วนลดนักเรียน (%)",
     "discountHint": "เปอร์เซ็นต์ส่วนลดจากค่าสมัครปกติสำหรับนักเรียน JCA ใส่ 0 หากไม่มีส่วนลด",
     "categoriesTitle": "รุ่นการแข่งขัน",
-    "categoriesHint": "รุ่นที่ผู้สมัครเลือกในแบบฟอร์มสมัคร หากชื่อรุ่นมีอายุกำกับ เช่น \"U8 Boys\" ระบบจะตรวจสอบกับวันเกิดของผู้เล่น"
+    "categoriesHint": "รุ่นที่ผู้สมัครเลือกในแบบฟอร์มสมัคร หากชื่อรุ่นมีอายุกำกับ เช่น \"U8 Boys\" ระบบจะตรวจสอบกับวันเกิดของผู้เล่น",
+    "mapPreviewTitle": "ตัวอย่างแผนที่สถานที่จัดการแข่งขัน",
+    "viewOnMap": "ดูแผนที่",
+    "noCategories": "ยังไม่มีประเภทการแข่งขัน"
   },
   "announcement": {
     "title": "ประกาศ",
@@ -851,7 +865,9 @@
     "packageDeleteNote": "แพ็กเกจนี้จะถูกปลดระวาง โดยจะหายไปจากรายการราคาและหน้าชำระเงิน และไม่สามารถขายได้อีก แต่รายการชำระเงินที่ซื้อไปแล้วจะยังคงข้อมูลไว้",
     "firstPackageTitle": "แพ็กเกจเครดิตแรกของคอร์สนี้",
     "firstPackageHelp": "คอร์สจะขาย ชำระเงิน หรือเข้าเรียนไม่ได้จนกว่าจะมีแพ็กเกจ สามารถแก้ไขหรือเพิ่มได้ที่การ์ดแพ็กเกจเครดิตด้านล่าง",
-    "firstPackageIncomplete": "จำนวนเครดิตและอายุการใช้งานต้องมากกว่าศูนย์ หากเป็นคอร์สฟรี ให้ใส่ราคาเป็น 0"
+    "firstPackageIncomplete": "จำนวนเครดิตต้องมากกว่าศูนย์ หากเป็นคอร์สฟรี ให้ใส่ราคาเป็น 0",
+    "validityForever": "ไม่มีวันหมดอายุ",
+    "validityHelp": "เว้นว่างไว้หากต้องการให้เครดิตไม่มีวันหมดอายุ"
   },
   "settings": {
     "title": "กติกาของสถาบัน",
