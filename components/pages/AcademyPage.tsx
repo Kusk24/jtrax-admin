@@ -62,7 +62,11 @@ type CreditPackage = {
   className: string;
   creditAmount: number;
   price: number;
-  validityDays: number;
+  /* Null when the office never answered — distinct from an explicit 0, even
+     though the two mean the same thing everywhere downstream. Kept apart here
+     only so reopening a never-expiring package to edit it shows the blank
+     field back, not a 0 the office never typed. */
+  validityDays: number | null;
 };
 
 const PACKAGE_TEMPLATE = equalTemplate(5, 90);
@@ -106,6 +110,15 @@ export function AcademyPage() {
   const tStatus = useTranslations("status");
   const tClassType = useTranslations("classType");
   const { raw, batch, create, update, remove } = useData();
+
+  /* 0 and blank both mean "never expires" — the same convention the backend's
+     grant path and the console's own payment form already read a missing
+     validity as. Said out loud here rather than as "0 days", which reads as
+     the opposite of what it means. */
+  function validityLabel(days: number | null): string {
+    return days && days > 0 ? t("validityDays", { days }) : t("validityForever");
+  }
+
   /* Retired classes drop out of the list, the pickers and the export. The
      rows they left behind — enrolments, sessions, receipts — still find them
      by id, which is the whole reason the row is kept. */
@@ -149,7 +162,7 @@ export function AcademyPage() {
       className: cls ? String(cls.name ?? "") : "—",
       creditAmount: Number(p.credit_amount ?? 0),
       price: Number(p.standard_price ?? 0),
-      validityDays: Number(p.validity_days ?? 0),
+      validityDays: p.validity_days == null ? null : Number(p.validity_days),
     };
   });
 
@@ -172,7 +185,13 @@ export function AcademyPage() {
     },
     { name: "credit_amount", label: t("creditAmount"), kind: "number", required: true, half: true, min: 0 },
     { name: "standard_price", label: t("price"), kind: "number", required: true, half: true, min: 0 },
-    { name: "validity_days", label: t("validity"), kind: "number", required: true, half: true, min: 0 },
+    /* Not required: a package the office never wants to expire — a founding
+       rate, a free trial — has nothing truthful to put here. Blank and 0 both
+       read as "never" downstream (the backend's grant path and the console's
+       own expiryFrom have coalesced a missing validity to 0 since before this
+       could be left blank), so leaving it out costs nothing today and stops
+       the office typing a lie to get past a required field. */
+    { name: "validity_days", label: t("validity"), kind: "number", half: true, min: 0, help: t("validityHelp") },
   ];
 
   function openPackageModal(p: CreditPackage | "new") {
@@ -184,7 +203,7 @@ export function AcademyPage() {
             class_id: p.classId,
             credit_amount: String(p.creditAmount),
             standard_price: String(p.price),
-            validity_days: String(p.validityDays),
+            validity_days: p.validityDays == null ? "" : String(p.validityDays),
           },
     );
   }
@@ -208,17 +227,21 @@ export function AcademyPage() {
   /* A class with no package cannot be sold, cannot be paid for and cannot give
      anyone credits — so its first one is asked for here rather than left as a
      second errand on another card. Prefilled with the commonest terms, which
-     makes it a glance and a Save rather than three more questions. */
-  const [firstPackage, setFirstPackage] = useState({ credits: "20", price: "12000", days: "90" });
-  /* Every one of the three is required and must be a real number. A package of
-     zero credits, or one that expires the day it is bought, is not a package —
-     and price is the only one allowed to be nothing, because a free trial
-     class is a real thing an academy runs. */
+     makes it a glance and a Save rather than three more questions.
+     Validity defaults blank — never expires — rather than to a number typed
+     for it: the office should get to decide a course's first package expires
+     at all, not un-notice a number that was already sitting in the field. */
+  const [firstPackage, setFirstPackage] = useState({ credits: "20", price: "12000", days: "" });
+  /* Credits must be a real, positive number. Price may be nothing — a free
+     trial class is a real thing an academy runs. Validity may also be
+     nothing: blank and 0 both mean the package never expires, the same
+     convention the main Add/Edit Package form and everything downstream
+     (grantPurchasedCredits, expiryFrom) already use. */
   const firstPackageComplete =
     Number(firstPackage.credits) > 0 &&
     firstPackage.price.trim() !== "" &&
     Number(firstPackage.price) >= 0 &&
-    Number(firstPackage.days) > 0;
+    (firstPackage.days.trim() === "" || Number(firstPackage.days) >= 0);
   const [teacherDraft, setTeacherDraft] = useState<Omit<Teacher, "id">>({
     name: "",
     email: "",
@@ -259,6 +282,7 @@ export function AcademyPage() {
       {packageModal && (
         <CrudFormModal
           title={packageModal === "new" ? t("addPackage") : t("editPackage")}
+          isEdit={packageModal !== "new"}
           fields={packageFields}
           values={packageValues}
           onChange={setPackageValues}
@@ -420,7 +444,7 @@ export function AcademyPage() {
                 <EntityCard
                   key={p.id}
                   title={p.className}
-                  subtitle={t("validityDays", { days: p.validityDays })}
+                  subtitle={validityLabel(p.validityDays)}
                   badges={
                     <>
                       <span style={{ fontFamily: FONT, fontSize: 17, fontWeight: 700, color: COLORS.text }}>
@@ -455,7 +479,7 @@ export function AcademyPage() {
                   <span style={{ fontWeight: 600 }}>{p.className}</span>
                   <span style={{ color: COLORS.success, fontWeight: 600 }}>+{p.creditAmount}</span>
                   <span>{fmtTHB(p.price)}</span>
-                  <span style={{ color: COLORS.textSecondary }}>{t("validityDays", { days: p.validityDays })}</span>
+                  <span style={{ color: COLORS.textSecondary }}>{validityLabel(p.validityDays)}</span>
                   <RowActions
                     label={t("packageFor", { className: p.className, credits: p.creditAmount })}
                     onEdit={() => openPackageModal(p)}
@@ -693,7 +717,12 @@ export function AcademyPage() {
                           class_id: cls.class_id,
                           credit_amount: Number(firstPackage.credits),
                           standard_price: Number(firstPackage.price),
-                          validity_days: Number(firstPackage.days),
+                          /* Left out entirely when blank, the same as every
+                             other optional field — sending 0 would store a
+                             number the office never typed, and the next time
+                             this package is opened to edit it would show a 0
+                             rather than the blank field it actually is. */
+                          ...(firstPackage.days.trim() !== "" ? { validity_days: Number(firstPackage.days) } : {}),
                         });
                       });
                     } else {
@@ -799,7 +828,8 @@ export function AcademyPage() {
                     <input
                       id="co-days"
                       type="number"
-                      min={1}
+                      min={0}
+                      placeholder={t("validityForever")}
                       value={firstPackage.days}
                       onChange={(e) => setFirstPackage({ ...firstPackage, days: e.target.value })}
                       style={fieldStyle}
