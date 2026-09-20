@@ -213,7 +213,7 @@
     "reminderEmpty": "No credits expire within the next {days} days.",
     "reminderSendCount": "Send to {count, plural, one {# family} other {# families}}",
     "reminderFailed": "Could not send the reminders. Please try again.",
-    "fromPayments": "From {count} payments",
+    "fromPayments": "From {count, plural, one {# payment} other {# payments}}",
     "totalStudents": "Total Students",
     "enrolledAcross": "Enrolled across all courses",
     "todaysClasses": "Today's Classes",
@@ -245,9 +245,6 @@
     "nobodyToRemind": "No expiring credits to notify anyone about",
     "rosterHealth": "Roster Health",
     "rosterHealthSub": "Every student by credit condition",
-    "statusFilterHint": "Select a status to open those students",
-    "studentStatusLabel": "Student status for {count} students",
-    "filterStudentsByStatus": "Show students with status {status}",
     "students": "students",
     "noStudents": "No students yet",
     "status": {
@@ -272,13 +269,7 @@
     "howTheyPaidSub": "This month's takings by method",
     "plusMoreMethods": "Top 5 · {count} more not shown",
     "noPaymentsThisMonth": "No payments this month",
-    "vsSamePoint": "vs {month} at the same point",
-    "classCount": "{count, plural, one {# class} other {# classes}}",
-    "classListLabel": "Today's class list",
-    "noClassesToday": "No classes today",
-    "noClassesTodaySub": "Take a breather — or create today's first class.",
-    "noCheckinsToday": "No students checked in yet",
-    "noCheckinsTodaySub": "Check-ins will appear here as students arrive."
+    "vsSamePoint": "vs {month} at the same point"
   },
   "find": {
     "title": "Find a Student",
