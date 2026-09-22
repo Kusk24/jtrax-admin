@@ -737,14 +737,28 @@
     "regulationWrongType": "A regulation must be a PDF or a photo (JPEG, PNG, WebP).",
     "regulationAttached": "Regulation attached: {file}",
     "earlyBirdUntil": "Early bird until",
-    "earlyBirdHint": "Optional. For outside participants — JCA students get the student discount instead.",
+    "earlyBirdHint": "Optional. Anyone registering before the date below pays this — JCA students too, if you tick it under What JCA students pay.",
     "discountLabel": "Student discount (%)",
-    "discountHint": "Percentage off the regular fee for JCA students. 0 for none.",
+    "discountHint": "Percentage off for JCA students. 0 for none.",
     "categoriesTitle": "Categories",
     "categoriesHint": "The sections entrants pick from on the registration form. An age in the name — \"U8 Boys\" — is enforced against the player’s date of birth.",
     "mapPreviewTitle": "Venue map preview",
     "viewOnMap": "View on Map",
     "noCategories": "No categories yet."
+    "medicalNotes": "Medical notes",
+    "remarks": "Remarks",
+    "studentPricing": "What JCA students pay",
+    "studentGetsDiscount": "Students get the student discount",
+    "studentGetsEarlyBird": "Students get the early bird fee",
+    "studentPricingHint": "Tick both to take the discount off the early bird fee. Tick neither and students pay the regular fee.",
+    "saveFee": "Save fee",
+    "feeLocked": "Paid. To change the fee, refund it on the Payments screen first.",
+    "paidWith": "Paid at the desk with",
+    "markPaidAtDesk": "Mark paid at desk",
+    "methodCash": "Cash",
+    "methodPromptPay": "PromptPay",
+    "methodBankTransfer": "Bank transfer",
+    "noFeeToCollect": "This entry has no fee. Set one above to collect it."
   },
   "announcement": {
     "title": "Announcement",
@@ -1131,7 +1145,9 @@
     "studentMatched": "JCA student — {name}",
     "studentUnverified": "Claimed JCA student, no match",
     "signupsTitle": "Public sign-ups",
-    "signupCount": "{count} signed up"
+    "signupCount": "{count} signed up",
+    "pricingBoth": "Early bird fee, then {pct}% off",
+    "pricingEarly": "Early bird fee while it lasts"
   },
   "resetPassword": {
     "action": "Reset password",
