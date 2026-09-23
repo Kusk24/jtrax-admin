@@ -348,7 +348,9 @@ export function toTournaments(c: LiveCollections): Tournament[] {
       status: backendStatus === "Completed" ? "Completed" : "Ongoing",
       hasStarted: backendStatus !== "Upcoming",
       date: fmtDate(s(t, "start_date")),
+      endDate: t["end_date"] == null ? "" : fmtDate(s(t, "end_date")),
       venue: s(t, "venue_name"),
+      venueMapUrl: t["venue_map_url"] == null || t["venue_map_url"] === "" ? undefined : s(t, "venue_map_url"),
       format: "Swiss",
       /* Whether the standings are readable without signing in. It was
          hard-coded true while nothing was published at all; it is now the
@@ -370,6 +372,7 @@ export function toTournaments(c: LiveCollections): Tournament[] {
       entryFeeMember: t["regular_fee"] == null ? "—" : fmtTHB(n(t, "regular_fee")),
       entryFeeNonMember: t["regular_fee"] == null ? "—" : fmtTHB(n(t, "regular_fee")),
       earlyBirdFeeMember: t["early_bird_fee"] == null ? undefined : fmtTHB(n(t, "early_bird_fee")),
+      earlyBirdEnd: t["early_bird_deadline"] == null ? undefined : fmtDate(s(t, "early_bird_deadline")),
       address: s(t, "venue_address"),
       contactPerson: s(t, "organizer_name"),
       maxParticipants: n(t, "max_participants"),

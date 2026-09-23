@@ -9,10 +9,16 @@
  * console for, so it is the size it deserves and carries its own trend. The
  * roster now sits beside it as an actionable status chart rather than three
  * more numbers that are repeated elsewhere on the page.
+ *
+ * The headline is always the calendar month. The range switch under it changes
+ * only the sparkline: "what did we take this month" and "what shape has the
+ * money been" are two questions, and tying them together would make the big
+ * number mean something different depending on a control beside it.
  */
 
+import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { monthToDate } from "@/lib/dashboard-charts";
+import { monthToDate, REVENUE_RANGES, revenueSeries, type RevenueRange } from "@/lib/dashboard-charts";
 import { fmtTHB } from "@/lib/live";
 import { Icon } from "@/lib/icons";
 import { ACCENTS, ACCENT_TINTS, COLORS, FONT, FONT_DISPLAY } from "@/lib/theme";
@@ -33,46 +39,67 @@ function DeltaArrow({ up, color }: { up: boolean; color: string }) {
 export function TodaySummary() {
   const t = useTranslations("dashboard");
   const locale = useLocale();
-  const { monthRevenue, revenueTrend, payments } = useData();
+  const { monthRevenue, payments } = useData();
+  const [range, setRange] = useState<RevenueRange>("30D");
   const delta = monthToDate(payments);
   const lastMonth = new Intl.DateTimeFormat(locale, { month: "short" }).format(delta.previousMonth);
+  const trend = revenueSeries(payments, range);
 
   const up = (delta.pct ?? 0) >= 0;
   const deltaColor = up ? COLORS.success : COLORS.danger;
 
   return (
-    <Card className="jt-revenue-summary" style={{ display: "flex", flexDirection: "column", gap: 12, borderLeft: `4px solid ${ACCENTS.green}` }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 13 }}>
-          <span className="jt-revenue-icon" style={{ background: ACCENT_TINTS.green }}>
-            <Icon name="wallet" size={20} color={ACCENTS.green} />
-          </span>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>{t("revenueThisMonth")}</div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-              <span style={{ fontFamily: FONT_DISPLAY, fontSize: 32, fontWeight: 600, color: COLORS.text, lineHeight: 1.15 }}>
-                {fmtTHB(monthRevenue.total)}
-              </span>
-              {delta.pct !== null && (
-                <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 5,
-                    padding: "3px 9px",
-                    borderRadius: 999,
-                    background: up ? COLORS.successBg : COLORS.dangerBg,
-                    fontFamily: FONT,
-                    fontSize: 12.5,
-                    fontWeight: 600,
-                    color: deltaColor,
-                  }}
-                >
-                  <DeltaArrow up={up} color={deltaColor} />
-                  {Math.abs(delta.pct)}%
-                </span>
-              )}
-            </div>
+    <Card className="jt-revenue-summary" style={{ display: "flex", flexDirection: "column", gap: 12, borderLeft: `4px solid ${ACCENTS.blue}` }}>
+        <div className="jt-revenue-head">
+          <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+            <span className="jt-revenue-icon" style={{ background: ACCENT_TINTS.blue }}>
+              <Icon name="wallet" size={18} color={ACCENTS.blue} />
+            </span>
+            <span className="jt-revenue-eyebrow">{t("revenueThisMonth")}</span>
           </div>
+
+          {/* Radio group, not buttons: these are three views of one thing and
+              exactly one is always on, which is what a screen reader should
+              hear when it lands here. */}
+          <div className="jt-range-toggle" role="radiogroup" aria-label={t("revenueRangeLabel")}>
+            {REVENUE_RANGES.map((option) => (
+              <button
+                key={option}
+                type="button"
+                role="radio"
+                aria-checked={option === range}
+                className={`jt-range-option${option === range ? " is-on" : ""}`}
+                onClick={() => setRange(option)}
+              >
+                {t(`revenueRange.${option}`)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+          <span style={{ fontFamily: FONT_DISPLAY, fontSize: 32, fontWeight: 600, color: COLORS.text, lineHeight: 1.15 }}>
+            {fmtTHB(monthRevenue.total)}
+          </span>
+          {delta.pct !== null && (
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                padding: "3px 9px",
+                borderRadius: 999,
+                background: up ? COLORS.successBg : COLORS.dangerBg,
+                fontFamily: FONT,
+                fontSize: 12.5,
+                fontWeight: 600,
+                color: deltaColor,
+              }}
+            >
+              <DeltaArrow up={up} color={deltaColor} />
+              {Math.abs(delta.pct)}%
+            </span>
+          )}
         </div>
 
         <div style={{ fontFamily: FONT, fontSize: 12.5, lineHeight: 1.4, color: COLORS.textSecondary }}>
@@ -81,15 +108,16 @@ export function TodaySummary() {
         </div>
 
         {/* Pushed to the bottom so the card's height is the stat block's, not
-            the sparkline's, and it still lines up with the three beside it. */}
+            the sparkline's, and it still lines up with the one beside it. */}
         <div style={{ marginTop: "auto" }}>
           <Sparkline
-            points={revenueTrend}
-            color={ACCENTS.green}
-            fill={ACCENT_TINTS.green}
-            label={t("revenueChartLabel", {
-              from: revenueTrend[0]?.value.toLocaleString() ?? "0",
-              to: revenueTrend[revenueTrend.length - 1]?.value.toLocaleString() ?? "0",
+            points={trend}
+            color={ACCENTS.blue}
+            fill={ACCENT_TINTS.blue}
+            label={t("revenueChartRangeLabel", {
+              range: t(`revenueRange.${range}`),
+              from: trend[0]?.value.toLocaleString() ?? "0",
+              to: trend[trend.length - 1]?.value.toLocaleString() ?? "0",
             })}
           />
         </div>

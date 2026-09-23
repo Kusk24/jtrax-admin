@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   creditCost,
   defaultEndFor,
@@ -12,9 +12,40 @@ import {
   minuteOf,
   minuteOptions,
   minutesOf,
+  nowClock,
   MAX_SESSION_MINUTES,
   MIN_SESSION_MINUTES,
 } from "./session-draft";
+
+describe("nowClock", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("rounds down to the picker's five-minute step", () => {
+    /* Down, not to nearest: rounding 14:32 up to 14:35 would default the
+       start to a class that has not begun yet. */
+    vi.setSystemTime(new Date(2026, 8, 19, 14, 32));
+    expect(nowClock()).toBe("14:30");
+  });
+
+  it("leaves a clock already on the step untouched", () => {
+    vi.setSystemTime(new Date(2026, 8, 19, 14, 30));
+    expect(nowClock()).toBe("14:30");
+  });
+
+  /* Never crosses back into the previous hour: :00 is itself always a valid
+     five-minute mark, so the floor of anything just past the hour lands on
+     that hour, not the one before it. */
+  it("floors to the hour just after it turns", () => {
+    vi.setSystemTime(new Date(2026, 8, 19, 15, 2));
+    expect(nowClock()).toBe("15:00");
+  });
+
+  it("stays on the day it started even a minute before midnight", () => {
+    vi.setSystemTime(new Date(2026, 8, 19, 23, 59));
+    expect(nowClock()).toBe("23:55");
+  });
+});
 
 describe("the times on offer", () => {
   /* One list of every five-minute mark is 288 options: correct and unusable,
@@ -153,17 +184,18 @@ describe("what is stopping it being created", () => {
 describe("moving the end when the start moves", () => {
   /* An hour, because that is what a class is and what a credit buys. */
   it("puts it the usual length later", () => {
-    expect(defaultEndFor("10:00")).toBe("11:00");
-    expect(defaultEndFor("16:45")).toBe("17:45");
+    expect(defaultEndFor("10:00")).toBe("12:00");
+    expect(defaultEndFor("16:45")).toBe("18:45");
   });
 
   /* A class cannot run past midnight, so a late start shortens it rather than
      wrapping round to the small hours. */
   it("shortens rather than wrapping at the end of the day", () => {
-    /* An hour still fits here, just. */
-    expect(defaultEndFor("22:45")).toBe("23:45");
+    /* The default two hours still fits here, with fifteen minutes to spare. */
+    expect(defaultEndFor("21:45")).toBe("23:45");
     /* Here it does not, so it falls back to the longest that does — 45
-       minutes, landing on midnight. */
+       minutes, landing on midnight. Unaffected by the default length: 120
+       minutes was never going to fit in either case. */
     expect(defaultEndFor("23:15")).toBe("00:00");
     /* And here nothing fits at all, not even the half-hour floor. */
     expect(defaultEndFor("23:50")).toBe("");

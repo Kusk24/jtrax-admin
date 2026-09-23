@@ -37,8 +37,28 @@ export const TIME_STEP_MINUTES = 5;
 export const DURATION_STEP_MINUTES = 15;
 export const MAX_SESSION_MINUTES = 240;
 
-/** What a class runs for unless the desk says otherwise — one hour, one credit. */
-export const DEFAULT_SESSION_MINUTES = 60;
+/**
+ * What a class runs for unless the desk says otherwise.
+ *
+ * Two hours, because that is what the academy actually timetables. Note that
+ * one credit is one hour, so the default session costs each attending child
+ * **two** credits — the form shows the cost before the desk commits to it.
+ */
+export const DEFAULT_SESSION_MINUTES = 120;
+
+/**
+ * Now, as a clock the start picker can actually show.
+ *
+ * Rounded *down* to the picker's five-minute step: the minute list has no 17,
+ * so an un-rounded now would be a start that the field cannot display and the
+ * desk cannot re-choose. Down rather than nearest so the default is never a
+ * start in the future — a class being created now has, at worst, already
+ * begun.
+ */
+export function nowClock(now = new Date()): string {
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  return clockOf(minutes - (minutes % TIME_STEP_MINUTES));
+}
 
 /**
  * The lengths that still fit in the day from this start.
@@ -71,8 +91,10 @@ export function endAfter(start: string, minutes: number): string {
 /**
  * The length to offer when a start is chosen and the old one no longer fits.
  *
- * An hour where the day allows it, and the longest that does fit where it does
- * not — a late start should shorten the class, not empty the field.
+ * The default where the day allows it, and the longest that does fit where it
+ * does not — a late start should shorten the class, not empty the field. This
+ * matters more now the default is two hours: every start from 22:00 onwards
+ * gets a shortened class rather than a refusal.
  */
 export function defaultDurationFor(start: string): number {
   const options = durationOptions(start);

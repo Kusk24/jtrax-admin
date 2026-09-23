@@ -89,6 +89,21 @@ function TournamentArt({ name, height = 120 }: { name: string; height?: number }
 
 const WIZARD_STEP_KEYS = ["stepUpload", "stepReview", "stepPublish"];
 
+/** Google's keyless embed — no API key, no billing account, just a search
+    query rendered as a map. It is not the officially supported Maps Embed
+    API, but it has worked unauthenticated for years and this app has no
+    Maps/Places key to spend on a fancier version. */
+function mapEmbedUrl(venue: string): string {
+  return `https://maps.google.com/maps?q=${encodeURIComponent(venue)}&output=embed`;
+}
+
+/** The link stored with the tournament and handed to registrants — Google's
+    own documented "Maps URLs" scheme, so it opens the venue in the Maps app
+    on a phone and in the browser on a desktop, both without a key. */
+function mapSearchUrl(venue: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(venue)}`;
+}
+
 function CreateWizard({
   onCancel,
   onPublish,
@@ -111,9 +126,6 @@ function CreateWizard({
     startDate: "",
     endDate: "",
     venue: "",
-    format: "Swiss System",
-    timeControl: "",
-    chiefArbiter: "",
     maxParticipants: "100",
     regularFee: "",
     earlyBirdFee: "",
@@ -165,9 +177,6 @@ function CreateWizard({
     { key: "startDate", labelKey: "fieldDate", kind: "date" },
     { key: "endDate", labelKey: "endDate", kind: "date" },
     { key: "venue", labelKey: "fieldVenue" },
-    { key: "format", labelKey: "fieldFormat" },
-    { key: "timeControl", labelKey: "fieldTimeControl" },
-    { key: "chiefArbiter", labelKey: "fieldChiefArbiter" },
     { key: "maxParticipants", labelKey: "fieldMaxParticipants", kind: "number" },
     { key: "registrationDeadline", labelKey: "registrationCloses", kind: "date" },
     { key: "regularFee", labelKey: "entryFee", kind: "number" },
@@ -300,7 +309,7 @@ function CreateWizard({
           <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <SectionTitle>{t("tournamentInformation")}</SectionTitle>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 13 }}>
-              {[fields[0], fields[1], fields[2], fields[4], fields[5], fields[6], fields[7]].map(renderField)}
+              {[fields[0], fields[1], fields[2], fields[4]].map(renderField)}
             </div>
           </Card>
           <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -309,13 +318,23 @@ function CreateWizard({
                 440px wide before the gap and run off a 390px phone. */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 13 }}>
               {renderField(fields[3])}
-              <div style={{ minHeight: 78, border: `1px dashed ${COLORS.border}`, borderRadius: 10, background: COLORS.light, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, color: COLORS.textSecondary, fontFamily: FONT, fontSize: 13 }}><Icon name="pin" size={16} color={COLORS.blue} />{t("mapHint")}</div>
+              {draft.venue.trim() ? (
+                <iframe
+                  key={draft.venue}
+                  title={t("mapPreviewTitle")}
+                  src={mapEmbedUrl(draft.venue)}
+                  style={{ minHeight: 140, width: "100%", border: `1px solid ${COLORS.border}`, borderRadius: 10 }}
+                  loading="lazy"
+                />
+              ) : (
+                <div style={{ minHeight: 78, border: `1px dashed ${COLORS.border}`, borderRadius: 10, background: COLORS.light, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, color: COLORS.textSecondary, fontFamily: FONT, fontSize: 13 }}><Icon name="pin" size={16} color={COLORS.blue} />{t("mapHint")}</div>
+              )}
             </div>
           </Card>
           <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <SectionTitle>{t("registrationPricing")}</SectionTitle>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 13 }}>
-              {fields.slice(8).map(renderField)}
+              {fields.slice(5).map(renderField)}
             </div>
             <StudentPricingChoice
               discount={studentPricing.discount}
@@ -442,8 +461,10 @@ function CreateWizard({
                 name: draft.name,
                 status: "Ongoing",
                 date: draft.startDate || "TBC",
+                endDate: draft.endDate || undefined,
                 venue: draft.venue || "TBC",
-                format: draft.format,
+                venueMapUrl: draft.venue.trim() ? mapSearchUrl(draft.venue) : undefined,
+                format: "Swiss",
                 published: true,
                 publicRegistration: false,
                 studentDiscountPct: Number(draft.studentDiscountPct) || 0,
@@ -452,9 +473,9 @@ function CreateWizard({
                 entryFeeAmount: 0,
                 categories,
                 organizer: "JCA Chess Academy",
-                chiefArbiter: draft.chiefArbiter,
+                chiefArbiter: "—",
                 registrationDeadline: draft.registrationDeadline || "TBC",
-                timeControl: draft.timeControl,
+                timeControl: "—",
                 entryFeeMember: draft.regularFee || "—",
                 earlyBirdFeeMember: draft.earlyBirdFee || undefined,
                 earlyBirdEnd: draft.earlyBirdDeadline || undefined,
@@ -479,41 +500,157 @@ function CreateWizard({
 
 /* ---------------------------------------------------------------- detail --- */
 
+/** The tournament's own fields, read as edit-form-ready strings straight from
+    the raw backend row — never from the formatted `Tournament` object, whose
+    numbers and dates are already turned into display text. Shared by the
+    Edit button (on this page) and the "Edit" shortcut on the tournament list
+    (which lands here already in edit mode). */
+function draftFromRow(row: Record<string, unknown> | undefined): Record<string, string> {
+  if (!row) return {};
+  const read = (k: string) => (row[k] == null ? "" : String(row[k]));
+  return {
+    name: read("name"),
+    tournament_status: read("tournament_status"),
+    organizer_name: read("organizer_name"),
+    start_date: read("start_date"),
+    end_date: read("end_date"),
+    venue_name: read("venue_name"),
+    venue_address: read("venue_address"),
+    registration_deadline: read("registration_deadline"),
+    max_participants: read("max_participants"),
+    regular_fee: read("regular_fee"),
+    early_bird_fee: read("early_bird_fee"),
+    early_bird_deadline: read("early_bird_deadline"),
+    student_discount_pct: read("student_discount_pct"),
+  };
+}
+
 function TournamentDetail({
   tournament,
   initialTab,
+  startInEditing,
   onBack,
-  onEdit,
   onDelete,
 }: {
   /* Which tab the address bar asked for. */
   initialTab?: string;
   tournament: Tournament;
+  /* The list's own "Edit" shortcut skips straight past the read-only view —
+     it exists to get here, not to look around first. */
+  startInEditing?: boolean;
   onBack: () => void;
-  onEdit: () => void;
   onDelete: () => void;
 }) {
   const t = useTranslations("tournament");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
   const tExternal = useTranslations("external");
-  const { students, create, update, remove } = useData();
+  const { students, raw, batch, create, update, remove } = useData();
   /* Also in the address bar: refreshing while reading Results should not
      silently return to Overview. */
   const [tab, setTab] = useUrlBackedState<"overview" | "participants" | "results">(
     "tab",
     initialTab === "participants" || initialTab === "results" ? initialTab : "overview",
   );
-  const [categoryDraft, setCategoryDraft] = useState("");
-  const [rowError, setRowError] = useState<string | null>(null);
   const [participantModal, setParticipantModal] = useState<"new" | Participant | null>(null);
   const [participantValues, setParticipantValues] = useState<CrudValues>({});
   const [deletingParticipant, setDeletingParticipant] = useState<Participant | null>(null);
-  const [deletingCategory, setDeletingCategory] = useState<{ id: string; name: string } | null>(null);
+
+  /* Editing the tournament's own fields, in place — see the Tournament
+     Information / Venue & Location / Registration & Pricing / Categories
+     cards below. Lazily initialised rather than set in an effect: this
+     component is freshly mounted every time the list opens a tournament (Back
+     unmounts it), so "populate the draft if we're arriving already in edit
+     mode" only ever needs to run once, at that mount. */
+  const [editing, setEditing] = useState(() => Boolean(startInEditing));
+  const [draft, setDraft] = useState<Record<string, string>>(() =>
+    startInEditing
+      ? draftFromRow(raw.tournaments.find((r) => String(r["tournament_id"]) === tournament.id))
+      : {},
+  );
+  const [draftCategories, setDraftCategories] = useState<Array<{ id?: string; name: string }>>(() =>
+    startInEditing ? (tournament.categoryRows ?? []).map((c) => ({ id: c.id, name: c.name })) : [],
+  );
+  const [categoryDraft, setCategoryDraft] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   /* Memoised because the participant field spec depends on it — a fresh []
      every render would rebuild that spec on every keystroke. */
   const categoryRows = useMemo(() => tournament.categoryRows ?? [], [tournament.categoryRows]);
+
+  function startEdit() {
+    setDraft(draftFromRow(raw.tournaments.find((r) => String(r["tournament_id"]) === tournament.id)));
+    setDraftCategories(categoryRows.map((c) => ({ id: c.id, name: c.name })));
+    setCategoryDraft("");
+    setEditError(null);
+    setEditing(true);
+  }
+
+  /* Nothing to unwind: the draft is rebuilt from scratch next time Edit is
+     pressed, so leaving edit mode is enough to discard it. */
+  function cancelEdit() {
+    setEditing(false);
+    setEditError(null);
+  }
+
+  function addDraftCategory() {
+    const name = categoryDraft.trim();
+    /* Case-insensitively unique, same rule as the Create wizard: "U8 Boys"
+       and "u8 boys" would be two sections on the form and one in everybody's
+       head. */
+    if (!name || draftCategories.some((c) => c.name.toLowerCase() === name.toLowerCase())) return;
+    setDraftCategories([...draftCategories, { name }]);
+    setCategoryDraft("");
+  }
+
+  function removeDraftCategory(target: { id?: string; name: string }) {
+    setDraftCategories(draftCategories.filter((c) => c !== target));
+  }
+
+  /* Category adds/removes are staged in draftCategories like every other
+     field — nothing hits the API until Save, and Cancel discards them for
+     free. The diff below is what actually commits them, alongside the
+     tournament row, in one batch. */
+  async function saveEdit() {
+    setSavingEdit(true);
+    setEditError(null);
+    try {
+      await batch(async () => {
+        for (const removed of categoryRows.filter((c) => !draftCategories.some((d) => d.id === c.id))) {
+          await remove("tournament-categories", removed.id);
+        }
+        for (const added of draftCategories.filter((d) => !d.id)) {
+          await create("tournament-categories", { tournament_id: tournament.id, name: added.name });
+        }
+        const venueName = (draft.venue_name ?? "").trim();
+        await update("tournaments", tournament.id, {
+          name: draft.name,
+          tournament_status: draft.tournament_status,
+          organizer_name: draft.organizer_name || null,
+          start_date: draft.start_date || null,
+          end_date: draft.end_date || null,
+          venue_name: venueName || null,
+          venue_address: draft.venue_address || null,
+          /* Recomputed from the venue name every save, exactly like the
+             Create wizard does at Publish — never left pointing at a venue
+             that has since been edited to something else. */
+          venue_map_url: venueName ? mapSearchUrl(venueName) : null,
+          registration_deadline: draft.registration_deadline || null,
+          max_participants: draft.max_participants ? Number(draft.max_participants) : null,
+          regular_fee: draft.regular_fee ? Number(draft.regular_fee) : null,
+          early_bird_fee: draft.early_bird_fee ? Number(draft.early_bird_fee) : null,
+          early_bird_deadline: draft.early_bird_deadline || null,
+          student_discount_pct: Math.min(100, Math.max(0, Math.round(Number(draft.student_discount_pct) || 0))),
+        });
+      });
+      setEditing(false);
+    } catch (e) {
+      setEditError(errorText(e, tCommon("saveFailed")));
+    } finally {
+      setSavingEdit(false);
+    }
+  }
 
   const participantFields: CrudField[] = useMemo(
     () => [
@@ -561,15 +698,6 @@ function TournamentDetail({
     );
   }
 
-  async function guarded(job: () => Promise<unknown>) {
-    setRowError(null);
-    try {
-      await job();
-    } catch (e) {
-      setRowError(errorText(e, tCommon("saveFailed")));
-    }
-  }
-
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [mode, setMode] = useViewMode("participants", LIST_FIRST);
@@ -582,6 +710,39 @@ function TournamentDetail({
   const filled = tournament.maxParticipants
     ? Math.round((tournament.currentParticipants / tournament.maxParticipants) * 100)
     : 0;
+  /* Falls back to a freshly computed link when a tournament predates the
+     stored one (see 0037 in jtrax-backend) — old rows are not stuck showing
+     nothing just because the column was empty when they were created. */
+  const mapHref = tournament.venueMapUrl || (tournament.venue ? mapSearchUrl(tournament.venue) : undefined);
+
+  const infoFields: Array<{ key: string; labelKey: string; kind?: "text" | "date" | "number" }> = [
+    { key: "name", labelKey: "fieldName" },
+    { key: "start_date", labelKey: "fieldDate", kind: "date" },
+    { key: "end_date", labelKey: "endDate", kind: "date" },
+    { key: "max_participants", labelKey: "fieldMaxParticipants", kind: "number" },
+    { key: "organizer_name", labelKey: "organizer" },
+  ];
+  const pricingFields: Array<{ key: string; labelKey: string; kind?: "text" | "date" | "number"; hintKey?: string }> = [
+    { key: "registration_deadline", labelKey: "registrationCloses", kind: "date" },
+    { key: "regular_fee", labelKey: "entryFee", kind: "number" },
+    { key: "early_bird_fee", labelKey: "earlyBirdFee", kind: "number", hintKey: "earlyBirdHint" },
+    { key: "early_bird_deadline", labelKey: "earlyBirdUntil", kind: "date" },
+    { key: "student_discount_pct", labelKey: "discountLabel", kind: "number", hintKey: "discountHint" },
+  ];
+  const renderDraftField = (f: (typeof infoFields)[number] & { hintKey?: string }) => (
+    <div key={f.key}>
+      <label style={labelStyle} htmlFor={`td-${f.key}`}>{t(f.labelKey)}</label>
+      <input
+        id={`td-${f.key}`}
+        type={f.kind ?? "text"}
+        min={f.kind === "number" ? 0 : undefined}
+        value={draft[f.key] ?? ""}
+        onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })}
+        style={fieldStyle}
+      />
+      {f.hintKey && <p style={{ margin: "4px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>{t(f.hintKey)}</p>}
+    </div>
+  );
 
   const filteredParticipants = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -611,36 +772,62 @@ function TournamentDetail({
           </Badge>
         }
         actions={
-          <>
-            {tournament.chessResultsId ? (
-              <>
-                <ChessResultsJump id={tournament.chessResultsId} name={tournament.name} />
-                <UpdateResultsButton tournamentId={tournament.id} />
-              </>
-            ) : (
-              /* Unlinked: the link form lives on the Results tab, which nobody
-                 finds by guessing. This is the signpost — same place the jump
-                 buttons appear once it *is* linked. */
+          editing ? (
+            /* The only actions while editing: nothing else at the top makes
+               sense mid-edit, least of all Delete. */
+            <>
               <button
                 type="button"
                 className="jt-btn-ghost"
                 style={secondaryButtonStyle}
-                onClick={() => setTab("results")}
+                disabled={savingEdit}
+                onClick={cancelEdit}
               >
-                <Icon name="globe" size={14} /> {tExternal("linkAction")}
+                {tCommon("cancel")}
               </button>
-            )}
-            <EditButton onClick={onEdit} />
-            <DeleteButton onClick={onDelete} />
-          </>
+              <button
+                type="button"
+                className="jt-btn-primary"
+                style={primaryButtonStyle}
+                disabled={savingEdit || !draft.name?.trim()}
+                onClick={saveEdit}
+              >
+                {savingEdit ? tCommon("saving") : tCommon("saveChanges")}
+              </button>
+            </>
+          ) : (
+            <>
+              {tournament.chessResultsId ? (
+                <>
+                  <ChessResultsJump id={tournament.chessResultsId} name={tournament.name} />
+                  <UpdateResultsButton tournamentId={tournament.id} />
+                </>
+              ) : (
+                /* Unlinked: the link form lives on the Results tab, which nobody
+                   finds by guessing. This is the signpost — same place the jump
+                   buttons appear once it *is* linked. */
+                <button
+                  type="button"
+                  className="jt-btn-ghost"
+                  style={secondaryButtonStyle}
+                  onClick={() => setTab("results")}
+                >
+                  <Icon name="globe" size={14} /> {tExternal("linkAction")}
+                </button>
+              )}
+              <EditButton onClick={startEdit} />
+              <DeleteButton onClick={onDelete} />
+            </>
+          )
         }
       />
 
-      {rowError && <ErrorNote>{rowError}</ErrorNote>}
+      {editError && <ErrorNote>{editError}</ErrorNote>}
 
       {participantModal && (
         <CrudFormModal
           title={participantModal === "new" ? t("addParticipant") : t("editParticipant")}
+          isEdit={participantModal !== "new"}
           fields={participantFields}
           values={participantValues}
           onChange={setParticipantValues}
@@ -664,15 +851,6 @@ function TournamentDetail({
           what={deletingParticipant.name}
           onClose={() => setDeletingParticipant(null)}
           onConfirm={() => remove("tournament-registrations", deletingParticipant.id!)}
-        />
-      )}
-
-      {deletingCategory && (
-        <ConfirmDeleteModal
-          what={deletingCategory.name}
-          note={t("categoryDeleteNote")}
-          onClose={() => setDeletingCategory(null)}
-          onConfirm={() => remove("tournament-categories", deletingCategory.id)}
         />
       )}
 
@@ -747,40 +925,181 @@ function TournamentDetail({
           </div>
 
           <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <SectionTitle>{t("summary")}</SectionTitle>
-            <InfoGrid
-              rows={[
-                { label: t("organizer"), value: tournament.organizer },
-                { label: t("chiefArbiter"), value: tournament.chiefArbiter },
-                { label: t("format"), value: tournament.format },
-                { label: t("timeControl"), value: tournament.timeControl },
-                { label: t("categories"), value: tournament.categories.join(", ") || "—" },
-                { label: t("registrationCloses"), value: tournament.registrationDeadline },
-                {
-                  label: t("entryFee"),
-                  value: t("entryFeeValue", {
-                    member: tournament.entryFeeMember,
-                    nonMember: tournament.entryFeeNonMember,
-                  }),
-                },
-                { label: t("rounds"), value: tournament.rounds || "—" },
-                { label: t("address"), value: tournament.address },
-              ]}
-            />
+            <SectionTitle>{t("tournamentInformation")}</SectionTitle>
+            {editing ? (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 13 }}>
+                {infoFields.map(renderDraftField)}
+                <div>
+                  <label style={labelStyle} htmlFor="td-status">{tCommon("status")}</label>
+                  <select
+                    id="td-status"
+                    style={{ ...fieldStyle, cursor: "pointer" }}
+                    value={draft.tournament_status ?? ""}
+                    onChange={(e) => setDraft({ ...draft, tournament_status: e.target.value })}
+                  >
+                    {TOURNAMENT_STATUSES.map((s) => (
+                      <option key={s} value={s}>{tStatus(s)}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            ) : (
+              <InfoGrid
+                rows={[
+                  { label: t("fieldName"), value: tournament.name },
+                  { label: t("fieldDate"), value: tournament.date },
+                  { label: t("endDate"), value: tournament.endDate || "—" },
+                  { label: t("fieldMaxParticipants"), value: tournament.maxParticipants ? String(tournament.maxParticipants) : "—" },
+                  { label: t("organizer"), value: tournament.organizer || "—" },
+                  { label: tCommon("status"), value: tStatus(tournament.status) },
+                ]}
+              />
+            )}
           </Card>
 
-          {/* Read-only now: the sections are chosen in the Create Tournament
-              wizard, because the registration form asks which one you are
-              entering and that form can be open from the moment the event is
-              published. Editing them here meant an event could go live with a
-              link that collected a pile of unsorted entries.
+          <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <SectionTitle>{t("venueLocation")}</SectionTitle>
+            {editing ? (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 13 }}>
+                <div>
+                  <label style={labelStyle} htmlFor="td-venue-name">{t("fieldVenue")}</label>
+                  <input
+                    id="td-venue-name"
+                    style={fieldStyle}
+                    value={draft.venue_name ?? ""}
+                    onChange={(e) => setDraft({ ...draft, venue_name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle} htmlFor="td-venue-address">{t("address")}</label>
+                  <input
+                    id="td-venue-address"
+                    style={fieldStyle}
+                    value={draft.venue_address ?? ""}
+                    onChange={(e) => setDraft({ ...draft, venue_address: e.target.value })}
+                  />
+                </div>
+                {(draft.venue_name ?? "").trim() && (
+                  <iframe
+                    title={t("mapPreviewTitle")}
+                    src={mapEmbedUrl(draft.venue_name)}
+                    style={{ minHeight: 140, width: "100%", border: `1px solid ${COLORS.border}`, borderRadius: 10 }}
+                    loading="lazy"
+                  />
+                )}
+              </div>
+            ) : (
+              <>
+                <InfoGrid
+                  rows={[
+                    { label: t("fieldVenue"), value: tournament.venue || "—" },
+                    { label: t("address"), value: tournament.address || "—" },
+                  ]}
+                />
+                {(tournament.venue || mapHref) && (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 13 }}>
+                    {tournament.venue && (
+                      <iframe
+                        title={t("mapPreviewTitle")}
+                        src={mapEmbedUrl(tournament.venue)}
+                        style={{ minHeight: 140, width: "100%", border: `1px solid ${COLORS.border}`, borderRadius: 10 }}
+                        loading="lazy"
+                      />
+                    )}
+                    {mapHref && (
+                      <a
+                        href={mapHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="jt-btn-ghost"
+                        style={{ ...secondaryButtonStyle, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, textDecoration: "none", alignSelf: "center" }}
+                      >
+                        <Icon name="pin" size={14} /> {t("viewOnMap")}
+                      </a>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </Card>
 
-              Still shown, though. They are part of what the tournament *is* —
-              taking the display away with the editor would hide a fact about
-              the event rather than move where it is set. */}
+          <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <SectionTitle>{t("registrationPricing")}</SectionTitle>
+            {editing ? (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 13 }}>
+                {pricingFields.map(renderDraftField)}
+              </div>
+            ) : (
+              <InfoGrid
+                rows={[
+                  { label: t("registrationCloses"), value: tournament.registrationDeadline || "—" },
+                  { label: t("entryFee"), value: tournament.entryFeeMember },
+                  { label: t("earlyBirdFee"), value: tournament.earlyBirdFeeMember || "—" },
+                  { label: t("earlyBirdUntil"), value: tournament.earlyBirdEnd || "—" },
+                  { label: t("discountLabel"), value: String(tournament.studentDiscountPct) },
+                ]}
+              />
+            )}
+          </Card>
+
           <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <SectionTitle>{t("categories")}</SectionTitle>
-            {categoryRows.length === 0 ? (
+            <SectionTitle>{t("categoriesTitle")}</SectionTitle>
+            {editing ? (
+              <>
+                {draftCategories.length > 0 && (
+                  <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+                    {draftCategories.map((c) => (
+                      <span
+                        key={c.id ?? c.name}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: 6,
+                          padding: "5px 10px", borderRadius: 999,
+                          background: COLORS.light, fontFamily: FONT, fontSize: 13.5,
+                          color: COLORS.text,
+                        }}
+                      >
+                        {c.name}
+                        <button
+                          type="button"
+                          aria-label={tCommon("deleteThing", { what: c.name })}
+                          onClick={() => removeDraftCategory(c)}
+                          style={{
+                            display: "inline-flex", border: "none", background: "transparent",
+                            padding: 0, cursor: "pointer", color: COLORS.textSecondary,
+                          }}
+                        >
+                          <Icon name="x" size={13} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <input
+                    value={categoryDraft}
+                    onChange={(e) => setCategoryDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addDraftCategory();
+                      }
+                    }}
+                    placeholder={t("categoryPlaceholder")}
+                    aria-label={t("categoryPlaceholder")}
+                    style={{ ...fieldStyle, flex: "1 1 180px", width: "auto" }}
+                  />
+                  <button
+                    type="button"
+                    className="jt-btn-ghost"
+                    style={secondaryButtonStyle}
+                    disabled={!categoryDraft.trim()}
+                    onClick={addDraftCategory}
+                  >
+                    <Icon name="plus" size={13} /> {tCommon("add")}
+                  </button>
+                </div>
+              </>
+            ) : categoryRows.length === 0 ? (
               <p style={{ margin: 0, fontFamily: FONT, fontSize: 14, color: COLORS.textSecondary }}>
                 {t("noCategories")}
               </p>
@@ -790,13 +1109,9 @@ function TournamentDetail({
                   <span
                     key={c.id}
                     style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      padding: "6px 12px",
-                      borderRadius: 999,
-                      border: `1px solid ${COLORS.border}`,
-                      fontFamily: FONT,
-                      fontSize: 13.5,
+                      display: "inline-flex", alignItems: "center",
+                      padding: "6px 12px", borderRadius: 999,
+                      border: `1px solid ${COLORS.border}`, fontFamily: FONT, fontSize: 13.5,
                       color: COLORS.text,
                     }}
                   >
@@ -806,6 +1121,7 @@ function TournamentDetail({
               </div>
             )}
           </Card>
+
         </>
       ) : tab === "participants" ? (
         <>
@@ -1105,7 +1421,7 @@ export function TournamentPage({
   const tCommon = useTranslations("common");
   const { showError } = useErrorToast();
   const tStatus = useTranslations("status");
-  const { tournaments, raw, batch, create, update, remove } = useData();
+  const { tournaments, batch, create, remove } = useData();
   /* In the address bar, so a refresh, a shared link and the Back button all
      land on the tournament that was open rather than the list. */
   const [selectedId, setSelectedId] = useUrlBackedState<string>("id", detailId ?? "", TAB_PARAM, "push");
@@ -1116,61 +1432,16 @@ export function TournamentPage({
      page a scroll through three unrelated lists; the tabs match the detail
      page's own idiom. */
   const [view, setView] = useState<"active" | "past" | "external">("active");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [values, setValues] = useState<CrudValues>({});
   const [deleting, setDeleting] = useState<Tournament | null>(null);
-
-  const editFields: CrudField[] = useMemo(
-    () => [
-      { name: "name", label: t("fieldName"), required: true },
-      {
-        name: "tournament_status",
-        label: tCommon("status"),
-        kind: "select",
-        half: true,
-        options: TOURNAMENT_STATUSES.map((s) => ({ value: s, label: tStatus(s) })),
-      },
-      { name: "organizer_name", label: t("organizer"), half: true },
-      { name: "start_date", label: t("fieldDate"), kind: "date", half: true },
-      { name: "end_date", label: t("endDate"), kind: "date", half: true },
-      { name: "venue_name", label: t("fieldVenue"), half: true },
-      { name: "venue_address", label: t("address"), half: true },
-      { name: "registration_deadline", label: t("registrationCloses"), kind: "date", half: true },
-      { name: "max_participants", label: t("fieldMaxParticipants"), kind: "number", half: true, min: 0 },
-      { name: "early_bird_fee", label: t("earlyBirdFee"), kind: "number", half: true, min: 0 },
-      { name: "early_bird_deadline", label: t("earlyBirdUntil"), kind: "date", half: true },
-      { name: "regular_fee", label: t("regularFee"), kind: "number", half: true, min: 0 },
-      { name: "student_discount_pct", label: t("discountLabel"), kind: "number", half: true, min: 0, help: t("studentPricingHint") },
-      /* What a JCA student pays is the organiser's choice per event; the
-         server prices every entry from these two. */
-      { name: "student_gets_discount", label: t("studentGetsDiscount"), kind: "checkbox" },
-      { name: "student_gets_early_bird", label: t("studentGetsEarlyBird"), kind: "checkbox" },
-    ],
-    [t, tCommon, tStatus],
-  );
+  /* The list's own "Edit" shortcut opens the detail page already in edit
+     mode, rather than a modal of its own — read once by TournamentDetail at
+     mount, so it is set right alongside selectedId and cleared by every
+     other way of opening a tournament (a plain row click). */
+  const [editFromList, setEditFromList] = useState(false);
 
   function openEdit(tournament: Tournament) {
-    const row = raw.tournaments.find((r) => String(r["tournament_id"]) === tournament.id);
-    if (!row) return;
-    const read = (k: string) => (row[k] == null ? "" : String(row[k]));
-    setValues({
-      name: read("name"),
-      tournament_status: read("tournament_status"),
-      organizer_name: read("organizer_name"),
-      start_date: read("start_date"),
-      end_date: read("end_date"),
-      venue_name: read("venue_name"),
-      venue_address: read("venue_address"),
-      registration_deadline: read("registration_deadline"),
-      max_participants: read("max_participants"),
-      early_bird_fee: read("early_bird_fee"),
-      early_bird_deadline: read("early_bird_deadline"),
-      regular_fee: read("regular_fee"),
-      student_discount_pct: read("student_discount_pct"),
-      student_gets_discount: row["student_gets_discount"] == null || Number(row["student_gets_discount"]) === 1,
-      student_gets_early_bird: Number(row["student_gets_early_bird"]) === 1,
-    });
-    setEditingId(tournament.id);
+    setSelectedId(tournament.id);
+    setEditFromList(true);
   }
 
   /* Registrations and categories point at the tournament, so they go first —
@@ -1190,16 +1461,6 @@ export function TournamentPage({
 
   const dialogs = (
     <>
-      {editingId && (
-        <CrudFormModal
-          title={t("editTitle")}
-          fields={editFields}
-          values={values}
-          onChange={setValues}
-          onClose={() => setEditingId(null)}
-          onSubmit={(payload) => update("tournaments", editingId, payload).then(() => undefined)}
-        />
-      )}
       {deleting && (
         <ConfirmDeleteModal
           what={deleting.name}
@@ -1240,8 +1501,10 @@ export function TournamentPage({
               name: t.name,
               tournament_status: "Upcoming",
               start_date: iso(t.date),
+              end_date: t.endDate ? iso(t.endDate) : null,
               venue_name: t.venue,
               venue_address: t.address,
+              venue_map_url: t.venueMapUrl || null,
               organizer_name: t.organizer,
               registration_deadline: iso(t.registrationDeadline),
               early_bird_fee: money(t.earlyBirdFeeMember),
@@ -1290,8 +1553,8 @@ export function TournamentPage({
         <TournamentDetail
           tournament={selected}
           initialTab={detailTab}
+          startInEditing={editFromList}
           onBack={() => setSelectedId("")}
-          onEdit={() => openEdit(selected)}
           onDelete={() => setDeleting(selected)}
         />
         {dialogs}
@@ -1317,7 +1580,11 @@ export function TournamentPage({
               {list.map((item) => {
                 const status = statusChipColors(item.status);
                 return (
-                  <TableRow key={item.id} template={TOURNAMENT_TEMPLATE} onClick={() => setSelectedId(item.id)}>
+                  <TableRow
+                    key={item.id}
+                    template={TOURNAMENT_TEMPLATE}
+                    onClick={() => { setSelectedId(item.id); setEditFromList(false); }}
+                  >
                     <span style={{ minWidth: 0 }}>
                       <span
                         style={{
@@ -1371,7 +1638,7 @@ export function TournamentPage({
                   key={item.id}
                   className="jt-course-card"
                   style={{ display: "flex", flexDirection: "column", gap: 11, cursor: "pointer" }}
-                  onClick={() => setSelectedId(item.id)}
+                  onClick={() => { setSelectedId(item.id); setEditFromList(false); }}
                 >
                   <TournamentArt name={item.name} />
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 9 }}>

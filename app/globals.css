@@ -114,11 +114,25 @@ textarea {
   align-items: stretch;
 }
 
-/* Dashboard: two decisions at the top, two working surfaces underneath.
-   This follows the reference layout and keeps a normal two-class day inside
-   one desktop viewport instead of repeating the same numbers down the page. */
-.jt-dashboard-overview,
-.jt-dashboard-workspace {
+/* Dashboard: a reading column and a standing rail. This follows the reference
+   layout and keeps a normal two-class day inside one desktop viewport instead
+   of repeating the same numbers down the page. */
+.jt-dashboard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.jt-dashboard-main,
+.jt-dashboard-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.jt-dashboard-overview {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 14px;
@@ -233,13 +247,269 @@ textarea {
   overscroll-behavior: contain;
 }
 
-.jt-add-class-button {
+/* --- Revenue card: eyebrow and range switch --- */
+.jt-revenue-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.jt-revenue-eyebrow {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--jt-textSecondary);
+}
+
+.jt-range-toggle {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--jt-light);
+  flex-shrink: 0;
+}
+
+.jt-range-option {
+  padding: 4px 11px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--jt-textSecondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.jt-range-option:hover {
+  color: var(--jt-text);
+}
+
+.jt-range-option.is-on {
+  background: var(--jt-blue);
+  color: #fff;
+}
+
+/* --- Week strip --- */
+.jt-week-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.jt-week-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--jt-border);
+  border-radius: 50%;
+  background: var(--jt-surface);
+  cursor: pointer;
   transition: background 160ms ease, border-color 160ms ease;
 }
 
-.jt-add-class-button:hover {
-  background: var(--jt-surface) !important;
-  border-color: var(--jt-blue) !important;
+.jt-week-arrow:hover {
+  background: var(--jt-light);
+  border-color: var(--jt-blue);
+}
+
+.jt-week-today {
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--jt-light);
+  color: var(--jt-blue);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.jt-week-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.jt-week-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 0 8px;
+  border-radius: 11px;
+}
+
+.jt-week-weekday {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--jt-textSecondary);
+}
+
+.jt-week-date {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--jt-text);
+}
+
+.jt-week-day.is-today {
+  background: var(--jt-blue);
+}
+
+.jt-week-day.is-today .jt-week-weekday,
+.jt-week-day.is-today .jt-week-date {
+  color: #fff;
+}
+
+/* --- Create class card --- */
+.jt-create-class {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  overflow: hidden;
+  padding: 18px;
+  border: 1px solid var(--jt-border);
+  border-radius: 16px;
+  background: var(--jt-light);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+}
+
+.jt-create-class:hover {
+  border-color: var(--jt-blue);
+  box-shadow: 0 8px 24px rgb(36 59 99 / 0.14);
+  transform: translateY(-2px);
+}
+
+.jt-create-rings {
+  position: absolute;
+  inset: 0 0 auto auto;
+  width: 200px;
+  height: 200px;
+  pointer-events: none;
+}
+
+.jt-create-body {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.jt-create-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--jt-blue);
+}
+
+.jt-create-fab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--jt-navy);
+  box-shadow: 0 6px 16px rgb(36 59 99 / 0.28);
+  flex-shrink: 0;
+}
+
+/* --- Today's classes: All / Ongoing / Finished --- */
+.jt-class-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.jt-class-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border: 1px solid var(--jt-border);
+  border-radius: 999px;
+  background: var(--jt-surface);
+  color: var(--jt-textSecondary);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.jt-class-filter:hover {
+  border-color: var(--jt-blue);
+  color: var(--jt-text);
+}
+
+.jt-class-filter.is-on {
+  border-color: var(--jt-blue);
+  background: var(--jt-blue);
+  color: #fff;
+}
+
+.jt-class-filter-count {
+  font-size: 11.5px;
+  font-weight: 700;
+  opacity: 0.75;
+}
+
+.jt-class-filter-empty {
+  margin: 0;
+  padding: 22px 4px;
+  color: var(--jt-textSecondary);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* --- Time passed, on a running class --- */
+.jt-class-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.jt-class-progress-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.jt-class-progress-track {
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--jt-light);
+}
+
+.jt-class-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--jt-blue);
+  transition: width 400ms ease;
 }
 
 .jt-dashboard-empty {
@@ -270,15 +540,26 @@ textarea {
   background: var(--jt-light);
 }
 
-@media (width >= 760px) {
+/* Later than the old 760px: the overview row now lives inside the main
+   column rather than spanning the page, so it has the rail's width less to
+   split and would otherwise put the rings and their legend side by side at a
+   width neither can hold. */
+@media (width >= 1180px) {
   .jt-dashboard-overview {
     grid-template-columns: minmax(0, 1.45fr) minmax(330px, 0.9fr);
   }
 }
 
 @media (width >= 1080px) {
-  .jt-dashboard-workspace {
-    grid-template-columns: minmax(0, 1.9fr) minmax(270px, 0.72fr);
+  .jt-dashboard {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 340px);
+  }
+
+  /* The rail follows the page down rather than leaving a column of dead space
+     beside a long check-in table. */
+  .jt-dashboard-rail {
+    position: sticky;
+    top: 16px;
   }
 }
 
@@ -292,7 +573,9 @@ textarea {
     align-self: center;
   }
 
-  .jt-add-class-button span {
+  /* The week strip is seven columns whatever the width; below this the day
+     numbers are all that still fit. */
+  .jt-week-weekday {
     display: none;
   }
 }
@@ -879,33 +1162,39 @@ textarea {
     background: var(--jt-light);
   }
 
-  .jt-sidebar:not(.is-expanded) .jt-nav-row::after {
-    position: absolute;
-    left: calc(100% + 12px);
-    top: 50%;
+  /* The collapsed rail's label. Fixed, and a sibling of the nav rather than a
+     `::after` on the row: the nav is a scroll container (eleven items overflow
+     a laptop viewport) and clips anything reaching past the 76px rail, which
+     is where this has to sit. `left` is the rail plus a 12px gap.
+
+     Rendering is gated on the collapsed state in `JtraxShell`, so there is no
+     `:not(.is-expanded)` here to keep in step with it. */
+  /* Scoped to the sidebar so it outranks the `display: none` default below
+     whatever order the two rules end up in. */
+  .jt-sidebar .jt-nav-tip {
+    position: fixed;
+    left: 88px;
     z-index: 30;
+    display: block;
     padding: 6px 9px;
     border: 1px solid var(--jt-border);
     border-radius: 7px;
     background: var(--jt-text);
     box-shadow: 0 5px 16px rgb(26 43 74 / 0.2);
     color: var(--jt-surface);
-    content: attr(data-tooltip);
     font-size: 12px;
     font-weight: 600;
     line-height: 1;
-    opacity: 0;
     pointer-events: none;
-    transform: translate(4px, -50%);
-    transition: opacity 140ms ease, transform 140ms ease;
+    transform: translateY(-50%);
     white-space: nowrap;
   }
+}
 
-  .jt-sidebar:not(.is-expanded) .jt-nav-row:hover::after,
-  .jt-sidebar:not(.is-expanded) .jt-nav-row:focus-visible::after {
-    opacity: 1;
-    transform: translate(0, -50%);
-  }
+/* The rail, and so its labels, only exist on desktop — below 1024px the nav is
+   a horizontal strip whose labels are already visible. */
+.jt-nav-tip {
+  display: none;
 }
 
 /* ---- theme tokens ----

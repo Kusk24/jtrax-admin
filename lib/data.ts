@@ -187,7 +187,11 @@ export type Tournament = {
   status: 'Ongoing' | 'Completed';
   hasStarted?: boolean;
   date: string;
+  endDate?: string;
   venue: string;
+  /** A Google Maps link for the venue, set once at creation — see 0037 in
+      jtrax-backend. Absent for tournaments created before this existed. */
+  venueMapUrl?: string;
   format: string;
   published: boolean;
   /** Whether anyone with the link may register, not just the front desk. */

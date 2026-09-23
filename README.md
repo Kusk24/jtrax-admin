@@ -11,10 +11,20 @@ themselves inline from the tokens in `lib/theme.ts`, with `app/globals.css` carr
 base reset, hover/focus states, keyframes and responsive breakpoints.
 
 ```bash
+nvm use         # Node 22 — see .nvmrc
 pnpm install
 pnpm dev        # http://localhost:3000
 pnpm build
+pnpm test
 ```
+
+**Node 22 or newer.** On Node 20 the app itself runs, but `pnpm test` dies
+before the first test with `webidl.util.markAsUncloneable is not a function` —
+jsdom 30 pulls undici 8, which needs a newer Node than 20.x provides.
+
+`pnpm dev` expects the backend on `http://localhost:8790`; start it with
+`PORT=8790 go run ./cmd/server` in `jtrax-backend` (its own default is 8080).
+Set `JTRAX_API_URL` to point somewhere else — see `.env.example`.
 
 ## Screens
 

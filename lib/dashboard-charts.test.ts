@@ -5,7 +5,8 @@
  */
 import { describe, expect, it } from "vitest";
 import {
-  attendanceSplit, byCourse, byMethod, monthToDate, parseAmount, STATUS_ORDER, statusCounts,
+  attendanceSplit, byCourse, byMethod, monthToDate, parseAmount, revenueSeries, STATUS_ORDER,
+  statusCounts,
 } from "./dashboard-charts";
 import { arcPath, donutSlices, niceTicks, pct } from "@/components/charts/geometry";
 
@@ -130,6 +131,66 @@ describe("chart geometry", () => {
     expect(pct(1, 500)).toBe(1);
     expect(pct(0, 500)).toBe(0);
     expect(pct(1, 4)).toBe(25);
+  });
+});
+
+describe("revenueSeries", () => {
+  const now = new Date(2026, 8, 18); // 18 September 2026
+  const paid = (isoDate: string, amount: string) => ({ isoDate, amount, status: "Paid" as const });
+
+  it("emits every day in the window, including the ones that took nothing", () => {
+    const points = revenueSeries([paid("2026-09-18", "1000")], "7D", now);
+
+    expect(points).toHaveLength(7);
+    expect(points.map((p) => p.value)).toEqual([0, 0, 0, 0, 0, 0, 1000]);
+    /* Oldest first, so the line reads left to right. */
+    expect(points[0].month).toBe("2026-09-12");
+    expect(points[6].month).toBe("2026-09-18");
+  });
+
+  it("sums the payments that share a day", () => {
+    const points = revenueSeries(
+      [paid("2026-09-17", "1,200"), paid("2026-09-17", "800 THB")],
+      "7D",
+      now,
+    );
+    expect(points[5].value).toBe(2000);
+  });
+
+  it("counts only money the academy kept", () => {
+    const points = revenueSeries(
+      [
+        paid("2026-09-18", "1000"),
+        { isoDate: "2026-09-18", amount: "5000", status: "Pending" },
+        { isoDate: "2026-09-18", amount: "7000", status: "Refunded" },
+      ],
+      "7D",
+      now,
+    );
+    expect(points[6].value).toBe(1000);
+  });
+
+  it("buckets a year by month, twelve of them", () => {
+    const points = revenueSeries([paid("2026-09-02", "3000"), paid("2026-01-09", "500")], "Year", now);
+
+    expect(points).toHaveLength(12);
+    expect(points[0].month).toBe("2025-10");
+    expect(points[11].month).toBe("2026-09");
+    expect(points[11].value).toBe(3000);
+    expect(points.find((p) => p.month === "2026-01")?.value).toBe(500);
+  });
+
+  it("spans thirty days on 30D", () => {
+    const points = revenueSeries([paid("2026-08-20", "600")], "30D", now);
+
+    expect(points).toHaveLength(30);
+    expect(points[0].month).toBe("2026-08-20");
+    expect(points[0].value).toBe(600);
+  });
+
+  it("ignores a payment with no date rather than dropping it on today", () => {
+    const points = revenueSeries([{ amount: "900", status: "Paid" }], "7D", now);
+    expect(points.every((p) => p.value === 0)).toBe(true);
   });
 });
 

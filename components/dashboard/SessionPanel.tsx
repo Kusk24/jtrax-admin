@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { hasClassEnded, useMinuteClock } from "@/lib/class-progress";
 import { type ClassDef } from "@/lib/data";
 import { activeEnrolments, fmtCredits, liveClasses, todayISO } from "@/lib/live";
 import {
@@ -17,6 +18,7 @@ import {
   minuteOf,
   minuteOptions,
   MIN_SESSION_MINUTES,
+  nowClock,
 } from "@/lib/session-draft";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
@@ -180,6 +182,15 @@ const ghostBtn: React.CSSProperties = {
   cursor: "pointer",
 };
 
+/* Outlined rather than filled: calling a class off is destructive but it is
+   not the panel's main action, and a solid red button beside a solid blue one
+   reads as the pair of equals it is not. */
+const dangerBtn: React.CSSProperties = {
+  ...ghostBtn,
+  borderColor: COLORS.danger,
+  color: COLORS.danger,
+};
+
 
 /**
  * An hour and a minute, side by side.
@@ -262,6 +273,23 @@ function ClockPicker({
  * in afterwards from the dashboard if they are not — the same attendance rows
  * either way, which is what spends the credits.
  */
+/**
+ * "1 h 30 min", from the parts, so the two languages can order them and
+ * punctuate them their own way. Shared: the create form offers these lengths
+ * and the in-progress panel re-offers the same ladder, and two copies would
+ * eventually round differently.
+ */
+function useLengthLabel(): (total: number) => string {
+  const t = useTranslations("session");
+  return (total: number) => {
+    const h = Math.floor(total / 60);
+    const m = total % 60;
+    if (h === 0) return t("lengthMinutes", { minutes: m });
+    if (m === 0) return t("lengthHours", { hours: h });
+    return t("lengthHoursMinutes", { hours: h, minutes: m });
+  };
+}
+
 function CreateSession({ onClose }: { onClose: () => void }) {
   const t = useTranslations("session");
   const tCommon = useTranslations("common");
@@ -281,8 +309,15 @@ function CreateSession({ onClose }: { onClose: () => void }) {
      not contain — a class that looks chosen and a button that stays dead. */
   const classId = classes.some((c) => c.id === chosenClass) ? chosenClass : classes[0]?.id ?? "";
 
-  const [start, setStart] = useState("");
-  const [end, setEnd] = useState("");
+  /* Opens on now, running for the default length, rather than on two empty
+     selects. Nearly every class is created as it is about to start or just
+     after it has, so the empty form asked the desk to re-enter the one thing
+     the computer already knew. Both stay fully editable.
+
+     Read once at mount, not at render: the panel would otherwise re-date
+     itself under the desk mid-form. */
+  const [start, setStart] = useState(nowClock);
+  const [end, setEnd] = useState(() => defaultEndFor(nowClock()));
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -296,15 +331,7 @@ function CreateSession({ onClose }: { onClose: () => void }) {
      half an hour and three quarters, not the whole ladder and then a refusal. */
   const lengths = useMemo(() => durationOptions(start), [start]);
 
-  /** "1 h 30 min", from the parts, so the two languages can order them and
-      punctuate them their own way. */
-  function lengthLabel(total: number): string {
-    const h = Math.floor(total / 60);
-    const m = total % 60;
-    if (h === 0) return t("lengthMinutes", { minutes: m });
-    if (m === 0) return t("lengthHours", { hours: h });
-    return t("lengthHoursMinutes", { hours: h, minutes: m });
-  }
+  const lengthLabel = useLengthLabel();
 
   /**
    * Choosing a start keeps the length the desk already picked and slides the
@@ -630,16 +657,85 @@ function ViewClass({ def: opened, onClose }: { def: ClassDef; onClose: () => voi
   const t = useTranslations("session");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
-  const { students, raw, create, remove, todaysClasses } = useData();
+  const { students, raw, create, remove, update, batch, todaysClasses } = useData();
   const { showError } = useErrorToast();
+  const lengthLabel = useLengthLabel();
   const def = todaysClasses.find((c) => c.id && c.id === opened.id) ?? opened;
-  const editable = def.status === "Ongoing";
+  /* Ticking, not read once at open: the desk can leave this panel open past
+     the end of the lesson, and editing has to stop the moment the clock says
+     so — not only the next time the panel happens to remount. */
+  const now = useMinuteClock();
+  /* session_status stays Ongoing until someone sets it otherwise — nothing
+     does that on its own — so a class the clock says has ended is still
+     "editable" by the database's own account until the desk notices. Adding,
+     re-timing and cancelling all read this, not def.status. */
+  const ended = def.status === "Ongoing" && hasClassEnded(def.time, now);
+  const shownStatus: ClassDef["status"] = ended ? "Finished" : def.status;
+  const editable = def.status === "Ongoing" && !ended;
+  const [busy, setBusy] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+
+  /* `ClassDef.time` is a display string, so the clock times come from the row
+     it was built from — the length has to be arithmetic, not parsed English. */
+  const row = raw.classSessions.find((s) => String(s.session_id) === def.id);
+  const startClock = String(row?.start_time ?? "");
+  const endClock = String(row?.end_time ?? "");
+  const runningMinutes = lengthMinutes(startClock, endClock);
+  const lengths = useMemo(() => durationOptions(startClock), [startClock]);
+
+  /**
+   * Re-length a class that is already running.
+   *
+   * Only `end_time` is sent: the backend's `storeSessionHours` recomputes
+   * `duration_hours` from the clock and then re-charges every attendance at
+   * the new length, so a class extended by half an hour costs each child
+   * half a credit more without the console working any of that out.
+   */
+  async function changeLength(minutes: number) {
+    const next = endAfter(startClock, minutes);
+    if (!next || !def.id) return;
+    setBusy(true);
+    try {
+      await update("class-sessions", def.id, { end_time: next });
+    } catch (e) {
+      showError(t("lengthChangeFailed"), e);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /**
+   * Call the class off.
+   *
+   * There is no `Cancelled` session status — the column's CHECK allows only
+   * Scheduled, Ongoing and Completed — so a cancelled class is one that did
+   * not happen: its attendance goes, then the session does. Deleting the
+   * attendance first is what refunds the credits (`refundAttendance` runs
+   * BeforeDelete on each row), and it is also required, because
+   * `attendance.session_id` is NOT NULL with no cascade and the session
+   * delete would otherwise be refused by the foreign key.
+   */
+  async function cancelClass() {
+    if (!def.id) return;
+    setBusy(true);
+    try {
+      await batch(async () => {
+        const rows = raw.attendance.filter((a) => String(a.session_id) === def.id);
+        for (const a of rows) await remove("attendance", String(a.attendance_id));
+        await remove("class-sessions", def.id!);
+      });
+      onClose();
+    } catch (e) {
+      showError(t("cancelFailed"), e);
+      setBusy(false);
+    }
+  }
   /* The roster comes from attendance, so adding or removing someone writes a
      row rather than editing a local array that the next refresh discards. */
   const roster = def.roster;
   const [addOpen, setAddOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const status = statusChipColors(def.status);
+  const status = statusChipColors(shownStatus);
 
   /* Latecomers are the point of this panel: a student who turns up after the
      session started is added here. Only this class's own children, though —
@@ -688,7 +784,7 @@ function ViewClass({ def: opened, onClose }: { def: ClassDef; onClose: () => voi
             fontWeight: 600,
           }}
         >
-          {tStatus(def.status)}
+          {tStatus(shownStatus)}
         </span>
         {!editable && (
           <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
@@ -696,6 +792,67 @@ function ViewClass({ def: opened, onClose }: { def: ClassDef; onClose: () => voi
           </span>
         )}
       </div>
+
+      {/* A class that is running can still be re-timed and called off. Both
+          are hidden once it is finished: the length is then a record of what
+          happened, and there is nothing left to cancel. */}
+      {editable && runningMinutes > 0 && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            flexWrap: "wrap",
+            padding: "12px 14px",
+            marginBottom: 18,
+            borderRadius: 12,
+            border: `1px solid ${COLORS.border}`,
+            background: COLORS.bg,
+          }}
+        >
+          <label style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
+            <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary, whiteSpace: "nowrap" }}>
+              {t("length")}
+            </span>
+            <select
+              value={runningMinutes}
+              disabled={busy}
+              onChange={(e) => changeLength(Number(e.target.value))}
+              style={{ ...fieldStyle, width: "auto", minWidth: 120 }}
+            >
+              {/* The current length stays selectable even if it is off the
+                  ladder — an older session may hold a length this form would
+                  not offer, and it must not silently re-time itself. */}
+              {(lengths.includes(runningMinutes) ? lengths : [...lengths, runningMinutes].sort((a, b) => a - b)).map(
+                (m) => (
+                  <option key={m} value={m}>
+                    {lengthLabel(m)}
+                  </option>
+                ),
+              )}
+            </select>
+          </label>
+
+          {confirmCancel ? (
+            <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
+                {t("cancelConfirm", { count: roster.length })}
+              </span>
+              <button type="button" style={ghostBtn} disabled={busy} onClick={() => setConfirmCancel(false)}>
+                {tCommon("close")}
+              </button>
+              <button type="button" style={dangerBtn} disabled={busy} onClick={cancelClass}>
+                {busy ? tCommon("saving") : t("cancelConfirmYes")}
+              </button>
+            </span>
+          ) : (
+            <button type="button" style={dangerBtn} disabled={busy} onClick={() => setConfirmCancel(true)}>
+              {t("cancelClass")}
+            </button>
+          )}
+        </div>
+      )}
 
       <h3 style={{ margin: "0 0 12px", fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text }}>
         {t("checkedInCount", { count: roster.length })}
@@ -795,10 +952,15 @@ function ViewClass({ def: opened, onClose }: { def: ClassDef; onClose: () => voi
                         });
                       } catch (e) {
                         /* This used to swallow everything as "already added".
-                           The server now also refuses a child who cannot
-                           afford the session, and that is the one refusal the
-                           desk has to hear — it names the balance and the
-                           cost, and the fix is a top-up. */
+                           Now the server's own message is shown instead —
+                           most often the UNIQUE(student_id, session_id) a
+                           double-click races into. It is NOT an affordability
+                           refusal, despite what an earlier version of this
+                           comment claimed: chargeAttendance() in the backend's
+                           credits.go has no balance or expiry check at all, so
+                           a child with an expired or negative balance is
+                           charged silently rather than refused here. See
+                           [[a-child-can-check-in-on-expired-credit]]. */
                         showError(tCommon("checkInFailed"), e);
                       }
                       setSearch("");

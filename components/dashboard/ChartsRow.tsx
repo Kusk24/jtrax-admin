@@ -64,7 +64,7 @@ export function ChartsRow() {
 
   return (
     <div className="jt-chart-grid">
-      <ChartCard title={t("rosterHealth")} sub={t("rosterHealthSub")}>
+      <ChartCard title={t("studentStatus")} sub={t("studentStatusSub")}>
         <Donut
           data={statusData}
           centreLabel={t("students")}

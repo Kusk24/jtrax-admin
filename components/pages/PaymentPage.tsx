@@ -532,7 +532,15 @@ export function RecordPaymentForm({
                 status,
                 reference: ref.trim(),
                 studentName: selected?.name ?? studentName,
-                className: selected?.className ?? "",
+                /* The class the chosen *package* is for, not the student's
+                   own primary course — a child enrolled in two classes has
+                   only one `className` on their roster row, and paying for
+                   the other one used to record a receipt that named the
+                   wrong course. Falls back to the student's own class only
+                   when nothing is priced yet — see the note on `pkg` in
+                   `onSave` for why this cannot fall back to "" and still be
+                   right about which enrolment the money is for. */
+                className: packages.find((k) => k.id === packageId)?.className ?? selected?.className ?? "",
                 payerName: guardians.find((g) => g.id === payerId)?.name ?? "",
               })
             }
@@ -874,20 +882,56 @@ export function PaymentPage({
         onSave={async (p) => {
           const today = new Date().toISOString().slice(0, 10);
           try {
-            const enr = raw.enrollments.find(
-              (e) => String(e.student_id) === p.studentId && String(e.status) === "Active",
-            );
             const pkg = raw.creditPackages.find(
               (k) => String(k["credit_package_id"]) === p.creditPackageId,
             );
+            /* The class the office actually chose a package for — not a
+               property of the student, who can hold several active
+               enrolments at once and no single "current class" of their own.
+               Blank when the payment carries no package at all (a tournament
+               fee, say), in which case there is nothing to match an enrolment
+               to and the old lenient behaviour — any active one — still
+               applies below. */
+            const pkgClassId = pkg ? String(pkg["class_id"] ?? "") : "";
+            /* Matched to that class specifically. This used to be "the
+               student's first active enrolment, whichever course", so a
+               family enrolled in two classes paying for the second one had
+               the credits land on the first — the package was priced and
+               charged correctly, the balance just went to the wrong course. */
+            const enr = raw.enrollments.find(
+              (e) =>
+                String(e.student_id) === p.studentId &&
+                String(e.status) === "Active" &&
+                (!pkgClassId || String(e["class_id"]) === pkgClassId),
+            );
+
             /* The payment and the credits it buys are one act at the till, so
                they are one refetch too — recording the payment alone left the
                student's balance untouched and the desk topping it up by hand
                afterwards. */
             await batch(async () => {
+              /* Paying for a course with no matching active enrolment enrols
+                 the child in it, the same act "Add Enrolment" used to do on
+                 its own with no money behind it — that button now sends the
+                 desk here instead. Without this, a payment for a class the
+                 child is not yet in either fell back to some other course's
+                 enrolment (the original bug) or, once that fallback was
+                 removed, would have credited nothing at all and said so
+                 nowhere. */
+              let enrollmentId = enr ? String(enr.enrollment_id) : "";
+              if (!enrollmentId && pkgClassId) {
+                const created = await create("enrollments", {
+                  student_id: p.studentId,
+                  class_id: pkgClassId,
+                  enrolled_date: today,
+                  status: "Active",
+                });
+                enrollmentId = String(created.enrollment_id);
+              }
+
               const payment = await create("payments", {
                 student_id: p.studentId,
-                enrollment_id: enr ? enr.enrollment_id : null,
+                enrollment_id: enrollmentId || null,
                 /* Recorded, not just priced: without it the payment list has no
                    credits column to show and the ledger cannot say what was
                    bought. */
@@ -908,11 +952,11 @@ export function PaymentPage({
                  waiting to clear buys nothing yet, and a refunded one bought
                  nothing in the end. Marking it Paid later on the edit form is
                  what releases them. */
-              if (p.status === "Paid" && pkg && enr) {
+              if (p.status === "Paid" && pkg && enrollmentId) {
                 await create("credit-transactions", {
-                  enrollment_id: String(enr["enrollment_id"]),
-                  student_id: String(enr["student_id"] ?? "") || null,
-                  class_id: String(pkg["class_id"] ?? "") || null,
+                  enrollment_id: enrollmentId,
+                  student_id: p.studentId,
+                  class_id: pkgClassId || null,
                   transaction_type: "purchase",
                   amount: Number(pkg["credit_amount"] ?? 0),
                   transaction_date: today,
@@ -937,6 +981,9 @@ export function PaymentPage({
       {editingId && (
         <CrudFormModal
           title={t("editTitle")}
+          /* This modal has no create form — only ever editing a payment
+             already on the books. */
+          isEdit={true}
           fields={editFields}
           values={values}
           onChange={setValues}

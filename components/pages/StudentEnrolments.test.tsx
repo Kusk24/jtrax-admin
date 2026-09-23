@@ -174,8 +174,10 @@ const raw = {
   systemConfig: [],
 };
 
+const routerPush = vi.fn();
+
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push: routerPush, replace: vi.fn() }),
   usePathname: () => "/students",
 }));
 
@@ -245,6 +247,7 @@ beforeEach(() => {
   create.mockClear();
   update.mockClear();
   remove.mockClear();
+  routerPush.mockClear();
 });
 /* The row carries exactly two actions now: move them somewhere else, or take
    the record away. Withdraw is gone — the office asked for it to go, because
@@ -315,26 +318,83 @@ describe("an enrolment row", () => {
   });
 });
 
-describe("enrolling", () => {
-  it("puts the child in the class, not out of it", async () => {
+/**
+ * When a package expires, told the way the desk asks it: joined on this
+ * date, credits good until this date.
+ */
+describe("the enrolment card's dates", () => {
+  it("shows when the child joined and when this enrolment's credits expire", async () => {
     const user = renderList();
-    await openStudent(user, "Chai");
-    await user.click(screen.getByRole("button", { name: "Add Enrolment" }));
-    await user.click(screen.getByRole("button", { name: "Save" }));
+    await openStudent(user, "Anong");
 
-    expect(create).toHaveBeenCalledWith(
-      "enrollments",
-      expect.objectContaining({ student_id: "chai", status: "Active" }),
-    );
+    /* Beginner: t1 (+20, expiry 2026-12-31) is the only transaction on this
+       enrolment carrying an expiry — t2 is a consumption with none. */
+    expect(
+      within(enrolmentRow("Beginner")).getByText(
+        "Enrolled on 6 Jan 2026 · Expires 31 Dec 2026",
+      ),
+    ).toBeTruthy();
   });
 
-  /* The form used to offer Active / Completed / Withdrawn, so the desk could
-     enrol a child as Withdrawn — in the class and out of it at once. */
-  it("does not ask what status to enrol them at", async () => {
+  /* Anong's Intermediate enrolment has no credit transactions at all yet —
+     nothing bought against it should read the same as nothing that expires,
+     not as a blank the office has to wonder about. */
+  it("reads as never expiring when nothing has been bought against it yet", async () => {
+    const user = renderList();
+    await openStudent(user, "Anong");
+
+    expect(
+      within(enrolmentRow("Intermediate")).getByText(
+        "Enrolled on 4 May 2026 · Never expires",
+      ),
+    ).toBeTruthy();
+  });
+
+  /* The same reading `expiryOf` already gives the Change Course modal's
+     prefill — the card and that form must never be able to disagree. */
+  it("reads the same expiry the Change Course modal would prefill", async () => {
+    const user = renderList();
+    await openStudent(user, "Anong");
+
+    expect(
+      within(enrolmentRow("Beginner")).getByText(/Expires 31 Dec 2026/),
+    ).toBeTruthy();
+
+    await user.click(
+      within(enrolmentRow("Beginner")).getByRole("button", {
+        name: "Change Beginner to another course",
+      }),
+    );
+    expect((screen.getByLabelText("Expires") as HTMLInputElement).value).toBe(
+      "2026-12-31",
+    );
+  });
+});
+
+/**
+ * "Add Enrolment" used to open a form that wrote a bare `enrollments` row —
+ * a course with no money behind it, so the desk's next stop was always the
+ * Payment screen to actually sell the family something. It now sends them
+ * there directly: paying for a course is what enrols a child in it (see
+ * PaymentPage.test.tsx — recording a payment for a class with no matching
+ * enrolment creates one), so there is nothing left for a free-standing form
+ * to do on its own.
+ */
+describe("enrolling", () => {
+  it("sends the desk straight to Payment, prefilled for this child", async () => {
     const user = renderList();
     await openStudent(user, "Chai");
     await user.click(screen.getByRole("button", { name: "Add Enrolment" }));
-    expect(screen.queryByLabelText(/^Status/)).toBeNull();
+
+    expect(routerPush).toHaveBeenCalledWith("/payment?student=chai");
+  });
+
+  it("writes nothing itself — enrolling is Payment's act now, not this screen's", async () => {
+    const user = renderList();
+    await openStudent(user, "Chai");
+    await user.click(screen.getByRole("button", { name: "Add Enrolment" }));
+
+    expect(create).not.toHaveBeenCalled();
   });
 });
 

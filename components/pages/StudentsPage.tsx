@@ -117,6 +117,28 @@ function disagreements(
 }
 
 
+/**
+ * The latest expiry on one enrolment's ledger — the same "last date any of
+ * it is good for" rule the balance chip and the parent portal use.
+ *
+ * Takes the transactions explicitly rather than closing over `raw` from a
+ * component: called from inside a `useMemo` (the enrolment card's dates), a
+ * closure over `raw` would be a new function identity every render and pull
+ * `react-hooks/exhaustive-deps` into either an unstable dependency or a
+ * `useCallback` this has no other reason to need. A pure function has
+ * neither problem — only its actual input, `transactions`, has to be listed.
+ */
+function expiryOf(transactions: Record<string, unknown>[], enrolmentId: string): string {
+  return (
+    transactions
+      .filter((tx) => String(tx["enrollment_id"]) === enrolmentId)
+      .map((tx) => String(tx["expiry_date"] ?? ""))
+      .filter(Boolean)
+      .sort()
+      .at(-1) ?? ""
+  );
+}
+
 /* Credit reads as a warning before it reads as a number, so the chip is
    coloured by how close to empty the balance is — shared by both views. */
 function creditChipFor(credit: number): { color: string; bg: string } {
@@ -290,9 +312,20 @@ function StudentDetail({
             enrolledDate: String(e["enrolled_date"] ?? ""),
             status: String(e["status"] ?? ""),
             movedFrom: fromCls ? String(fromCls["name"] ?? "") : "",
+            /* The latest expiry among this enrolment's own credit
+               transactions — the same reading `expiryOf` already gives the
+               Change Course modal's prefill, so the card and the form can
+               never disagree about what "this enrolment's credits expire"
+               means. Blank covers both "nothing bought against it yet" and
+               "bought with no validity" — both read as never expiring. */
+            expires: expiryOf(raw.creditTransactions, String(e["enrollment_id"])),
           };
         }),
-    [raw.enrollments, raw.classes, student.id],
+    /* raw.creditTransactions is here for `expires` (via expiryOf), not just
+       decoration — without it the card's expiry date would go stale the
+       moment a purchase or transfer changed it, until something unrelated
+       happened to invalidate the memo. */
+    [raw.enrollments, raw.classes, raw.creditTransactions, student.id],
   );
 
   /* Four things happen to an enrolment, and each has its own button.
@@ -304,7 +337,6 @@ function StudentDetail({
        · Change   — leaving one for another, which is one act, not two
        · Withdraw — leaving, and staying left
        · Delete   — undoing a row that should never have existed */
-  const [addingEnrolment, setAddingEnrolment] = useState(false);
   const [changing, setChanging] = useState<(typeof enrolments)[number] | null>(null);
   const [changeTo, setChangeTo] = useState("");
   /* Whether the balance follows them. Ticked by default: an hour paid for is
@@ -315,7 +347,6 @@ function StudentDetail({
   /* Putting unspent hours back into a course the child has joined. */
   const [claiming, setClaiming] = useState(false);
   const [claimTo, setClaimTo] = useState("");
-  const [enrolmentValues, setEnrolmentValues] = useState<CrudValues>({});
   /* What lands on the new enrolment. null means "follow the computed
      conversion" — the field shows the sum's answer until the office types
      over it, and a hand-typed figure is what gets written. */
@@ -441,17 +472,6 @@ function StudentDetail({
           : t("looseMovedIn"),
       });
     });
-  }
-
-  /** The latest expiry on an enrolment's ledger — the same "last date any of
-      it is good for" rule the balance chip and the parent portal use. */
-  function expiryOf(enrolmentId: string): string {
-    return raw.creditTransactions
-      .filter((tx) => String(tx["enrollment_id"]) === enrolmentId)
-      .map((tx) => String(tx["expiry_date"] ?? ""))
-      .filter(Boolean)
-      .sort()
-      .at(-1) ?? "";
   }
 
   /**
@@ -666,31 +686,17 @@ function StudentDetail({
     });
   }
 
-  const enrolmentFields: CrudField[] = useMemo(
-    () => [
-      {
-        name: "class_id",
-        label: tCommon("class"),
-        kind: "select",
-        required: true,
-        /* Nobody can be enrolled into a class the academy has retired. */
-        options: liveClasses({ classes: raw.classes }).map((c) => ({ value: String(c["class_id"]), label: String(c["name"] ?? "") })),
-      },
-      { name: "enrolled_date", label: t("enrolledDate"), kind: "date", required: true, half: true },
-      /* No status picker: joining a class is always joining it. The form used
-         to offer all three, so the desk could enrol a child as Withdrawn — a
-         row that puts them in a class and takes them out of it at once. */
-    ],
-    [raw.classes, t, tCommon],
-  );
-
+  /**
+   * "Add Enrolment" used to write a bare `enrollments` row here — a course
+   * with no money behind it, and no credits, so the desk's very next stop was
+   * always the Payment screen to actually sell the family something. Now it
+   * sends them there directly: paying for a course is what enrols a child in
+   * it (Payment's own `onSave` creates the enrolment when none matches the
+   * chosen package's class), so there is nothing left for a free-standing
+   * enrolment form to do on its own.
+   */
   function openAddEnrolment() {
-    const first = liveClasses({ classes: raw.classes })[0];
-    setAddingEnrolment(true);
-    setEnrolmentValues({
-      class_id: first ? String(first["class_id"]) : "",
-      enrolled_date: new Date().toISOString().slice(0, 10),
-    });
+    router.push(`/payment?student=${encodeURIComponent(student.id)}`);
   }
 
   const [creditModal, setCreditModal] = useState<(typeof creditRows)[number] | "new" | null>(null);
@@ -1259,6 +1265,7 @@ function StudentDetail({
       {creditModal && (
         <CrudFormModal
           title={creditModal === "new" ? t("addCredit") : t("editCredit")}
+          isEdit={creditModal !== "new"}
           fields={creditFields}
           values={creditValues}
           onChange={setCreditValues}
@@ -1394,8 +1401,19 @@ function StudentDetail({
                       )}
                     </span>
                     <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-                      {fmtDate(e.enrolledDate)}
-                      {e.movedFrom ? ` · ${t("movedFromCourse", { className: e.movedFrom })}` : ""}
+                      {/* Both dates the office actually asks about at the
+                          desk — when a family joined, and how long the
+                          credits behind this enrolment are still good for.
+                          The same expiry `expiryOf` already prefills into
+                          Change Course, so the card and that form can never
+                          disagree. */}
+                      {[
+                        `${t("enrolledDate")} ${fmtDate(e.enrolledDate)}`,
+                        e.expires ? `${t("expires")} ${fmtDate(e.expires)}` : t("neverExpires"),
+                        e.movedFrom ? t("movedFromCourse", { className: e.movedFrom }) : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </span>
                   </span>
 
@@ -1423,7 +1441,7 @@ function StudentDetail({
                           setChangeTo(changeTargets(e)[0]?.id ?? "");
                           setChangeCarry(balance > 0);
                           setMoveAmount(null);
-                          setMoveExpiry(expiryOf(e.id));
+                          setMoveExpiry(expiryOf(raw.creditTransactions, e.id));
                           setChanging(e);
                         }}
                       >
@@ -1456,19 +1474,6 @@ function StudentDetail({
             </div>
           )}
         </Card>
-      )}
-
-      {addingEnrolment && (
-        <CrudFormModal
-          title={t("addEnrolment")}
-          fields={enrolmentFields}
-          values={enrolmentValues}
-          onChange={setEnrolmentValues}
-          onClose={() => setAddingEnrolment(false)}
-          onSubmit={async (payload) => {
-            await create("enrollments", { ...payload, student_id: student.id, status: "Active" });
-          }}
-        />
       )}
 
       {deletingEnrolment && (() => {
