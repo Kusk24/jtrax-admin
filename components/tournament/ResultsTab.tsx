@@ -16,6 +16,26 @@
  * strip of columns scrolled sideways; what an organiser is actually asked at a
  * venue is about one round or one child, and neither was answerable by
  * scrolling.
+ *
+ * ---- how an age-group event arrives ----
+ *
+ * Two ways, and the tab strip has to handle both because arbiters use both.
+ *
+ *   Several events. Swiss-Manager uploads each group as its own tournament,
+ *   so OPEN, U18, U12, U10 and U08 are five tnr numbers and five links. Each
+ *   of the tournament's own categories carries one, and switching tab fetches
+ *   that group's link. This is what the console already did.
+ *
+ *   One event. Swiss-Manager uploads a single tournament and names each
+ *   player's group in the ranking table's "Typ" column — which is how
+ *   "WCIB CHESS CHAMPIONSHIP 2025 [U14 + G14]" is published. There is one
+ *   link to give, so linking per category cannot divide it, and the console
+ *   used to show both age groups as one undivided list of twenty children.
+ *   The tabs are now read off that column instead.
+ *
+ * Groups the link names itself win where both are available: they are the
+ * arbiter's division of the event rather than the office's, and a group tab
+ * always has results behind it where a category tab may have no link at all.
  */
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
@@ -28,6 +48,7 @@ import { COLORS, FONT } from "@/lib/theme";
 import { Icon } from "@/lib/icons";
 import { errorText } from "../crud";
 import { formatPoints } from "@/lib/tournament-results";
+import { groupsIn, roundsInGroup, standingsInGroup } from "@/lib/tournament-rounds";
 import { primaryButtonStyle, secondaryButtonStyle } from "../page-kit";
 import { Badge, Card, SectionTitle } from "../ui";
 import { LinkedResultsCard } from "./LinkedResultsCard";
@@ -73,17 +94,30 @@ export function ResultsTab({
      where the previous group's card is still showing — it reads as this group
      being linked to that event. */
   const [loaded, setLoaded] = useState<{ scope: string; link: LinkedResults | null } | null>(null);
-  /* "" is the first group, whatever it is — not a magic "all". A stored id
-     would dangle if the organiser deleted the category it names. */
-  const [categoryTab, setCategoryTab] = useState("");
+  /**
+   * Which tab is showing, as `""` for the whole event, `c:<id>` for one of the
+   * tournament's own categories, or `g:<name>` for a group the linked event
+   * names in its own ranking table.
+   *
+   * The two are different in kind, which is why the prefix exists rather than
+   * two pieces of state. A `c:` tab is a *separate chess-results event* with
+   * its own link, fetched on its own; a `g:` tab is a slice of the event
+   * already loaded, and fetching for it would ask the server for a link that
+   * was never made. One string keeps the fetch effect keyed on the only thing
+   * that can change what is fetched.
+   */
+  const [tab, setTab] = useState("");
+  const categoryTab = tab.startsWith("c:") ? tab.slice(2) : "";
+  const groupTab = tab.startsWith("g:") ? tab.slice(2) : "";
 
-  /* One fetch per tab, because each age group is a different chess-results
-     event: the arbiter publishes OPEN, U18, U12, U10 and U08 separately, with
-     separate links, pairings and ranked lists.
+  /* One fetch per *category* tab, because those are different chess-results
+     events: an arbiter may publish OPEN, U18, U12, U10 and U08 separately,
+     with separate links, pairings and ranked lists.
 
-     `setLinkLoaded(false)` on the way in, so switching group does not show the
-     previous group's card for a frame — which would read as this group being
-     linked to that event. */
+     Group tabs are deliberately not in the dependencies. They divide the event
+     already in hand, so switching between them must not cost chess-results a
+     request — or worse, ask for a per-category link that does not exist and
+     blank the screen. */
   useEffect(() => {
     let cancelled = false;
     const scope = categoryTab;
@@ -122,18 +156,44 @@ export function ResultsTab({
   const linkLoaded = loaded?.scope === categoryTab;
   const linkedResults = linkLoaded ? loaded!.link : null;
   const linked = linkedResults !== null;
-  /* The standings are whatever the selected group is linked to. No joining:
-     the arbiter already separated the groups, and inferring a player's group
-     by matching their name against our entrants was guessing at something
-     chess-results had told us outright. */
-  const preview = (linkedResults?.standings ?? []).slice(0, PREVIEW_ROWS);
-  const shownCount = linkedResults?.standings.length ?? 0;
+  const allStandings = linkedResults?.standings ?? [];
+  const allRounds = linkedResults?.rounds ?? [];
+
+  /**
+   * The groups this one link publishes, read off the ranking table.
+   *
+   * This is the half that was missing. A per-category link divides an event
+   * the arbiter uploaded as several tournaments; it can do nothing for an
+   * event uploaded as one, with the groups in a "Typ" column — there is a
+   * single link to give, so the console showed twenty children of two
+   * different age groups as one undivided list.
+   */
+  const groups = groupsIn(allStandings);
+
+  /* Filtering, not refetching: a group tab is a slice of the event already in
+     hand. The ranks stay the arbiter's own overall ranks — renumbering each
+     group 1..n would be the console inventing a placing, and a placing is the
+     one thing at a tournament that is not ours to write. */
+  const standings = groupTab ? standingsInGroup(groupTab, allStandings) : allStandings;
+  const rounds = groupTab ? roundsInGroup(groupTab, allStandings, allRounds) : allRounds;
+
+  const preview = standings.slice(0, PREVIEW_ROWS);
+  const shownCount = standings.length;
   const hasStandings = shownCount > 0;
-  /* The whole event, then each group. An event with no categories is a single
-     list and gets no tab strip — one tab is furniture, not navigation. */
-  const tabs = [{ id: "", name: t("wholeEvent") }, ...categories];
-  const tabbed = categories.length > 0;
-  const rounds = linkedResults?.rounds ?? [];
+
+  /**
+   * The tab strip: the whole event, then its groups.
+   *
+   * Groups the link names itself win over the tournament's own categories.
+   * They are the arbiter's division of the event rather than the office's, and
+   * they are the one whose results actually exist — a category tab with no
+   * link of its own has nothing to show, whereas a group tab always does.
+   */
+  const tabs = groups.length > 0
+    ? [{ id: "", name: t("wholeEvent") }, ...groups.map((g) => ({ id: `g:${g}`, name: g }))]
+    : [{ id: "", name: t("wholeEvent") }, ...categories.map((c) => ({ id: `c:${c.id}`, name: c.name }))];
+  /* One tab is furniture, not navigation. */
+  const tabbed = tabs.length > 1;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -151,14 +211,14 @@ export function ResultsTab({
           style={{ display: "flex", gap: 4, borderBottom: `1px solid ${COLORS.border}`, overflowX: "auto" }}
         >
           {tabs.map((g) => {
-            const current = g.id === categoryTab;
+            const current = g.id === tab;
             return (
               <button
                 key={g.id}
                 type="button"
                 role="tab"
                 aria-selected={current}
-                onClick={() => setCategoryTab(g.id)}
+                onClick={() => setTab(g.id)}
                 style={{
                   border: "none",
                   background: "transparent",
@@ -186,7 +246,10 @@ export function ResultsTab({
           offer one group's half-typed link on another. */}
       {linkLoaded && (
         <LinkedResultsCard
-          key={categoryTab || tournamentId}
+          /* Prefixed because this card and the table below are siblings in one
+             list: keyed on the tab alone they collide, and React quietly drops
+             one of the two. */
+          key={`link-${categoryTab || tournamentId}`}
           tournamentId={tournamentId}
           tournamentName={tournamentName}
           categoryId={categoryTab || undefined}
@@ -248,14 +311,18 @@ export function ResultsTab({
       {linked &&
         (rounds.length > 0 ? (
           <ResultsTable
-            /* Remounted per group so a player picked in U18 does not stay
-               selected over U12's boards, where that name is not on one. */
-            key={categoryTab || tournamentId}
+            /* Remounted per tab so a player picked in U18 does not stay
+               selected over U12's boards, where that name is not on one.
+               Keyed on the whole tab, groups included: those do not refetch,
+               so nothing else would clear the selection. */
+            key={`table-${tab || tournamentId}`}
             rounds={rounds}
-            standings={linkedResults?.standings ?? []}
+            /* The group's own rows on a group tab, so its ranked list and its
+               player cards agree with the boards beside them. */
+            standings={standings}
             totalRounds={totalRounds}
             eventName={tournamentName}
-            categoryName={categories.find((c) => c.id === categoryTab)?.name}
+            categoryName={groupTab || categories.find((c) => c.id === categoryTab)?.name}
           />
         ) : (
           <Card>
@@ -267,11 +334,21 @@ export function ResultsTab({
 
       {linked && hasStandings && (
         <Card style={{ padding: 0, overflow: "hidden" }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "14px 16px", borderBottom: `1px solid ${COLORS.border}` }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", padding: "14px 16px", borderBottom: `1px solid ${COLORS.border}` }}>
             <SectionTitle>{tExt("previewTitle")}</SectionTitle>
             <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
               {tExt("previewSub", { count: shownCount })}
             </span>
+            {/* The list is this group's, but the numbers beside it are the
+                arbiter's overall ranks — the winner of the group is the top
+                row, which may well be ranked fourth in the event. Said out
+                loud, because renumbering the group 1..n would read better and
+                would be the console inventing a placing. */}
+            {groupTab && (
+              <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.warning }}>
+                {t("overallRanksNote", { group: groupTab })}
+              </span>
+            )}
           </div>
           <div
             style={{ overflowX: "auto" }}

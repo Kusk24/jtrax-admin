@@ -1143,7 +1143,8 @@
     "ofPossible": "{got} / {max} แต้ม",
     "progression": "แต้มสะสม",
     "perRound": "เฉลี่ย {pts} แต้ม/รอบ",
-    "progressionAlt": "แต้มสะสมหลังแต่ละรอบ: {scores}"
+    "progressionAlt": "แต้มสะสมหลังแต่ละรอบ: {scores}",
+    "overallRanksNote": "เรียงเฉพาะรุ่น {group} แต่เลขอันดับเป็นอันดับรวมของทั้งรายการ"
   },
   "lichessAdmin": {
     "title": "Lichess ที่บ้าน",
