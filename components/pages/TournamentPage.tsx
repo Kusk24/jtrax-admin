@@ -57,12 +57,6 @@ const TOURNAMENT_TEMPLATE = equalTemplate(5, 100);
 const CARD_FIRST = ["card", "list"] as const;
 const LIST_FIRST = ["list", "card"] as const;
 
-function rankBadge(rank: number): { color: string; bg: string; labelKey: string } | null {
-  if (rank === 1) return { color: "#8A6D00", bg: "#FCEFC2", labelKey: "champion" };
-  if (rank === 2) return { color: "#5B6472", bg: "#E6E9EE", labelKey: "runnerUp" };
-  if (rank === 3) return { color: "#8A4B26", bg: "#F3DCC6", labelKey: "secondRunnerUp" };
-  return null;
-}
 
 /** Branded stand-in for the tournament photo (design assets weren't imported). */
 function TournamentArt({ name, height = 120 }: { name: string; height?: number }) {
@@ -1148,20 +1142,13 @@ function TournamentDetail({
               <CardGrid min={240}>
                 {pageRows.length === 0 && <EmptyCards>{t("noParticipants")}</EmptyCards>}
                 {pageRows.map((p) => {
-                  const badge = rankBadge(p.rank);
                   return (
                     <EntityCard
                       key={p.name}
                       onClick={() => setDrawer(p)}
                       avatar={<Avatar initials={initialsOf(p.name)} size={44} />}
                       title={p.name}
-                      subtitle={
-                        badge ? (
-                          <span style={{ fontWeight: 700, color: badge.color }}>{t(badge.labelKey)}</span>
-                        ) : (
-                          `#${p.rank}`
-                        )
-                      }
+                      subtitle={`#${p.rank}`}
                       badges={<Badge color={COLORS.blue} bg={COLORS.light}>{p.category}</Badge>}
                       actions={
                         p.id ? (
@@ -1185,13 +1172,15 @@ function TournamentDetail({
           <Table
             /* No payment column — registration fees are tracked on the
                Payment page, not per participant row. */
-            columns={[t("rank"), t("player"), t("rating"), t("category"), t("score"), tCommon("action")]}
+            /* "No.", not "Rank": this is the order entries came in. Placings are
+               the Results tab's, from chess-results — the first three sign-ups
+               used to be labelled Champion, Runner-up and 2nd Runner-up. */
+            columns={[t("entryNo"), t("player"), t("rating"), t("category"), t("score"), tCommon("action")]}
             template={PARTICIPANT_TEMPLATE}
             minWidth={780}
           >
             {pageRows.length === 0 && <EmptyRow>{t("noParticipants")}</EmptyRow>}
             {pageRows.map((p) => {
-              const badge = rankBadge(p.rank);
               return (
                 <TableRow key={p.name} template={PARTICIPANT_TEMPLATE} onClick={() => setDrawer(p)}>
                   <span style={{ fontWeight: 700, color: COLORS.textSecondary }}>#{p.rank}</span>
@@ -1201,11 +1190,6 @@ function TournamentDetail({
                       <span style={{ display: "block", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {p.name}
                       </span>
-                      {badge && (
-                        <span style={{ fontFamily: FONT, fontSize: 11.5, fontWeight: 700, color: badge.color }}>
-                          {t(badge.labelKey)}
-                        </span>
-                      )}
                     </span>
                   </span>
                   <span style={{ color: COLORS.textSecondary }}>{p.rating}</span>

@@ -319,6 +319,8 @@ export function toTournaments(c: LiveCollections): Tournament[] {
       rating: n(r, "fide_rating"),
       category: s(cats.find((k) => s(k, "tournament_category_id") === s(r, "tournament_category_id")) ?? {}, "name") || "—",
       score: "—",
+      /* Entry order, not a placing: nobody has played yet. Real standings
+         come from chess-results on the Results tab. */
       rank: i + 1,
       prize: "—",
       /* The real thing since 0032: a payment row against the registration,
