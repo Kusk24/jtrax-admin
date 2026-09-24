@@ -296,7 +296,12 @@
     "minutesOf": "{done} min / {total} min",
     "classFilterLabel": "Filter today's classes",
     "noClassesInFilter": "No classes match this filter.",
-    "classFilterAll": "All"
+    "classFilterAll": "All",
+    "remindExpiring": "Remind: credits expiring",
+    "remindLowCredit": "Remind: low credit",
+    "lowCreditPreviewSub": "Students with {line} credits or fewer. Untick a family to leave them out.",
+    "lowCreditEmpty": "No student has {line} credits or fewer.",
+    "lowCreditLeft": "{credits} credits left"
   },
   "find": {
     "title": "Find a Student",

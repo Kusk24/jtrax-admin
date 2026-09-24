@@ -296,7 +296,12 @@
     "minutesOf": "{done} นาที / {total} นาที",
     "classFilterLabel": "กรองคลาสเรียนวันนี้",
     "noClassesInFilter": "ไม่มีคลาสที่ตรงกับตัวกรองนี้",
-    "classFilterAll": "ทั้งหมด"
+    "classFilterAll": "ทั้งหมด",
+    "remindExpiring": "แจ้งเตือน: เครดิตใกล้หมดอายุ",
+    "remindLowCredit": "แจ้งเตือน: เครดิตเหลือน้อย",
+    "lowCreditPreviewSub": "นักเรียนที่มีเครดิตไม่เกิน {line} เครดิต ยกเลิกการเลือกครอบครัวที่ไม่ต้องการส่ง",
+    "lowCreditEmpty": "ไม่มีนักเรียนที่มีเครดิตไม่เกิน {line} เครดิต",
+    "lowCreditLeft": "เหลือ {credits} เครดิต"
   },
   "find": {
     "title": "ค้นหานักเรียน",

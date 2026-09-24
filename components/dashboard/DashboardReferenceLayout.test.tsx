@@ -104,6 +104,16 @@ describe("student status shortcuts", () => {
       .toBe("/students?status=Low%20Credit");
     expect(screen.getAllByRole("link")).toHaveLength(5);
   });
+
+  /* The only way either reminder reaches a family is somebody pressing one of
+     these. A dashboard rewrite dropped them once without anyone noticing, and
+     for a while the expiry reminder could not be sent at all. */
+  it("offers both manual credit reminders", () => {
+    data.students = [student("Low Credit", 0)];
+    render(messages(<StudentStatus />));
+    expect(screen.getByRole("button", { name: /remind: low credit/i })).toBeDefined();
+    expect(screen.getByRole("button", { name: /remind: credits expiring/i })).toBeDefined();
+  });
 });
 
 describe("today's compact class list", () => {

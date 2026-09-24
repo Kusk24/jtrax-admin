@@ -1,13 +1,13 @@
 "use client";
 
 /**
- * The manual credit-expiry reminder, sent to chosen families.
+ * The two manual credit reminders, sent to chosen families: credits expiring
+ * soon, and a balance at or under the academy's low-credit line.
  *
- * The old button fired blind: one press notified every family in the window
- * with no way to see who that was. This one asks the backend for the list
- * first — each child, the parents behind them, and when the credits run out —
- * and sends only to the rows left ticked. The server stays the authority: the
- * selection can only narrow its eligible set, never widen it.
+ * Neither fires on its own. Pressing the button asks the backend who it would
+ * reach — each child, the parents behind them, and when the credits run out or
+ * how many are left — and sends only to the rows left ticked. The server stays
+ * the authority: the selection can only narrow its eligible set.
  */
 
 import { useState } from "react";
@@ -15,6 +15,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { DEFAULT_CREDIT_RULES } from "@/lib/derive";
 import { Icon } from "@/lib/icons";
+import { fmtCredits } from "@/lib/live";
 import { COLORS, FONT } from "@/lib/theme";
 import { useData } from "../DataProvider";
 import { Modal } from "../page-kit";
@@ -23,16 +24,28 @@ type Target = {
   student_id: string;
   student_name: string;
   parents: string[];
-  expires: string;
+  /** Expiry reminder: the soonest date the credits run out. */
+  expires?: string;
+  /** Low-credit reminder: what the child has left. */
+  balance?: number;
 };
 
-export function CreditReminders() {
+/** Which reminder: credits running out by date, or by count. */
+export type ReminderKind = "expiry" | "lowCredit";
+
+export function CreditReminders({ kind = "expiry" }: { kind?: ReminderKind }) {
   const t = useTranslations("dashboard");
   const tCommon = useTranslations("common");
   const locale = useLocale();
   const { creditRules } = useData();
   /* Optional-chained for the provider's loading state, same as SettingsPage. */
   const days = creditRules?.expiringDays ?? DEFAULT_CREDIT_RULES.expiringDays;
+  const low = kind === "lowCredit";
+  /* The expiry window rides in the query; the low-credit line is the server's
+     own copy of the same Settings value, so it needs nothing. */
+  const path = low ? "notifications/low-credit" : `notifications/credit-expiry?days=${days}`;
+  const [line, setLine] = useState<number>(creditRules?.lowCredit ?? DEFAULT_CREDIT_RULES.lowCredit);
+  const label = t(low ? "remindLowCredit" : "remindExpiring");
 
   const [open, setOpen] = useState(false);
   /* null while the preview is loading — the list is server truth, not a
@@ -50,11 +63,9 @@ export function CreditReminders() {
     setSent(null);
     setError(null);
     try {
-      const res = await api.post<{ targets: Target[] }>(
-        `notifications/credit-expiry?days=${days}`,
-        { dry_run: true },
-      );
+      const res = await api.post<{ targets: Target[]; line?: number }>(path, { dry_run: true });
       setTargets(res.targets ?? []);
+      if (typeof res.line === "number") setLine(res.line);
     } catch {
       setError(tCommon("loadFailed"));
       setTargets([]);
@@ -68,10 +79,9 @@ export function CreditReminders() {
     setBusy(true);
     setError(null);
     try {
-      const res = await api.post<{ students_notified: number }>(
-        `notifications/credit-expiry?days=${days}`,
-        { student_ids: chosen.map((x) => x.student_id) },
-      );
+      const res = await api.post<{ students_notified: number }>(path, {
+        student_ids: chosen.map((x) => x.student_id),
+      });
       setSent(res.students_notified);
     } catch {
       setError(t("reminderFailed"));
@@ -140,11 +150,11 @@ export function CreditReminders() {
         }}
       >
         <Icon name="send" size={14} color={COLORS.textSecondary} />
-        {t("sendCreditReminders")}
+        {label}
       </button>
 
       {open && (
-        <Modal title={t("sendCreditReminders")} width={480} onClose={() => setOpen(false)} footer={footer}>
+        <Modal title={label} width={480} onClose={() => setOpen(false)} footer={footer}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {sent !== null ? (
               <p role="status" style={noteStyle}>
@@ -153,10 +163,14 @@ export function CreditReminders() {
             ) : targets === null ? (
               <p style={noteStyle}>{tCommon("loading")}</p>
             ) : targets.length === 0 ? (
-              <p style={noteStyle}>{error ?? t("reminderEmpty", { days })}</p>
+              <p style={noteStyle}>
+                {error ?? (low ? t("lowCreditEmpty", { line: fmtCredits(line) }) : t("reminderEmpty", { days }))}
+              </p>
             ) : (
               <>
-                <p style={noteStyle}>{t("reminderPreviewSub", { days })}</p>
+                <p style={noteStyle}>
+                  {low ? t("lowCreditPreviewSub", { line: fmtCredits(line) }) : t("reminderPreviewSub", { days })}
+                </p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {targets.map((x) => (
                     <label
@@ -194,7 +208,9 @@ export function CreditReminders() {
                         </span>
                       </span>
                       <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary, flexShrink: 0 }}>
-                        {t("reminderExpires", { date: fmtDate(x.expires) })}
+                        {low
+                          ? t("lowCreditLeft", { credits: fmtCredits(x.balance ?? 0) })
+                          : t("reminderExpires", { date: fmtDate(x.expires ?? "") })}
                       </span>
                     </label>
                   ))}
