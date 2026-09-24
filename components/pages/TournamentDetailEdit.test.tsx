@@ -220,3 +220,109 @@ describe("editing a tournament in place", () => {
     expect(screen.getByText(en.common.saveChanges)).toBeTruthy();
   });
 });
+
+/**
+ * Taking an age group off a tournament somebody has already entered.
+ *
+ * The backend no longer refuses this — it clears the group off the entries and
+ * leaves the children in the event — so the console has to say what that means
+ * before it happens. "Your three U19s are now uncategorised" is a consequence
+ * to agree to, not to discover.
+ */
+describe("removing an age group with entrants", () => {
+  const entered = () =>
+    makeTournament({
+      categories: ["U8 Boys", "U19"],
+      categoryRows: [
+        { id: "cat_1", name: "U8 Boys" },
+        { id: "cat_2", name: "U19" },
+      ],
+      participants: [
+        { name: "Alice", categoryId: "cat_2", rating: 0, category: "U19", score: "", rank: 1, prize: "", paymentStatus: "Paid", age: 12, guardian: "", contact: "", wins: 0 },
+        { name: "Bishop", categoryId: "cat_2", rating: 0, category: "U19", score: "", rank: 2, prize: "", paymentStatus: "Paid", age: 12, guardian: "", contact: "", wins: 0 },
+      ] as Tournament["participants"],
+    });
+
+  async function startEditing(user: ReturnType<typeof openDetail>) {
+    await user.click(screen.getByText(en.common.edit));
+  }
+
+  /* Before the × is pressed, not only in the dialog after it. */
+  it("shows how many are in each group on its chip", async () => {
+    tournaments = [entered()];
+    const user = openDetail();
+    await startEditing(user);
+
+    const chip = screen.getByLabelText(en.common.deleteThing.replace("{what}", "U19")).parentElement!;
+    expect(chip.textContent).toContain("2");
+    /* The empty one says nothing — a zero beside every other group is noise.
+       Compared whole rather than searched for a digit: the group is called
+       "U8 Boys" and carries one of its own. */
+    const empty = screen.getByLabelText(en.common.deleteThing.replace("{what}", "U8 Boys")).parentElement!;
+    expect(empty.textContent).toBe("U8 Boys");
+  });
+
+  it("asks before taking it off, and says what happens to them", async () => {
+    tournaments = [entered()];
+    const user = openDetail();
+    await startEditing(user);
+
+    await user.click(screen.getByLabelText(en.common.deleteThing.replace("{what}", "U19")));
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeDefined());
+    const dialog = within(screen.getByRole("dialog"));
+    expect(dialog.getByText(/2 entrants are in this group/)).toBeDefined();
+    expect(dialog.getByText(/stay entered in the tournament/)).toBeDefined();
+    /* And it must not claim to be irreversible: nothing is deleted until
+       Save, and Cancel on the edit discards it. */
+    expect(dialog.queryByText(/cannot be undone/)).toBeNull();
+  });
+
+  /* Cancelling leaves it exactly where it was. */
+  it("keeps the group when the ask is refused", async () => {
+    tournaments = [entered()];
+    const user = openDetail();
+    await startEditing(user);
+
+    await user.click(screen.getByLabelText(en.common.deleteThing.replace("{what}", "U19")));
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeDefined());
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: en.common.cancel }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.getByLabelText(en.common.deleteThing.replace("{what}", "U19"))).toBeDefined();
+  });
+
+  /* Agreeing stages it like every other field. Nothing reaches the API until
+     Save, so the dialog is an agreement rather than the deletion itself. */
+  it("removes it on Save once agreed", async () => {
+    tournaments = [entered()];
+    remove.mockClear();
+    const user = openDetail();
+    await startEditing(user);
+
+    await user.click(screen.getByLabelText(en.common.deleteThing.replace("{what}", "U19")));
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeDefined());
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: en.tournament.removeCategoryConfirm }));
+
+    await waitFor(() =>
+      expect(screen.queryByLabelText(en.common.deleteThing.replace("{what}", "U19"))).toBeNull(),
+    );
+    expect(categoryRemovals()).toEqual([]); // still only staged
+
+    await user.click(screen.getByText(en.common.saveChanges));
+    await waitFor(() => expect(categoryRemovals()).toEqual(["cat_2"]));
+  });
+
+  /* A group nobody is in goes without a word. A confirmation nobody could
+     answer wrongly is a click, not a safeguard. */
+  it("removes an empty group without asking", async () => {
+    tournaments = [entered()];
+    const user = openDetail();
+    await startEditing(user);
+
+    await user.click(screen.getByLabelText(en.common.deleteThing.replace("{what}", "U8 Boys")));
+    await waitFor(() =>
+      expect(screen.queryByLabelText(en.common.deleteThing.replace("{what}", "U8 Boys"))).toBeNull(),
+    );
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});

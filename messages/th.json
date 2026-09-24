@@ -764,7 +764,11 @@
     "methodCash": "เงินสด",
     "methodPromptPay": "พร้อมเพย์",
     "methodBankTransfer": "โอนผ่านธนาคาร",
-    "noFeeToCollect": "รายการนี้ยังไม่มีค่าสมัคร กำหนดค่าสมัครด้านบนก่อนจึงจะเก็บเงินได้"
+    "noFeeToCollect": "รายการนี้ยังไม่มีค่าสมัคร กำหนดค่าสมัครด้านบนก่อนจึงจะเก็บเงินได้",
+    "removeCategoryNote": "{count, plural, other {มีผู้สมัคร # คนในรุ่นนี้ ทุกคนยังอยู่ในรายการแข่งขัน เพียงแต่จะไม่มีรุ่นกำกับ}}",
+    "removeCategoryTitle": "นำรุ่นออก",
+    "removeCategoryPrompt": "นำรุ่น {name} ออกจากรายการนี้หรือไม่",
+    "removeCategoryConfirm": "นำออก"
   },
   "announcement": {
     "title": "ประกาศ",
