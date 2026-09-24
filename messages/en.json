@@ -365,7 +365,7 @@
     "lengthHoursMinutes": "{hours} h {minutes} min",
     "endsAt": "Ends {time}",
     "cancelClass": "Cancel class",
-    "cancelConfirm": "{count, plural, =0 {Cancel this class? It will be removed from today.} one {Cancel this class? # student is checked in and their credit is refunded.} other {Cancel this class? # students are checked in and their credits are refunded.}}",
+    "cancelConfirm": "{count, plural, =0 {Cancel this class? Families of the students due at it are told.} one {Cancel this class? # student is checked in and their credit is refunded. Families are told.} other {Cancel this class? # students are checked in and their credits are refunded. Families are told.}}",
     "cancelConfirmYes": "Yes, cancel class",
     "cancelFailed": "Could not cancel the class.",
     "lengthChangeFailed": "Could not change the length."
@@ -958,7 +958,9 @@
     "scanNotTestable": "This scanning provider cannot be tested from here.",
     "scanProviderError": "Google could not answer. Try again in a minute.",
     "scanProviderErrorStatus": "Google answered with an error (status {status}). Try again in a minute.",
-    "scanTestFailed": "The test could not run. Try again."
+    "scanTestFailed": "The test could not run. Try again.",
+    "notifyCancelled": "Class cancelled",
+    "notifyCancelledDesc": "When the office cancels an upcoming class, to the families due at it"
   },
   "games": {
     "title": "Games",

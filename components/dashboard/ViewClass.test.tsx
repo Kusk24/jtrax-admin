@@ -7,7 +7,7 @@
  * only notice at the end of the month.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
@@ -23,6 +23,11 @@ const update = vi.fn<(path: string, id: string, body: Record<string, unknown>) =
 /* The real one wraps a group of writes in a single refresh; here it only has
    to run the job. */
 const batch = vi.fn(async (job: () => Promise<unknown>) => job());
+const refresh = vi.fn(async () => undefined);
+/* Cancelling is one request to the backend, which refunds, deletes and tells
+   the families. */
+const post = vi.hoisted(() => vi.fn(async () => ({ cancelled: true })));
+vi.mock("@/lib/api", () => ({ api: { post: (...args: unknown[]) => post(...(args as [])) } }));
 
 /* Anong and Boon are in the Group class; Chai is in Master only. Anong is
    already on the roster of the session being viewed. */
@@ -49,7 +54,7 @@ const state = {
 };
 
 vi.mock("@/components/DataProvider", () => ({
-  useData: () => ({ ...state, create, remove, update, batch, todaysClasses: state.todaysClasses }),
+  useData: () => ({ ...state, create, remove, update, batch, refresh, todaysClasses: state.todaysClasses }),
 }));
 
 /**
@@ -246,11 +251,10 @@ describe("cancelling a running class", () => {
     expect(screen.getByRole("button", { name: "Yes, cancel class" })).toBeTruthy();
   });
 
-  /* Cancelling removes the attendance first — that is what refunds the
-     credits — and only then the session itself, as one unit. There is no
-     Cancelled status to set instead: a cancelled class is one that did not
-     happen. */
-  it("refunds every checked-in student and removes the session", async () => {
+  /* One request: the backend refunds every check-in, removes the attendance
+     and the session together, and tells the families. The console no longer
+     deletes rows itself, which refunded the credits but told nobody. */
+  it("cancels through the backend, which refunds and tells the families", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
     renderView(GROUP_SESSION, onClose);
@@ -258,12 +262,9 @@ describe("cancelling a running class", () => {
     await user.click(screen.getByRole("button", { name: "Cancel class" }));
     await user.click(screen.getByRole("button", { name: "Yes, cancel class" }));
 
-    expect(remove).toHaveBeenCalledWith("attendance", "att_1");
-    expect(remove).toHaveBeenCalledWith("class-sessions", "ses_1");
-    /* Attendance before the session — the row the credit refund hangs off
-       has to still exist when it is deleted. */
-    const order = remove.mock.calls.map((c) => c[0]);
-    expect(order.indexOf("attendance")).toBeLessThan(order.indexOf("class-sessions"));
+    await waitFor(() => expect(post).toHaveBeenCalledWith("class-sessions/ses_1/cancel", {}));
+    expect(remove).not.toHaveBeenCalled();
+    expect(refresh).toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
   });
 
