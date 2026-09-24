@@ -12,6 +12,7 @@ import type { Student } from "@/lib/data";
 import { ACCENTS, COLORS, FONT, FONT_DISPLAY } from "@/lib/theme";
 import { useData } from "../DataProvider";
 import { Card, SectionTitle } from "../ui";
+import { CreditReminders } from "./CreditReminders";
 
 /* Keyed to the approved dashboard reference: the two conditions that need a
    call today are the loud ones, and the lapsed pair sits back. Red is "ring
@@ -38,11 +39,20 @@ export function StudentStatus() {
 
   return (
     <Card className="jt-student-status" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <div>
-        <SectionTitle>{t("studentStatus")}</SectionTitle>
-        <p style={{ margin: "3px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-          {t("statusFilterHint")}
-        </p>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+        <div>
+          <SectionTitle>{t("studentStatus")}</SectionTitle>
+          <p style={{ margin: "3px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+            {t("statusFilterHint")}
+          </p>
+        </div>
+        {/* The two reminders live on the card that shows who needs them: the
+            red ring is the low-credit families, the blue one the expiring.
+            Nothing is sent unless somebody presses one of these. */}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <CreditReminders kind="lowCredit" />
+          <CreditReminders kind="expiry" />
+        </div>
       </div>
 
       <div className="jt-status-content">

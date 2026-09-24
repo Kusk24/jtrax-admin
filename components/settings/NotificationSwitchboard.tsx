@@ -21,9 +21,9 @@ import { ErrorNote, errorText } from "../crud";
 import { useData } from "../DataProvider";
 import { Card } from "../ui";
 
-/* The backend's notification catalogue (notify.Type*). Low credit is listed
-   like the rest: this switch is whether the school sends it at all — each
-   parent still has to opt in on their own settings before they receive it. */
+/* The backend's notification catalogue (notify.Type*). Each switch is whether
+   the school sends that type at all. Low credit and credit expiry are the two
+   staff send by hand from the dashboard; the rest go out on their own. */
 const TYPES: Array<{ type: string; icon: IconName; titleKey: string; descKey: string }> = [
   { type: "check_in", icon: "userCheck", titleKey: "notifyCheckIn", descKey: "notifyCheckInDesc" },
   { type: "credit_deducted", icon: "wallet", titleKey: "notifyDeducted", descKey: "notifyDeductedDesc" },
