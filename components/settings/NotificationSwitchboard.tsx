@@ -31,6 +31,7 @@ const TYPES: Array<{ type: string; icon: IconName; titleKey: string; descKey: st
   { type: "credit_expiry", icon: "clockSmall", titleKey: "notifyExpiry", descKey: "notifyExpiryDesc" },
   { type: "announcement", icon: "announcement", titleKey: "notifyAnnounce", descKey: "notifyAnnounceDesc" },
   { type: "payment_received", icon: "payment", titleKey: "notifyPayment", descKey: "notifyPaymentDesc" },
+  { type: "class_cancelled", icon: "calendar", titleKey: "notifyCancelled", descKey: "notifyCancelledDesc" },
 ];
 
 /**

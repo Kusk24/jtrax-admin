@@ -1,5 +1,6 @@
 "use client";
 
+import { api } from "@/lib/api";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { hasClassEnded, useMinuteClock } from "@/lib/class-progress";
@@ -657,7 +658,7 @@ function ViewClass({ def: opened, onClose }: { def: ClassDef; onClose: () => voi
   const t = useTranslations("session");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
-  const { students, raw, create, remove, update, batch, todaysClasses } = useData();
+  const { students, raw, create, remove, update, todaysClasses, refresh } = useData();
   const { showError } = useErrorToast();
   const lengthLabel = useLengthLabel();
   const def = todaysClasses.find((c) => c.id && c.id === opened.id) ?? opened;
@@ -707,23 +708,17 @@ function ViewClass({ def: opened, onClose }: { def: ClassDef; onClose: () => voi
   /**
    * Call the class off.
    *
-   * There is no `Cancelled` session status — the column's CHECK allows only
-   * Scheduled, Ongoing and Completed — so a cancelled class is one that did
-   * not happen: its attendance goes, then the session does. Deleting the
-   * attendance first is what refunds the credits (`refundAttendance` runs
-   * BeforeDelete on each row), and it is also required, because
-   * `attendance.session_id` is NOT NULL with no cascade and the session
-   * delete would otherwise be refused by the foreign key.
+   * One request to the backend, which refunds every check-in, removes the
+   * attendance and the session in one transaction, and then tells the parents
+   * of every child who was due at the class. It used to be several deletes from
+   * here, which refunded the credits but told nobody.
    */
   async function cancelClass() {
     if (!def.id) return;
     setBusy(true);
     try {
-      await batch(async () => {
-        const rows = raw.attendance.filter((a) => String(a.session_id) === def.id);
-        for (const a of rows) await remove("attendance", String(a.attendance_id));
-        await remove("class-sessions", def.id!);
-      });
+      await api.post(`class-sessions/${def.id}/cancel`, {});
+      await refresh();
       onClose();
     } catch (e) {
       showError(t("cancelFailed"), e);
