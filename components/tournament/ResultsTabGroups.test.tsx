@@ -65,18 +65,23 @@ const { ResultsTab } = await import("./ResultsTab");
 function renderTab(categories: Array<{ id: string; name: string }> = []) {
   getWholeEvent.mockClear();
   getCategory.mockClear();
-  render(
+  const tree = (cats: Array<{ id: string; name: string }>) => (
     <NextIntlClientProvider locale="en" messages={en}>
       <ResultsTab
         tournamentId="t1"
         tournamentName="WCIB Chess Championship 2025"
-        categories={categories}
+        categories={cats}
         totalRounds={2}
         resultsPublic
         onPublishChange={async () => undefined}
       />
-    </NextIntlClientProvider>,
+    </NextIntlClientProvider>
   );
+  const view = render(tree(categories));
+  /* Re-rendering with new categories is how the organiser's edit on the
+     Overview tab reaches this one: the page reloads its collections and hands
+     the tab a longer list. */
+  return { rerender: (cats: Array<{ id: string; name: string }>) => view.rerender(tree(cats)) };
 }
 
 const tabs = () => screen.getByRole("tablist");
@@ -169,15 +174,74 @@ describe("tabs from one link", () => {
     expect(ranked().getByText("Seng, Rosslyn")).toBeDefined();
   });
 
-  /* The groups are the arbiter's division of the event; the categories are the
-     office's guess at it before anyone played. Where both exist the arbiter
-     wins — and a category tab may have no link behind it at all. */
-  it("prefers the link's own groups over the tournament's categories", async () => {
+  /**
+   * The office's categories and the arbiter's groups are not alternatives —
+   * they are the same age groups named twice, by two different people.
+   *
+   * Building the strip from one *or* the other was the bug: a linked event
+   * named its own groups, so a category added on the Overview tab afterwards
+   * appeared nowhere and looked as though the edit had not saved.
+   */
+  it("shows the tournament's own categories as well as the link's groups", async () => {
     renderTab([{ id: "c1", name: "Under 18" }]);
     await waitFor(() => expect(tabs()).toBeDefined());
     const labels = within(tabs()).getAllByRole("tab").map((b) => b.textContent);
-    expect(labels).toContain("U14");
-    expect(labels).not.toContain("Under 18");
+    expect(labels).toEqual([en.results.wholeEvent, "Under 18", "U14", "G14"]);
+  });
+
+  /* Named twice is still one age group. Two tabs reading "U14" would be two
+     ways to ask the same question, and the second would answer it worse. */
+  it("does not repeat a category the link also names", async () => {
+    renderTab([{ id: "c1", name: "U14" }]);
+    await waitFor(() => expect(tabs()).toBeDefined());
+    const labels = within(tabs()).getAllByRole("tab").map((b) => b.textContent);
+    expect(labels).toEqual([en.results.wholeEvent, "U14", "G14"]);
+  });
+
+  /* And that surviving tab is the office's category, so it has to find its
+     results in the group of the same name inside the whole event — there is
+     no separate link for it to fetch. */
+  it("answers a category from the matching group inside the event", async () => {
+    renderTab([{ id: "c1", name: "U14" }]);
+    await waitFor(() => expect(tab("U14")).toBeDefined());
+    fireEvent.click(tab("U14"));
+
+    await waitFor(() => expect(ranked().getByText("Uapongkitikul, Pavatt")).toBeDefined());
+    expect(ranked().queryByText("Seng, Rosslyn")).toBeNull();
+    expect(screen.getByText(/numbered by their place in the whole event/)).toBeDefined();
+  });
+});
+
+/**
+ * The regression, from the organiser's side.
+ *
+ * Add an age group on the Overview tab of an event that is already linked, come
+ * back to Results, and the tab was not there. The strip had been built from the
+ * link's own groups *instead of* the categories, so the office's edit had
+ * nowhere to land and read as not having saved.
+ */
+describe("a category added after the event was linked", () => {
+  it("appears in the strip", async () => {
+    const { rerender } = renderTab([]);
+    await waitFor(() => expect(tabs()).toBeDefined());
+    expect(within(tabs()).queryByRole("tab", { name: "U19" })).toBeNull();
+
+    rerender([{ id: "c9", name: "U19" }]);
+    await waitFor(() => expect(tab("U19")).toBeDefined());
+  });
+
+  /* It has no link of its own and no group of that name in the event, so it
+     honestly has nothing to show — and says so by offering the link, rather
+     than showing the whole event's boards under a U19 heading. */
+  it("offers to link it rather than showing somebody else's boards", async () => {
+    const { rerender } = renderTab([]);
+    await waitFor(() => expect(tabs()).toBeDefined());
+    rerender([{ id: "c9", name: "U19" }]);
+
+    await waitFor(() => expect(tab("U19")).toBeDefined());
+    fireEvent.click(tab("U19"));
+    await waitFor(() => expect(screen.getByLabelText(en.external.urlLabel)).toBeDefined());
+    expect(ranked).toThrow(); // no ranked list at all — nothing to rank
   });
 });
 

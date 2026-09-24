@@ -33,9 +33,18 @@
  *   used to show both age groups as one undivided list of twenty children.
  *   The tabs are now read off that column instead.
  *
- * Groups the link names itself win where both are available: they are the
- * arbiter's division of the event rather than the office's, and a group tab
- * always has results behind it where a category tab may have no link at all.
+ * The strip carries both, and this is the part that was got wrong once: it
+ * used to build from the groups *or* the categories, so adding a category to
+ * a linked event added nothing to the strip. They are not alternatives. They
+ * are the same age groups named twice — once by the office, in the categories
+ * it manages and prices and edits on the Overview tab, and once by the arbiter
+ * in whatever they typed into Swiss-Manager.
+ *
+ * So every category gets a tab, and each is answered by whichever source has
+ * results behind it: its own linked event if there is one, else the matching
+ * group inside the whole event, else nothing yet. A group the arbiter named
+ * that the office has no category for gets a tab of its own, because a result
+ * with no tab is a result nobody can reach.
  */
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
@@ -85,53 +94,81 @@ export function ResultsTab({
 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  /* Loaded once; the card owns its own state after that. `linkLoaded` gates
-     the first render so the card does not flash its empty state on a linked
-     event. */
-  /* The result *and* the scope it was fetched for, in one piece of state.
-     Kept together so "loaded" is derived rather than toggled: a separate
-     boolean has to be set false on the way into the effect, which is a render
-     where the previous group's card is still showing — it reads as this group
-     being linked to that event. */
-  const [loaded, setLoaded] = useState<{ scope: string; link: LinkedResults | null } | null>(null);
+  /* Both links carry the scope they were fetched for, so "loaded" is derived
+     rather than toggled: a separate boolean has to be set false on the way
+     into the effect, and that is a render where the previous tab's card is
+     still showing — which reads as this group being linked to that event. */
+  /**
+   * The whole event's link, held on its own and fetched once.
+   *
+   * Separate from the per-category link because a category tab may need both:
+   * its own link if the arbiter published that group separately, and this one
+   * if they published the groups together and named them in a column. Holding
+   * only whichever the current tab asked for meant a category could not fall
+   * back to the event it is part of.
+   */
+  const [eventLink, setEventLink] = useState<{ done: boolean; link: LinkedResults | null }>({
+    done: false,
+    link: null,
+  });
+  const [catLink, setCatLink] = useState<{ scope: string; link: LinkedResults | null } | null>(null);
   /**
    * Which tab is showing, as `""` for the whole event, `c:<id>` for one of the
    * tournament's own categories, or `g:<name>` for a group the linked event
    * names in its own ranking table.
    *
-   * The two are different in kind, which is why the prefix exists rather than
-   * two pieces of state. A `c:` tab is a *separate chess-results event* with
-   * its own link, fetched on its own; a `g:` tab is a slice of the event
-   * already loaded, and fetching for it would ask the server for a link that
-   * was never made. One string keeps the fetch effect keyed on the only thing
-   * that can change what is fetched.
+   * The prefix exists because the two are different in kind. A `c:` tab is one
+   * of the office's own age groups, which may have a separate chess-results
+   * event behind it; a `g:` tab is a group the arbiter named inside one event,
+   * and asking the server for a link to that would be asking for a link nobody
+   * ever made.
    */
   const [tab, setTab] = useState("");
   const categoryTab = tab.startsWith("c:") ? tab.slice(2) : "";
   const groupTab = tab.startsWith("g:") ? tab.slice(2) : "";
 
-  /* One fetch per *category* tab, because those are different chess-results
-     events: an arbiter may publish OPEN, U18, U12, U10 and U08 separately,
-     with separate links, pairings and ranked lists.
+  /* The event itself, once. */
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      let link: LinkedResults | null = null;
+      try {
+        link = await getChessResultsLink(tournamentId);
+      } catch {
+        /* Nothing linked (or an older backend): the card then offers to link,
+           which is the correct thing to show. */
+      }
+      if (!cancelled) setEventLink({ done: true, link });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tournamentId]);
+
+  /* And one fetch per *category* tab, because an arbiter may publish OPEN,
+     U18, U12, U10 and U08 as separate events with separate links.
 
      Group tabs are deliberately not in the dependencies. They divide the event
      already in hand, so switching between them must not cost chess-results a
      request — or worse, ask for a per-category link that does not exist and
      blank the screen. */
   useEffect(() => {
-    let cancelled = false;
     const scope = categoryTab;
+    /* Nothing to fetch off a category tab. The previous category's link is
+       left in place rather than cleared: `linkLoaded` compares the scope it
+       was fetched for against the tab now showing, so a stale one is already
+       invisible — and clearing it here would be a setState in an effect,
+       which is a second render for no gain. */
+    if (!scope) return;
+    let cancelled = false;
     (async () => {
       let link: LinkedResults | null = null;
       try {
-        link = scope
-          ? await getCategoryResultsLink(scope)
-          : await getChessResultsLink(tournamentId);
+        link = await getCategoryResultsLink(scope);
       } catch {
-        /* Nothing linked (or an older backend): the card then offers to link,
-           which is the correct thing to show. */
+        /* Not linked separately — the group may still be inside the event. */
       }
-      if (!cancelled) setLoaded({ scope, link });
+      if (!cancelled) setCatLink({ scope, link });
     })();
     return () => {
       cancelled = true;
@@ -152,46 +189,76 @@ export function ResultsTab({
 
   const portalBase = process.env.NEXT_PUBLIC_PORTAL_URL;
   const publicUrl = portalBase ? `${portalBase.replace(/\/$/, "")}/t/${tournamentId}` : null;
-  /* Only trust what was fetched for the group now selected. */
-  const linkLoaded = loaded?.scope === categoryTab;
-  const linkedResults = linkLoaded ? loaded!.link : null;
+  /* Ready when everything this tab needs has been asked for: the event always,
+     and a category's own link as well when one is selected. */
+  const linkLoaded = eventLink.done && (!categoryTab || catLink?.scope === categoryTab);
+
+  /**
+   * The groups the event names in its own ranking table — Swiss-Manager's
+   * "Typ" column, where the arbiter uploaded every age group as one
+   * tournament rather than several.
+   */
+  const eventStandings = eventLink.link?.standings ?? [];
+  const groups = groupsIn(eventStandings);
+
+  /**
+   * Which slice of which link this tab is showing.
+   *
+   * A category tab is answered two ways and has to try both, which is the bug
+   * this replaced: tabs were built from the groups *or* the categories, so
+   * adding a category to a linked event added nothing to the strip. The
+   * office's categories and the arbiter's groups are not alternatives — they
+   * are the same age groups named twice, by two different people, and a
+   * category is served by whichever of them has results behind it.
+   */
+  const active = (() => {
+    if (groupTab) return { link: eventLink.link, group: groupTab };
+    if (!categoryTab) return { link: eventLink.link, group: "" };
+    /* Its own chess-results event, where the arbiter published one. */
+    if (catLink?.link) return { link: catLink.link, group: "" };
+    /* Otherwise the same name inside the whole event, if it is one of the
+       groups there. Matched on the name because that is all the two have in
+       common — the office's category id means nothing to chess-results. */
+    const named = categories.find((c) => c.id === categoryTab)?.name ?? "";
+    const match = groups.find((g) => g.toLowerCase().trim() === named.toLowerCase().trim());
+    return match ? { link: eventLink.link, group: match } : { link: null, group: "" };
+  })();
+
+  const linkedResults = linkLoaded ? active.link : null;
   const linked = linkedResults !== null;
   const allStandings = linkedResults?.standings ?? [];
   const allRounds = linkedResults?.rounds ?? [];
 
-  /**
-   * The groups this one link publishes, read off the ranking table.
-   *
-   * This is the half that was missing. A per-category link divides an event
-   * the arbiter uploaded as several tournaments; it can do nothing for an
-   * event uploaded as one, with the groups in a "Typ" column — there is a
-   * single link to give, so the console showed twenty children of two
-   * different age groups as one undivided list.
-   */
-  const groups = groupsIn(allStandings);
-
-  /* Filtering, not refetching: a group tab is a slice of the event already in
-     hand. The ranks stay the arbiter's own overall ranks — renumbering each
-     group 1..n would be the console inventing a placing, and a placing is the
-     one thing at a tournament that is not ours to write. */
-  const standings = groupTab ? standingsInGroup(groupTab, allStandings) : allStandings;
-  const rounds = groupTab ? roundsInGroup(groupTab, allStandings, allRounds) : allRounds;
+  /* Filtering, not refetching, when the group came from inside the event. The
+     ranks stay the arbiter's own overall ranks — renumbering each group 1..n
+     would be the console inventing a placing, and a placing is the one thing
+     at a tournament that is not ours to write. */
+  const shownGroup = linkLoaded ? active.group : "";
+  const standings = shownGroup ? standingsInGroup(shownGroup, allStandings) : allStandings;
+  const rounds = shownGroup ? roundsInGroup(shownGroup, allStandings, allRounds) : allRounds;
 
   const preview = standings.slice(0, PREVIEW_ROWS);
   const shownCount = standings.length;
   const hasStandings = shownCount > 0;
 
   /**
-   * The tab strip: the whole event, then its groups.
+   * The tab strip: the whole event, the tournament's own age groups, then any
+   * group the link names that the office has not got a category for.
    *
-   * Groups the link names itself win over the tournament's own categories.
-   * They are the arbiter's division of the event rather than the office's, and
-   * they are the one whose results actually exist — a category tab with no
-   * link of its own has nothing to show, whereas a group tab always does.
+   * Both, not one or the other. The categories are what the office manages and
+   * what the Overview tab edits, so a category added there has to appear here
+   * — that was the regression. The extra groups are there because an arbiter
+   * can publish a division the office never entered, and a result with no tab
+   * is a result nobody can reach.
    */
-  const tabs = groups.length > 0
-    ? [{ id: "", name: t("wholeEvent") }, ...groups.map((g) => ({ id: `g:${g}`, name: g }))]
-    : [{ id: "", name: t("wholeEvent") }, ...categories.map((c) => ({ id: `c:${c.id}`, name: c.name }))];
+  const named = new Set(categories.map((c) => c.name.toLowerCase().trim()));
+  const tabs = [
+    { id: "", name: t("wholeEvent") },
+    ...categories.map((c) => ({ id: `c:${c.id}`, name: c.name })),
+    ...groups
+      .filter((g) => !named.has(g.toLowerCase().trim()))
+      .map((g) => ({ id: `g:${g}`, name: g })),
+  ];
   /* One tab is furniture, not navigation. */
   const tabbed = tabs.length > 1;
 
@@ -322,7 +389,7 @@ export function ResultsTab({
             standings={standings}
             totalRounds={totalRounds}
             eventName={tournamentName}
-            categoryName={groupTab || categories.find((c) => c.id === categoryTab)?.name}
+            categoryName={shownGroup || categories.find((c) => c.id === categoryTab)?.name}
           />
         ) : (
           <Card>
@@ -344,9 +411,9 @@ export function ResultsTab({
                 row, which may well be ranked fourth in the event. Said out
                 loud, because renumbering the group 1..n would read better and
                 would be the console inventing a placing. */}
-            {groupTab && (
+            {shownGroup && (
               <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.warning }}>
-                {t("overallRanksNote", { group: groupTab })}
+                {t("overallRanksNote", { group: shownGroup })}
               </span>
             )}
           </div>
