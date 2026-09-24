@@ -340,6 +340,12 @@ const ICON_DATA = {
      four diagonals land on half-pixels, and a ray reaching the edge of the
      box blurs into the circle's own antialiasing. The disc is r=4 for the
      same reason — r=4.5 leaves under two pixels of gap to the rays. */
+  /* A line climbing through three points, for the standings race — the
+     chart of who moved up after each round. */
+  "trendingUp": [
+    ["path", { "d": "M3 17 9.5 10.5l4 4L21 7" }],
+    ["path", { "d": "M15 7h6v6" }],
+  ],
   "sun": [
     ["circle", { "cx": 12, "cy": 12, "r": 4 }],
     ["line", { "x1": 12, "y1": 3, "x2": 12, "y2": 5 }],
