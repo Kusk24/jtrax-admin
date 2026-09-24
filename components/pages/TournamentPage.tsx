@@ -19,6 +19,7 @@ import {
   ActionButton,
   AddButton,
   ConfirmDeleteModal,
+  ConfirmModal,
   CrudFormModal,
   ErrorNote,
   RowActions,
@@ -566,6 +567,9 @@ function TournamentDetail({
     startInEditing ? (tournament.categoryRows ?? []).map((c) => ({ id: c.id, name: c.name })) : [],
   );
   const [categoryDraft, setCategoryDraft] = useState("");
+  /* The age group whose removal is waiting to be agreed to — set only when
+     somebody is in it. See removeDraftCategory. */
+  const [categoryToRemove, setCategoryToRemove] = useState<{ id?: string; name: string } | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -598,7 +602,29 @@ function TournamentDetail({
     setCategoryDraft("");
   }
 
+  /** How many entrants picked this age group. Only a saved category can have
+      any — one staged in this edit has no id for an entry to point at. */
+  function entrantsIn(target: { id?: string }) {
+    return target.id ? tournament.participants.filter((p) => p.categoryId === target.id).length : 0;
+  }
+
+  /**
+   * Taking an age group off the tournament.
+   *
+   * Asks first when anybody is in it. The entrants are not deleted — they
+   * entered the tournament, not the category, so the backend clears the group
+   * off their entry and leaves them in the event — but "your three U19s are
+   * now uncategorised" is a consequence somebody should agree to rather than
+   * discover, and nothing on the chip says how many that is.
+   *
+   * An empty group goes without a word. A confirmation nobody could answer
+   * wrongly is a click, not a safeguard.
+   */
   function removeDraftCategory(target: { id?: string; name: string }) {
+    if (entrantsIn(target) > 0) {
+      setCategoryToRemove(target);
+      return;
+    }
     setDraftCategories(draftCategories.filter((c) => c !== target));
   }
 
@@ -1053,6 +1079,14 @@ function TournamentDetail({
                         }}
                       >
                         {c.name}
+                        {/* How many are in it, so the cost of the × beside it
+                            is visible before it is pressed rather than only in
+                            the dialog after. */}
+                        {entrantsIn(c) > 0 && (
+                          <span style={{ fontSize: 12, color: COLORS.textSecondary }}>
+                            {entrantsIn(c)}
+                          </span>
+                        )}
                         <button
                           type="button"
                           aria-label={tCommon("deleteThing", { what: c.name })}
@@ -1318,6 +1352,29 @@ function TournamentDetail({
             ))}
           </div>
         </Drawer>
+      )}
+
+      {/* Removing an age group somebody is already in. Staged like the rest of
+          the edit — this agrees to the removal, Save is what commits it, and
+          Cancel on the edit still discards the whole thing. */}
+      {categoryToRemove && (
+        /* ConfirmModal rather than ConfirmDeleteModal: that one says "this
+           cannot be undone", which is not true here. Nothing is deleted yet —
+           this stages the removal, Save commits it, and Cancel on the edit
+           throws it away. A warning that overstates itself teaches people to
+           click through warnings. */
+        <ConfirmModal
+          title={t("removeCategoryTitle")}
+          prompt={t("removeCategoryPrompt", { name: categoryToRemove.name })}
+          confirmLabel={t("removeCategoryConfirm")}
+          failedText={tCommon("saveFailed")}
+          note={t("removeCategoryNote", { count: entrantsIn(categoryToRemove) })}
+          onClose={() => setCategoryToRemove(null)}
+          onConfirm={async () => {
+            setDraftCategories(draftCategories.filter((c) => c !== categoryToRemove));
+            setCategoryToRemove(null);
+          }}
+        />
       )}
     </div>
   );

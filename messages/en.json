@@ -764,7 +764,11 @@
     "methodCash": "Cash",
     "methodPromptPay": "PromptPay",
     "methodBankTransfer": "Bank transfer",
-    "noFeeToCollect": "This entry has no fee. Set one above to collect it."
+    "noFeeToCollect": "This entry has no fee. Set one above to collect it.",
+    "removeCategoryNote": "{count, plural, one {# entrant is in this group. They stay entered in the tournament and become uncategorised.} other {# entrants are in this group. They stay entered in the tournament and become uncategorised.}}",
+    "removeCategoryTitle": "Remove age group",
+    "removeCategoryPrompt": "Remove {name} from this tournament?",
+    "removeCategoryConfirm": "Remove"
   },
   "announcement": {
     "title": "Announcement",
