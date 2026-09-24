@@ -931,7 +931,7 @@
     "notifyDeducted": "Credit deduction",
     "notifyDeductedDesc": "At check-out: class time, credits used, credits left",
     "notifyLowCredit": "Low credit",
-    "notifyLowCreditDesc": "A top-up nudge after a deduction. Parents must also opt in themselves",
+    "notifyLowCreditDesc": "The manual reminder the dashboard's low-credit button sends",
     "notifyExpiry": "Credit expiry",
     "notifyExpiryDesc": "The manual reminder the dashboard button sends",
     "notifyAnnounce": "School announcements",
