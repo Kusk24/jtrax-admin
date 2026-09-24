@@ -53,6 +53,12 @@ vi.mock("@/lib/line", () => ({
   removeChannel: vi.fn(async () => undefined),
 }));
 
+/* Same for the scanning card: it reads the server's scan settings on mount. */
+vi.mock("@/lib/ocr", async (actual) => ({
+  ...(await actual<typeof import("@/lib/ocr")>()),
+  getScanSettings: vi.fn(async () => ({ configured: true, model: "gemini-3.8-flash", defaultModel: "gemini-3.8-flash", savedModel: "" })),
+}));
+
 const { SettingsPage } = await import("./SettingsPage");
 const { JtraxProvider } = await import("@/components/JtraxContext");
 /* The staff-accounts block reports failed writes through the toast, so the
@@ -91,6 +97,12 @@ describe("the receptionist's Settings", () => {
     expect(screen.queryByText(en.settings.lineTitle)).toBeNull();
   });
 
+  /* Which outside service reads a child's form is the office's decision. */
+  it("does not offer the scanning model", () => {
+    renderAs("Receptionist");
+    expect(screen.queryByText(en.settings.scanTitle)).toBeNull();
+  });
+
   it("does not offer the staff accounts", () => {
     renderAs("Receptionist");
     expect(screen.queryByText(en.admins.title)).toBeNull();
@@ -106,6 +118,7 @@ describe("the admin's Settings", () => {
     expect(screen.getByText(en.settings.themeTitle)).toBeDefined();
     expect(screen.getByText(en.settings.title)).toBeDefined();
     expect(screen.getByText(en.settings.lineTitle)).toBeDefined();
+    expect(screen.getByText(en.settings.scanTitle)).toBeDefined();
     expect(screen.getByText(en.admins.title)).toBeDefined();
   });
 

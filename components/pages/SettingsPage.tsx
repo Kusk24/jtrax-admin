@@ -11,6 +11,7 @@ import { ErrorNote, errorText } from "../crud";
 import { PageHeader, primaryButtonStyle, secondaryButtonStyle } from "../page-kit";
 import { LineChannelCard } from "../settings/LineChannelCard";
 import { NotificationSwitchboard } from "../settings/NotificationSwitchboard";
+import { ScanModelCard } from "../settings/ScanModelCard";
 import { ThemeToggle } from "../ThemeToggle";
 import { Card, SectionTitle } from "../ui";
 import { AdminsPage } from "./AdminsPage";
@@ -264,6 +265,15 @@ export function SettingsPage() {
         <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 24, display: "flex", flexDirection: "column", gap: 16 }}>
           <SectionTitle>{t("lineTitle")}</SectionTitle>
           <LineChannelCard heading={false} />
+        </div>
+      )}
+
+      {/* Which model reads scanned forms. Admin only, like the LINE band above:
+          it decides which outside service sees a child's form. */}
+      {isAdmin && (
+        <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 24, display: "flex", flexDirection: "column", gap: 16 }}>
+          <SectionTitle>{t("scanTitle")}</SectionTitle>
+          <ScanModelCard />
         </div>
       )}
 
