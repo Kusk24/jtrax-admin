@@ -27,10 +27,13 @@ import {
   standingBy,
   type RoundView,
 } from "@/lib/tournament-rounds";
+import { standingsRace } from "@/lib/standings-race";
+import { useShown } from "@/lib/shown-pref";
 import { ExportButton, SearchInput, secondaryButtonStyle } from "../page-kit";
 import { Badge, Card } from "../ui";
 import { PlayerPanel } from "./PlayerPanel";
 import { RoundCard, type PlayerMeta } from "./RoundCard";
+import { StandingsRace } from "./StandingsRace";
 
 export function ResultsTable({
   rounds,
@@ -54,6 +57,17 @@ export function ResultsTable({
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
   const views = useMemo(() => roundViews(rounds, totalRounds), [rounds, totalRounds]);
+
+  /* The standings race, an optional picture above the rounds. On one age
+     group's tab only that group is ranked; opponents from other groups still
+     score against them. It needs two played rounds before a line means
+     anything, and until then neither the chart nor its switch is shown. */
+  const race = useMemo(
+    () => standingsRace(views, categoryName ? standings.map((row) => row.name) : undefined),
+    [views, standings, categoryName],
+  );
+  const canRace = race.rounds.length >= 2;
+  const [raceShown, setRaceShown] = useShown("results.race");
 
   /* Which rounds are open. The default is the round the event is at — the
      latest completed one and the one already paired — because opening all of
@@ -186,6 +200,19 @@ export function ResultsTable({
           </span>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {/* The one place the chart is switched on and off. Remembered in this
+              browser, like the list / grid choice on other screens. */}
+          {canRace && (
+            <button
+              type="button"
+              className="jt-btn-ghost"
+              style={secondaryButtonStyle}
+              aria-pressed={raceShown}
+              onClick={() => setRaceShown(!raceShown)}
+            >
+              <Icon name="trendingUp" size={15} /> {raceShown ? t("raceHide") : t("raceShow")}
+            </button>
+          )}
           <button
             type="button"
             className="jt-btn-ghost"
@@ -204,6 +231,8 @@ export function ResultsTable({
           </button>
         </div>
       </Card>
+
+      {canRace && raceShown && <StandingsRace race={race} selected={player} onSelect={pick} />}
 
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <div style={{ position: "relative", flex: "1 1 260px", minWidth: 0, maxWidth: 360 }}>

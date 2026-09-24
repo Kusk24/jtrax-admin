@@ -1048,6 +1048,17 @@
     }
   },
   "results": {
+    "raceTitle": "Standings race",
+    "raceSub": "Position by points after each round; official tiebreaks decide only the final standings.",
+    "raceOursColoured": "Academy students are in colour.",
+    "raceLeadersColoured": "The leaders are in colour.",
+    "raceShow": "Show standings race",
+    "raceHide": "Hide standings race",
+    "racePlace": "{n, selectordinal, one {#st} two {#nd} few {#rd} other {#th}}",
+    "raceRound": "R{n}",
+    "racePoints": "{points} pts",
+    "raceDot": "{name} · round {round}: {place}, {points} pts",
+    "raceAria": "Standings race: position of {players} players after each of {rounds} rounds",
     "bye": "bye",
     "noMirroredRounds": "Round pairings will appear here after the arbiter publishes them.",
     "points": "Points",
