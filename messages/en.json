@@ -1143,7 +1143,8 @@
     "ofPossible": "{got} / {max} pts",
     "progression": "Score progression",
     "perRound": "{pts} pts / rd avg",
-    "progressionAlt": "Running score after each round: {scores}"
+    "progressionAlt": "Running score after each round: {scores}",
+    "overallRanksNote": "Ranked within {group}, numbered by their place in the whole event."
   },
   "lichessAdmin": {
     "title": "Lichess at home",

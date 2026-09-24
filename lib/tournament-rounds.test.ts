@@ -13,13 +13,16 @@ import { describe, expect, it } from "vitest";
 import type { LinkedPairing, LinkedRound } from "./chess-results";
 import {
   gamesFor,
+  groupsIn,
   initialsOf,
   matchPlayers,
   progression,
   recordOf,
   roundViews,
   roundsForPlayer,
+  roundsInGroup,
   scoresOf,
+  standingsInGroup,
 } from "./tournament-rounds";
 
 const board = (n: number, white: string, black: string, result = ""): LinkedPairing => ({
@@ -241,5 +244,78 @@ describe("initials for the avatar", () => {
   it("copes with one name and with none", () => {
     expect(initialsOf("Magnus")).toBe("M");
     expect(initialsOf("  ")).toBe("?");
+  });
+});
+
+/**
+ * An age-group event published as ONE chess-results tournament.
+ *
+ * The other shape — a separate tournament per group, each with its own link —
+ * is divided by linking. This one cannot be: there is a single link, and the
+ * only thing telling U14 from G14 is the ranking table's "Typ" column. These
+ * are the functions that divide it by reading, and the fixture is the shape of
+ * the real tnr1193905, where the two groups share a pairing pool.
+ */
+describe("dividing one event by the groups it names", () => {
+  const standings = [
+    { rank: 1, name: "Uapongkitikul, Pavatt", points: 6, type: "U14" },
+    { rank: 2, name: "Udomjitpithaya, Kritthad", points: 5, type: "U14" },
+    { rank: 4, name: "Manasompong, Napak", points: 4, type: "G14" },
+    { rank: 7, name: "Seng, Rosslyn", points: 3, type: "G14" },
+  ];
+
+  it("finds the groups in the order the ranking introduces them", () => {
+    expect(groupsIn(standings)).toEqual(["U14", "G14"]);
+  });
+
+  /* Most events have no Typ column, and an empty string is not a group — a tab
+     strip built from one would show a nameless tab beside "Whole event". */
+  it("finds no groups in an event that names none", () => {
+    expect(groupsIn([{ rank: 1, name: "Solo", points: 1 }])).toEqual([]);
+    expect(groupsIn([{ rank: 1, name: "Solo", points: 1, type: "  " }])).toEqual([]);
+  });
+
+  /* The ranks stay the arbiter's. Renumbering the group 1..n would read
+     better and would be the console inventing a placing. */
+  it("keeps the published ranks when filtering to a group", () => {
+    expect(standingsInGroup("G14", standings).map((r) => [r.name, r.rank])).toEqual([
+      ["Manasompong, Napak", 4],
+      ["Seng, Rosslyn", 7],
+    ]);
+  });
+
+  describe("and the boards they played", () => {
+    /* One pairing pool: in WCIB's round one a G14 played a U14. */
+    const rounds: LinkedRound[] = [
+      round(1, true, [
+        board(1, "Seng, Rosslyn", "Uapongkitikul, Pavatt", "0 - 1"),
+        board(2, "Udomjitpithaya, Kritthad", "Manasompong, Napak", "1 - 0"),
+      ]),
+      round(2, true, [board(1, "Uapongkitikul, Pavatt", "Udomjitpithaya, Kritthad", "1 - 0")]),
+    ];
+
+    /* Either seat, not both. A cross-group game is a game to both players, and
+       requiring both to match would hide most of a child's event from the tab
+       that is meant to be about them. */
+    it("keeps a board when either side is in the group", () => {
+      const g14 = roundsInGroup("G14", standings, rounds);
+      expect(g14[0].pairings.map((p) => p.board)).toEqual([1, 2]);
+    });
+
+    it("drops a board neither side is in", () => {
+      const g14 = roundsInGroup("G14", standings, rounds);
+      expect(g14[1].pairings).toEqual([]);
+    });
+
+    /* Dropping the empty round would renumber the event around one group —
+       "Round 1, Round 3" reads as a round having gone missing. */
+    it("keeps a round the group did not play in", () => {
+      expect(roundsInGroup("G14", standings, rounds).map((r) => r.round)).toEqual([1, 2]);
+    });
+
+    it("leaves the other group's own boards alone", () => {
+      const u14 = roundsInGroup("U14", standings, rounds);
+      expect(u14.flatMap((r) => r.pairings).length).toBe(3);
+    });
   });
 });

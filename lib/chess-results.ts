@@ -29,6 +29,17 @@ export type ExternalStanding = {
   rating?: number;
   points: number;
   club?: string;
+  /**
+   * The player's group, from Swiss-Manager's "Typ" column — U14, G14, OPEN.
+   * Absent on the events that do not use it.
+   *
+   * This is how one link can hold several age groups. An arbiter either splits
+   * the groups into separate chess-results events, each with its own tnr
+   * number and its own link, or keeps them in one event and names each
+   * player's group here. Both happen, so the Results tab reads this when it is
+   * there and falls back to a link per category when it is not.
+   */
+  type?: string;
   /** Present when this row is one of ours — the reason the feature exists. */
   studentId?: string;
   studentName?: string;

@@ -291,6 +291,65 @@ export function standingBy(
   return standings.find((s) => key(s.name) === want);
 }
 
+/* ------------------------------------------- groups inside one event --- */
+
+/* An age-group event reaches us in one of two shapes. Either the arbiter
+   uploaded each group as its own chess-results tournament — five links for
+   OPEN, U18, U12, U10, U08 — or they uploaded one tournament and named each
+   player's group in the ranking table's "Typ" column, which is how
+   "WCIB CHESS CHAMPIONSHIP 2025 [U14 + G14]" is published.
+
+   The second shape cannot be divided by linking, because there is only one
+   link to give. These three functions divide it by reading. */
+
+/** The groups this event publishes, in the order the ranking table introduces
+    them — which is by rank, so the strongest group's tab comes first. Empty
+    when the arbiter named no groups, which is most events. */
+export function groupsIn(standings: ExternalStanding[]): string[] {
+  const seen = new Map<string, string>();
+  for (const row of standings) {
+    const group = row.type?.trim();
+    if (group && !seen.has(group.toLowerCase())) seen.set(group.toLowerCase(), group);
+  }
+  return [...seen.values()];
+}
+
+/** The standings rows belonging to one group, in the arbiter's own order. The
+    ranks are left exactly as published: they are the overall ranks, and
+    renumbering them 1..n would be the console inventing a placing. */
+export function standingsInGroup(
+  group: string,
+  standings: ExternalStanding[],
+): ExternalStanding[] {
+  const want = group.trim().toLowerCase();
+  return standings.filter((row) => (row.type ?? "").trim().toLowerCase() === want);
+}
+
+/**
+ * The rounds as they look from inside one group.
+ *
+ * A board is kept when either seat belongs to the group, because in this shape
+ * the groups share a pairing pool — in WCIB's round one a G14 played a U14 —
+ * and a game is a game to both of them. Filtering to boards where *both* seats
+ * matched would hide most of a child's event from their own tab.
+ *
+ * Rounds with nothing left are kept, empty, so the strip still reads as the
+ * whole event rather than renumbering itself around one group.
+ */
+export function roundsInGroup(
+  group: string,
+  standings: ExternalStanding[],
+  rounds: LinkedRound[],
+): LinkedRound[] {
+  const members = new Set(standingsInGroup(group, standings).map((row) => nameKey(row.name)));
+  return rounds.map((round) => ({
+    ...round,
+    pairings: (round.pairings ?? []).filter(
+      (p) => members.has(nameKey(p.white)) || members.has(nameKey(p.black ?? "")),
+    ),
+  }));
+}
+
 /**
  * A name reduced to initials for an avatar.
  *
