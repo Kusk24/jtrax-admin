@@ -1235,6 +1235,10 @@ function TournamentDetail({
           /* Each age group is published as its own chess-results event, so the
              tab strip is one link per group rather than one list divided up. */
           categories={categoryRows}
+          /* The declared round count. chess-results publishes no page for a
+             round that has not happened, so without this the table ends at
+             whatever the arbiter has uploaded and a live event reads as over. */
+          totalRounds={tournament.rounds}
           resultsPublic={tournament.published}
           onPublishChange={async (next) => {
             await update("tournaments", tournament.id, { results_public: next });

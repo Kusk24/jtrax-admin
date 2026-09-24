@@ -6,11 +6,16 @@
  * registration tracking (the Participants tab) and *showing* the arbiter's
  * results, never authoring them.
  *
- * This tab therefore has exactly three pieces: the chess-results link (the
- * results source), the public page (where families see it), and a read-only
- * preview of what that page is showing. The round-and-result entry UI that
- * used to live below them is gone on purpose — a second place to type results
- * is a second version of the truth.
+ * This tab therefore has four pieces, in the order the questions come: the
+ * chess-results link (the results source), the public page (where families see
+ * it), the boards round by round, and the ranked list under them. The
+ * round-and-result entry UI that used to live below them is gone on purpose —
+ * a second place to type results is a second version of the truth.
+ *
+ * The boards are the bulk of it and live in `ResultsTable`. They used to be a
+ * strip of columns scrolled sideways; what an organiser is actually asked at a
+ * venue is about one round or one child, and neither was answerable by
+ * scrolling.
  */
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
@@ -23,9 +28,10 @@ import { COLORS, FONT } from "@/lib/theme";
 import { Icon } from "@/lib/icons";
 import { errorText } from "../crud";
 import { formatPoints } from "@/lib/tournament-results";
-import { Drawer, primaryButtonStyle, secondaryButtonStyle } from "../page-kit";
+import { primaryButtonStyle, secondaryButtonStyle } from "../page-kit";
 import { Badge, Card, SectionTitle } from "../ui";
 import { LinkedResultsCard } from "./LinkedResultsCard";
+import { ResultsTable } from "./ResultsTable";
 import { ShareLink } from "./ShareLink";
 
 /** How many mirrored rows the preview shows; the full table lives on the
@@ -36,6 +42,7 @@ export function ResultsTab({
   tournamentId,
   tournamentName,
   categories,
+  totalRounds,
   resultsPublic,
   onPublishChange,
 }: {
@@ -44,6 +51,10 @@ export function ResultsTab({
   tournamentName: string;
   /** The event's age groups, in the order the organiser entered them. */
   categories: Array<{ id: string; name: string }>;
+  /** How many rounds the event is scheduled for. chess-results has no page
+      for a round it has not published, so without this an event four rounds
+      into five reads as finished. */
+  totalRounds: number;
   resultsPublic: boolean;
   onPublishChange: (next: boolean) => Promise<void>;
 }) {
@@ -62,11 +73,9 @@ export function ResultsTab({
      where the previous group's card is still showing — it reads as this group
      being linked to that event. */
   const [loaded, setLoaded] = useState<{ scope: string; link: LinkedResults | null } | null>(null);
-  const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
   /* "" is the first group, whatever it is — not a magic "all". A stored id
      would dangle if the organiser deleted the category it names. */
   const [categoryTab, setCategoryTab] = useState("");
-  const [playerDrawer, setPlayerDrawer] = useState<string | null>(null);
 
   /* One fetch per tab, because each age group is a different chess-results
      event: the arbiter publishes OPEN, U18, U12, U10 and U08 separately, with
@@ -125,7 +134,6 @@ export function ResultsTab({
   const tabs = [{ id: "", name: t("wholeEvent") }, ...categories];
   const tabbed = categories.length > 0;
   const rounds = linkedResults?.rounds ?? [];
-  const selectedStanding = linkedResults?.standings.find((row) => row.name === playerDrawer);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -236,47 +244,26 @@ export function ResultsTab({
         </button>
       </Card>
 
-      {/* ---- what the public sees ---- */}
-      {linked && hasStandings && (
-        <Card style={{ display: "flex", flexDirection: "column", gap: 12, overflow: "hidden" }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-            <SectionTitle>{t("roundFlow")}</SectionTitle>
-            <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>{t("roundFlowHint")}</span>
-          </div>
-          {rounds.length > 0 ? (
-            <div role="region" aria-label={t("roundFlow")} tabIndex={0} style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8 }}>
-              {rounds.map((round) => (
-                <section key={round.round} style={{ flex: "0 0 250px", border: `1px solid ${COLORS.border}`, borderRadius: 12, overflow: "hidden", background: COLORS.surface }}>
-                  <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "10px 12px", background: COLORS.light }}>
-                    <strong style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.text }}>{t("round", { n: round.round })}</strong>
-                    <Badge color={round.played ? COLORS.success : COLORS.textSecondary} bg={round.played ? COLORS.successBg : COLORS.neutralBg}>{t(round.played ? "played" : "scheduled")}</Badge>
-                  </header>
-                  <div style={{ padding: "4px 10px 8px" }}>
-                    {round.pairings.map((pairing) => {
-                      const highlighted = selectedPlayer === pairing.white || selectedPlayer === pairing.black;
-                      return (
-                        <div key={`${round.round}-${pairing.board}`} style={{ padding: "8px 0", borderTop: `1px solid ${COLORS.border}`, background: highlighted ? COLORS.light : "transparent" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <span style={{ width: 18, textAlign: "center", fontFamily: FONT, fontSize: 10.5, color: COLORS.textSecondary }}>{pairing.board}</span>
-                            <PlayerName name={pairing.white} academy={Boolean(pairing.whiteStudentId)} selected={selectedPlayer === pairing.white} onSelect={setSelectedPlayer} onOpen={setPlayerDrawer} />
-                            <strong style={{ fontFamily: FONT, fontSize: 11.5, color: COLORS.text }}>{pairing.result || "–"}</strong>
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
-                            <span style={{ width: 18 }} />
-                            <PlayerName name={pairing.black || t("bye")} academy={Boolean(pairing.blackStudentId)} selected={selectedPlayer === pairing.black} onSelect={setSelectedPlayer} onOpen={setPlayerDrawer} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </section>
-              ))}
-            </div>
-          ) : (
-            <p style={{ margin: 0, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>{t("noMirroredRounds")}</p>
-          )}
-        </Card>
-      )}
+      {/* ---- the boards, round by round ---- */}
+      {linked &&
+        (rounds.length > 0 ? (
+          <ResultsTable
+            /* Remounted per group so a player picked in U18 does not stay
+               selected over U12's boards, where that name is not on one. */
+            key={categoryTab || tournamentId}
+            rounds={rounds}
+            standings={linkedResults?.standings ?? []}
+            totalRounds={totalRounds}
+            eventName={tournamentName}
+            categoryName={categories.find((c) => c.id === categoryTab)?.name}
+          />
+        ) : (
+          <Card>
+            <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
+              {t("noMirroredRounds")}
+            </p>
+          </Card>
+        ))}
 
       {linked && hasStandings && (
         <Card style={{ padding: 0, overflow: "hidden" }}>
@@ -327,27 +314,6 @@ export function ResultsTab({
         </Card>
       )}
 
-      {playerDrawer && (
-        <Drawer title={playerDrawer} onClose={() => setPlayerDrawer(null)}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-              <span style={{ display: "flex", width: 44, height: 44, alignItems: "center", justifyContent: "center", borderRadius: 12, background: COLORS.light, color: COLORS.blue, fontFamily: FONT, fontWeight: 700 }}>{playerDrawer.split(/\s+/).map((part) => part[0]).join("").slice(0, 2)}</span>
-              <div><strong style={{ display: "block", fontFamily: FONT, fontSize: 16, color: COLORS.text }}>{playerDrawer}</strong><span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>{selectedStanding?.rating || "—"}</span></div>
-            </div>
-            <Card style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>{t("rank")}<strong style={{ display: "block", marginTop: 3, fontSize: 18, color: COLORS.text }}>#{selectedStanding?.rank || "—"}</strong></span>
-              <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>{t("points")}<strong style={{ display: "block", marginTop: 3, fontSize: 18, color: COLORS.text }}>{selectedStanding ? formatPoints(selectedStanding.points) : "—"}</strong></span>
-            </Card>
-            <p style={{ margin: 0, fontFamily: FONT, fontSize: 12.5, lineHeight: 1.55, color: COLORS.textSecondary }}>{t("playerDrawerHint")}</p>
-          </div>
-        </Drawer>
-      )}
     </div>
-  );
-}
-
-function PlayerName({ name, academy, selected, onSelect, onOpen }: { name: string; academy: boolean; selected: boolean; onSelect: (name: string) => void; onOpen: (name: string) => void }) {
-  return (
-    <button type="button" onClick={() => onSelect(name)} onDoubleClick={() => onOpen(name)} style={{ minWidth: 0, flex: 1, border: selected ? `1px solid ${COLORS.blue}` : "1px solid transparent", borderRadius: 7, background: selected ? COLORS.light : "transparent", padding: "3px 5px", textAlign: "left", cursor: "pointer", fontFamily: FONT, fontSize: 11.5, fontWeight: academy ? 700 : 500, color: academy ? COLORS.blue : COLORS.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</button>
   );
 }

@@ -664,6 +664,37 @@ textarea {
   }
 }
 
+/* Results: the round boards with one player's own card beside them. Not
+   `.jt-duo` — an even split gives the panel half the width of a pairing table
+   that already scrolls sideways at the sizes this appears on. The panel is
+   sized to its contents (three stat boxes and a round list) and the boards
+   take the rest.
+
+   It stacks later than the other two-column layouts, at 1100px rather than
+   880: below that the boards column is narrow enough that the pairing table
+   scrolls, and a table you scroll sideways beside a card you scroll down is
+   two scrollers fighting. */
+.jt-results-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (width >= 1100px) {
+  .jt-results-split {
+    grid-template-columns: minmax(0, 1fr) 360px;
+  }
+
+  /* The panel follows the round the organiser scrolls to. Sticky rather than
+     fixed so it still stops at the end of the list instead of hanging over
+     whatever comes after it. */
+  .jt-results-split > :last-child {
+    position: sticky;
+    top: 16px;
+  }
+}
+
 /* Messaging: single column on narrow screens, list+thread at md, and the full
    three-pane layout once there's room for the info panel. */
 .jt-chat-grid {
