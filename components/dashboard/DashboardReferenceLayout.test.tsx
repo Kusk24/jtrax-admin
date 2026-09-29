@@ -105,34 +105,38 @@ describe("student status shortcuts", () => {
     expect(screen.getAllByRole("link")).toHaveLength(5);
   });
 
-  /* The only way either reminder reaches a family is somebody pressing one of
-     these. A dashboard rewrite dropped them once without anyone noticing, and
-     for a while the expiry reminder could not be sent at all. */
-  it("offers both manual credit reminders", () => {
-    data.students = [student("Low Credit", 0)];
-    render(messages(<StudentStatus />));
-    expect(screen.getByRole("button", { name: /remind: low credit/i })).toBeDefined();
-    expect(screen.getByRole("button", { name: /remind: credits expiring/i })).toBeDefined();
+  /* One donut, one slice per status that anyone is in, and the total as a
+     tag in the corner. The manual reminder buttons were taken off this card
+     on request. */
+  it("is a donut of the statuses present, with the total in the corner", () => {
+    data.students = [student("Normal", 0), student("Normal", 1), student("Low Credit", 2)];
+    const { container } = render(messages(<StudentStatus />));
+
+    expect(container.querySelectorAll(".jt-status-donut circle")).toHaveLength(1 + 2); // track + two slices
+    expect(screen.getByText("3 students")).toBeDefined();
+    expect(screen.queryByRole("button", { name: /remind/i })).toBeNull();
   });
 });
 
 describe("today's compact class list", () => {
-  it("does not scroll a normal two-class day", () => {
-    data.todaysClasses = [classDef(1), classDef(2)];
+  it("scrolls inside the card once there are more than three classes", () => {
+    data.todaysClasses = [1, 2, 3, 4].map(classDef);
     const { container } = render(messages(<TodaysClasses onViewClass={vi.fn()} />));
 
     const list = container.querySelector(".jt-class-list")!;
-    expect(list.classList.contains("is-scrollable")).toBe(false);
-    expect(list.getAttribute("tabindex")).toBeNull();
+    expect(list.children).toHaveLength(4);
+    expect(list.classList.contains("is-scrollable")).toBe(true);
+    expect(list.getAttribute("tabindex")).toBe("0");
   });
 
-  it("makes only the class list scroll when a third class is added", () => {
+  it("shows up to three classes in full, without scrolling", () => {
     data.todaysClasses = [classDef(1), classDef(2), classDef(3)];
     const { container } = render(messages(<TodaysClasses onViewClass={vi.fn()} />));
 
     const list = container.querySelector(".jt-class-list")!;
-    expect(list.classList.contains("is-scrollable")).toBe(true);
-    expect(list.getAttribute("tabindex")).toBe("0");
+    expect(list.children).toHaveLength(3);
+    expect(list.classList.contains("is-scrollable")).toBe(false);
+    expect(list.getAttribute("tabindex")).toBeNull();
   });
 
   it("shows an explicit empty state when there are no classes", () => {
@@ -159,13 +163,21 @@ describe("today's classes filter", () => {
     { ...classDef(3), status: "Finished" as const },
   ];
 
-  it("counts every state, and starts on All", () => {
+  it("counts every state, and starts on what is running now", () => {
     data.todaysClasses = mixed();
     render(messages(<TodaysClasses onViewClass={vi.fn()} />));
 
-    expect(screen.getByRole("radio", { name: "All (3)" }).getAttribute("aria-checked")).toBe("true");
-    expect(screen.getByRole("radio", { name: "Ongoing (1)" })).toBeTruthy();
+    expect(screen.getByRole("radio", { name: "Ongoing (1)" }).getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByRole("radio", { name: "All (3)" })).toBeTruthy();
     expect(screen.getByRole("radio", { name: "Finished (2)" })).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: /Class \d/ })).toHaveLength(1);
+  });
+
+  it("starts on All when nothing is running", () => {
+    data.todaysClasses = mixed().map((d) => ({ ...d, status: "Finished" as const }));
+    render(messages(<TodaysClasses onViewClass={vi.fn()} />));
+
+    expect(screen.getByRole("radio", { name: "All (3)" }).getAttribute("aria-checked")).toBe("true");
     expect(screen.getAllByRole("button", { name: /Class \d/ })).toHaveLength(3);
   });
 

@@ -75,3 +75,32 @@ export function classNamesOfStudent(
     .map((k) => (k ? s(k, "name") : ""))
     .filter(Boolean);
 }
+
+/**
+ * A child's balance in each class they are in, in the Class column's order —
+ * plus, as `className: ""`, hours they hold outside any course (left behind
+ * when an enrolment was deleted), when there are any.
+ *
+ * The roster's Credit column used to read the student row's single `credit`,
+ * which is the first active enrolment's alone: a child with 8 hours in one
+ * course and 3 in another showed 8.
+ */
+export function creditsByClass(
+  c: { classes: Row[]; enrollments: Row[]; creditTransactions: Row[] },
+  studentId: string,
+): { className: string; balance: number }[] {
+  const balanceOf = (match: (t: Row) => boolean) =>
+    c.creditTransactions.filter(match).reduce((sum, t) => sum + Number(t["amount"] ?? 0), 0);
+  const courses = c.enrollments
+    .filter((e) => s(e, "student_id") === studentId && isActiveEnrolment(e))
+    .map((e) => {
+      const cls = c.classes.find((k) => s(k, "class_id") === s(e, "class_id"));
+      return {
+        className: cls ? s(cls, "name") : "",
+        balance: balanceOf((t) => s(t, "enrollment_id") === s(e, "enrollment_id")),
+      };
+    })
+    .filter((row) => row.className);
+  const loose = balanceOf((t) => !s(t, "enrollment_id") && s(t, "student_id") === studentId);
+  return loose !== 0 || courses.length === 0 ? [...courses, { className: "", balance: loose }] : courses;
+}

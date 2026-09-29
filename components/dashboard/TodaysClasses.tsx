@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { IconName } from "@/lib/icons";
 import { Icon } from "@/lib/icons";
-import { classProgress, hasClassEnded, useMinuteClock } from "@/lib/class-progress";
+import { classProgress, classStatusNow, endingSoon, useMinuteClock } from "@/lib/class-progress";
 import { type ClassDef } from "@/lib/data";
 import { CLASS_CATEGORY_COLORS, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
+import { fmtDate, todayISO, toCancelledClasses, toTodaysClasses } from "@/lib/live";
+import { useDashboardDate } from "../DashboardDate";
 import { useData } from "../DataProvider";
 import { Card, SectionTitle } from "../ui";
 
@@ -18,17 +20,35 @@ const CATEGORY_ICON: Record<string, IconName> = {
   Weekend: "pawn",
 };
 
+/** Up to this many classes show in full; past it, the list scrolls. */
+export const CLASSES_BEFORE_SCROLL = 3;
+
 /**
- * What the card should show right now, which is not always what the database
- * says. `session_status` stays `Ongoing` until someone sets it otherwise —
- * nothing does that on its own — so a class the clock says ended twenty
- * minutes ago still reads `Ongoing` until the desk notices. Every reader of a
- * class's status (the chip, the filter pills and their counts, the panel's
- * edit gate) goes through this rather than `def.status` directly, so the
- * three cannot disagree.
+ * Caps a list at the bottom of its Nth child. Class cards are not all one
+ * height — an ongoing class carries a progress bar — so the cap is measured
+ * rather than guessed, and re-measured whenever the cards change size.
  */
-function effectiveStatus(def: ClassDef, now: Date): ClassDef["status"] {
-  return def.status === "Ongoing" && hasClassEnded(def.time, now) ? "Finished" : def.status;
+function useCapAtChild(n: number, active: boolean, items: unknown) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const list = ref.current;
+    if (!list) return;
+    if (!active) {
+      list.style.maxHeight = "";
+      return;
+    }
+    const measure = () => {
+      const last = list.children[n - 1] as HTMLElement | undefined;
+      if (last) list.style.maxHeight = `${last.offsetTop - list.offsetTop + last.offsetHeight}px`;
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    /* The list itself stops resizing once capped, so watch the cards. */
+    const observer = new ResizeObserver(measure);
+    for (const child of Array.from(list.children)) observer.observe(child);
+    return () => observer.disconnect();
+  }, [n, active, items]);
+  return ref;
 }
 
 /** How far through the hour an in-progress class is. */
@@ -68,9 +88,12 @@ function TimePassed({ time, now }: { time: string; now: Date }) {
 
 function ClassCard({ def, now, onView }: { def: ClassDef; now: Date; onView: (def: ClassDef) => void }) {
   const tStatus = useTranslations("status");
+  const tDash = useTranslations("dashboard");
   const accent = CLASS_CATEGORY_COLORS[def.category] ?? COLORS.blue;
-  const shownStatus = effectiveStatus(def, now);
+  const shownStatus = classStatusNow(def, now, todayISO());
   const status = statusChipColors(shownStatus);
+  /* A running class with a quarter of an hour or less to go. */
+  const minutesLeft = shownStatus === "Ongoing" ? endingSoon(def.time, now) : null;
 
   return (
     <button
@@ -88,49 +111,76 @@ function ClassCard({ def, now, onView }: { def: ClassDef; now: Date; onView: (de
         background: COLORS.surface,
         cursor: "pointer",
         textAlign: "left",
-        minHeight: 108,
       }}
     >
       <span>
-        <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-          <span
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 28,
-              height: 28,
-              borderRadius: 8,
-              background: `${accent}1A`,
-            }}
-          >
-            <Icon name={CATEGORY_ICON[def.category] ?? "pawn"} size={16} color={accent} />
+        {/* The icon sits beside the name, not above it, so the card is a line
+            shorter. The status sits in the top corner, with the ending-soon
+            tag under it while a class is in its last minutes. */}
+        <span style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+            <span
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 26,
+                height: 26,
+                borderRadius: 8,
+                background: `${accent}1A`,
+                flexShrink: 0,
+              }}
+            >
+              <Icon name={CATEGORY_ICON[def.category] ?? "pawn"} size={15} color={accent} />
+            </span>
+            <span
+              style={{
+                fontFamily: FONT,
+                fontSize: 15.5,
+                fontWeight: 700,
+                color: COLORS.text,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {def.name}
+            </span>
           </span>
-          <span
-            style={{
-              padding: "3px 9px",
-              borderRadius: 999,
-              background: status.bg,
-              color: status.color,
-              fontFamily: FONT,
-              fontSize: 12,
-              fontWeight: 600,
-            }}
-          >
-            {tStatus(shownStatus)}
+          <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
+            <span
+              style={{
+                padding: "2px 8px",
+                borderRadius: 999,
+                background: status.bg,
+                color: status.color,
+                fontFamily: FONT,
+                fontSize: 11.5,
+                fontWeight: 600,
+                lineHeight: 1.4,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {tStatus(shownStatus)}
+            </span>
+            {minutesLeft !== null && (
+              <span
+                style={{
+                  padding: "2px 8px",
+                  borderRadius: 999,
+                  background: COLORS.warningBg,
+                  color: COLORS.warning,
+                  fontFamily: FONT,
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  lineHeight: 1.4,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {tDash("endsInMinutes", { minutes: Math.round(minutesLeft) })}
+              </span>
+            )}
           </span>
-        </span>
-        <span
-          style={{
-            display: "block",
-            marginTop: 8,
-            fontFamily: FONT,
-            fontSize: 15.5,
-            fontWeight: 700,
-            color: COLORS.text,
-          }}
-        >
-          {def.name}
         </span>
         <span
           style={{ display: "block", marginTop: 2, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}
@@ -199,7 +249,7 @@ function ClassCard({ def, now, onView }: { def: ClassDef; now: Date; onView: (de
 }
 
 /** The three views of the day, in the order the reference shows them. */
-const FILTERS = ["all", "Ongoing", "Finished"] as const;
+const FILTERS = ["all", "Upcoming", "Ongoing", "Finished", "Cancelled"] as const;
 
 type ClassFilter = (typeof FILTERS)[number];
 
@@ -209,30 +259,48 @@ export function TodaysClasses({ onViewClass }: { onViewClass: (def: ClassDef) =>
      of their own: the pill and the chip on the card beneath it name the same
      state, and two entries would eventually disagree. */
   const tStatus = useTranslations("status");
-  const { todaysClasses } = useData();
+  const { raw, todaysClasses: providedToday } = useData();
+  const { day, isToday, isPast } = useDashboardDate();
+  /* The day the top bar's date chip is on — today unless someone picked
+     another. Today's list is already worked out by the data provider. */
+  const todaysClasses = useMemo(
+    () => [
+      ...(isToday ? providedToday : toTodaysClasses(raw, day)),
+      /* Called-off classes stay on the day, marked, after the ones that ran. */
+      ...(raw ? toCancelledClasses(raw, day) : []),
+    ],
+    [isToday, providedToday, raw, day],
+  );
+  const today = todayISO();
   const now = useMinuteClock();
-  const [filter, setFilter] = useState<ClassFilter>("all");
+  /* Opens on what is running now; with nothing running, on the whole day.
+     Null until the desk picks one, so the default follows the data as it
+     loads rather than being frozen at mount. */
+  const [picked, setPicked] = useState<ClassFilter | null>(null);
 
   const countFor = (f: ClassFilter) =>
-    f === "all" ? todaysClasses.length : todaysClasses.filter((d) => effectiveStatus(d, now) === f).length;
+    f === "all" ? todaysClasses.length : todaysClasses.filter((d) => classStatusNow(d, now, today) === f).length;
+  const filter: ClassFilter = picked ?? (countFor("Ongoing") > 0 ? "Ongoing" : "all");
   const shown =
-    filter === "all" ? todaysClasses : todaysClasses.filter((d) => effectiveStatus(d, now) === filter);
-  const scrollable = shown.length > 2;
+    filter === "all" ? todaysClasses : todaysClasses.filter((d) => classStatusNow(d, now, today) === filter);
+  const scrollable = shown.length > CLASSES_BEFORE_SCROLL;
+  const listRef = useCapAtChild(CLASSES_BEFORE_SCROLL, scrollable, shown);
 
   return (
     <Card className="jt-today-classes" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* Title on the left, the day's count in the top corner. */}
       <div className="jt-classes-heading">
-        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-          <SectionTitle>{t("todaysClasses")}</SectionTitle>
-          <span className="jt-class-count">{t("classCount", { count: todaysClasses.length })}</span>
-        </div>
+        <SectionTitle>{isToday ? t("todaysClasses") : t("classesOn", { date: fmtDate(day) })}</SectionTitle>
+        <span className="jt-class-count">{t("classCount", { count: todaysClasses.length })}</span>
       </div>
 
       {/* Offered only once there is a day to sort through. On an empty day the
           three pills would all read zero and filter nothing. */}
       {todaysClasses.length > 0 && (
         <div className="jt-class-filters" role="radiogroup" aria-label={t("classFilterLabel")}>
-          {FILTERS.map((option) => {
+          {/* Upcoming only exists on a later day; elsewhere it would be a pill
+              that always reads zero. */}
+          {FILTERS.filter((o) => o !== "Upcoming" || countFor(o) > 0).map((option) => {
             const label = option === "all" ? t("classFilterAll") : tStatus(option);
             const count = countFor(option);
             return (
@@ -245,7 +313,7 @@ export function TodaysClasses({ onViewClass }: { onViewClass: (def: ClassDef) =>
                    derived from the text would run together as "All3". */
                 aria-label={`${label} (${count})`}
                 className={`jt-class-filter${option === filter ? " is-on" : ""}`}
-                onClick={() => setFilter(option)}
+                onClick={() => setPicked(option)}
               >
                 {label}
                 <span className="jt-class-filter-count">{count}</span>
@@ -263,15 +331,18 @@ export function TodaysClasses({ onViewClass }: { onViewClass: (def: ClassDef) =>
           <span className="jt-dashboard-empty-icon">
             <Icon name="calendar" size={20} color={COLORS.blue} />
           </span>
-          <strong>{t("noClassesToday")}</strong>
-          <span>{t("noClassesTodaySub")}</span>
+          <strong>{isToday ? t("noClassesToday") : t("noClassesOn", { date: fmtDate(day) })}</strong>
+          <span>{isToday ? t("noClassesTodaySub") : isPast ? t("noClassesPastSub") : t("noClassesFutureSub")}</span>
         </div>
       ) : shown.length === 0 ? (
         /* A filter that matches nothing is not the same as a day with no
            classes, and must not borrow that card's "take a breather" copy. */
         <p className="jt-class-filter-empty">{t("noClassesInFilter")}</p>
       ) : (
+        /* The card grows with the day up to three classes; a busier day
+           scrolls inside the list so the rail below stays in reach. */
         <div
+          ref={listRef}
           className={`jt-class-list${scrollable ? " is-scrollable" : ""}`}
           role="region"
           aria-label={t("classListLabel")}

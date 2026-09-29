@@ -12,7 +12,7 @@ import {
   type FamilyLink,
   type Pair,
 } from "@/lib/payment-pairing";
-import { livePackages } from "@/lib/live";
+import { liveClasses, livePackages } from "@/lib/live";
 import { useData } from "@/components/DataProvider";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf } from "@/lib/theme";
@@ -50,10 +50,9 @@ import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 import { useErrorToast } from "../ErrorToast";
 
-const TEMPLATE = equalTemplate(9, 76);
+const TEMPLATE = equalTemplate(8, 76);
 const VIEWS = ["list", "card"] as const;
 const METHODS = ["Credit Card", "Bank Transfer", "PromptPay", "Cash"];
-const STATUSES = ["Paid", "Pending", "Refunded"] as const;
 
 /** The day credits bought today run out, from the package's own validity.
     A package with no validity set never expires, and says so with "". */
@@ -80,10 +79,23 @@ type PackageOption = {
   price: number;
 };
 
+/* The package select's value for "no package — type the credits in". */
+const CUSTOM = "__custom";
+
+/** Baht off `amount` for a percentage discount, to the satang. */
+export function discountBaht(amount: number, percent: number): number {
+  const pct = Math.min(100, Math.max(0, percent));
+  return Math.round(amount * pct) / 100;
+}
+
 type PaymentDraft = {
   studentId: string;
+  /* Empty for a custom sale: then `classId` and `credits` say what was bought. */
   creditPackageId: string;
+  classId: string;
+  credits: number;
   amount: number;
+  /* In baht, worked out from the percentage the desk typed. */
   discount: number;
   method: string;
   /* Both were on the form and neither left it: every payment saved as Paid,
@@ -100,12 +112,16 @@ type PaymentDraft = {
 
 export function RecordPaymentForm({
   initialStudentId,
+  initialClassId,
   onCancel,
   onSave,
 }: {
   /* Set when the registration wizard sent us here, so the desk lands on a form
      that already knows who it is for. */
   initialStudentId?: string;
+  /* Set by a course's "Top up": sell that course's package, not the one for
+     whichever class the child happens to be listed under. */
+  initialClassId?: string;
   onCancel: () => void;
   /* Returns a promise, and the caller must await it: the save button stays
      disabled for exactly as long as this takes. */
@@ -114,7 +130,6 @@ export function RecordPaymentForm({
   const { students, raw } = useData();
   const t = useTranslations("payment");
   const tCommon = useTranslations("common");
-  const tStatus = useTranslations("status");
 
   /* The academy's own packages, priced per class — the form used to carry a
      hard-coded price list, so a package the office edited on the Academy page
@@ -159,18 +174,31 @@ export function RecordPaymentForm({
   /* The package for the student's own class, which is the one the desk is
      about to sell them. */
   const packageFor = (className: string) => packages.find((p) => p.className === className);
-  const initialPackage = prefilled ? packageFor(prefilled.className) ?? packages[0] : packages[0];
+  const initialPackage =
+    (initialClassId ? packages.find((p) => p.classId === initialClassId) : undefined) ??
+    (prefilled ? packageFor(prefilled.className) ?? packages[0] : packages[0]);
 
   const [studentName, setStudentName] = useState(prefilled?.name ?? "");
   const [studentQuery, setStudentQuery] = useState(prefilled?.name ?? "");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   /* Who is paying. The child's own guardian, and blank when they have none. */
   const [payerId, setPayerId] = useState(prefilled ? guardianOf(links, prefilled.id) : "");
-  const [packageId, setPackageId] = useState(initialPackage?.id ?? "");
+  /* No packages set up: custom is the only way to sell credits. */
+  const [packageId, setPackageId] = useState(initialPackage?.id ?? CUSTOM);
   const [amount, setAmount] = useState(initialPackage?.price ?? 0);
-  const [discount, setDiscount] = useState(0);
+  /* Percent off, 0–100. Stored as baht on the payment. */
+  const [discountPct, setDiscountPct] = useState(0);
+  /* Custom sale: any number of credits for any course, at any price. */
+  const custom = packageId === CUSTOM;
+  const courses = useMemo(
+    () => liveClasses({ classes: raw.classes }).map((c) => ({ id: String(c.class_id), name: String(c.name ?? "") })),
+    [raw.classes],
+  );
+  const [customClassId, setCustomClassId] = useState(
+    initialClassId ?? courses.find((c) => c.name === prefilled?.className)?.id ?? courses[0]?.id ?? "",
+  );
+  const [customCredits, setCustomCredits] = useState(0);
   const [method, setMethod] = useState(METHODS[0]);
-  const [status, setStatus] = useState<Payment["status"]>("Paid");
   const [ref, setRef] = useState("");
 
   /* Choosing a payer is choosing a family, so this is what the student picker
@@ -219,8 +247,9 @@ export function RecordPaymentForm({
   }
 
   const payerName = guardians.find((g) => g.id === payerId)?.name ?? "";
+  const discount = discountBaht(amount, discountPct);
   const finalAmount = Math.max(0, amount - discount);
-  const canSave = studentName !== "";
+  const canSave = studentName !== "" && (!custom || (customClassId !== "" && customCredits > 0));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 760 }}>
@@ -432,7 +461,7 @@ export function RecordPaymentForm({
               }}
               style={selectStyle}
             >
-              {packages.length === 0 && <option value="">{t("noPackages")}</option>}
+              <option value={CUSTOM}>{t("customCredits")}</option>
               {packages.map((p) => (
                 <option key={p.id} value={p.id}>
                   {t("packageOption", { className: p.className, credits: p.credits })}
@@ -440,6 +469,35 @@ export function RecordPaymentForm({
               ))}
             </select>
           </div>
+          {custom && (
+            <>
+              <div>
+                <label style={labelStyle} htmlFor="pay-course">{tCommon("class")}</label>
+                <select
+                  id="pay-course"
+                  value={customClassId}
+                  onChange={(e) => setCustomClassId(e.target.value)}
+                  style={selectStyle}
+                >
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle} htmlFor="pay-credits">{t("credits")}</label>
+                <input
+                  id="pay-credits"
+                  type="number"
+                  min={0}
+                  step={0.5}
+                  value={customCredits || ""}
+                  onChange={(e) => setCustomCredits(Math.max(0, Number(e.target.value) || 0))}
+                  style={fieldStyle}
+                />
+              </div>
+            </>
+          )}
           <div>
             <label style={labelStyle} htmlFor="pay-amount">{t("amountThb")}</label>
             <input
@@ -452,13 +510,14 @@ export function RecordPaymentForm({
             />
           </div>
           <div>
-            <label style={labelStyle} htmlFor="pay-discount">{t("discountThb")}</label>
+            <label style={labelStyle} htmlFor="pay-discount">{t("discountPct")}</label>
             <input
               id="pay-discount"
               type="number"
               min={0}
-              value={discount}
-              onChange={(e) => setDiscount(Math.max(0, Number(e.target.value) || 0))}
+              max={100}
+              value={discountPct}
+              onChange={(e) => setDiscountPct(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
               style={fieldStyle}
             />
           </div>
@@ -469,24 +528,6 @@ export function RecordPaymentForm({
                 <option key={m} value={m}>{m}</option>
               ))}
             </select>
-          </div>
-          <div>
-            <label style={labelStyle} htmlFor="pay-status">{tCommon("status")}</label>
-            <select
-              id="pay-status"
-              value={status}
-              onChange={(e) => setStatus(e.target.value as Payment["status"])}
-              style={selectStyle}
-            >
-              {STATUSES.map((s) => (
-                <option key={s} value={s}>{tStatus(s)}</option>
-              ))}
-            </select>
-            {status !== "Paid" && (
-              <p style={{ margin: "5px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-                {t("statusHoldsCredits")}
-              </p>
-            )}
           </div>
           <div>
             <label style={labelStyle} htmlFor="pay-ref">{t("refNumber")}</label>
@@ -525,11 +566,15 @@ export function RecordPaymentForm({
             onClick={() =>
               onSave({
                 studentId: selected?.id ?? "",
-                creditPackageId: packageId,
+                creditPackageId: custom ? "" : packageId,
+                classId: custom ? customClassId : packages.find((k) => k.id === packageId)?.classId ?? "",
+                credits: custom ? customCredits : packages.find((k) => k.id === packageId)?.credits ?? 0,
                 amount,
                 discount,
                 method,
-                status,
+                /* Every payment taken at the desk is a paid one: there is no
+                   status to choose, so its credits count straight away. */
+                status: "Paid",
                 reference: ref.trim(),
                 studentName: selected?.name ?? studentName,
                 /* The class the chosen *package* is for, not the student's
@@ -540,7 +585,9 @@ export function RecordPaymentForm({
                    when nothing is priced yet — see the note on `pkg` in
                    `onSave` for why this cannot fall back to "" and still be
                    right about which enrolment the money is for. */
-                className: packages.find((k) => k.id === packageId)?.className ?? selected?.className ?? "",
+                className: custom
+                  ? courses.find((c) => c.id === customClassId)?.name ?? ""
+                  : packages.find((k) => k.id === packageId)?.className ?? selected?.className ?? "",
                 payerName: guardians.find((g) => g.id === payerId)?.name ?? "",
               })
             }
@@ -609,7 +656,9 @@ export function PaymentDetail({
               <span style={{ fontFamily: FONT, fontSize: 19, fontWeight: 700, color: COLORS.text }}>
                 {payment.amount}
               </span>
-              <Badge {...statusChip(payment.status)}>{tStatus(payment.status)}</Badge>
+              {/* Payments are all Paid now; only an older Pending or Refunded
+                  record still says what it is. */}
+              {payment.status !== "Paid" && <Badge {...statusChip(payment.status)}>{tStatus(payment.status)}</Badge>}
               {payment.credits !== "—" && (
                 <Badge color={COLORS.success} bg={COLORS.successBg}>
                   {payment.credits} {tCommon("credits")}
@@ -640,7 +689,6 @@ export function PaymentDetail({
             { label: t("discount"), value: payment.discount ?? "—" },
             { label: t("finalAmount"), value: payment.amount },
             { label: tCommon("method"), value: payment.method },
-            { label: tCommon("status"), value: tStatus(payment.status) },
             { label: tCommon("date"), value: payment.date },
             { label: t("reference"), value: payment.reference || "—" },
           ]}
@@ -722,9 +770,11 @@ const METHOD_VALUES = ["CreditCard", "BankTransfer", "PromptPay", "Cash"];
 
 export function PaymentPage({
   startStudentId,
+  startClassId,
   startNew,
 }: {
   startStudentId?: string;
+  startClassId?: string;
   /* The dashboard's "Record Payment" pill, which means the form and not the
      ledger it is filed into. */
   startNew?: boolean;
@@ -732,7 +782,6 @@ export function PaymentPage({
   const t = useTranslations("payment");
   const tCommon = useTranslations("common");
   const { showError } = useErrorToast();
-  const tStatus = useTranslations("status");
   const { payments, raw, batch, create, update, remove, loading } = useData();
   /* Arriving with a student means the wizard just registered them and the next
      thing the desk does is take their money. */
@@ -740,10 +789,8 @@ export function PaymentPage({
   const [mode, setMode] = useViewMode("payments", VIEWS);
   const [search, setSearch] = useState("");
   const [method, setMethod] = useState("");
-  /* Money the academy is still waiting on is the reason to open this screen at
-     all, so it has to be filterable — a Pending row that only differs by a
-     chip is lost among a year of settled ones. */
-  const [statusFilter, setStatusFilter] = useState("");
+  /* Tournament fees or course credits; "" is both. */
+  const [kind, setKind] = useState("");
   /* A payment list is read by period far more often than by name — "what did
      we take in March" — so it filters by date the way class history does. */
   const [from, setFrom] = useState("");
@@ -758,8 +805,7 @@ export function PaymentPage({
   const editFields: CrudField[] = useMemo(
     () => [
       { name: "amount", label: t("amount"), kind: "number", required: true, half: true, min: 0 },
-      { name: "discount_amount", label: t("discount"), kind: "number", half: true, min: 0 },
-      { name: "final_amount", label: t("finalAmount"), kind: "number", required: true, half: true, min: 0 },
+      { name: "discount_pct", label: t("discountPct"), kind: "number", half: true, min: 0, max: 100 },
       {
         name: "payment_method",
         label: t("paymentMethod"),
@@ -768,19 +814,10 @@ export function PaymentPage({
         half: true,
         options: METHOD_VALUES.map((m) => ({ value: m, label: m })),
       },
-      {
-        name: "status",
-        label: tCommon("status"),
-        kind: "select",
-        required: true,
-        half: true,
-        options: STATUSES.map((s) => ({ value: s, label: tStatus(s) })),
-        help: t("statusEditHelp"),
-      },
       { name: "payment_date", label: tCommon("date"), kind: "date", required: true, half: true },
       { name: "reference_number", label: t("reference"), half: true },
     ],
-    [t, tCommon, tStatus],
+    [t, tCommon],
   );
 
   function openEdit(payment: Payment) {
@@ -789,10 +826,13 @@ export function PaymentPage({
     if (!row) return;
     setValues({
       amount: String(row["amount"] ?? ""),
-      discount_amount: String(row["discount_amount"] ?? 0),
-      final_amount: String(row["final_amount"] ?? ""),
+      /* Shown as the percentage it was; saved back as baht. */
+      discount_pct: String(
+        Number(row["amount"] ?? 0) > 0
+          ? Math.round((Number(row["discount_amount"] ?? 0) / Number(row["amount"])) * 10000) / 100
+          : 0,
+      ),
       payment_method: String(row["payment_method"] ?? ""),
-      status: String(row["status"] ?? "Paid"),
       payment_date: String(row["payment_date"] ?? ""),
       reference_number: String(row["reference_number"] ?? ""),
     });
@@ -808,6 +848,14 @@ export function PaymentPage({
    * fact that a payment that has already released its credits has a
    * transaction pointing back at it.
    */
+  /* How long bought credits last: the package's own validity, or for a custom
+     sale the course's package, so custom credits expire like any others. */
+  function validityFor(pkg: Record<string, unknown> | undefined, classId: string): number {
+    const source =
+      pkg ?? livePackages({ creditPackages: raw.creditPackages, classes: raw.classes }).find((k) => String(k["class_id"]) === classId);
+    return Number(source?.["validity_days"] ?? 0);
+  }
+
   async function saveEdit(id: string, payload: Record<string, unknown>) {
     const before = raw.payments.find((p) => String(p["payment_id"]) === id);
     const wasPaid = String(before?.["status"] ?? "Paid") === "Paid";
@@ -821,7 +869,12 @@ export function PaymentPage({
         (k) => String(k["credit_package_id"]) === String(before["credit_package_id"] ?? ""),
       );
       const enrollmentId = String(before["enrollment_id"] ?? "");
-      if (!pkg || !enrollmentId) return;
+      /* The payment's own count first: a custom sale has no package. */
+      const credits = Number(before["credit_amount"] ?? 0) || Number(pkg?.["credit_amount"] ?? 0);
+      const classId =
+        String(pkg?.["class_id"] ?? "") ||
+        String(raw.enrollments.find((e) => String(e["enrollment_id"]) === enrollmentId)?.["class_id"] ?? "");
+      if (!credits || !enrollmentId) return;
       const day = String(payload.payment_date ?? before["payment_date"] ?? "");
       /* Stamped so the hours survive their enrolment being deleted:
          `student_id` says whose they are, `class_id` what they were bought for
@@ -829,11 +882,11 @@ export function PaymentPage({
       await create("credit-transactions", {
         enrollment_id: enrollmentId,
         student_id: String(before["student_id"] ?? "") || null,
-        class_id: String(pkg["class_id"] ?? "") || null,
+        class_id: classId || null,
         transaction_type: "purchase",
-        amount: Number(pkg["credit_amount"] ?? 0),
+        amount: credits,
         transaction_date: day,
-        expiry_date: expiryFrom(day, Number(pkg["validity_days"] ?? 0)),
+        expiry_date: expiryFrom(day, validityFor(pkg, classId)),
         payment_id: id,
         notes: String(payload.reference_number ?? "") || null,
       });
@@ -844,7 +897,7 @@ export function PaymentPage({
     const q = search.trim().toLowerCase();
     return payments.filter((p) => {
       if (method && p.method !== method) return false;
-      if (statusFilter && p.status !== statusFilter) return false;
+      if (kind && p.kind !== kind) return false;
       /* Both bounds are inclusive, and both are plain YYYY-MM-DD, so the
          comparison is a string one — no timezone to shift the boundary day. */
       if (from && (!p.isoDate || p.isoDate < from)) return false;
@@ -852,7 +905,7 @@ export function PaymentPage({
       if (q && !p.name.toLowerCase().includes(q) && !p.className.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [payments, search, method, statusFilter, from, to]);
+  }, [payments, search, method, kind, from, to]);
 
   const { pageRows, totalPages, page: current } = paginate(filtered, page);
   const totalPaid = filtered
@@ -878,6 +931,7 @@ export function PaymentPage({
     return (
       <RecordPaymentForm
         initialStudentId={startStudentId}
+        initialClassId={startClassId}
         onCancel={() => setFormOpen(false)}
         onSave={async (p) => {
           const today = new Date().toISOString().slice(0, 10);
@@ -892,7 +946,9 @@ export function PaymentPage({
                fee, say), in which case there is nothing to match an enrolment
                to and the old lenient behaviour — any active one — still
                applies below. */
-            const pkgClassId = pkg ? String(pkg["class_id"] ?? "") : "";
+            /* A custom sale names its course directly; a package names its own. */
+            const pkgClassId = pkg ? String(pkg["class_id"] ?? "") : p.classId;
+            const boughtCredits = pkg ? Number(pkg["credit_amount"] ?? 0) : p.credits;
             /* Matched to that class specifically. This used to be "the
                student's first active enrolment, whichever course", so a
                family enrolled in two classes paying for the second one had
@@ -936,6 +992,7 @@ export function PaymentPage({
                    credits column to show and the ledger cannot say what was
                    bought. */
                 credit_package_id: p.creditPackageId || null,
+                credit_amount: boughtCredits || null,
                 student_name: p.studentName,
                 class_name: p.className,
                 parent_name: p.payerName,
@@ -952,15 +1009,15 @@ export function PaymentPage({
                  waiting to clear buys nothing yet, and a refunded one bought
                  nothing in the end. Marking it Paid later on the edit form is
                  what releases them. */
-              if (p.status === "Paid" && pkg && enrollmentId) {
+              if (p.status === "Paid" && boughtCredits > 0 && enrollmentId) {
                 await create("credit-transactions", {
                   enrollment_id: enrollmentId,
                   student_id: p.studentId,
                   class_id: pkgClassId || null,
                   transaction_type: "purchase",
-                  amount: Number(pkg["credit_amount"] ?? 0),
+                  amount: boughtCredits,
                   transaction_date: today,
-                  expiry_date: expiryFrom(today, Number(pkg["validity_days"] ?? 0)),
+                  expiry_date: expiryFrom(today, validityFor(pkg, pkgClassId)),
                   payment_id: String(payment.payment_id),
                   notes: p.reference || null,
                 });
@@ -988,7 +1045,13 @@ export function PaymentPage({
           values={values}
           onChange={setValues}
           onClose={() => setEditingId(null)}
-          onSubmit={(payload) => saveEdit(editingId, payload)}
+          onSubmit={(payload) => {
+            /* The percentage becomes baht, and the final amount follows. */
+            const { discount_pct, ...rest } = payload;
+            const gross = Number(rest.amount ?? 0);
+            const off = discountBaht(gross, Number(discount_pct ?? 0));
+            return saveEdit(editingId, { ...rest, discount_amount: off, final_amount: Math.max(0, gross - off) });
+          }}
         />
       )}
 
@@ -1016,8 +1079,8 @@ export function PaymentPage({
           <>
             <ExportButton
               filename="payments"
-              columns={[tCommon("student"), t("colPaidBy"), tCommon("class"), t("credits"), tCommon("amount"), tCommon("status"), tCommon("date"), tCommon("method")]}
-              rows={() => filtered.map((p) => [p.name, p.payer ?? "", p.className, p.credits, p.amount, tStatus(p.status), p.date, p.method])}
+              columns={[tCommon("student"), t("colPaidBy"), t("colItem"), t("credits"), tCommon("amount"), tCommon("date"), tCommon("method")]}
+              rows={() => filtered.map((p) => [p.name, p.payer ?? "", p.className, p.credits, p.amount, p.date, p.method])}
             />
             <button type="button" className="jt-btn-primary" style={primaryButtonStyle} onClick={() => setFormOpen(true)}>
               <Icon name="wallet" size={15} color={COLORS.surface} />
@@ -1036,19 +1099,20 @@ export function PaymentPage({
           label={t("searchLabel")}
         />
         <SelectFilter
+          value={kind}
+          onChange={(v) => { setKind(v); setPage(0); }}
+          options={[
+            { value: "", label: t("allTypes") },
+            { value: "course", label: t("typeCourse") },
+            { value: "tournament", label: t("typeTournament") },
+          ]}
+          label={t("paymentType")}
+        />
+        <SelectFilter
           value={method}
           onChange={(v) => { setMethod(v); setPage(0); }}
           options={[{ value: "", label: tCommon("allMethods") }, ...METHODS.map((m) => ({ value: m, label: m }))]}
           label={t("paymentMethod")}
-        />
-        <SelectFilter
-          value={statusFilter}
-          onChange={(v) => { setStatusFilter(v); setPage(0); }}
-          options={[
-            { value: "", label: tCommon("allStatuses") },
-            ...STATUSES.map((s) => ({ value: s, label: tStatus(s) })),
-          ]}
-          label={tCommon("status")}
         />
         <input
           type="date"
@@ -1099,7 +1163,6 @@ export function PaymentPage({
                     <span style={{ fontFamily: FONT, fontSize: 17, fontWeight: 700, color: COLORS.text }}>
                       {p.amount}
                     </span>
-                    <Badge {...statusChip(p.status)}>{tStatus(p.status)}</Badge>
                     {p.credits !== "—" && (
                       <Badge color={COLORS.success} bg={COLORS.successBg}>
                         {p.credits} {tCommon("credits")}
@@ -1112,7 +1175,6 @@ export function PaymentPage({
                     <RowActions
                       label={t("paymentFor", { name: p.name, amount: p.amount })}
                       onEdit={() => openEdit(p)}
-                      onDelete={() => setDeleting(p)}
                     />
                   ) : undefined
                 }
@@ -1129,13 +1191,11 @@ export function PaymentPage({
       ) : (
       <Card style={{ padding: 0, overflow: "hidden" }}>
         <Table
-          /* The status column is back. It was dropped when a recorded payment
-             could only be a paid one and the column read "Paid" on every row;
-             now that a transfer can sit Pending and a refund can be recorded,
-             which one a row is is the thing worth seeing. */
-          columns={[tCommon("student"), t("colPaidBy"), tCommon("class"), t("credits"), tCommon("amount"), tCommon("status"), tCommon("date"), tCommon("method"), tCommon("action")]}
+          /* No status column: every payment is recorded as Paid, so it would
+             read "Paid" on every row. */
+          columns={[tCommon("student"), t("colPaidBy"), t("colItem"), t("credits"), tCommon("amount"), tCommon("date"), tCommon("method"), tCommon("action")]}
           template={TEMPLATE}
-          minWidth={1180}
+          minWidth={1060}
         >
           {pageRows.length === 0 && <EmptyRow>{t("empty")}</EmptyRow>}
           {pageRows.map((p, i) => {
@@ -1165,16 +1225,12 @@ export function PaymentPage({
                 </span>
                 <span style={{ color: COLORS.success, fontWeight: 600 }}>{p.credits}</span>
                 <span style={{ fontWeight: 600 }}>{p.amount}</span>
-                <Badge {...statusChip(p.status)} style={{ justifySelf: "start" }}>
-                  {tStatus(p.status)}
-                </Badge>
                 <span style={{ color: COLORS.textSecondary }}>{p.date}</span>
                 <span style={{ color: COLORS.textSecondary }}>{p.method}</span>
                 {p.id ? (
                   <RowActions
                     label={t("paymentFor", { name: p.name, amount: p.amount })}
                     onEdit={() => openEdit(p)}
-                    onDelete={() => setDeleting(p)}
                   />
                 ) : (
                   <span />

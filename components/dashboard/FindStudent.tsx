@@ -20,6 +20,7 @@ import { COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
 import { useData } from "../DataProvider";
 import { useErrorToast } from "../ErrorToast";
 import { Avatar, Badge, Card, SectionTitle } from "../ui";
+import { useEarlyCheckout } from "./EarlyCheckout";
 
 const CREDIT_TOP_UPS = [5, 10, 20];
 
@@ -37,6 +38,7 @@ export function FindStudent() {
      refetches, and a second press before it lands is a second attendance row —
      or, on a unique index, an error the receptionist did not cause. */
   const [busy, setBusy] = useState("");
+  const early = useEarlyCheckout();
 
   /* Today's sessions, and the rows that say who is at them. The desk reads the
      same attendance table the check-in list and the "Checked in today" tile
@@ -105,14 +107,18 @@ export function FindStudent() {
   async function dismiss(studentId: string) {
     const row = todaysAttendance(attendance, sessions, studentId);
     if (!row) return;
-    setBusy(studentId);
-    try {
-      await update("attendance", row.attendanceId, { check_out_time: new Date().toISOString() });
-    } catch (e) {
-      showError(tCommon("saveFailed"), e);
-    } finally {
-      setBusy("");
-    }
+    /* Leaving before the class ends is asked about first — it changes what
+       the family is charged. */
+    await early.request([row.attendanceId], async () => {
+      setBusy(studentId);
+      try {
+        await update("attendance", row.attendanceId, { check_out_time: new Date().toISOString() });
+      } catch (e) {
+        showError(tCommon("saveFailed"), e);
+      } finally {
+        setBusy("");
+      }
+    });
   }
 
   /** A manual adjustment, not a purchase: no money changed hands at the desk.
@@ -428,6 +434,7 @@ export function FindStudent() {
           )}
         </Card>
       )}
+      {early.dialog}
     </div>
   );
 }

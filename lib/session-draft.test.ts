@@ -9,8 +9,10 @@ import {
   hourOptions,
   joinClock,
   lengthMinutes,
+  longestFrom,
   minuteOf,
   minuteOptions,
+  notBefore,
   minutesOf,
   nowClock,
   MAX_SESSION_MINUTES,
@@ -267,5 +269,33 @@ describe("where a length lands", () => {
 
   it("has nowhere to land without a start", () => {
     expect(endAfter("", 60)).toBe("");
+  });
+});
+
+describe("longestFrom", () => {
+  it("is the time left before midnight", () => {
+    expect(longestFrom("23:00")).toBe(60);
+    expect(longestFrom("10:00")).toBe(14 * 60);
+  });
+});
+
+describe("today's earliest start", () => {
+  it("leaves out the hours already gone", () => {
+    expect(hourOptions("10:25").map((o) => o.value)[0]).toBe("10");
+    expect(hourOptions("10:25")).toHaveLength(14);
+    expect(hourOptions()).toHaveLength(24);
+  });
+  it("leaves out the minutes already gone, in the current hour only", () => {
+    expect(minuteOptions(5, "10", "10:25").map((o) => o.value)[0]).toBe("25");
+    expect(minuteOptions(5, "11", "10:25")).toHaveLength(12);
+  });
+  it("moves a start that is already over up to now", () => {
+    expect(notBefore("10:00", "10:25")).toBe("10:25");
+    expect(notBefore("11:00", "10:25")).toBe("11:00");
+    expect(notBefore("11:00", "")).toBe("11:00");
+  });
+  it("refuses a start before now", () => {
+    expect(draftProblem({ classCount: 1, classId: "c", start: "09:00", end: "10:00", earliest: "10:00" })).toBe("startPassed");
+    expect(draftProblem({ classCount: 1, classId: "c", start: "10:00", end: "11:00", earliest: "10:00" })).toBeNull();
   });
 });

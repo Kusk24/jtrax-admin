@@ -27,7 +27,10 @@ const refresh = vi.fn(async () => undefined);
 /* Cancelling is one request to the backend, which refunds, deletes and tells
    the families. */
 const post = vi.hoisted(() => vi.fn(async () => ({ cancelled: true })));
-vi.mock("@/lib/api", () => ({ api: { post: (...args: unknown[]) => post(...(args as [])) } }));
+vi.mock("@/lib/api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api")>()),
+  api: { post: (...args: unknown[]) => post(...(args as [])) },
+}));
 
 /* Anong and Boon are in the Group class; Chai is in Master only. Anong is
    already on the roster of the session being viewed. */
@@ -51,6 +54,7 @@ const state = {
       { session_id: "ses_1", class_id: "cls_group", start_time: "09:00", end_time: "10:00" },
     ],
   },
+  creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certSessions: 50, maxNegativeCredit: 0 },
 };
 
 vi.mock("@/components/DataProvider", () => ({
@@ -71,6 +75,7 @@ vi.mock("@/lib/class-progress", async (importOriginal) => {
 });
 
 const { SessionPanel } = await import("./SessionPanel");
+const { durationPart, pickDuration, queryDurationPart } = await import("./duration-test-kit");
 const { ErrorToastProvider } = await import("@/components/ErrorToast");
 
 const SESSION_ID = "ses_1";
@@ -213,30 +218,95 @@ describe("re-timing a running class", () => {
     const user = userEvent.setup();
     renderView();
 
-    /* 09:00–10:00 is on the ladder as 60 minutes; choosing 90 should land the
-       end at 10:30 rather than the panel parsing "09:00 – 10:00" as English. */
-    await user.selectOptions(screen.getByLabelText("Length"), "90");
+    /* 09:00–10:00 is 1 hr; picking 30 more minutes should land the end at
+       10:30 rather than the panel parsing "09:00 – 10:00" as English. */
+    await pickDuration(user, "Minutes", 30);
 
     expect(update).toHaveBeenCalledTimes(1);
     expect(update).toHaveBeenCalledWith("class-sessions", "ses_1", { end_time: "10:30" });
   });
 
-  it("offers the length already running even if the ladder would not", async () => {
-    /* An odd 09:00–09:50 session — 50 minutes is not one of the 15-minute
-       steps the ladder offers, so it must be added rather than silently
-       replaced by the nearest option the moment the panel opens. */
+  /* The presets are quarter hours, but any value can be typed into either
+     half — a double-click turns it into a text box. */
+  it("takes a typed minute value on Enter", async () => {
+    const user = userEvent.setup();
+    renderView();
+
+    await user.dblClick(durationPart("Minutes"));
+    const field = screen.getByLabelText("Type Minutes");
+    await user.clear(field);
+    await user.type(field, "5{Enter}");
+
+    expect(update).toHaveBeenCalledWith("class-sessions", "ses_1", { end_time: "10:05" });
+  });
+
+  it("takes a typed hour value on Enter", async () => {
+    const user = userEvent.setup();
+    renderView();
+
+    await user.dblClick(durationPart("Hours"));
+    const field = screen.getByLabelText("Type Hours");
+    await user.clear(field);
+    await user.type(field, "2{Enter}");
+
+    expect(update).toHaveBeenCalledWith("class-sessions", "ses_1", { end_time: "11:00" });
+  });
+
+  /* Typing a digit on a focused half starts editing with it — no mouse
+     needed. */
+  it("starts typing from the keyboard", async () => {
+    const user = userEvent.setup();
+    renderView();
+
+    durationPart("Minutes").focus();
+    await user.keyboard("20{Enter}");
+
+    expect(update).toHaveBeenCalledWith("class-sessions", "ses_1", { end_time: "10:20" });
+  });
+
+  it("throws a typed value away on Esc", async () => {
+    const user = userEvent.setup();
+    renderView();
+
+    await user.dblClick(durationPart("Hours"));
+    const field = screen.getByLabelText("Type Hours");
+    await user.clear(field);
+    await user.type(field, "3{Escape}");
+
+    expect(update).not.toHaveBeenCalled();
+    expect(durationPart("Hours").getAttribute("aria-label")).toBe("Hours: 1 hr");
+  });
+
+  it("refuses minutes past 59, and keeps the field open", async () => {
+    const user = userEvent.setup();
+    renderView();
+
+    await user.dblClick(durationPart("Minutes"));
+    const field = screen.getByLabelText("Type Minutes");
+    await user.clear(field);
+    await user.type(field, "75{Enter}");
+
+    expect(update).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert").textContent).toBe("Minutes go from 0 to 59.");
+    expect(screen.getByLabelText("Type Minutes")).toBeTruthy();
+  });
+
+  it("keeps an off-ladder length as it is", async () => {
+    /* An odd 09:00–09:50 session — 50 minutes is not one of the quarter
+       hours offered, so it must be shown rather than silently replaced by
+       the nearest option the moment the panel opens. */
     state.raw.classSessions = [
       { session_id: "ses_1", class_id: "cls_group", start_time: "09:00", end_time: "09:50" },
     ];
     renderView();
 
-    const select = screen.getByLabelText("Length") as HTMLSelectElement;
-    expect(select.value).toBe("50");
+    expect(durationPart("Hours").getAttribute("aria-label")).toBe("Hours: 0 hr");
+    expect(durationPart("Minutes").getAttribute("aria-label")).toBe("Minutes: 50 min");
   });
 
   it("has no length control once the class is finished", () => {
     renderView({ ...GROUP_SESSION, status: "Finished" });
-    expect(screen.queryByLabelText("Length")).toBeNull();
+    expect(queryDurationPart("Hours")).toBeNull();
   });
 });
 
@@ -266,6 +336,50 @@ describe("cancelling a running class", () => {
     expect(remove).not.toHaveBeenCalled();
     expect(refresh).toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
+  });
+
+  /* The server this was first tried against predated the cancel route: a
+     bare 404 from its router. The desk is told what is wrong, not "failed". */
+  it("says the server is out of date when it has no cancel route", async () => {
+    const { ApiError } = await import("@/lib/api");
+    post.mockRejectedValueOnce(new ApiError(404, "request failed (404)", {}));
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    renderView(GROUP_SESSION, onClose);
+
+    await user.click(screen.getByRole("button", { name: "Cancel class" }));
+    await user.click(screen.getByRole("button", { name: "Yes, cancel class" }));
+
+    expect(await screen.findByText(/running an older version/)).toBeTruthy();
+    expect(onClose).not.toHaveBeenCalled();
+    /* Back to the plain Cancel class button, so it can simply be tried again. */
+    expect(screen.getByRole("button", { name: "Cancel class" })).toBeTruthy();
+  });
+
+  /* Someone else cancelled it first: the class is off, which is the point. */
+  it("treats a class that is already gone as cancelled", async () => {
+    const { ApiError } = await import("@/lib/api");
+    post.mockRejectedValueOnce(new ApiError(404, "no such class", { error: "no such class" }));
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    renderView(GROUP_SESSION, onClose);
+
+    await user.click(screen.getByRole("button", { name: "Cancel class" }));
+    await user.click(screen.getByRole("button", { name: "Yes, cancel class" }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(refresh).toHaveBeenCalled();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  /* Length rules are for creating a class, not for calling one off: a
+     session with no readable times still offers Cancel class. */
+  it("can be cancelled whatever its length", async () => {
+    state.raw.classSessions = [{ session_id: "ses_1", class_id: "cls_group", start_time: "", end_time: "" }];
+    renderView();
+
+    expect(queryDurationPart("Hours")).toBeNull();
+    expect(screen.getByRole("button", { name: "Cancel class" })).toBeTruthy();
   });
 
   it("backs out of the confirmation without cancelling anything", async () => {
@@ -299,7 +413,7 @@ describe("once the slot has run out", () => {
     renderView(OVERRUN_SESSION);
 
     expect(screen.queryByRole("button", { name: "Add Student" })).toBeNull();
-    expect(screen.queryByLabelText("Length")).toBeNull();
+    expect(queryDurationPart("Hours")).toBeNull();
     expect(screen.queryByRole("button", { name: "Cancel class" })).toBeNull();
   });
 
@@ -318,7 +432,7 @@ describe("once the slot has run out", () => {
     renderView(OVERRUN_SESSION);
 
     expect(screen.getByRole("button", { name: "Add Student" })).toBeTruthy();
-    expect(screen.getByLabelText("Length")).toBeTruthy();
+    expect(durationPart("Hours")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Cancel class" })).toBeTruthy();
   });
 });

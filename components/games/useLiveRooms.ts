@@ -4,7 +4,10 @@
 
    `useLiveRooms` keeps the list fresh with a slow poll — a list has no single
    room to subscribe to, and a class produces a handful of rooms an hour, so a
-   poll every few seconds costs nothing and avoids a stream per row.
+   poll every few seconds costs nothing and avoids a stream per row. The
+   Boards view, where the list *is* the thing being watched, polls faster
+   rather than opening a stream per board — a browser allows only six
+   connections to one server, so a dozen streams would starve the page.
 
    `useLiveRoom` uses the room's own event stream, because watching one board
    is exactly what SSE is for: the move appears as it is played. */
@@ -12,26 +15,28 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getRoom, listRooms, sortRooms, type GameDetail, type GameRoom } from "@/lib/games";
 
 const LIST_POLL_MS = 5000;
+export const BOARDS_POLL_MS = 2000;
 
-export function useLiveRooms() {
+/* `withMoves` asks for every game's moves too, for the wall of boards. */
+export function useLiveRooms(pollMs: number = LIST_POLL_MS, withMoves = false) {
   const [rooms, setRooms] = useState<GameRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const reload = useCallback(async () => {
     try {
-      setRooms(sortRooms(await listRooms()));
+      setRooms(sortRooms(await listRooms(withMoves)));
       setError("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "failed");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [withMoves]);
 
   useEffect(() => {
     void reload();
-    const id = setInterval(reload, LIST_POLL_MS);
+    const id = setInterval(reload, pollMs);
     // Polling a hidden tab is pure waste; the next focus reloads anyway.
     const onVisible = () => document.visibilityState === "visible" && void reload();
     document.addEventListener("visibilitychange", onVisible);
@@ -39,7 +44,7 @@ export function useLiveRooms() {
       clearInterval(id);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [reload]);
+  }, [reload, pollMs]);
 
   return { rooms, loading, error, reload };
 }

@@ -7,11 +7,12 @@
  * works both ways.
  */
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
 import { JtraxShell } from "./JtraxShell";
+import { DashboardDateProvider, useDashboardDate } from "./DashboardDate";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/",
@@ -45,5 +46,35 @@ describe("the sidebar", () => {
     expect(container.querySelector(".jt-sidebar")?.classList.contains("is-expanded")).toBe(false);
     await user.click(screen.getByRole("button", { name: en.nav.expandNav }));
     expect(container.querySelector(".jt-sidebar")?.classList.contains("is-expanded")).toBe(true);
+  });
+});
+
+/* The chip in the top bar is the dashboard's date: pick a day and the
+   dashboard follows; Today brings it back. */
+function ShownDay() {
+  return <output aria-label="shown day">{useDashboardDate().day}</output>;
+}
+
+describe("the date chip", () => {
+  it("moves the dashboard to the day picked, and back with Today", async () => {
+    const user = userEvent.setup();
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <DashboardDateProvider>
+          <JtraxShell>
+            <ShownDay />
+          </JtraxShell>
+        </DashboardDateProvider>
+      </NextIntlClientProvider>,
+    );
+    expect(screen.queryByRole("button", { name: "Today" })).toBeNull();
+
+    /* The browser's own picker writes the field; the field itself is hidden. */
+    fireEvent.change(screen.getByLabelText("Dashboard date"), { target: { value: "2026-01-15" } });
+    expect(screen.getByLabelText("shown day").textContent).toBe("2026-01-15");
+
+    await user.click(screen.getByRole("button", { name: "Today" }));
+    expect(screen.getByLabelText("shown day").textContent).not.toBe("2026-01-15");
+    expect(screen.queryByRole("button", { name: "Today" })).toBeNull();
   });
 });

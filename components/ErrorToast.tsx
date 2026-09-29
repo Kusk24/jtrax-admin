@@ -11,6 +11,7 @@
  * `showError` takes an already-translated sentence. The underlying error goes
  * to the console for whoever is debugging, and never to the screen. */
 
+import { ApiError } from "@/lib/api";
 import {
   createContext,
   useCallback,
@@ -38,7 +39,11 @@ export function ErrorToastProvider({ children }: { children: ReactNode }) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showError = useCallback((next: string, cause?: unknown) => {
-    if (cause !== undefined) console.error(cause);
+    /* A refusal the server meant to send (a 4xx: a clash, a credit limit) is
+       expected and already on screen, so it is a warning — console.error
+       would also raise Next's development overlay over the page. */
+    if (cause instanceof ApiError && cause.status >= 400 && cause.status < 500) console.warn(cause);
+    else if (cause !== undefined) console.error(cause);
     setMessage(next);
   }, []);
 

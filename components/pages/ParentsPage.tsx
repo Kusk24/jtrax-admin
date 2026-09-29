@@ -4,8 +4,9 @@
    the same page-kit primitives — a parent is the other half of a student row,
    so the two screens are deliberately navigable in the same way. */
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { generateTempPassword, removeIfPresent } from "@/lib/credentials";
+import { generateHiddenPassword, removeIfPresent } from "@/lib/credentials";
 import { type ParentPerson } from "@/lib/data";
 import { useData } from "@/components/DataProvider";
 import { Icon } from "@/lib/icons";
@@ -40,7 +41,7 @@ import {
 } from "../page-kit";
 import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
 import { BackLink, DeleteButton, DetailHeader, EditButton } from "../detail";
-import { ResetPasswordButton } from "../ResetPassword";
+import { InviteButton, InviteOutcomeNote, inviteOutcome, type InviteOutcome } from "../InviteButton";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 
@@ -54,9 +55,12 @@ type View = { kind: "list" } | { kind: "detail"; id: string };
    flat set of fields; these writes put it back where it belongs. */
 const parentFields = (t: (k: string) => string, tCommon: (k: string) => string): CrudField[] => [
   { name: "name", label: tCommon("name"), required: true },
-  { name: "loginEmail", label: t("loginEmail"), required: true, half: true },
+  /* One email. There used to be a second, contact-only "Email" beside this
+     one — registration filled both with the same address, and nothing ever
+     sent to the second. This is the one that signs in and gets the
+     password-reset mail. */
+  { name: "loginEmail", label: tCommon("email"), required: true, half: true, help: t("emailHelp") },
   { name: "phone", label: tCommon("phone"), half: true },
-  { name: "email", label: tCommon("email"), half: true },
   { name: "lineId", label: tCommon("lineId"), half: true },
 ];
 
@@ -81,9 +85,10 @@ function ParentDetail({
   onLinkChild: (studentId: string, relation: string) => Promise<void>;
   onUnlinkChild: (studentId: string) => Promise<void>;
 }) {
+  const router = useRouter();
+  const openChild = (studentId: string) => router.push(`/students?id=${encodeURIComponent(studentId)}`);
   const t = useTranslations("parents");
   const tCommon = useTranslations("common");
-  const { update } = useData();
   const [linking, setLinking] = useState(false);
   const [childId, setChildId] = useState("");
   const [relation, setRelation] = useState("Mother");
@@ -126,8 +131,8 @@ function ParentDetail({
                 <Icon name="phone" size={12} /> {t("call")}
               </a>
             )}
-            {parent.email && (
-              <a href={`mailto:${parent.email}`} className="jt-qa-call" style={contactPillStyle}>
+            {mailOf(parent) && (
+              <a href={`mailto:${mailOf(parent)}`} className="jt-qa-call" style={contactPillStyle}>
                 <Icon name="mail" size={12} /> {t("emailAction")}
               </a>
             )}
@@ -135,18 +140,11 @@ function ParentDetail({
         }
         actions={
           <>
-            {/* A parent has a real address and can use the sign-in page's own
-                Forgot-password link, which never puts their password in a
-                third person's hands. This is for the desk visit where that has
-                not worked — a full mailbox, a typo in the address, a family
-                standing at the counter now. */}
-            <ResetPasswordButton
-              accountId={parent.accountId ?? ""}
-              identifier={parent.loginEmail || parent.email}
-              name={parent.name}
-              update={update}
-              onError={() => setError(tCommon("saveFailed"))}
-            />
+            {/* No office-made password for a parent: they have an email. This
+                sends them a link to choose their own — the same one a new
+                parent is invited with — for a lost invite, an expired link,
+                or a corrected address. They can also use Forgot password. */}
+            <InviteButton accountId={parent.accountId ?? ""} email={parent.loginEmail} />
             <EditButton onClick={onEdit} />
             <DeleteButton onClick={onDelete} />
           </>
@@ -160,9 +158,8 @@ function ParentDetail({
           <SectionTitle>{t("contactInfo")}</SectionTitle>
           <InfoGrid
             rows={[
-              { label: t("loginEmail"), value: parent.loginEmail || "—" },
+              { label: tCommon("email"), value: parent.loginEmail || parent.email || "—" },
               { label: tCommon("phone"), value: parent.phone || "—" },
-              { label: tCommon("email"), value: parent.email || "—" },
               { label: tCommon("lineId"), value: parent.lineId || "—" },
             ]}
           />
@@ -250,8 +247,13 @@ function ParentDetail({
               {parent.children.map((child) => {
                 const chip = creditChip(child.credit);
                 return (
+                  /* The whole card opens the child's profile — the way back is
+                     the Parent link on theirs. The name is a real button so
+                     the keyboard can get there too. */
                   <div
                     key={child.id}
+                    className="jt-table-row"
+                    onClick={() => openChild(child.id)}
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -259,13 +261,33 @@ function ParentDetail({
                       padding: "10px 12px",
                       borderRadius: 10,
                       border: `1px solid ${COLORS.border}`,
+                      cursor: "pointer",
                     }}
                   >
                     <Avatar initials={initialsOf(child.name)} size={30} />
                     <span style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1 }}>
-                      <span style={{ fontFamily: FONT, fontSize: 14.5, fontWeight: 600, color: COLORS.text }}>
+                      <button
+                        type="button"
+                        aria-label={t("openChild", { name: child.name })}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openChild(child.id);
+                        }}
+                        style={{
+                          alignSelf: "flex-start",
+                          padding: 0,
+                          border: "none",
+                          background: "transparent",
+                          cursor: "pointer",
+                          textAlign: "left",
+                          fontFamily: FONT,
+                          fontSize: 14.5,
+                          fontWeight: 600,
+                          color: COLORS.text,
+                        }}
+                      >
                         {child.name}
-                      </span>
+                      </button>
                       <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
                         {child.relation} · {child.className}
                       </span>
@@ -278,7 +300,11 @@ function ParentDetail({
                       className="jt-btn-ghost"
                       aria-label={t("unlinkChild", { name: child.name })}
                       disabled={busy}
-                      onClick={() => run(() => onUnlinkChild(child.id))}
+                      onClick={(e) => {
+                        /* Unlinking, not opening the child. */
+                        e.stopPropagation();
+                        run(() => onUnlinkChild(child.id));
+                      }}
                       style={{
                         display: "inline-flex",
                         alignItems: "center",
@@ -303,6 +329,13 @@ function ParentDetail({
       </div>
     </div>
   );
+}
+
+/** Where an email to this parent can actually arrive: their login, unless it
+    is one the system made up, in which case the old contact address if any. */
+function mailOf(parent: ParentPerson): string {
+  if (parent.loginEmail && !parent.loginEmail.endsWith("@parent.jca.ac.th")) return parent.loginEmail;
+  return parent.email;
 }
 
 const contactPillStyle = {
@@ -330,7 +363,6 @@ export function ParentsPage({ detailId }: { detailId?: string }) {
   const t = useTranslations("parents");
   /* The temporary-password modal reuses the students namespace, which is where
      that string already lives. */
-  const tStudents = useTranslations("students");
   const tCommon = useTranslations("common");
   const { parents, students, raw, loading, error, batch, create, update, remove, removePerson } = useData();
   const [view, setView] = useState<View>(detailId ? { kind: "detail", id: detailId } : { kind: "list" });
@@ -352,8 +384,7 @@ export function ParentsPage({ detailId }: { detailId?: string }) {
   /* Off by default: a parent leaving does not mean the children are leaving.
      Usually another guardian is linked to them afterwards. */
   const [deleteChildren, setDeleteChildren] = useState(false);
-  const [created, setCreated] = useState<{ email: string; password: string } | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [created, setCreated] = useState<{ email: string; outcome: InviteOutcome } | null>(null);
 
   /* Only students nobody has claimed. Offering one that already has a parent
      would move them, because a link is deleted by student_id. */
@@ -390,7 +421,10 @@ export function ParentsPage({ detailId }: { detailId?: string }) {
      as one unit, so the screen refetches once at the end rather than six
      times over. */
   async function createParent(payload: Record<string, unknown>) {
-    const password = generateTempPassword();
+    /* Nobody is told this one: the parent chooses their own from the
+       invite, and the office never holds their password. */
+    const password = generateHiddenPassword();
+    let accountId = "";
     const loginEmail = String(payload.loginEmail ?? "").trim();
     const name = String(payload.name ?? "").trim();
 
@@ -401,13 +435,16 @@ export function ParentsPage({ detailId }: { detailId?: string }) {
         role: "Parent",
         display_name: name,
       });
+      accountId = String(account.user_account_id);
       const parent = await create("parents", {
         user_account_id: account.user_account_id,
         name,
       });
       const parentId = String(parent.parent_id);
       await saveContact(parentId, "phone", String(payload.phone ?? ""));
-      await saveContact(parentId, "email", String(payload.email ?? ""));
+      /* Kept in step with the login, for the screens that still read the
+         contact row (the student's Parent / Guardian card). */
+      await saveContact(parentId, "email", loginEmail);
       await saveContact(parentId, "line_id", String(payload.lineId ?? ""));
       /* Alerts default to on, matching what the seed gives a parent. */
       await create("notification-preferences", { parent_id: parentId }).catch(() => {});
@@ -418,9 +455,10 @@ export function ParentsPage({ detailId }: { detailId?: string }) {
           relationship_type: linkRelation,
         });
       }
-      setCreated({ email: loginEmail, password });
-      setCopied(false);
     });
+    /* After the batch, so the account exists before it is emailed about. A
+       failure here leaves the parent created; Resend invite is on their page. */
+    setCreated({ email: loginEmail, outcome: await inviteOutcome(accountId) });
   }
 
   async function editParent(parent: ParentPerson, payload: Record<string, unknown>) {
@@ -435,7 +473,7 @@ export function ParentsPage({ detailId }: { detailId?: string }) {
         });
       }
       await saveContact(parent.id, "phone", String(payload.phone ?? ""));
-      await saveContact(parent.id, "email", String(payload.email ?? ""));
+      await saveContact(parent.id, "email", String(payload.loginEmail ?? "").trim());
       await saveContact(parent.id, "line_id", String(payload.lineId ?? ""));
     });
   }
@@ -450,7 +488,7 @@ export function ParentsPage({ detailId }: { detailId?: string }) {
   }
 
   function openCreate() {
-    setValues({ name: "", loginEmail: "", phone: "", email: "", lineId: "" });
+    setValues({ name: "", loginEmail: "", phone: "", lineId: "" });
     setLinkChildId("");
     setLinkRelation("Mother");
     setEditing({ mode: "create" });
@@ -464,9 +502,10 @@ export function ParentsPage({ detailId }: { detailId?: string }) {
   function openEdit(parent: ParentPerson) {
     setValues({
       name: parent.name,
-      loginEmail: parent.loginEmail,
+      /* A parent from before the two were merged may only have the contact
+         address; offered here so saving does not blank it. */
+      loginEmail: parent.loginEmail || parent.email,
       phone: parent.phone,
-      email: parent.email,
       lineId: parent.lineId,
     });
     setEditing({ mode: "edit", parent });
@@ -590,29 +629,8 @@ export function ParentsPage({ detailId }: { detailId?: string }) {
       {created && (
         <Modal title={t("createdTitle")} width={420} onClose={() => setCreated(null)}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <InfoGrid
-              rows={[
-                { label: t("loginEmail"), value: created.email },
-                {
-                  label: tStudents("tempPassword"),
-                  value: <strong style={{ letterSpacing: "0.04em" }}>{created.password}</strong>,
-                },
-              ]}
-            />
-            <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
-              {t("createdHint")}
-            </p>
-            <button
-              type="button"
-              className="jt-btn-ghost"
-              style={{ ...secondaryButtonStyle, alignSelf: "flex-start" }}
-              onClick={() => {
-                navigator.clipboard?.writeText(`${created.email} / ${created.password}`);
-                setCopied(true);
-              }}
-            >
-              <Icon name="copy" size={13} /> {copied ? t("copied") : t("copy")}
-            </button>
+            <InfoGrid rows={[{ label: tCommon("email"), value: created.email }]} />
+            <InviteOutcomeNote outcome={created.outcome} email={created.email} />
           </div>
         </Modal>
       )}
@@ -703,7 +721,7 @@ export function ParentsPage({ detailId }: { detailId?: string }) {
                 subtitle={t("childCount", { count: p.children.length })}
                 actions={<RowActions label={p.name} onEdit={() => openEdit(p)} onDelete={() => openDelete(p)} />}
                 rows={[
-                  { label: t("loginEmail"), value: p.loginEmail || p.email || "—" },
+                  { label: tCommon("email"), value: p.loginEmail || p.email || "—" },
                   { label: tCommon("phone"), value: p.phone || "—" },
                   {
                     label: t("colChildren"),
@@ -723,7 +741,7 @@ export function ParentsPage({ detailId }: { detailId?: string }) {
                   },
                 ]}
                 footer={
-                  p.phone || p.email ? (
+                  p.phone || mailOf(p) ? (
                     <span style={{ display: "flex", gap: 7 }}>
                       {p.phone && (
                         <a
@@ -735,9 +753,9 @@ export function ParentsPage({ detailId }: { detailId?: string }) {
                           <Icon name="phone" size={12} /> {t("call")}
                         </a>
                       )}
-                      {p.email && (
+                      {mailOf(p) && (
                         <a
-                          href={`mailto:${p.email}`}
+                          href={`mailto:${mailOf(p)}`}
                           onClick={(e) => e.stopPropagation()}
                           className="jt-qa-call"
                           style={{ ...contactPillStyle, flex: 1, justifyContent: "center" }}

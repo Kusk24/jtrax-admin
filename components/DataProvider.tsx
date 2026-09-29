@@ -27,7 +27,7 @@ const EMPTY: LiveCollections = {
   tournamentRegistrations: [], practiceActivities: [], systemConfig: [],
 };
 
-const PATHS: Record<keyof LiveCollections, string> = {
+const PATHS: Record<Exclude<keyof LiveCollections, "deletedEnrollments" | "cancelledSessions">, string> = {
   students: "students", parents: "parents", parentContacts: "parent-contacts",
   studentParents: "student-parents", classes: "classes", classSessions: "class-sessions",
   attendance: "attendance", enrollments: "enrollments",
@@ -124,12 +124,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
       return;
     }
     try {
-      const keys = Object.keys(PATHS) as (keyof LiveCollections)[];
+      const keys = Object.keys(PATHS) as (keyof typeof PATHS)[];
       const results = await Promise.all(keys.map((k) => api.get<Row[]>(PATHS[k])));
       const next = { ...EMPTY };
       keys.forEach((k, i) => {
         next[k] = results[i];
       });
+      /* A deleted enrolment is history, not a course: out of the list every
+         screen reads, into its own. */
+      const all = next.enrollments;
+      next.enrollments = all.filter((e) => !e["deleted_date"]);
+      next.deletedEnrollments = all.filter((e) => !!e["deleted_date"]);
+      const sessions = next.classSessions;
+      next.classSessions = sessions.filter((x) => !x["cancelled_at"]);
+      next.cancelledSessions = sessions.filter((x) => !!x["cancelled_at"]);
       setRaw(next);
       setError(null);
     } catch (e) {

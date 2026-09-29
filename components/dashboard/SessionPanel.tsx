@@ -1,24 +1,27 @@
 "use client";
 
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
+import { cancelFailure } from "@/lib/cancel-class";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { hasClassEnded, useMinuteClock } from "@/lib/class-progress";
+import { busyStudents } from "@/lib/class-clash";
+import { classStatusNow, useMinuteClock } from "@/lib/class-progress";
 import { type ClassDef } from "@/lib/data";
-import { activeEnrolments, fmtCredits, liveClasses, todayISO } from "@/lib/live";
+import { activeEnrolments, fmtCredits, fmtDate, liveClasses, todayISO, toTodaysClasses } from "@/lib/live";
 import {
   creditCost,
   defaultEndFor,
   draftProblem,
-  durationOptions,
   endAfter,
   hourOf,
   hourOptions,
   joinClock,
   lengthMinutes,
+  longestFrom,
   minuteOf,
   minuteOptions,
   MIN_SESSION_MINUTES,
+  notBefore,
   nowClock,
 } from "@/lib/session-draft";
 import { Icon } from "@/lib/icons";
@@ -30,8 +33,14 @@ import { useData } from "../DataProvider";
 import { fieldStyle, labelStyle, selectStyle } from "../page-kit";
 import { Avatar } from "../ui";
 import { useErrorToast } from "../ErrorToast";
+import { DurationField } from "./DurationField";
 
-export type PanelState = { mode: "create" } | { mode: "view"; def: ClassDef } | null;
+/* `day` is the dashboard's chosen date — a later one schedules the class ahead. */
+export type PanelState =
+  /* `pickDay`: Class History's Add — the date is chosen on the form. */
+  | { mode: "create"; day?: string; pickDay?: boolean }
+  | { mode: "view"; def: ClassDef }
+  | null;
 
 function Scrim({ onClose }: { onClose: () => void }) {
   return (
@@ -274,28 +283,22 @@ function ClockPicker({
  * in afterwards from the dashboard if they are not — the same attendance rows
  * either way, which is what spends the credits.
  */
-/**
- * "1 h 30 min", from the parts, so the two languages can order them and
- * punctuate them their own way. Shared: the create form offers these lengths
- * and the in-progress panel re-offers the same ladder, and two copies would
- * eventually round differently.
- */
-function useLengthLabel(): (total: number) => string {
+function CreateSession({
+  day: chosenDay,
+  pickDay = false,
+  onClose,
+}: {
+  day?: string;
+  pickDay?: boolean;
+  onClose: () => void;
+}) {
   const t = useTranslations("session");
-  return (total: number) => {
-    const h = Math.floor(total / 60);
-    const m = total % 60;
-    if (h === 0) return t("lengthMinutes", { minutes: m });
-    if (m === 0) return t("lengthHours", { hours: h });
-    return t("lengthHoursMinutes", { hours: h, minutes: m });
-  };
-}
-
-function CreateSession({ onClose }: { onClose: () => void }) {
-  const t = useTranslations("session");
+  const [pickedDay, setPickedDay] = useState(chosenDay ?? todayISO());
+  const day = pickDay ? pickedDay : chosenDay ?? todayISO();
+  const isToday = day === todayISO();
   const tCommon = useTranslations("common");
   const { showError } = useErrorToast();
-  const { raw, students, create, batch } = useData();
+  const { raw, students, create, batch, creditRules } = useData();
 
   /* Only classes the academy still runs: an archived one cannot take a new
      session, though its finished ones keep its name. */
@@ -323,16 +326,17 @@ function CreateSession({ onClose }: { onClose: () => void }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
 
-  const hours = useMemo(() => hourOptions(), []);
-  const minutes5 = useMemo(() => minuteOptions(), []);
-  const problem = draftProblem({ classCount: classes.length, classId, start, end });
+  /* Today's form offers now and later only — a class that has already been
+     and gone is not created from the dashboard. Follows the clock, so a panel
+     left open does not keep offering a time that has since passed. A later
+     day is open all day. */
+  const clock = useMinuteClock();
+  const earliest = isToday ? nowClock(clock) : "";
+  const hours = useMemo(() => hourOptions(earliest), [earliest]);
+  const minutes5 = useMemo(() => minuteOptions(undefined, hourOf(start), earliest), [start, earliest]);
+  const problem = draftProblem({ classCount: classes.length, classId, start, end, earliest });
   const minutes = lengthMinutes(start, end);
   const cost = creditCost(start, end);
-  /* Only the lengths that still fit before midnight — a 23:00 start is offered
-     half an hour and three quarters, not the whole ladder and then a refusal. */
-  const lengths = useMemo(() => durationOptions(start), [start]);
-
-  const lengthLabel = useLengthLabel();
 
   /**
    * Choosing a start keeps the length the desk already picked and slides the
@@ -340,9 +344,12 @@ function CreateSession({ onClose }: { onClose: () => void }) {
    * only falls back to the default when there was no usable length yet, or
    * when the one chosen no longer fits inside the day.
    */
-  function chooseStart(value: string) {
+  function chooseStart(chosen: string) {
+    /* Picking the current hour keeps the old minutes, which may already be
+       past — land on now instead. */
+    const value = notBefore(chosen, earliest);
     setStart(value);
-    const keep = minutes >= MIN_SESSION_MINUTES && durationOptions(value).includes(minutes);
+    const keep = minutes >= MIN_SESSION_MINUTES && minutes <= longestFrom(value);
     setEnd(keep ? endAfter(value, minutes) : defaultEndFor(value));
   }
 
@@ -370,7 +377,28 @@ function CreateSession({ onClose }: { onClose: () => void }) {
   /* Ticks do not survive a change of class: they were made against a roster
      that no longer applies. */
   const eligibleIds = useMemo(() => new Set(eligible.map((s) => s.id)), [eligible]);
-  const picked = selected.filter((id) => eligibleIds.has(id));
+  /* Already in another class at an overlapping time that day. They stay in
+     the list — greyed, with where they are — rather than vanishing, so the
+     desk can see why a child cannot be ticked. */
+  const elsewhere = useMemo(() => busyStudents(raw, day, start, end), [raw, day, start, end]);
+  /* Expired credit or a balance that would cross the academy's negative
+     limit refuses check-in outright, so these ids can never be picked — not
+     even by a tick made before the limit or the class changed. */
+  const blockedIds = useMemo(
+    () =>
+      new Set(
+        eligible
+          .filter(
+            (s) =>
+              elsewhere.has(s.id) ||
+              s.status === "Expired" ||
+              (cost > 0 && s.credit - cost < -creditRules.maxNegativeCredit),
+          )
+          .map((s) => s.id),
+      ),
+    [eligible, elsewhere, cost, creditRules.maxNegativeCredit],
+  );
+  const picked = selected.filter((id) => eligibleIds.has(id) && !blockedIds.has(id));
 
   function toggle(id: string) {
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -379,6 +407,7 @@ function CreateSession({ onClose }: { onClose: () => void }) {
   const reason: Record<NonNullable<typeof problem>, string> = {
     noClasses: t("noClasses"),
     noClass: t("chooseAClass"),
+    startPassed: t("startPassed"),
     endBeforeStart: t("endAfterStart"),
     tooShort: t("atLeastHalfAnHour"),
   };
@@ -393,12 +422,12 @@ function CreateSession({ onClose }: { onClose: () => void }) {
       await batch(async () => {
         const session = await create("class-sessions", {
           class_id: classId,
-          session_date: todayISO(),
+          session_date: day,
           start_time: start,
           end_time: end,
           session_status: "Ongoing",
         });
-        for (const studentId of picked) {
+        for (const studentId of isToday ? picked : []) {
           await create("attendance", {
             student_id: studentId,
             session_id: session.session_id,
@@ -416,7 +445,7 @@ function CreateSession({ onClose }: { onClose: () => void }) {
 
   return (
     <PanelFrame
-      title={t("createTitle")}
+      title={isToday ? t("createTitle") : t("createTitleOn", { date: fmtDate(day) })}
       onClose={onClose}
       footer={
         <>
@@ -449,6 +478,22 @@ function CreateSession({ onClose }: { onClose: () => void }) {
           <h3 style={{ margin: "0 0 14px", fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text }}>
             {t("sessionDetails")}
           </h3>
+
+          {pickDay && (
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle} htmlFor="jtrax-class-day">{tCommon("date")}</label>
+              <input
+                id="jtrax-class-day"
+                type="date"
+                value={pickedDay}
+                /* Today or later, as on the dashboard: a class that is
+                   already over is not created. */
+                min={todayISO()}
+                onChange={(e) => e.target.value && e.target.value >= todayISO() && setPickedDay(e.target.value)}
+                style={fieldStyle}
+              />
+            </div>
+          )}
 
           <div style={{ marginBottom: 14 }}>
             <label style={labelStyle} htmlFor="jtrax-class-name">{t("className")}</label>
@@ -484,21 +529,14 @@ function CreateSession({ onClose }: { onClose: () => void }) {
               <span style={labelStyle}>{t("length")}</span>
               {/* A length, not a second clock time. The office decides a class
                   runs for an hour and a half from four — not that it ends at
-                  17:30 — and the half-hour floor is the shortest thing on the
-                  list rather than a refusal after the fact. */}
-              <select
-                id="jtrax-length"
-                aria-label={t("length")}
-                value={lengths.includes(minutes) ? String(minutes) : ""}
+                  17:30. */}
+              <DurationField
+                idPrefix="jtrax-length"
+                minutes={minutes}
+                max={longestFrom(start)}
                 disabled={!start}
-                onChange={(e) => setEnd(endAfter(start, Number(e.target.value)))}
-                style={{ ...selectStyle, opacity: start ? 1 : 0.6 }}
-              >
-                <option value="">--</option>
-                {lengths.map((m) => (
-                  <option key={m} value={m}>{lengthLabel(m)}</option>
-                ))}
-              </select>
+                onChange={(m) => setEnd(endAfter(start, m))}
+              />
             </div>
           </div>
 
@@ -512,6 +550,8 @@ function CreateSession({ onClose }: { onClose: () => void }) {
               : t("atLeastHalfAnHour")}
           </p>
 
+          {isToday && (
+          <>
           <div style={{ height: 1, background: COLORS.border, margin: "4px 0 16px" }} />
 
           <h3 style={{ margin: "0 0 10px", fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text }}>
@@ -562,8 +602,13 @@ function CreateSession({ onClose }: { onClose: () => void }) {
               );
             })}
           </div>
+          </>
+          )}
         </div>
 
+        {/* Ticking students checks them in, which only means anything today —
+            a class scheduled for a later day starts with an empty roster. */}
+        {isToday && (
         <div>
           <h3 style={{ margin: "0 0 4px", fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text }}>
             {t("addStudents")}
@@ -589,42 +634,68 @@ function CreateSession({ onClose }: { onClose: () => void }) {
               </span>
             )}
             {eligible.map((student) => {
-              /* Short by the time the session is priced. A warning, not a
-                 refusal: the academy lets a child attend on credit and settle
-                 later, so this marks who to chase rather than turning them
-                 away at the door. */
-              const short = cost > 0 && student.credit < cost;
+              const clashWith = elsewhere.get(student.id);
+              const clash = clashWith !== undefined;
+              const expired = !clash && student.status === "Expired";
+              const insufficient = !clash && !expired && blockedIds.has(student.id);
+              const blocked = clash || expired || insufficient;
+              /* Short by the time the session is priced, but still within the
+                 academy's negative limit. A warning, not a refusal: the
+                 academy lets a child attend on credit and settle later, so
+                 this marks who to chase rather than turning them away at the
+                 door. */
+              const short = !blocked && cost > 0 && student.credit < cost;
+              const reason = clash
+                ? t("inOtherClassTitle", { className: clashWith })
+                : expired
+                ? t("creditsExpiredTitle")
+                : insufficient
+                  ? t("insufficientCreditsTitle", { credits: fmtCredits(student.credit) })
+                  : short
+                    ? t("willGoNegative", { credits: fmtCredits(student.credit) })
+                    : undefined;
               return (
                 <label
                   key={student.id}
                   className="jt-find-row"
-                  title={short ? t("willGoNegative", { credits: fmtCredits(student.credit) }) : undefined}
+                  title={reason}
                   style={{
                     display: "flex",
                     alignItems: "center",
                     gap: 10,
                     padding: "8px 10px",
                     borderRadius: 9,
-                    cursor: "pointer",
+                    cursor: blocked ? "not-allowed" : "pointer",
+                    opacity: blocked ? 0.6 : 1,
                   }}
                 >
                   <input
                     type="checkbox"
                     checked={picked.includes(student.id)}
                     onChange={() => toggle(student.id)}
+                    disabled={blocked}
                     style={{ accentColor: COLORS.blue, width: 15, height: 15 }}
                   />
                   <Avatar initials={initialsOf(student.name)} size={26} />
                   <span style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 14, color: COLORS.text }}>
                     {student.name}
                   </span>
+                  {blocked && (
+                    <span style={{ fontFamily: FONT, fontSize: 12.5, fontWeight: 600, color: COLORS.danger }}>
+                      {clash
+                        ? t("inOtherClass", { className: clashWith })
+                        : expired
+                          ? t("creditsExpired")
+                          : t("insufficientCredits")}
+                    </span>
+                  )}
                   {/* What they have to spend, next to what this will cost. */}
                   <span
                     style={{
                       fontFamily: FONT,
                       fontSize: 12.5,
-                      fontWeight: short ? 600 : 400,
-                      color: short ? COLORS.danger : COLORS.textSecondary,
+                      fontWeight: short || blocked ? 600 : 400,
+                      color: short || blocked ? COLORS.danger : COLORS.textSecondary,
                     }}
                   >
                     {tCommon("creditsCount", { count: fmtCredits(student.credit) })}
@@ -634,6 +705,7 @@ function CreateSession({ onClose }: { onClose: () => void }) {
             })}
           </div>
         </div>
+        )}
       </div>
     </PanelFrame>
   );
@@ -658,21 +730,25 @@ function ViewClass({ def: opened, onClose }: { def: ClassDef; onClose: () => voi
   const t = useTranslations("session");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
-  const { students, raw, create, remove, update, todaysClasses, refresh } = useData();
+  const { students, raw, create, remove, update, todaysClasses, refresh, creditRules } = useData();
   const { showError } = useErrorToast();
-  const lengthLabel = useLengthLabel();
-  const def = todaysClasses.find((c) => c.id && c.id === opened.id) ?? opened;
+  /* Read from the live list for the class's own day — which is not always
+     today, now that the dashboard can show another date. */
+  const day = opened.date ?? todayISO();
+  const dayClasses = day === todayISO() ? todaysClasses : toTodaysClasses(raw, day);
+  const def = dayClasses.find((c) => c.id && c.id === opened.id) ?? opened;
   /* Ticking, not read once at open: the desk can leave this panel open past
      the end of the lesson, and editing has to stop the moment the clock says
      so — not only the next time the panel happens to remount. */
   const now = useMinuteClock();
-  /* session_status stays Ongoing until someone sets it otherwise — nothing
-     does that on its own — so a class the clock says has ended is still
-     "editable" by the database's own account until the desk notices. Adding,
-     re-timing and cancelling all read this, not def.status. */
-  const ended = def.status === "Ongoing" && hasClassEnded(def.time, now);
-  const shownStatus: ClassDef["status"] = ended ? "Finished" : def.status;
-  const editable = def.status === "Ongoing" && !ended;
+  /* session_status stays Ongoing until someone sets it otherwise, so the
+     clock and the class's day decide what it reads as. Re-timing and
+     cancelling are open until it is over — a class on a later day included,
+     so a scheduled one can still be moved or called off. Adding a student is
+     a check-in, so it is only for a class running now. */
+  const shownStatus = classStatusNow(def, now, todayISO());
+  const editable = shownStatus !== "Finished" && shownStatus !== "Cancelled";
+  const canAddStudents = shownStatus === "Ongoing";
   const [busy, setBusy] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
 
@@ -682,7 +758,9 @@ function ViewClass({ def: opened, onClose }: { def: ClassDef; onClose: () => voi
   const startClock = String(row?.start_time ?? "");
   const endClock = String(row?.end_time ?? "");
   const runningMinutes = lengthMinutes(startClock, endClock);
-  const lengths = useMemo(() => durationOptions(startClock), [startClock]);
+  /* What joining this session, right now, would cost a latecomer — the same
+     figure the check-in refusal on the backend works out from the clock. */
+  const cost = creditCost(startClock, endClock);
 
   /**
    * Re-length a class that is already running.
@@ -718,12 +796,26 @@ function ViewClass({ def: opened, onClose }: { def: ClassDef; onClose: () => voi
     setBusy(true);
     try {
       await api.post(`class-sessions/${def.id}/cancel`, {});
-      await refresh();
-      onClose();
     } catch (e) {
-      showError(t("cancelFailed"), e);
-      setBusy(false);
+      const why = cancelFailure(e);
+      /* Already gone is the outcome the desk asked for — say nothing, just
+         catch up with whoever cancelled it first. */
+      if (why !== "gone") {
+        showError(
+          why === "other" && e instanceof ApiError && e.message
+            ? t("cancelFailedBecause", { reason: e.message })
+            : t(`cancelFailed_${why}`),
+          e,
+        );
+        setBusy(false);
+        setConfirmCancel(false);
+        return;
+      }
     }
+    /* The class is off. A refresh that fails now is a stale screen, not a
+       failed cancellation — close regardless; the next refresh catches up. */
+    await refresh().catch(() => {});
+    onClose();
   }
   /* The roster comes from attendance, so adding or removing someone writes a
      row rather than editing a local array that the next refresh discards. */
@@ -737,20 +829,21 @@ function ViewClass({ def: opened, onClose }: { def: ClassDef; onClose: () => voi
      the list used to offer every student in the academy, so a child could be
      added to a session of a class they were never enrolled in, where their
      attendance could not be charged to anything. */
-  const addable = useMemo(() => {
-    const enrolled = new Set(
+  const enrolledHere = new Set(
       activeEnrolments(raw.enrollments)
         .filter((e) => String(e["class_id"] ?? "") === String(def.classId ?? ""))
         .map((e) => String(e["student_id"])),
     );
-    const q = search.trim().toLowerCase();
-    return students.filter(
-      (student) =>
-        enrolled.has(student.id) &&
-        !roster.includes(student.name) &&
-        (!q || student.name.toLowerCase().includes(q)),
-    );
-  }, [roster, search, students, raw.enrollments, def.classId]);
+  const addQuery = search.trim().toLowerCase();
+  /* Same rule as creating a class: a child already in another class at an
+     overlapping time stays listed, greyed, with that class's name. */
+  const elsewhere = busyStudents(raw, day, startClock, String(row?.end_time ?? ""), def.id);
+  const addable = students.filter(
+    (student) =>
+      enrolledHere.has(student.id) &&
+      !roster.includes(student.name) &&
+      (!addQuery || student.name.toLowerCase().includes(addQuery)),
+  );
 
   return (
     <PanelFrame
@@ -791,7 +884,10 @@ function ViewClass({ def: opened, onClose }: { def: ClassDef; onClose: () => voi
       {/* A class that is running can still be re-timed and called off. Both
           are hidden once it is finished: the length is then a record of what
           happened, and there is nothing left to cancel. */}
-      {editable && runningMinutes > 0 && (
+      {/* Cancelling does not depend on the length: a class with no readable
+          times, or one shorter than the half-hour a new class must run, can
+          still be called off. Only the length control needs a length. */}
+      {editable && (
         <div
           style={{
             display: "flex",
@@ -806,28 +902,22 @@ function ViewClass({ def: opened, onClose }: { def: ClassDef; onClose: () => voi
             background: COLORS.bg,
           }}
         >
-          <label style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
-            <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary, whiteSpace: "nowrap" }}>
-              {t("length")}
-            </span>
-            <select
-              value={runningMinutes}
-              disabled={busy}
-              onChange={(e) => changeLength(Number(e.target.value))}
-              style={{ ...fieldStyle, width: "auto", minWidth: 120 }}
-            >
-              {/* The current length stays selectable even if it is off the
-                  ladder — an older session may hold a length this form would
-                  not offer, and it must not silently re-time itself. */}
-              {(lengths.includes(runningMinutes) ? lengths : [...lengths, runningMinutes].sort((a, b) => a - b)).map(
-                (m) => (
-                  <option key={m} value={m}>
-                    {lengthLabel(m)}
-                  </option>
-                ),
-              )}
-            </select>
-          </label>
+          {runningMinutes > 0 ? (
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 9, minWidth: 0 }}>
+              <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary, whiteSpace: "nowrap", paddingTop: 2 }}>
+                {t("length")}
+              </span>
+              <DurationField
+                idPrefix="jtrax-running-length"
+                minutes={runningMinutes}
+                max={longestFrom(startClock)}
+                disabled={busy}
+                onChange={changeLength}
+              />
+            </div>
+          ) : (
+            <span />
+          )}
 
           {confirmCancel ? (
             <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -893,7 +983,7 @@ function ViewClass({ def: opened, onClose }: { def: ClassDef; onClose: () => voi
         ))}
       </div>
 
-      {editable && (
+      {canAddStudents && (
         <div style={{ marginTop: 18 }}>
           {addOpen ? (
             <div
@@ -934,51 +1024,76 @@ function ViewClass({ def: opened, onClose }: { def: ClassDef; onClose: () => voi
                     {t("allAdded")}
                   </span>
                 )}
-                {addable.map((student) => (
-                  <ActionButton
-                    key={student.id}
-                    className="jt-find-row"
-                    onClick={async () => {
-                      try {
-                        await create("attendance", {
-                          student_id: student.id,
-                          session_id: def.id,
-                          check_in_time: new Date().toISOString(),
-                        });
-                      } catch (e) {
-                        /* This used to swallow everything as "already added".
-                           Now the server's own message is shown instead —
-                           most often the UNIQUE(student_id, session_id) a
-                           double-click races into. It is NOT an affordability
-                           refusal, despite what an earlier version of this
-                           comment claimed: chargeAttendance() in the backend's
-                           credits.go has no balance or expiry check at all, so
-                           a child with an expired or negative balance is
-                           charged silently rather than refused here. See
-                           [[a-child-can-check-in-on-expired-credit]]. */
-                        showError(tCommon("checkInFailed"), e);
+                {addable.map((student) => {
+                  const clashWith = elsewhere.get(student.id);
+                  const clash = clashWith !== undefined;
+                  const expired = !clash && student.status === "Expired";
+                  const insufficient =
+                    !clash && !expired && cost > 0 && student.credit - cost < -creditRules.maxNegativeCredit;
+                  const blocked = clash || expired || insufficient;
+                  return (
+                    <ActionButton
+                      key={student.id}
+                      className="jt-find-row"
+                      disabled={blocked}
+                      title={
+                        clash
+                          ? t("inOtherClassTitle", { className: clashWith })
+                          : expired
+                          ? t("creditsExpiredTitle")
+                          : insufficient
+                            ? t("insufficientCreditsTitle", { credits: fmtCredits(student.credit) })
+                            : undefined
                       }
-                      setSearch("");
-                    }}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      padding: "8px 10px",
-                      borderRadius: 9,
-                      border: "none",
-                      background: "transparent",
-                      cursor: "pointer",
-                      textAlign: "left",
-                    }}
-                  >
-                    <Avatar initials={initialsOf(student.name)} size={26} />
-                    <span style={{ flex: 1, fontFamily: FONT, fontSize: 14, color: COLORS.text }}>
-                      {student.name}
-                    </span>
-                    <Icon name="plus" size={15} color={COLORS.blue} />
-                  </ActionButton>
-                ))}
+                      onClick={async () => {
+                        try {
+                          await create("attendance", {
+                            student_id: student.id,
+                            session_id: def.id,
+                            check_in_time: new Date().toISOString(),
+                          });
+                        } catch (e) {
+                          /* The server itself refuses an expired or
+                             over-the-limit check-in now (chargeAttendance()
+                             in the backend's credits.go), so this UI-level
+                             disable is a courtesy, not the only guard — a
+                             race or a stale list still surfaces the server's
+                             own message here rather than swallowing it. */
+                          showError(tCommon("checkInFailed"), e);
+                        }
+                        setSearch("");
+                      }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        padding: "8px 10px",
+                        borderRadius: 9,
+                        border: "none",
+                        background: "transparent",
+                        cursor: blocked ? "not-allowed" : "pointer",
+                        opacity: blocked ? 0.6 : 1,
+                        textAlign: "left",
+                      }}
+                    >
+                      <Avatar initials={initialsOf(student.name)} size={26} />
+                      <span style={{ flex: 1, fontFamily: FONT, fontSize: 14, color: COLORS.text }}>
+                        {student.name}
+                      </span>
+                      {blocked ? (
+                        <span style={{ fontFamily: FONT, fontSize: 12.5, fontWeight: 600, color: COLORS.danger }}>
+                          {clash
+                            ? t("inOtherClass", { className: clashWith })
+                            : expired
+                              ? t("creditsExpired")
+                              : t("insufficientCredits")}
+                        </span>
+                      ) : (
+                        <Icon name="plus" size={15} color={COLORS.blue} />
+                      )}
+                    </ActionButton>
+                  );
+                })}
               </div>
             </div>
           ) : (
@@ -994,6 +1109,6 @@ function ViewClass({ def: opened, onClose }: { def: ClassDef; onClose: () => voi
 
 export function SessionPanel({ state, onClose }: { state: PanelState; onClose: () => void }) {
   if (!state) return null;
-  if (state.mode === "create") return <CreateSession onClose={onClose} />;
+  if (state.mode === "create") return <CreateSession day={state.day} pickDay={state.pickDay} onClose={onClose} />;
   return <ViewClass def={state.def} onClose={onClose} />;
 }

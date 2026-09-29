@@ -110,11 +110,14 @@ describe("which rounds are open", () => {
   /* Not all of them: a five-round event opened flat is a page nobody reads.
      Not none either — that is a list of headings. The event opens where it
      is. */
-  it("opens on the round the event is at", () => {
+  it("starts with every round collapsed", () => {
     renderTable();
-    expect(roundHeader(1).getAttribute("aria-expanded")).toBe("false");
-    expect(roundHeader(2).getAttribute("aria-expanded")).toBe("true");
-    expect(roundHeader(3).getAttribute("aria-expanded")).toBe("true");
+    for (const n of [1, 2, 3, 4]) expect(roundHeader(n).getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("no longer says Click to expand", () => {
+    renderTable();
+    expect(screen.queryByText(en.results.clickToExpand)).toBeNull();
   });
 
   it("opens and closes one round on its own", () => {
@@ -153,6 +156,7 @@ describe("the boards themselves", () => {
   /* An unplayed board is not a nil-nil draw. It has no result and says so. */
   it("says vs on a board that has not been played", () => {
     renderTable();
+    fireEvent.click(screen.getByRole("button", { name: en.results.expandAll }));
     expect(screen.getAllByText(en.results.versus).length).toBe(1);
   });
 
@@ -232,53 +236,125 @@ describe("narrowing the table to one player", () => {
   });
 });
 
-describe("one player's own card", () => {
-  function openPlayer() {
-    renderTable();
+/* The player's profile is the shared participant drawer now
+   (ParticipantProfile.test.tsx); the table's part is to ask for it. */
+describe("clicking a player", () => {
+  it("asks for that player's profile, and narrows the boards to them", () => {
+    const onOpenPlayer = vi.fn();
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <ResultsTable rounds={ROUNDS} standings={STANDINGS} totalRounds={4} eventName="E" categoryName="U14" onOpenPlayer={onOpenPlayer} />
+      </NextIntlClientProvider>,
+    );
+    fireEvent.click(roundHeader(1));
+    fireEvent.click(within(document.getElementById("round-1-panel")!).getByText(/Ernst, Roman/));
+    expect(onOpenPlayer).toHaveBeenCalledWith("Ernst, Roman");
+    expect(screen.getByText("Showing 3 matches")).toBeDefined();
+  });
+
+  /* Typing narrows the boards but does not throw a drawer over them. */
+  it("does not open a profile from typing alone", () => {
+    const onOpenPlayer = vi.fn();
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <ResultsTable rounds={ROUNDS} standings={STANDINGS} totalRounds={4} eventName="E" onOpenPlayer={onOpenPlayer} />
+      </NextIntlClientProvider>,
+    );
     fireEvent.change(screen.getByLabelText(en.results.searchPlayer), { target: { value: "Stancec" } });
+    expect(onOpenPlayer).not.toHaveBeenCalled();
+  });
+});
+
+/* The second view: every round side by side, the list kept as it was. */
+describe("the columns view", () => {
+  function columns(rounds = ROUNDS, onOpenPlayer = vi.fn()) {
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <ResultsTable rounds={rounds} standings={STANDINGS} totalRounds={4} eventName="E" onOpenPlayer={onOpenPlayer} />
+      </NextIntlClientProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: en.view.columns }));
+    return { strip: within(screen.getByRole("region", { name: en.results.columnsRegion })), onOpenPlayer };
   }
 
-  /* 1 + ½ = 1½ over two played rounds; the third is paired but unplayed and
-     must not count as a loss. */
-  it("adds their games up", () => {
-    openPlayer();
-    expect(screen.getByText("1½")).toBeDefined();
-    expect(screen.getByText("1–1–0")).toBeDefined();
+  it("shows every round at once, next to the list it switches from", () => {
+    expect(screen.queryByRole("region", { name: en.results.columnsRegion })).toBeNull();
+    const { strip } = columns();
+    for (const n of [1, 2, 3]) expect(strip.getByRole("region", { name: `Round ${n}` })).toBeDefined();
+    expect(strip.queryByRole("region", { name: "Round 4" })).toBeNull(); // not paired yet
+    expect(within(strip.getByRole("region", { name: "Round 1" })).getByText("2 games")).toBeDefined();
+    // Back to the list, which is untouched.
+    fireEvent.click(screen.getByRole("button", { name: en.view.list }));
+    expect(screen.queryByRole("region", { name: en.results.columnsRegion })).toBeNull();
+    expect(screen.getByRole("button", { name: en.results.expandAll })).toBeDefined();
   });
 
-  /* The rank comes off the ranking page rather than being counted here: the
-     tie-breaks that separate two players on the same score are the arbiter's. */
-  it("takes the standing from the published ranking", () => {
-    openPlayer();
-    expect(screen.getByText("#3")).toBeDefined();
+  it("opens a player's profile from any column", () => {
+    const { strip, onOpenPlayer } = columns();
+    fireEvent.click(within(strip.getByRole("region", { name: "Round 2" })).getByRole("button", { name: "Leisch, Lukas" }));
+    expect(onOpenPlayer).toHaveBeenCalledWith("Leisch, Lukas");
   });
 
-  it("lists every round with the colour they had", () => {
-    openPlayer();
-    expect(screen.getByText("vs Karasevych, Andrii")).toBeDefined();
-    expect(screen.getByText("Board 1 · Black")).toBeDefined();
+  it("folds long rounds to eight boards, and one button shows them all", () => {
+    const many: LinkedRound[] = [
+      {
+        round: 1,
+        played: true,
+        pairings: Array.from({ length: 12 }, (_, i) => ({ board: i + 1, white: `White${i + 1}, A`, black: `Black${i + 1}, B`, result: "1 - 0" })),
+      },
+    ];
+    const { strip } = columns(many);
+    const round = within(strip.getByRole("region", { name: "Round 1" }));
+    expect(round.queryByRole("button", { name: "White9, A" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: en.results.colShowAllGames }));
+    expect(round.getByRole("button", { name: "White12, A" })).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: en.results.colShowFewer }));
+    expect(round.queryByRole("button", { name: "White12, A" })).toBeNull();
+  });
+});
+
+describe("the columns view, before every round is paired", () => {
+  it("gives no column to a round with nothing in it yet", () => {
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <ResultsTable rounds={ROUNDS} standings={STANDINGS} totalRounds={5} eventName="E" />
+      </NextIntlClientProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: en.view.columns }));
+    const strip = within(screen.getByRole("region", { name: en.results.columnsRegion }));
+    // Rounds 1–3 are paired; 4 and 5 are only scheduled.
+    expect(strip.getAllByRole("region").map((r) => r.getAttribute("aria-label"))).toEqual(["Round 1", "Round 2", "Round 3"]);
+  });
+});
+
+describe("a column's names and what is folded away", () => {
+  const many: LinkedRound[] = [
+    {
+      round: 1,
+      played: true,
+      pairings: Array.from({ length: 12 }, (_, i) => ({ board: i + 1, white: i === 0 ? "Liu, Xi Feng" : `White${i + 1}, A`, black: `Black${i + 1}, B`, result: "1 - 0" })),
+    },
+  ];
+  function open() {
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <ResultsTable rounds={many} standings={STANDINGS} totalRounds={1} eventName="E" />
+      </NextIntlClientProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: en.view.columns }));
+    return within(screen.getByRole("region", { name: "Round 1" }));
+  }
+
+  it("shows both parts of a name, the second smaller underneath", () => {
+    const liu = open().getByRole("button", { name: "Liu, Xi Feng" });
+    expect(within(liu).getByText("Liu")).toBeDefined();
+    expect(within(liu).getByText("Xi Feng")).toBeDefined();
   });
 
-  /* The one thing on the card that is not in the arbiter's tables, and the
-     reason an organiser opens it mid-event. */
-  it("shows who to ring for one of the academy's own", () => {
-    openPlayer();
-    expect(screen.getByText("Elena Stancec")).toBeDefined();
-    expect(screen.getByText("+66 81 234 5678")).toBeDefined();
-    expect(screen.getByText(en.results.academyStudent)).toBeDefined();
-  });
-
-  it("says which colour they have next", () => {
-    openPlayer();
-    expect(screen.getByText(en.results.whiteNext)).toBeDefined();
-  });
-
-  /* An outside player's family is not the academy's to show, and there is
-     nothing to show it from. */
-  it("shows no contact details for a player who is not ours", () => {
-    renderTable();
-    fireEvent.change(screen.getByLabelText(en.results.searchPlayer), { target: { value: "Ernst" } });
-    expect(screen.queryByText(en.results.guardian)).toBeNull();
-    expect(screen.queryByText(en.results.academyStudent)).toBeNull();
+  it("says how many games are folded below, and opens them", () => {
+    const round = open();
+    fireEvent.click(round.getByRole("button", { name: /\+4 more games/ }));
+    expect(round.getByRole("button", { name: "White12, A" })).toBeDefined();
+    expect(round.queryByRole("button", { name: /more games/ })).toBeNull();
   });
 });

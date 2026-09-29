@@ -316,6 +316,12 @@ const ICON_DATA = {
   ],
   /* The two list-view switches. `grid` is the card view, `list` the table —
      the same pair Teams and Drive use, so the control needs no label. */
+  /* Side-by-side columns: the Results tab's all-rounds view. */
+  "columns": [
+    ["rect", { "x": 3.5, "y": 4, "width": 4.6, "height": 16, "rx": 1.4 }],
+    ["rect", { "x": 9.7, "y": 4, "width": 4.6, "height": 16, "rx": 1.4 }],
+    ["rect", { "x": 15.9, "y": 4, "width": 4.6, "height": 16, "rx": 1.4 }],
+  ],
   "grid": [
     ["rect", { "x": 4, "y": 4, "width": 7, "height": 7, "rx": 1.6 }],
     ["rect", { "x": 13, "y": 4, "width": 7, "height": 7, "rx": 1.6 }],

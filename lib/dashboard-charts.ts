@@ -191,3 +191,20 @@ export function monthToDate(
     previousMonth,
   };
 }
+
+/**
+ * Which points of a revenue series get a label on the time axis.
+ *
+ * Every day of a week and every month of a year; for thirty days, a label a
+ * week apart from the first day, plus the last — the most recent day is the
+ * one being asked about — dropping a weekly one that would crowd it.
+ */
+export function axisTicks(points: TrendPoint[], range: RevenueRange): number[] {
+  const last = points.length - 1;
+  if (last < 0) return [];
+  if (range !== "30D") return points.map((_, i) => i);
+  const ticks: number[] = [];
+  for (let i = 0; i <= last - 3; i += 7) ticks.push(i);
+  ticks.push(last);
+  return ticks;
+}

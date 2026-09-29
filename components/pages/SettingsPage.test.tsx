@@ -21,6 +21,9 @@ vi.mock("@/components/DataProvider", () => ({
   useData: () => ({
     creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certSessions: 50 },
     saveCreditRules: vi.fn(async () => undefined),
+    /* The academy contact card reads the saved configuration. */
+    setConfig: vi.fn(async () => undefined),
+    refresh: vi.fn(async () => undefined),
     /* The staff-accounts block reads these; one row is enough to render it. */
     admins: [
       {
@@ -38,7 +41,7 @@ vi.mock("@/components/DataProvider", () => ({
         createdBy: "",
       },
     ],
-    raw: { admins: [] },
+    raw: { admins: [], systemConfig: [] },
     batch: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),

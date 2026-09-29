@@ -139,17 +139,6 @@ export function RoundCard({
           {summary}
         </span>
         <span
-          style={{
-            fontFamily: FONT,
-            fontSize: 13,
-            fontWeight: 600,
-            color: open ? COLORS.textSecondary : COLORS.blue,
-            whiteSpace: "nowrap",
-          }}
-        >
-          {t(open ? "expanded" : "clickToExpand")}
-        </span>
-        <span
           aria-hidden
           style={{
             display: "flex",

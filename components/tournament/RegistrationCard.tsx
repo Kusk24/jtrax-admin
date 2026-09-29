@@ -12,8 +12,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT } from "@/lib/theme";
-import { fmtTHB } from "@/lib/live";
-import { registrationUrl, studentFee } from "@/lib/registration";
+import { registrationUrl } from "@/lib/registration";
 import { ErrorNote, errorText } from "../crud";
 import { primaryButtonStyle, secondaryButtonStyle } from "../page-kit";
 import { Card, SectionTitle } from "../ui";
@@ -23,22 +22,11 @@ export function RegistrationCard({
   tournamentId,
   tournamentName,
   open,
-  fee,
-  discountPct,
-  studentFeeNow,
-  studentGetsDiscount,
-  studentGetsEarlyBird,
   onChange,
 }: {
   tournamentId: string;
   tournamentName: string;
   open: boolean;
-  fee: number;
-  discountPct: number;
-  /** What a JCA student is charged today, priced by the server. */
-  studentFeeNow?: number;
-  studentGetsDiscount: boolean;
-  studentGetsEarlyBird: boolean;
   /** Patches the tournament row; the parent owns the reload. */
   onChange: (patch: Record<string, unknown>) => Promise<void>;
 }) {
@@ -61,23 +49,9 @@ export function RegistrationCard({
     }
   }
 
-  /* Which of the two reductions the organiser gave students, in words. The
-     figure beside it is the server's, so the card cannot disagree with what a
-     family is charged. */
-  const discounting = studentGetsDiscount && discountPct > 0;
-  const studentNote = discounting && studentGetsEarlyBird
-    ? t("pricingBoth", { pct: discountPct })
-    : discounting
-      ? t("discountOf", { pct: discountPct })
-      : studentGetsEarlyBird
-        ? t("pricingEarly")
-        : t("noDiscount");
-
-  /* saveDiscount was here. The percentage is set in the Create Tournament
-     wizard now, beside the fee it comes off, so that the first person through
-     a freshly-opened form is quoted the discount the academy meant rather
-     than the zero a tournament starts with. This card still *shows* it —
-     it is one of the two prices the public form quotes. */
+  /* The two prices used to be repeated here. They are on the Registration &
+     Pricing card beside this one, so this card is only the door: open or
+     closed, and the link and QR code while it is open. */
 
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -102,16 +76,6 @@ export function RegistrationCard({
 
       {error && <ErrorNote>{error}</ErrorNote>}
 
-      {/* ---- the terms, editable whether or not registration is open ---- */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-        <Figure label={t("publicFee")} value={fee > 0 ? fmtTHB(fee) : t("noFee")} />
-        <Figure
-          label={t("studentFee")}
-          value={fee > 0 ? fmtTHB(studentFeeNow ?? studentFee(fee, discountPct)) : t("noFee")}
-          note={studentNote}
-        />
-      </div>
-
       {/* ---- the link, only once there is something to link to ---- */}
       {open && (
         <div
@@ -120,8 +84,6 @@ export function RegistrationCard({
             alignItems: "center",
             gap: 16,
             flexWrap: "wrap",
-            paddingTop: 13,
-            borderTop: `1px solid ${COLORS.border}`,
           }}
         >
           {url ? (
@@ -142,15 +104,5 @@ export function RegistrationCard({
         </div>
       )}
     </Card>
-  );
-}
-
-function Figure({ label, value, note }: { label: string; value: string; note?: string }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      <span style={{ fontFamily: FONT, fontSize: 12.5, fontWeight: 600, color: COLORS.textSecondary }}>{label}</span>
-      <span style={{ fontFamily: FONT, fontSize: 17, fontWeight: 700, color: COLORS.text }}>{value}</span>
-      {note && <span style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textSecondary }}>{note}</span>}
-    </div>
   );
 }

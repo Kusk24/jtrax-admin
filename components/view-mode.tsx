@@ -20,12 +20,16 @@ const MODE_ICON: Record<ViewMode, IconName> = {
   list: "list",
   card: "grid",
   calendar: "calendar",
+  /* Games only: every board at once. The board-shaped icon. */
+  boards: "book",
+  /* Results only: every round side by side. */
+  columns: "columns",
 };
 
 /* The switch always reads left to right in this order, whatever a screen's
    default happens to be. Ordering the buttons by which view a screen opens in
    meant the same control moved between screens. */
-const MODE_ORDER: ViewMode[] = ["list", "card", "calendar"];
+const MODE_ORDER: ViewMode[] = ["list", "card", "columns", "boards", "calendar"];
 
 /**
  * Segmented control, sized to the 40px box the filter bar's pills and selects
@@ -134,6 +138,7 @@ export function EntityCard({
   title,
   subtitle,
   badges,
+  titleBadge,
   rows,
   actions,
   footer,
@@ -144,6 +149,8 @@ export function EntityCard({
   subtitle?: ReactNode;
   /* Status chips, shown under the name where the eye lands next. */
   badges?: ReactNode;
+  /* A chip that sits on the name's own line instead — one short status. */
+  titleBadge?: ReactNode;
   rows?: Array<{ label: string; value: ReactNode }>;
   /* `RowActions` from the table, unchanged — it already stops its clicks from
      reaching a card that opens a detail view. */
@@ -179,22 +186,27 @@ export function EntityCard({
         aria-label={onClick ? t("openCard", { what: title }) : undefined}
         onClick={onClick}
         onKeyDown={activate}
-        style={{ display: "flex", alignItems: "flex-start", gap: 11, outlineOffset: 3 }}
+        /* A lone name line is centred on the avatar rather than hanging off its top. */
+        style={{ display: "flex", alignItems: subtitle || badges ? "flex-start" : "center", gap: 11, outlineOffset: 3 }}
       >
         {avatar}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-            style={{
-              fontFamily: FONT,
-              fontSize: 15.5,
-              fontWeight: 700,
-              color: COLORS.text,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {title}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+            <div
+              style={{
+                fontFamily: FONT,
+                fontSize: 15.5,
+                fontWeight: 700,
+                color: COLORS.text,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                minWidth: 0,
+              }}
+            >
+              {title}
+            </div>
+            {titleBadge && <div style={{ flexShrink: 0, display: "flex" }}>{titleBadge}</div>}
           </div>
           {subtitle && (
             <div style={{ marginTop: 3, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>

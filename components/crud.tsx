@@ -161,7 +161,8 @@ function Field({
   const control =
     kind === "select" ? (
       <select id={id} value={String(value)} onChange={(e) => onChange(e.target.value)} style={selectStyle}>
-        <option value="">—</option>
+        {/* The empty choice, named when the field says what empty means. */}
+        <option value="">{field.placeholder ?? "—"}</option>
         {(field.options ?? []).map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
@@ -440,10 +441,15 @@ const iconButtonStyle = {
 export function RowActions({
   onEdit,
   onDelete,
+  onEmail,
+  emailLabel,
   label,
 }: {
   onEdit?: () => void;
   onDelete?: () => void;
+  /* An extra "send email" action, before Edit. */
+  onEmail?: () => void;
+  emailLabel?: string;
   /* Names the row, so the buttons read as "Edit Emma Carter" to a screen reader
      instead of nine identical "Edit"s. */
   label: string;
@@ -455,6 +461,18 @@ export function RowActions({
   };
   return (
     <div style={{ display: "flex", gap: 7 }}>
+      {onEmail && (
+        <button
+          type="button"
+          className="jt-btn-ghost"
+          aria-label={emailLabel}
+          title={emailLabel}
+          onClick={(e) => stop(e, onEmail)}
+          style={iconButtonStyle}
+        >
+          <Icon name="mail" size={14} color={COLORS.blue} />
+        </button>
+      )}
       {onEdit && (
         <button
           type="button"

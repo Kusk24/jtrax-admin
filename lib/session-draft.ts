@@ -60,6 +60,12 @@ export function nowClock(now = new Date()): string {
   return clockOf(minutes - (minutes % TIME_STEP_MINUTES));
 }
 
+/** The longest a class starting at `start` can run before midnight. */
+export function longestFrom(start: string): number {
+  const from = minutesOf(start);
+  return from === null ? 0 : 24 * 60 - from;
+}
+
 /**
  * The lengths that still fit in the day from this start.
  *
@@ -115,17 +121,40 @@ export type TimeOption = { value: string; label: string };
  * both short enough to see at once, and between them they still reach every
  * five-minute mark the timetable uses.
  */
-export function hourOptions(): TimeOption[] {
-  return Array.from({ length: 24 }, (_, h) => {
-    const value = String(h).padStart(2, "0");
+/**
+ * The hours a class can start in. With `earliest` ("HH:MM" — now, on today's
+ * form) the hours already gone are left out: a class that has finished is not
+ * something the desk creates, it is a correction for Class History.
+ */
+export function hourOptions(earliest = ""): TimeOption[] {
+  const from = minutesOf(earliest);
+  const firstHour = from === null ? 0 : Math.floor(from / 60);
+  return Array.from({ length: 24 - firstHour }, (_, i) => {
+    const value = String(firstHour + i).padStart(2, "0");
     return { value, label: value };
   });
 }
 
-export function minuteOptions(step = TIME_STEP_MINUTES): TimeOption[] {
+/**
+ * The minutes on offer. In the hour `earliest` falls in, only its own minute
+ * and later; every other hour gets the whole list.
+ */
+export function minuteOptions(step = TIME_STEP_MINUTES, hour = "", earliest = ""): TimeOption[] {
+  const from = minutesOf(earliest);
+  const floor = from !== null && hour !== "" && Number(hour) === Math.floor(from / 60) ? from % 60 : 0;
   const out: TimeOption[] = [];
-  for (let m = 0; m < 60; m += step) out.push({ value: String(m).padStart(2, "0"), label: String(m).padStart(2, "0") });
+  for (let m = 0; m < 60; m += step) {
+    if (m < floor) continue;
+    out.push({ value: String(m).padStart(2, "0"), label: String(m).padStart(2, "0") });
+  }
   return out;
+}
+
+/** `start`, or `earliest` when `start` would already be over. */
+export function notBefore(start: string, earliest: string): string {
+  const a = minutesOf(start);
+  const b = minutesOf(earliest);
+  return a !== null && b !== null && a < b ? earliest : start;
 }
 
 /** The hour half of "HH:MM", or "" when there is nothing chosen yet. */
@@ -189,6 +218,7 @@ export function creditCost(start: string, end: string): number {
 export type DraftProblem =
   | "noClasses"
   | "noClass"
+  | "startPassed"
   | "endBeforeStart"
   | "tooShort"
   | null;
@@ -205,11 +235,15 @@ export function draftProblem(opts: {
   classId: string;
   start: string;
   end: string;
+  /** Today's form: nothing may start before now. */
+  earliest?: string;
 }): DraftProblem {
   if (opts.classCount === 0) return "noClasses";
   if (!opts.classId) return "noClass";
   const a = minutesOf(opts.start);
   const b = minutesOf(opts.end);
+  const floor = minutesOf(opts.earliest ?? "");
+  if (a !== null && floor !== null && a < floor) return "startPassed";
   if (a === null || b === null || b <= a) return "endBeforeStart";
   if (b - a < MIN_SESSION_MINUTES) return "tooShort";
   return null;

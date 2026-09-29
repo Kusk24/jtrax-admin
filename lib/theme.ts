@@ -151,9 +151,24 @@ export const MONTH_SHORT = [
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
+/* A student's condition in the dashboard's Student Status colours: red for
+   the call that still has to be made, yellow for the one coming up, orange
+   for what already lapsed, gray for who has gone quiet. The donut, the
+   roster's Status column and its credit figures all read from here, so Low
+   Credit is one colour wherever it appears. */
+export const STUDENT_STATUS_COLOR: Record<string, string> = {
+  Normal: "var(--jt-status-good)",
+  "Low Credit": "var(--jt-status-low)",
+  Expiring: "var(--jt-status-expiring)",
+  Expired: "var(--jt-status-expired)",
+  Inactive: "var(--jt-status-inactive)",
+};
+
 export function statusChipColors(status: string): { color: string; bg: string } {
+  const student = STUDENT_STATUS_COLOR[status];
+  /* Text in the same hue, deep enough to read on the soft fill. */
+  if (student) return { color: student.replace(")", "-ink)"), bg: `color-mix(in srgb, ${student} 30%, transparent)` };
   switch (status) {
-    case "Normal":
     case "Paid":
     case "Ongoing":
     case "Active":
@@ -167,6 +182,7 @@ export function statusChipColors(status: string): { color: string; bg: string } 
     case "Expired":
     case "Refunded":
     case "Absent":
+    case "Cancelled":
       return { color: COLORS.danger, bg: COLORS.dangerBg };
     default:
       return { color: COLORS.textSecondary, bg: COLORS.neutralBg };

@@ -104,7 +104,9 @@ async function renderTable() {
       </ErrorToastProvider>
     </NextIntlClientProvider>,
   );
-  await waitFor(() => expect(screen.getByText("Anong")).toBeTruthy());
+  /* Latest arrival first, so Fon heads the register and Anong, first in,
+     is the sixth row — below the fold until the list opens. */
+  await waitFor(() => expect(screen.getByText("Fon")).toBeTruthy());
   /* Whatever is on screen now cost exactly one refetch, so `gets` is the price
      of a round — no need to hard-code how many collections there are. */
   return { user, round: gets };
@@ -129,11 +131,11 @@ describe("selecting who goes home", () => {
     const { user } = await renderTable();
 
     /* Collapsed, the table shows five of the six. */
-    expect(screen.queryByText("Fon")).toBeNull();
+    expect(screen.queryByText("Anong")).toBeNull();
 
     await user.click(selectAll());
 
-    expect(screen.getByText("Fon")).toBeTruthy();
+    expect(screen.getByText("Anong")).toBeTruthy();
   });
 
   it("checks the whole selection out in one act", async () => {
@@ -156,13 +158,13 @@ describe("selecting who goes home", () => {
   it("checks out only what was ticked", async () => {
     const { user } = await renderTable();
 
-    await user.click(screen.getByLabelText("Select Anong"));
+    await user.click(screen.getByLabelText("Select Fon"));
     await user.click(screen.getByLabelText("Select Chai"));
 
     expect(screen.getByText("2 students selected")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Check out 2 students" }));
 
-    /* Gaew was already out; Anong and Chai make three. */
+    /* Gaew was already out; Fon and Chai make three. */
     await waitFor(() => expect(stampedOut()).toBe(3));
     expect(db.attendance.find((a) => a["attendance_id"] === "att_1")?.["check_out_time"]).toBeFalsy();
   });

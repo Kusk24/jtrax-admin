@@ -124,6 +124,13 @@ textarea {
   align-items: start;
 }
 
+/* Each holds one card that fills its grid cell, so a row's cards match. */
+.jt-dashboard-actions,
+.jt-dashboard-create {
+  display: grid;
+  min-width: 0;
+}
+
 .jt-dashboard-main,
 .jt-dashboard-rail {
   display: flex;
@@ -144,6 +151,95 @@ textarea {
   min-height: 190px;
 }
 
+/* The week's four cards, two by two, filling the overview's row so there is
+   no gap above Create Class. */
+.jt-week-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: 1fr;
+  gap: 10px;
+}
+
+/* --- Week KPI cards --- */
+.jt-kpi {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 13px 14px 12px;
+  overflow: hidden;
+  border: 1px solid var(--jt-border);
+  border-radius: 14px;
+  background: var(--jt-surface);
+  transition: border-color 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+}
+
+.jt-kpi:hover {
+  border-color: var(--kpi-accent);
+  box-shadow: 0 8px 22px rgb(36 59 99 / 0.12);
+  transform: translateY(-1px);
+}
+
+.jt-kpi-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.jt-kpi-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--kpi-accent);
+  flex-shrink: 0;
+}
+
+.jt-kpi-pill {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  background: var(--jt-neutralBg, var(--jt-light));
+  color: var(--jt-textSecondary);
+}
+
+.jt-kpi-pill.is-up {
+  background: var(--jt-successBg);
+  color: var(--jt-success);
+}
+
+.jt-kpi-pill.is-down {
+  background: var(--jt-dangerBg);
+  color: var(--jt-danger);
+}
+
+.jt-kpi-value {
+  margin-top: auto;
+  font-size: 27px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--jt-text);
+}
+
+.jt-kpi-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--jt-textSecondary);
+}
+
 .jt-revenue-icon,
 .jt-dashboard-empty-icon {
   display: inline-flex;
@@ -162,7 +258,7 @@ textarea {
   margin-top: auto;
 }
 
-.jt-status-rings {
+.jt-status-donut {
   position: relative;
   flex-shrink: 0;
 }
@@ -240,8 +336,8 @@ textarea {
   gap: 10px;
 }
 
+/* max-height is measured in TodaysClasses: the bottom of the third card. */
 .jt-class-list.is-scrollable {
-  max-height: 226px;
   overflow-y: auto;
   padding-right: 5px;
   overscroll-behavior: contain;
@@ -291,85 +387,6 @@ textarea {
 
 .jt-range-option.is-on {
   background: var(--jt-blue);
-  color: #fff;
-}
-
-/* --- Week strip --- */
-.jt-week-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.jt-week-arrow {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--jt-border);
-  border-radius: 50%;
-  background: var(--jt-surface);
-  cursor: pointer;
-  transition: background 160ms ease, border-color 160ms ease;
-}
-
-.jt-week-arrow:hover {
-  background: var(--jt-light);
-  border-color: var(--jt-blue);
-}
-
-.jt-week-today {
-  padding: 4px 10px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--jt-light);
-  color: var(--jt-blue);
-  font: inherit;
-  font-size: 11.5px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.jt-week-days {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 2px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.jt-week-day {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  padding: 6px 0 8px;
-  border-radius: 11px;
-}
-
-.jt-week-weekday {
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--jt-textSecondary);
-}
-
-.jt-week-date {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--jt-text);
-}
-
-.jt-week-day.is-today {
-  background: var(--jt-blue);
-}
-
-.jt-week-day.is-today .jt-week-weekday,
-.jt-week-day.is-today .jt-week-date {
   color: #fff;
 }
 
@@ -435,22 +452,33 @@ textarea {
 
 /* --- Today's classes: All / Ongoing / Finished --- */
 .jt-class-filters {
+  /* One row, always: the pills share the width rather than wrapping, and a
+     day with a fifth (Upcoming) scrolls sideways rather than dropping a line. */
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-wrap: nowrap;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.jt-class-filters::-webkit-scrollbar {
+  display: none;
 }
 
 .jt-class-filter {
   display: inline-flex;
+  flex: 1 0 auto;
+  justify-content: center;
   align-items: center;
-  gap: 6px;
-  padding: 5px 11px;
+  gap: 4px;
+  padding: 5px 8px;
+  white-space: nowrap;
   border: 1px solid var(--jt-border);
   border-radius: 999px;
   background: var(--jt-surface);
   color: var(--jt-textSecondary);
   font: inherit;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
@@ -468,7 +496,7 @@ textarea {
 }
 
 .jt-class-filter-count {
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 700;
   opacity: 0.75;
 }
@@ -548,18 +576,71 @@ textarea {
   .jt-dashboard-overview {
     grid-template-columns: minmax(0, 1.45fr) minmax(330px, 0.9fr);
   }
+  /* Revenue 1cm narrower, Student Status 1cm wider, the gap between them
+     unchanged: fractions cannot subtract a fixed length, margins can. */
+  .jt-dashboard-overview > :first-child {
+    margin-right: 38px;
+  }
+  .jt-dashboard-overview > :nth-child(2) {
+    margin-left: -38px;
+  }
 }
 
 @media (width >= 1080px) {
+  /* The overview and the card beside it share the first row, so they come
+     out one height; the main column and the rail share the second. */
   .jt-dashboard {
-    grid-template-columns: minmax(0, 1fr) minmax(300px, 340px);
+    grid-template-columns: minmax(0, 1fr) minmax(358px, 398px);
+    grid-template-areas:
+      "overview side"
+      "actions create"
+      "main rail";
   }
-
-  /* The rail follows the page down rather than leaving a column of dead space
-     beside a long check-in table. */
+  .jt-dashboard.has-find {
+    grid-template-areas:
+      "overview side"
+      "find find"
+      "actions create"
+      "main rail";
+  }
+  /* No Create Class on a past day: the rail starts beside the actions. */
+  .jt-dashboard.is-past {
+    grid-template-areas:
+      "overview side"
+      "actions rail"
+      "main rail";
+  }
+  .jt-dashboard.is-past.has-find {
+    grid-template-areas:
+      "overview side"
+      "find find"
+      "actions rail"
+      "main rail";
+  }
+  .jt-dashboard-find {
+    grid-area: find;
+  }
+  .jt-dashboard-actions {
+    grid-area: actions;
+    align-self: stretch;
+  }
+  .jt-dashboard-create {
+    grid-area: create;
+    align-self: stretch;
+  }
+  .jt-dashboard-overview {
+    grid-area: overview;
+    align-self: stretch;
+  }
+  .jt-dashboard-side {
+    grid-area: side;
+    align-self: stretch;
+  }
+  .jt-dashboard-main {
+    grid-area: main;
+  }
   .jt-dashboard-rail {
-    position: sticky;
-    top: 16px;
+    grid-area: rail;
   }
 }
 
@@ -569,14 +650,8 @@ textarea {
     flex-direction: column;
   }
 
-  .jt-status-rings {
+  .jt-status-donut {
     align-self: center;
-  }
-
-  /* The week strip is seven columns whatever the width; below this the day
-     numbers are all that still fit. */
-  .jt-week-weekday {
-    display: none;
   }
 }
 
@@ -597,9 +672,11 @@ textarea {
   align-items: start;
 }
 
+/* Board and moves share the width half and half, so the board gets as much
+   room as the screen allows rather than a fixed 288px. */
 @media (width >= 920px) {
   .jt-game-split {
-    grid-template-columns: minmax(0, auto) minmax(260px, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 }
 
@@ -662,6 +739,12 @@ textarea {
   .jt-duo {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+/* Side by side, the two cards share a height rather than each stopping at
+   its own last row. */
+.jt-duo.jt-duo-even {
+  align-items: stretch;
 }
 
 /* Results: the round boards with one player's own card beside them. Not
@@ -1289,7 +1372,92 @@ textarea {
   --jt-tint-red: light-dark(#FBEAEA, #523232);
   --jt-tint-plum: light-dark(#EAE6F5, #383060);
 
+  /* Fills for the student-status chart. Softer than the accents above, which
+     are ink for text and read as heavy blocks when they fill a chart. */
+  --jt-status-good: light-dark(#6CC49A, #7FD3A6);
+  --jt-status-low: light-dark(#EE8A8A, #F29B9B);
+  --jt-status-expiring: light-dark(#F2CF5B, #F2D77E);
+  --jt-status-expired: light-dark(#F5A462, #F5B27A);
+  --jt-status-inactive: light-dark(#C3CAD6, #6F7C93);
+  /* The same hues deep enough to read as text — a credit figure in the
+     pastel fill above is too faint to make out on a white row. */
+  --jt-status-good-ink: light-dark(#1F8A5B, #7FD3A6);
+  --jt-status-low-ink: light-dark(#C43D3D, #F29B9B);
+  --jt-status-expiring-ink: light-dark(#9A7400, #F2D77E);
+  --jt-status-expired-ink: light-dark(#B85A14, #F5B27A);
+  --jt-status-inactive-ink: light-dark(#5B6678, #AEB8C9);
+
   --jt-scrim: light-dark(rgb(20 33 58 / 0.38), rgb(2 6 14 / 0.6));
 }
 :root[data-theme="light"] { color-scheme: light; }
 :root[data-theme="dark"] { color-scheme: dark; }
+
+/* A row's ⋯ menu. */
+.jt-menu-item:not(:disabled):hover,
+.jt-menu-item:not(:disabled):focus-visible {
+  background: var(--jt-light);
+  outline: none;
+}
+
+/* ==========================================================================
+   Dashboard polish — a trial. Everything here is scoped to the dashboard's
+   own areas (not the class panel that slides over it); delete this block to
+   go back exactly as it was.
+   ========================================================================== */
+:is(.jt-dashboard-overview, .jt-dashboard-find, .jt-dashboard-actions, .jt-dashboard-main, .jt-dashboard-rail) section {
+  border: 1px solid var(--jt-border) !important;
+  border-radius: 18px !important;
+  box-shadow:
+    0 1px 2px rgb(16 24 40 / 0.04),
+    0 12px 28px -18px rgb(36 59 99 / 0.22);
+}
+
+/* A short accent bar before every section title. */
+:is(.jt-dashboard-overview, .jt-dashboard-find, .jt-dashboard-actions, .jt-dashboard-main, .jt-dashboard-rail) h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+:is(.jt-dashboard-overview, .jt-dashboard-find, .jt-dashboard-actions, .jt-dashboard-main, .jt-dashboard-rail) h2::before {
+  content: "";
+  width: 4px;
+  height: 16px;
+  border-radius: 4px;
+  background: var(--jt-accent-blue);
+  flex-shrink: 0;
+}
+
+/* Student Status: brighter, more saturated ring and legend colours. Only
+   inside this card — the status chips elsewhere keep their softer tones. */
+.jt-dashboard-overview .jt-student-status {
+  --jt-status-good: light-dark(#22B573, #4ADE9A);
+  --jt-status-low: light-dark(#EF5B5B, #F87171);
+  --jt-status-expiring: light-dark(#F5B81C, #FACC15);
+  --jt-status-expired: light-dark(#F97F2E, #FB923C);
+  --jt-status-inactive: light-dark(#94A3B8, #7C8BA3);
+}
+
+/* Quick actions: rounded tiles with square icon badges, not round pills. */
+.jt-dashboard-actions .qa-pill {
+  border-radius: 14px;
+  padding: 12px 14px !important;
+  box-shadow: 0 1px 2px rgb(16 24 40 / 0.05);
+}
+
+.jt-dashboard-actions .qa-pill > span:first-child {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 10px !important;
+}
+
+/* Today's classes: softer cards with a hint of depth. */
+.jt-dashboard-rail .jt-class-card {
+  border-radius: 14px !important;
+  box-shadow: 0 1px 2px rgb(16 24 40 / 0.05);
+}
+
+/* Create Class: its light blue, one step deeper. */
+.jt-dashboard-create .jt-create-class {
+  background: light-dark(#DCE5F7, #1A2844);
+}

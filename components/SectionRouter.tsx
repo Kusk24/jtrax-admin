@@ -25,6 +25,7 @@ export function SectionRouter({
   startNew,
   status,
   studentId,
+  classId,
   detailId,
   detailTab,
 }: {
@@ -39,6 +40,8 @@ export function SectionRouter({
   /* The student a payment is about to be recorded for, straight off the end of
      the registration wizard. */
   studentId?: string;
+  /* The course a payment is for, when topping up one the child is already in. */
+  classId?: string;
   /* Which row is open, and which of its tabs — so a refresh, a shared link and
      the Back button all land where the person was. */
   detailId?: string;
@@ -82,8 +85,9 @@ export function SectionRouter({
          than keeping the first one's draft. */
       return (
         <PaymentPage
-          key={`${studentId ?? "list"}|${newKey}`}
+          key={`${studentId ?? "list"}|${classId ?? ""}|${newKey}`}
           startStudentId={studentId}
+          startClassId={classId}
           startNew={opensCreate(startNew)}
         />
       );
@@ -92,7 +96,9 @@ export function SectionRouter({
     /* Lichess and the console's own boards share this one; /lichess redirects
        here. Staff accounts live under Settings the same way. */
     case "games":
-      return <GamesPage />;
+      /* Not keyed by the game: stepping from one board to the next must keep
+         the list's filters and its poll, not remount the page. */
+      return <GamesPage detailId={detailId} />;
     case "announcement":
       return <AnnouncementPage key={newKey} startNew={opensCreate(startNew)} />;
     case "settings":

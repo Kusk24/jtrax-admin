@@ -23,7 +23,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT } from "@/lib/theme";
-import { generateTempPassword } from "@/lib/credentials";
+import { generateReadablePassword } from "@/lib/credentials";
 import { useJtrax } from "./JtraxContext";
 import { InfoGrid, Modal, primaryButtonStyle, secondaryButtonStyle } from "./page-kit";
 
@@ -50,15 +50,32 @@ export function ResetPasswordButton({
   const [confirming, setConfirming] = useState(false);
   const [issued, setIssued] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
+  /* The button says whether the copy worked. It gave no sign either way, so
+     the office could not tell whether the password was on the clipboard —
+     and the modal is the only place it is ever shown. */
+  const [copy, setCopy] = useState<"idle" | "copied" | "failed">("idle");
+
+  async function copyBoth() {
+    try {
+      await navigator.clipboard.writeText(`${identifier} / ${issued}`);
+      setCopy("copied");
+      setTimeout(() => setCopy("idle"), 2000);
+    } catch {
+      setCopy("failed");
+    }
+  }
 
   if (role !== "Admin" || !accountId) return null;
 
   async function reset() {
     setWorking(true);
-    const password = generateTempPassword();
+    /* Readable, because it is read out at the counter or copied onto a slip
+       for a child. */
+    const password = generateReadablePassword();
     try {
       await update("user-accounts", accountId, { password });
       setConfirming(false);
+      setCopy("idle");
       setIssued(password);
     } catch (e) {
       onError(e);
@@ -128,11 +145,37 @@ export function ResetPasswordButton({
             />
             <button
               type="button"
-              style={secondaryButtonStyle}
-              onClick={() => navigator.clipboard?.writeText(`${identifier} / ${issued}`)}
+              style={{
+                ...secondaryButtonStyle,
+                justifyContent: "center",
+                color: copy === "copied" ? COLORS.success : undefined,
+                borderColor: copy === "copied" ? COLORS.success : undefined,
+              }}
+              onClick={() => void copyBoth()}
+              aria-label={copy === "copied" ? t("copied") : undefined}
             >
-              <Icon name="copy" size={14} /> {t("copy")}
+              {/* Copied reads as a green tick alone; the label comes back after
+                  two seconds, ready to copy again. */}
+              {copy === "copied" ? (
+                <Icon name="check" size={17} color={COLORS.success} />
+              ) : (
+                <>
+                  <Icon name="copy" size={14} /> {t("copy")}
+                </>
+              )}
             </button>
+            {/* Said aloud for anyone not looking at the button; shown only
+                when the copy failed, since then there is something to do. */}
+            <p
+              role="status"
+              style={
+                copy === "failed"
+                  ? { margin: 0, fontFamily: FONT, fontSize: 12.5, color: COLORS.danger }
+                  : { position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)", margin: 0 }
+              }
+            >
+              {copy === "copied" ? t("copiedNote") : copy === "failed" ? t("copyFailed") : ""}
+            </p>
           </div>
         </Modal>
       )}
