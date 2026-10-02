@@ -7,7 +7,7 @@
  * between the write and the render, which is what this exercises: the real
  * DataProvider over a fake API.
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
@@ -19,6 +19,18 @@ import { todayISO } from "@/lib/live";
    the fixture's session fell on yesterday, the dashboard showed an empty
    check-in table, and the whole file failed until lunchtime. */
 const today = todayISO();
+
+/* The class runs 09:00–10:00 today and these check-outs come after it. Without
+   a fixed clock, a run before 10:00 Bangkok reaches the early check-out
+   confirmation instead, and every assertion here misses. Only Date is faked,
+   so the waits in these tests still run on real timers. */
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(`${today}T18:00:00+07:00`));
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 /** A tiny in-memory backend: the rows, and what a PATCH does to them. */
 const db: Record<string, Record<string, unknown>[]> = {};

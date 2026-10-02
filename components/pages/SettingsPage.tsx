@@ -23,6 +23,8 @@ const RULES: Array<{ key: RuleKey; icon: IconName; titleKey: string; descKey: st
   { key: "expiringDays", icon: "calendar", titleKey: "expiringTitle", descKey: "expiringDesc", unitKey: "unitDays" },
   { key: "inactiveDays", icon: "userX", titleKey: "inactiveTitle", descKey: "inactiveDesc", unitKey: "unitDays" },
   { key: "certSessions", icon: "trophy", titleKey: "certTitle", descKey: "certDesc", unitKey: "unitClasses" },
+  { key: "maxNegativeCredit", icon: "alertTriangle", titleKey: "maxNegativeCreditTitle", descKey: "maxNegativeCreditDesc", unitKey: "unitCredits" },
+  { key: "checkoutRoundMinutes", icon: "clockSmall", titleKey: "checkoutRoundTitle", descKey: "checkoutRoundDesc", unitKey: "unitMinutes" },
 ];
 
 export function SettingsPage() {

@@ -22,6 +22,7 @@ import { monthToDate, REVENUE_RANGES, revenueSeries, type RevenueRange } from "@
 import { fmtTHB } from "@/lib/live";
 import { Icon } from "@/lib/icons";
 import { ACCENTS, ACCENT_TINTS, COLORS, FONT, FONT_DISPLAY } from "@/lib/theme";
+import { TrendAxis } from "../charts/TrendAxis";
 import { useData } from "../DataProvider";
 import { Card } from "../ui";
 import { Sparkline } from "../charts";
@@ -44,6 +45,13 @@ export function TodaySummary() {
   const delta = monthToDate(payments);
   const lastMonth = new Intl.DateTimeFormat(locale, { month: "short" }).format(delta.previousMonth);
   const trend = revenueSeries(payments, range);
+
+  /* "3 Sep" for a day, "Sep 2026" for a month (the Year range). */
+  const pointDay = (key: string) => {
+    const [y, m, d] = key.split("-").map(Number);
+    const date = new Date(y, (m || 1) - 1, d || 1);
+    return new Intl.DateTimeFormat(locale, d ? { day: "numeric", month: "short" } : { month: "short", year: "numeric" }).format(date);
+  };
 
   const up = (delta.pct ?? 0) >= 0;
   const deltaColor = up ? COLORS.success : COLORS.danger;
@@ -114,12 +122,14 @@ export function TodaySummary() {
             points={trend}
             color={ACCENTS.blue}
             fill={ACCENT_TINTS.blue}
+            describe={(p) => `${pointDay(p.month)} · ${fmtTHB(p.value)}`}
             label={t("revenueChartRangeLabel", {
               range: t(`revenueRange.${range}`),
               from: trend[0]?.value.toLocaleString() ?? "0",
               to: trend[trend.length - 1]?.value.toLocaleString() ?? "0",
             })}
           />
+          <TrendAxis points={trend} range={range} />
         </div>
     </Card>
   );

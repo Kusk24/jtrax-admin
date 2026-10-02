@@ -92,6 +92,8 @@ export type Payment = {
       row are all that is left of who it was about. */
   detached?: boolean;
   status: 'Paid' | 'Pending' | 'Refunded';
+  /** A tournament entry fee, or credits for a course. */
+  kind?: 'tournament' | 'course';
 };
 
 export type CheckinDef = {
@@ -102,6 +104,8 @@ export type CheckinDef = {
   class: string;
   timeIn: string;
   timeOut: string;
+  /** The raw check-in time, ISO, for ordering — `timeIn` is display text. */
+  checkInAt?: string;
   status: 'In class' | 'Dismissed';
   credit: number;
 };
@@ -114,7 +118,12 @@ export type ClassDef = {
   category: string;
   name: string;
   time: string;
-  status: 'Ongoing' | 'Finished';
+  /* Upcoming only ever comes from the dashboard's own reading of a class on a
+     later day; the database has Ongoing and Completed. */
+  status: 'Ongoing' | 'Finished' | 'Upcoming' | 'Cancelled';
+  /** The session's day, `YYYY-MM-DD`, and its start, `HH:MM` — live rows only. */
+  date?: string;
+  start?: string;
   students: string[];
   more: number;
   teacher: string;
@@ -147,10 +156,15 @@ export type Announcement = {
   /** Present on live rows from the backend; absent in the design seed. */
   id?: string;
   title: string;
-  audience: string;
+  /** Who it went to: every parent, the parents of some classes, or some
+      parents by name — `audienceIds` holds the class or parent ids. */
+  audienceKind: AnnouncementAudience;
+  audienceIds: string[];
   date: string;
   body: string;
 };
+
+export type AnnouncementAudience = "all" | "classes" | "parents";
 
 export type Participant = {
   /* Present on live rows; the design seed has neither. `categoryId` is what the
@@ -179,13 +193,43 @@ export type Participant = {
   medicalNotes: string;
   /** Their remarks — a request for the office rather than for the day. */
   notes: string;
+  /** As a Thai ID card prints it; empty for a passport holder. */
+  nameTh?: string;
+  /** Their answer to the arrival reminder. */
+  arrival?: 'Pending' | 'Confirmed' | 'NotAttending';
+  /** Whether the reminder has gone out yet, and when (ISO). */
+  arrivalAsked?: boolean;
+  arrivalRemindedAt?: string;
+  /** "thai-id" or "passport", as the family said. */
+  documentType?: string;
+  /** What the ID card scan read, beside what was submitted. */
+  scannedName?: string;
+  scannedDateOfBirth?: string;
+  /** Anything about the age group the desk should check (lib/age-group.ts). */
+  ageCheck?: import("./age-group").AgeCheck;
+  /** The early-bird price ran out unpaid, and the fee went up to regular. */
+  earlyBirdLapsed?: boolean;
+  /** Called across the hall and printed on the pairing card. */
+  nickname?: string;
+  /** The family's own contact details from the entry form. */
+  contactPhone?: string;
+  contactEmail?: string;
+  /** The chess-results player staff picked for this entry when the names did
+      not match (lib/participant-results.ts). Unset means match by name. */
+  resultsSectionId?: number;
+  resultsPlayerName?: string;
 };
+
+/** A place given up because its fee was not paid by the closing date. */
+export type ReleasedEntry = { id: string; name: string; category: string; releasedAt: string };
 
 export type Tournament = {
   id: string;
   name: string;
-  status: 'Ongoing' | 'Completed';
+  status: 'Upcoming' | 'Ongoing' | 'Completed';
   hasStarted?: boolean;
+  /** Set by hand rather than by the dates. */
+  statusLocked?: boolean;
   date: string;
   endDate?: string;
   venue: string;
@@ -196,6 +240,9 @@ export type Tournament = {
   published: boolean;
   /** Whether anyone with the link may register, not just the front desk. */
   publicRegistration: boolean;
+  /** The organiser uploaded a banner. Without one the pages draw their own
+      from the name, date and venue. */
+  hasBanner?: boolean;
   /** The chess-results.com event this tournament is linked to, when it is —
       the id in tnr{N}.aspx. Rows carry it so a list can offer the jump
       straight to where results are actually updated. */
@@ -206,6 +253,10 @@ export type Tournament = {
       price, both or neither. Absent means the old rule: the discount alone. */
   studentGetsDiscount?: boolean;
   studentGetsEarlyBird?: boolean;
+  /** Days before the start to ask entrants whether they are coming; 0 is off. */
+  arrivalReminderDays?: number;
+  /** The tournament's first day, YYYY-MM-DD. */
+  startISO?: string;
   /** What a JCA student is charged today, as the server prices it. */
   studentFeeNow?: number;
   /** The entry fee as a number, for arithmetic. `entryFeeMember` is the same
@@ -232,4 +283,6 @@ export type Tournament = {
   rounds: number;
   revenue: string;
   participants: Participant[];
+  /** Unpaid places the closing-date rule gave back; staff may restore one. */
+  released?: ReleasedEntry[];
 };

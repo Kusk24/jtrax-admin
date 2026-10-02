@@ -1,17 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { api, ApiError } from "@/lib/api";
-import { generateTempPassword } from "@/lib/credentials";
+import { generateHiddenPassword, generateReadablePassword } from "@/lib/credentials";
+import { classesJoined, creditsSinceTopUp } from "@/lib/enrolment-stats";
+import { InviteOutcomeNote, inviteOutcome, type InviteOutcome } from "../InviteButton";
+import type { StudentLogin } from "@/lib/invite";
 import { type Student } from "@/lib/data";
 import { useData } from "@/components/DataProvider";
-import { fmtCredits, fmtDate, fmtTHB, isActiveEnrolment, liveClasses, practiceStrip, toDateInput } from "@/lib/live";
+import { enrolmentStatus, isRevenue, fmtCredits, fmtDate, fmtSessionTime, fmtTHB, isActiveEnrolment, liveClasses, toDateInput, todayISO } from "@/lib/live";
 import { creditsForValue, planTransfer, ratePerCredit, roundCredits, valueOfLots, type CreditRate } from "@/lib/credit-transfer";
 import { opensCreate } from "@/lib/quick-actions";
-import { createStudentAccount } from "@/lib/student-login-id";
-import { classFilterOptions, classNamesOfStudent, isInClass } from "@/lib/student-classes";
+import { createStudentAccount, isTakenIdError } from "@/lib/student-login-id";
+import { classFilterOptions, classNamesOfStudent, creditsByClass, isInClass } from "@/lib/student-classes";
 import { draftFromScan, type ScanResult } from "@/lib/scan-to-draft";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
@@ -50,13 +53,22 @@ import {
 import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
 import { BackLink, DangerPanel, DeleteButton, DetailHeader, EditButton } from "../detail";
 import { ResetPasswordButton } from "../ResetPassword";
+import { EnrolmentModal, type EnrolmentEdits } from "../students/EnrolmentModal";
+import { PracticeTab, useStreak } from "../students/PracticeTab";
+import {
+  EnrolmentFilterToggle,
+  EnrolmentList,
+  EnrolmentViewToggle,
+  type EnrolmentFilter,
+} from "../students/EnrolmentList";
+import { byLatestEvent, creditMoves, enrolmentEvents } from "@/lib/course-history";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 import { useErrorToast } from "../ErrorToast";
 
 const TEMPLATE = equalTemplate(5, 90);
 const VIEWS = ["list", "card"] as const;
-const ATTENDANCE_TEMPLATE = equalTemplate(2, 120);
+const ATTENDANCE_TEMPLATE = "minmax(90px, 0.8fr) minmax(130px, 1.1fr) minmax(140px, 1.4fr) minmax(90px, 0.7fr)";
 const CLASS_OPTIONS = ["Group Class", "Private Class", "Master Class", "Weekend Class"];
 
 /* One branch today, and the academy expects more. It is asked at registration
@@ -139,12 +151,69 @@ function expiryOf(transactions: Record<string, unknown>[], enrolmentId: string):
   );
 }
 
-/* Credit reads as a warning before it reads as a number, so the chip is
-   coloured by how close to empty the balance is — shared by both views. */
-function creditChipFor(credit: number): { color: string; bg: string } {
-  if (credit <= 0) return { color: COLORS.danger, bg: COLORS.dangerBg };
-  if (credit <= 3) return { color: COLORS.warning, bg: COLORS.warningBg };
-  return { color: COLORS.success, bg: COLORS.successBg };
+type CourseCredit = { label: string; balance: number; loose: boolean };
+
+/* The credit figure in plain text colour: the Status column already says when
+   credit is low, so the number does not need to say it again. */
+const creditFigure: CSSProperties = { fontFamily: FONT, fontWeight: 700, color: COLORS.text };
+
+/* The roster's Class and Credit cells: one line per course, the same height
+   in both, so a course and its balance sit side by side. */
+const COURSE_LINES: CSSProperties = { display: "flex", flexDirection: "column", gap: 6, minWidth: 0 };
+const COURSE_LINE: CSSProperties = { display: "flex", alignItems: "center", minHeight: 26, minWidth: 0 };
+
+/**
+ * A student card's body: every course they are in, one to a line, with its
+ * balance at the end of the line. Names are cut short rather than wrapped
+ * into each other, and each line is its own row so two courses never share
+ * one.
+ */
+function CourseCreditList({
+  credits,
+  creditsWord,
+}: {
+  credits: CourseCredit[];
+  creditsWord: string;
+}) {
+  return (
+    <ul
+      style={{
+        listStyle: "none",
+        margin: 0,
+        padding: "10px 0 0",
+        borderTop: `1px solid ${COLORS.border}`,
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+      }}
+    >
+      {credits.map((c, i) => (
+        <li
+          key={`${c.label}-${i}`}
+          style={{ display: "flex", alignItems: "center", gap: 10, fontFamily: FONT, fontSize: 13.5, minWidth: 0 }}
+        >
+          <span
+            style={{
+              display: "flex",
+              alignItems: "center",
+              flex: 1,
+              minWidth: 0,
+              color: c.loose ? COLORS.textSecondary : COLORS.text,
+            }}
+          >
+            {!c.loose && <ClassDot color={classDotColor(c.label)} />}
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.label}</span>
+          </span>
+          {c.label !== "—" && (
+            <span style={{ flexShrink: 0, color: COLORS.textSecondary, fontSize: 12.5 }}>
+              <span style={{ ...creditFigure, fontSize: 14 }}>{fmtCredits(c.balance)}</span>{" "}
+              {creditsWord}
+            </span>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 type View =
@@ -158,7 +227,7 @@ type View =
 /* ---------------------------------------------------------------- detail --- */
 
 const DETAIL_TABS = ["Overview", "Attendance", "Credits", "Practice", "Payments"] as const;
-const CREDIT_TEMPLATE = equalTemplate(5, 90);
+const CREDIT_TEMPLATE = "minmax(100px, 0.9fr) minmax(150px, 1.4fr) minmax(120px, 1fr) minmax(80px, 0.7fr) minmax(100px, 0.9fr) minmax(80px, 0.7fr)";
 const CREDIT_TYPES = ["purchase", "consumption", "manual_adjustment"];
 type DetailTab = (typeof DETAIL_TABS)[number];
 
@@ -191,7 +260,6 @@ function StudentDetail({
 }) {
   const t = useTranslations("students");
   const tCommon = useTranslations("common");
-  const tStatus = useTranslations("status");
   const [tab, setTab] = useState<DetailTab>("Overview");
   const [editing, setEditing] = useState(startEditing);
   const [draft, setDraft] = useState<Student>(student);
@@ -209,7 +277,7 @@ function StudentDetail({
   function setField<K extends keyof Student>(key: K, value: Student[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
   }
-  const { raw, batch, create, update, remove } = useData();
+  const { raw, creditRules, batch, create, update, remove } = useData();
 
   /**
    * Writes the link between this child and their guardian — which parent, and
@@ -243,23 +311,53 @@ function StudentDetail({
     }
   }
 
-  /* Real attendance: the sessions this student was checked in to, newest first. */
+  /* Real attendance: the sessions this student was checked in to, newest first,
+     each with what it actually cost — read from the ledger rather than worked
+     out from the length, since leaving early now costs less than the class. */
   const attendance = useMemo(() => {
     return raw.attendance
       .filter((a) => String(a["student_id"]) === student.id)
       .map((a) => {
+        const id = String(a["attendance_id"]);
         const session = raw.classSessions.find((s) => String(s["session_id"]) === String(a["session_id"]));
         const cls = session
           ? raw.classes.find((c) => String(c["class_id"]) === String(session["class_id"]))
           : undefined;
+        const charges = raw.creditTransactions.filter(
+          (tx) => String(tx["attendance_id"] ?? "") === id && tx["transaction_type"] === "consumption",
+        );
         return {
-          id: String(a["attendance_id"]),
+          id,
           date: session ? String(session["session_date"] ?? "") : "",
+          start: session ? String(session["start_time"] ?? "") : "",
+          end: session ? String(session["end_time"] ?? "") : "",
+          classId: cls ? String(cls["class_id"]) : "",
           className: cls ? String(cls["name"] ?? "") : "—",
+          /* Negative, as the ledger writes it; null when nothing was charged
+             (a walk-in with no enrolment, or an unreadable timetable). */
+          creditsUsed: charges.length ? charges.reduce((sum, tx) => sum + Number(tx["amount"] ?? 0), 0) : null,
         };
       })
-      .sort((a, b) => b.date.localeCompare(a.date));
-  }, [raw.attendance, raw.classSessions, raw.classes, student.id]);
+      .sort((a, b) => b.date.localeCompare(a.date) || b.start.localeCompare(a.start));
+  }, [raw.attendance, raw.classSessions, raw.classes, raw.creditTransactions, student.id]);
+
+  const [attCourse, setAttCourse] = useState("");
+  const [attFrom, setAttFrom] = useState("");
+  const [attTo, setAttTo] = useState("");
+  const attendanceCourses = useMemo(
+    () =>
+      [...new Map(attendance.filter((r) => r.classId).map((r) => [r.classId, r.className])).entries()]
+        .sort((a, b) => a[1].localeCompare(b[1]))
+        .map(([value, label]) => ({ value, label })),
+    [attendance],
+  );
+  const shownAttendance = attendance.filter(
+    (r) =>
+      (!attCourse || r.classId === attCourse) &&
+      (!attFrom || r.date >= attFrom) &&
+      (!attTo || r.date <= attTo),
+  );
+  const creditsConsumed = -shownAttendance.reduce((sum, r) => sum + (r.creditsUsed ?? 0), 0);
 
   /* Credit ledger for this student's enrolments — what actually adds up to the
      balance shown on the header chip. */
@@ -280,21 +378,32 @@ function StudentDetail({
           enrolmentIds.includes(String(tx["enrollment_id"])) ||
           (!String(tx["enrollment_id"] ?? "") && String(tx["student_id"] ?? "") === student.id),
       )
-      .map((tx) => ({
+      .map((tx) => {
+        /* Which course the hours are for: the entry's own class (stamped
+           since 0026, and kept when an enrolment is deleted), else its
+           enrolment's. */
+        const enrolment = raw.enrollments.find((e) => String(e["enrollment_id"]) === String(tx["enrollment_id"] ?? ""));
+        const classId = String(tx["class_id"] ?? "") || String(enrolment?.["class_id"] ?? "");
+        const cls = raw.classes.find((c) => String(c["class_id"]) === classId);
+        return {
         id: String(tx["credit_transaction_id"]),
-        enrollmentId: String(tx["enrollment_id"]),
+        enrollmentId: String(tx["enrollment_id"] ?? ""),
+        className: cls ? String(cls["name"] ?? "") : "",
         type: String(tx["transaction_type"] ?? ""),
         amount: Number(tx["amount"] ?? 0),
         date: String(tx["transaction_date"] ?? ""),
         expiry: String(tx["expiry_date"] ?? ""),
         notes: String(tx["notes"] ?? ""),
-      }))
+        };
+      })
       .sort((a, b) => b.date.localeCompare(a.date));
-  }, [raw.creditTransactions, enrolmentIds, student.id]);
+  }, [raw.creditTransactions, raw.enrollments, raw.classes, enrolmentIds, student.id]);
 
-  const enrolments = useMemo(
+  /* Every enrolment this child has had, deleted ones included; `enrolments`
+     below is the live list everything else on the page works from. */
+  const allEnrolments = useMemo(
     () =>
-      raw.enrollments
+      [...raw.enrollments, ...(raw.deletedEnrollments ?? [])]
         .filter((e) => String(e["student_id"]) === student.id)
         .map((e) => {
           const cls = raw.classes.find((c) => String(c["class_id"]) === String(e["class_id"]));
@@ -312,6 +421,10 @@ function StudentDetail({
             enrolledDate: String(e["enrolled_date"] ?? ""),
             status: String(e["status"] ?? ""),
             movedFrom: fromCls ? String(fromCls["name"] ?? "") : "",
+            movedFromClassId: fromId,
+            endedDate: String(e["ended_date"] ?? ""),
+            deletedDate: String(e["deleted_date"] ?? ""),
+            notes: String(e["notes"] ?? ""),
             /* The latest expiry among this enrolment's own credit
                transactions — the same reading `expiryOf` already gives the
                Change Course modal's prefill, so the card and the form can
@@ -325,8 +438,9 @@ function StudentDetail({
        decoration — without it the card's expiry date would go stale the
        moment a purchase or transfer changed it, until something unrelated
        happened to invalidate the memo. */
-    [raw.enrollments, raw.classes, raw.creditTransactions, student.id],
+    [raw.enrollments, raw.deletedEnrollments, raw.classes, raw.creditTransactions, student.id],
   );
+  const enrolments = useMemo(() => allEnrolments.filter((e) => !e.deletedDate), [allEnrolments]);
 
   /* Four things happen to an enrolment, and each has its own button.
      Deliberately none of them edits the row in place: retyping the course on
@@ -338,6 +452,35 @@ function StudentDetail({
        · Withdraw — leaving, and staying left
        · Delete   — undoing a row that should never have existed */
   const [changing, setChanging] = useState<(typeof enrolments)[number] | null>(null);
+  /* The enrolment whose modal is open — by id, so the modal shows the saved
+     values the moment a save lands rather than a copy taken on opening. */
+  const [viewingEnrolment, setViewingEnrolment] = useState<string | null>(null);
+  /* Active by default; All is every course the child has had, as a timeline. */
+  const [enrolmentFilter, setEnrolmentFilter] = useState<EnrolmentFilter>("active");
+
+  /* The dates and note of one enrolment. Expiry is written on this course's
+     purchases — every one of them, so the course expires on exactly that
+     date and no other course is touched. */
+  async function saveEnrolment(id: string, before: { enrolledDate: string; expires: string; notes: string }, edits: EnrolmentEdits) {
+    await batch(async () => {
+      const enrolmentPatch: Record<string, string> = {};
+      if (edits.enrolledDate !== before.enrolledDate.slice(0, 10)) enrolmentPatch.enrolled_date = edits.enrolledDate;
+      if (edits.notes !== before.notes) enrolmentPatch.notes = edits.notes;
+      if (Object.keys(enrolmentPatch).length > 0) await update("enrollments", id, enrolmentPatch);
+      if (edits.expires !== before.expires.slice(0, 10)) {
+        for (const lot of purchasesOf(id)) {
+          await update("credit-transactions", String(lot["credit_transaction_id"]), { expiry_date: edits.expires });
+        }
+      }
+    });
+  }
+
+  /** The entries that brought hours into an enrolment — where its expiry lives. */
+  function purchasesOf(enrolmentId: string) {
+    return raw.creditTransactions.filter(
+      (tx) => String(tx["enrollment_id"]) === enrolmentId && Number(tx["amount"] ?? 0) > 0,
+    );
+  }
   const [changeTo, setChangeTo] = useState("");
   /* Whether the balance follows them. Ticked by default: an hour paid for is
      an hour owed whichever course it is taken in, and leaving it behind on a
@@ -545,7 +688,8 @@ function StudentDetail({
    * enrolment's sessions, and the desk cannot check them into it.
    */
   async function leaveClass(id: string) {
-    if (enrolmentHasHistory(id)) await update("enrollments", id, { status: "Withdrawn" });
+    /* The day is kept so the course history can say when they left. */
+    if (enrolmentHasHistory(id)) await update("enrollments", id, { status: "Withdrawn", ended_date: todayISO() });
     else await remove("enrollments", id);
   }
 
@@ -682,7 +826,14 @@ function StudentDetail({
           ...(enrolment?.classId ? { class_id: enrolment.classId } : {}),
         });
       }
-      await remove("enrollments", id);
+      /* Kept, not erased: the course list records everything done to it.
+         Withdrawn so nothing offers it, and dated so the history can say when. */
+      const today = todayISO();
+      await update("enrollments", id, {
+        status: "Withdrawn",
+        ...(enrolment && !enrolment.endedDate ? { ended_date: today } : {}),
+        deleted_date: today,
+      });
     });
   }
 
@@ -695,8 +846,9 @@ function StudentDetail({
    * chosen package's class), so there is nothing left for a free-standing
    * enrolment form to do on its own.
    */
-  function openAddEnrolment() {
-    router.push(`/payment?student=${encodeURIComponent(student.id)}`);
+  function openAddEnrolment(classId?: string) {
+    const course = classId ? `&class=${encodeURIComponent(classId)}` : "";
+    router.push(`/payment?student=${encodeURIComponent(student.id)}${course}`);
   }
 
   const [creditModal, setCreditModal] = useState<(typeof creditRows)[number] | "new" | null>(null);
@@ -753,7 +905,9 @@ function StudentDetail({
     setCreditValues(
       row === "new"
         ? {
-            enrollment_id: enrolmentIds[0] ?? "",
+            /* A course they are in, rather than whichever came first. */
+            enrollment_id:
+              enrolments.find((e) => isActiveEnrolment({ status: e.status }))?.id ?? enrolmentIds[0] ?? "",
             transaction_type: "manual_adjustment",
             amount: "",
             transaction_date: today,
@@ -771,7 +925,7 @@ function StudentDetail({
     );
   }
 
-  const practice = useMemo(() => practiceStrip(raw, student.id), [raw, student.id]);
+  const streak = useStreak(student.id);
 
   /* This student's real payments, newest first — the tab used to show a
      generated set that had nothing to do with what the office recorded. */
@@ -788,8 +942,16 @@ function StudentDetail({
           return {
             id: String(p["payment_id"]),
             className: cls ? String(cls["name"] ?? "") : "—",
-            credits: pkg ? `+${Number(pkg["credit_amount"] ?? 0)}` : "—",
+            credits:
+              Number(p["credit_amount"] ?? 0) > 0
+                ? `+${Number(p["credit_amount"])}`
+                : pkg
+                  ? `+${Number(pkg["credit_amount"] ?? 0)}`
+                  : "—",
             amount: fmtTHB(Number(p["final_amount"] ?? 0)),
+            /* Only money actually taken counts towards the total — a pending
+               link or a refund is not spending. */
+            spent: isRevenue(p) ? Number(p["final_amount"] ?? 0) : 0,
             date: String(p["payment_date"] ?? ""),
             method: String(p["payment_method"] ?? ""),
           };
@@ -815,11 +977,6 @@ function StudentDetail({
   /* `toStudents` writes "—" when there is no link at all. */
   const hasGuardian = student.parentName !== "" && student.parentName !== "—";
 
-  const chip = statusChipColors(student.status);
-  /* Every attendance row is a session the student was checked in to, so the
-     count of them is the count present. */
-  const presentCount = attendance.length;
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <BackLink label={t("backToStudents")} onClick={onBack} />
@@ -830,13 +987,16 @@ function StudentDetail({
         /* The STU-xxxx id is an internal key — the desk identifies students by
            name, so it isn't shown. */
         subtitle={`${t("yrs", { age: student.age })} · ${student.level}`}
+        /* Who the child is, nothing course-specific. Credit and its status
+           belong to each enrolment and are listed there — one course's
+           figures up here read as the whole child's. The streak is theirs:
+           days in a row they solved the daily challenge. */
         badges={
-          <>
-            <Badge color={chip.color} bg={chip.bg}>{tStatus(student.status)}</Badge>
-            <Badge color={COLORS.blue} bg={COLORS.light}>
-              {tCommon("creditsCount", { count: student.credit })}
+          streak > 0 ? (
+            <Badge color={COLORS.warning} bg={COLORS.warningBg} style={{ gap: 5 }}>
+              <Icon name="flame" size={13} /> {t("dayStreak", { days: streak })}
             </Badge>
-          </>
+          ) : undefined
         }
         actions={
           !editing && (
@@ -1136,7 +1296,8 @@ function StudentDetail({
       )}
 
       {tab === "Overview" && !editing && (
-        <div className="jt-duo">
+        /* Even: the Parent / Guardian card is as tall as the student's. */
+        <div className="jt-duo jt-duo-even">
           <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <SectionTitle>{t("studentSection")}</SectionTitle>
             <InfoGrid
@@ -1301,7 +1462,24 @@ function StudentDetail({
         <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
             <SectionTitle>{t("enrolments")}</SectionTitle>
-            <AddButton label={t("addEnrolment")} onClick={openAddEnrolment} />
+            <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {allEnrolments.length > 0 && (
+                <EnrolmentFilterToggle
+                  value={enrolmentFilter}
+                  onChange={setEnrolmentFilter}
+                  counts={{
+                    active: enrolments.filter((e) => isActiveEnrolment({ status: e.status }) || balanceOf(e.id) !== 0).length,
+                    all: allEnrolments.length,
+                  }}
+                />
+              )}
+              <EnrolmentViewToggle />
+              {/* One way in for money: buying a package for a new course
+                  enrols the child, for a course they are in tops it up —
+                  the Payment page decides which. Free adjustments stay on the
+                  Credits tab. */}
+              <AddButton label={t("addCredit")} onClick={() => openAddEnrolment()} />
+            </span>
           </div>
           {/* Hours the child holds and has not spent anywhere — what is left
               when the enrolment that recorded them is deleted. They used to
@@ -1349,132 +1527,105 @@ function StudentDetail({
           {/* A child with nothing but loose credits has no enrolments to list,
               and saying so under a balance they can still spend would read as
               a contradiction. */}
-          {enrolments.length === 0 ? (
+          {allEnrolments.length === 0 ? (
             <p style={{ margin: 0, fontFamily: FONT, fontSize: 14, color: COLORS.textSecondary }}>
               {looseBalance > 0 ? t("noEnrolmentsYetCredits") : t("noEnrolments")}
             </p>
           ) : (
-            <div style={{ display: "grid", gap: 10 }}>
-              {enrolments.map((e) => {
-                const active = isActiveEnrolment({ status: e.status });
-                const balance = balanceOf(e.id);
-                const nowhereToGo = changeTargets(e).length === 0;
-                return (
-                <div
-                  key={e.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    flexWrap: "wrap",
-                    padding: "12px 14px",
-                    borderRadius: 10,
-                    border: `1px solid ${COLORS.border}`,
-                    /* A course they have left is history, not a live
-                       enrolment. Dimming the row says so at a glance, which
-                       the status chip alone stopped doing once a child had
-                       three of them. */
-                    background: active ? COLORS.surface : COLORS.bg,
-                  }}
-                >
-                  <ClassDot color={classDotColor(e.className)} />
-
-                  <span style={{ flex: "1 1 220px", minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
-                    <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                      <span style={{ fontFamily: FONT, fontSize: 14.5, fontWeight: 600, color: COLORS.text }}>
-                        {e.className}
-                      </span>
-                      <Badge
-                        color={active ? COLORS.success : COLORS.textSecondary}
-                        bg={active ? COLORS.successBg : COLORS.neutralBg}
-                      >
-                        {tStatus(e.status)}
-                      </Badge>
-                      {/* Where the hours actually are. A left course still
-                          holding a balance is the one row on this list that
-                          needs a decision, and it used to take opening the
-                          Credits tab to find that out. */}
-                      {balance > 0 && (
-                        <Badge color={COLORS.blue} bg={COLORS.light}>
-                          {tCommon("creditsCount", { count: balance })}
-                        </Badge>
-                      )}
-                    </span>
-                    <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-                      {/* Both dates the office actually asks about at the
-                          desk — when a family joined, and how long the
-                          credits behind this enrolment are still good for.
-                          The same expiry `expiryOf` already prefills into
-                          Change Course, so the card and that form can never
-                          disagree. */}
-                      {[
-                        `${t("enrolledDate")} ${fmtDate(e.enrolledDate)}`,
-                        e.expires ? `${t("expires")} ${fmtDate(e.expires)}` : t("neverExpires"),
-                        e.movedFrom ? t("movedFromCourse", { className: e.movedFrom }) : "",
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </span>
-                  </span>
-
-                  {/* Both actions in the same place on every row, present or
-                      disabled rather than appearing and vanishing — the office
-                      reaches for the same spot each time. */}
-                  <span style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                    {/* Only out of a course they are in: there is no moving
-                        out of one they already left. */}
-                    {active && (
-                      <button
-                        type="button"
-                        className="jt-btn-ghost"
-                        aria-label={t("changeCourseFrom", { className: e.className })}
-                        disabled={nowhereToGo}
-                        title={nowhereToGo ? t("changeCourseNowhere") : undefined}
-                        style={{
-                          ...secondaryButtonStyle,
-                          padding: "6px 12px",
-                          fontSize: 12.5,
-                          opacity: nowhereToGo ? 0.5 : 1,
-                          cursor: nowhereToGo ? "not-allowed" : "pointer",
-                        }}
-                        onClick={() => {
-                          setChangeTo(changeTargets(e)[0]?.id ?? "");
-                          setChangeCarry(balance > 0);
-                          setMoveAmount(null);
-                          setMoveExpiry(expiryOf(raw.creditTransactions, e.id));
-                          setChanging(e);
-                        }}
-                      >
-                        <Icon name="refund" size={13} /> {t("changeCourse")}
-                      </button>
-                    )}
-                    {/* On every row. It used to be offered only where nothing
-                        hung off the enrolment, which hid it on exactly the
-                        rows this list needs tidying of — the left-behind ones,
-                        every one of which carries the ledger entry that moved
-                        its credits out. */}
-                    <button
-                      type="button"
-                      className="jt-btn-ghost"
-                      aria-label={t("deleteEnrolmentFrom", { className: e.className })}
-                      style={{
-                        ...secondaryButtonStyle,
-                        padding: "6px 12px",
-                        fontSize: 12.5,
-                        color: COLORS.danger,
-                      }}
-                      onClick={() => setDeletingEnrolment(e)}
-                    >
-                      <Icon name="trash" size={13} color={COLORS.danger} /> {tCommon("delete")}
-                    </button>
-                  </span>
-                </div>
-                );
+            <EnrolmentList
+              filter={enrolmentFilter}
+              events={enrolmentEvents(allEnrolments)}
+              moves={creditMoves(
+                raw.creditTransactions.filter(
+                  (tx) =>
+                    String(tx["student_id"] ?? "") === student.id ||
+                    allEnrolments.some((e) => e.id === String(tx["enrollment_id"] ?? "")),
+                ),
+                allEnrolments,
+                (classId) => String(raw.classes.find((c) => String(c["class_id"]) === classId)?.["name"] ?? ""),
+              )}
+              items={(enrolmentFilter === "all" ? byLatestEvent(allEnrolments, enrolmentEvents(allEnrolments)) : enrolments).map((e) => {
+                const active = isActiveEnrolment({ status: e.status }) && !e.deletedDate;
+                return {
+                  id: e.id,
+                  className: e.className,
+                  status: e.deletedDate ? "Deleted" : e.status,
+                  active,
+                  deleted: !!e.deletedDate,
+                  balance: balanceOf(e.id),
+                  creditsOf: creditsSinceTopUp(
+                    raw.creditTransactions.filter((tx) => String(tx["enrollment_id"]) === e.id),
+                  ),
+                  classes: classesJoined(raw, student.id, e.classId),
+                  /* This course's own condition — never the student's. */
+                  creditStatus: active ? enrolmentStatus(raw, e.id, creditRules).status : null,
+                  enrolledDate: e.enrolledDate,
+                  expires: e.expires,
+                  expired: e.expires !== "" && e.expires < todayISO(),
+                };
               })}
-            </div>
+              onOpen={setViewingEnrolment}
+              actionsFor={(item) => {
+                /* A deleted course has nothing left to do to it. */
+                const e = enrolments.find((x) => x.id === item.id);
+                if (!e) return [];
+                /* Expired credit blocks Change Course, as it blocks check-in. */
+                const expired = e.expires !== "" && e.expires < todayISO();
+                const nowhereToGo = changeTargets(e).length === 0;
+                return [
+                  /* Only out of a course they are in. */
+                  ...(item.active
+                    ? [
+                        {
+                          label: t("topUp"),
+                          ariaLabel: t("topUpCourse", { className: e.className }),
+                          icon: "plus" as const,
+                          onSelect: () => openAddEnrolment(e.classId),
+                        },
+                        {
+                          label: t("changeCourse"),
+                          ariaLabel: t("changeCourseFrom", { className: e.className }),
+                          icon: "refund" as const,
+                          disabledReason: expired ? t("changeCourseExpired") : nowhereToGo ? t("changeCourseNowhere") : null,
+                          onSelect: () => {
+                            setChangeTo(changeTargets(e)[0]?.id ?? "");
+                            setChangeCarry(item.balance > 0);
+                            setMoveAmount(null);
+                            setMoveExpiry(expiryOf(raw.creditTransactions, e.id));
+                            setChanging(e);
+                          },
+                        },
+                      ]
+                    : []),
+                  {
+                    label: tCommon("delete"),
+                    ariaLabel: t("deleteEnrolmentFrom", { className: e.className }),
+                    icon: "trash" as const,
+                    danger: true,
+                    onSelect: () => setDeletingEnrolment(e),
+                  },
+                ];
+              }}
+            />
           )}
         </Card>
       )}
+
+      {viewingEnrolment && (() => {
+        const e = allEnrolments.find((x) => x.id === viewingEnrolment);
+        if (!e) return null;
+        const active = isActiveEnrolment({ status: e.status }) && !e.deletedDate;
+        return (
+          <EnrolmentModal
+            enrolment={e.deletedDate ? { ...e, status: "Deleted" } : e}
+            balance={balanceOf(e.id)}
+            creditStatus={active ? enrolmentStatus(raw, e.id, creditRules).status : null}
+            canSetExpiry={purchasesOf(e.id).length > 0}
+            onClose={() => setViewingEnrolment(null)}
+            onSave={(edits) => saveEnrolment(e.id, e, edits)}
+          />
+        );
+      })()}
 
       {deletingEnrolment && (() => {
         const { credits, payments } = enrolmentDependants(deletingEnrolment.id);
@@ -1807,18 +1958,30 @@ function StudentDetail({
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: 16, flexWrap: "wrap" }}>
             <SectionTitle>{t("creditBalance", { count: student.credit })}</SectionTitle>
             <span style={{ marginLeft: "auto" }}>
-              <AddButton label={t("addCredit")} onClick={() => openCreditModal("new")} />
+              {/* No payment behind these: corrections, make-ups, gifts. Buying
+                  credits is Add Credits on the Overview, via Payment. */}
+              <AddButton label={t("adjustCredits")} onClick={() => openCreditModal("new")} />
             </span>
           </div>
           <Table
-            columns={[tCommon("date"), t("creditType"), tCommon("amount"), t("expires"), tCommon("action")]}
+            columns={[tCommon("date"), tCommon("class"), t("creditType"), tCommon("amount"), t("expires"), tCommon("action")]}
             template={CREDIT_TEMPLATE}
-            minWidth={720}
+            minWidth={820}
           >
             {creditRows.length === 0 && <EmptyRow>{t("noCredits")}</EmptyRow>}
             {creditRows.map((row) => (
               <TableRow key={row.id} template={CREDIT_TEMPLATE}>
                 <span style={{ color: COLORS.textSecondary }}>{fmtDate(row.date)}</span>
+                <span style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    {row.className && <ClassDot color={classDotColor(row.className)} />}
+                    {row.className || "—"}
+                  </span>
+                  {/* Hours held outside any course — left from a deleted one. */}
+                  {!row.enrollmentId && (
+                    <span style={{ fontSize: 12, color: COLORS.textSecondary }}>{t("notInACourse")}</span>
+                  )}
+                </span>
                 <span>{t(`creditType_${row.type}`)}</span>
                 <span style={{ fontWeight: 700, color: row.amount < 0 ? COLORS.danger : COLORS.success }}>
                   {row.amount > 0 ? `+${row.amount}` : row.amount}
@@ -1837,23 +2000,75 @@ function StudentDetail({
 
       {tab === "Attendance" && (
         <Card style={{ padding: 0, overflow: "hidden" }}>
-          <div style={{ padding: "16px 16px 0" }}>
-            <SectionTitle>
-              {t("attendanceSummary", { present: presentCount, total: attendance.length })}
-            </SectionTitle>
+          <div style={{ padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+              <SectionTitle>{t("attendanceTitle")}</SectionTitle>
+              <span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {/* Follows the filters: the classes in the list below. */}
+                <Badge color={COLORS.blue} bg={COLORS.light}>
+                  {t("classesJoined", { count: shownAttendance.length })}
+                </Badge>
+                {/* Follows the filters too: what the classes listed cost. */}
+                <Badge color={COLORS.danger} bg={COLORS.dangerBg}>
+                  {t("creditsConsumed", { credits: fmtCredits(creditsConsumed) })}
+                </Badge>
+              </span>
+            </div>
+            {attendance.length > 0 && (
+              <FilterBar>
+                <SelectFilter
+                  value={attCourse}
+                  onChange={setAttCourse}
+                  options={[{ value: "", label: tCommon("allClasses") }, ...attendanceCourses]}
+                  label={t("filterAttendanceByCourse")}
+                />
+                <input
+                  type="date"
+                  value={attFrom}
+                  max={attTo || undefined}
+                  onChange={(e) => setAttFrom(e.target.value)}
+                  aria-label={tCommon("fromDate")}
+                  style={{ ...fieldStyle, width: "auto", borderRadius: 999, padding: "9px 14px" }}
+                />
+                <input
+                  type="date"
+                  value={attTo}
+                  min={attFrom || undefined}
+                  onChange={(e) => setAttTo(e.target.value)}
+                  aria-label={tCommon("toDate")}
+                  style={{ ...fieldStyle, width: "auto", borderRadius: 999, padding: "9px 14px" }}
+                />
+              </FilterBar>
+            )}
           </div>
           <div style={{ marginTop: 12 }}>
             {/* No status column: every row in this list is an attended
                 session, so a column reading "Present" all the way down told
                 the reader nothing. */}
-            <Table columns={[tCommon("date"), tCommon("class")]} template={ATTENDANCE_TEMPLATE} minWidth={420}>
+            <Table
+              columns={[
+                tCommon("date"),
+                t("attendanceTime"),
+                tCommon("class"),
+                <span key="used" style={{ display: "block", textAlign: "right" }}>{t("creditsUsed")}</span>,
+              ]}
+              template={ATTENDANCE_TEMPLATE}
+              minWidth={520}
+            >
               {attendance.length === 0 && <EmptyRow>{t("noAttendance")}</EmptyRow>}
-              {attendance.map((row) => (
+              {attendance.length > 0 && shownAttendance.length === 0 && (
+                <EmptyRow>{t("noAttendanceMatches")}</EmptyRow>
+              )}
+              {shownAttendance.map((row) => (
                 <TableRow key={row.id} template={ATTENDANCE_TEMPLATE}>
                   <span style={{ color: COLORS.textSecondary }}>{fmtDate(row.date)}</span>
+                  <span style={{ color: COLORS.textSecondary }}>{fmtSessionTime(row.start, row.end)}</span>
                   <span style={{ display: "flex", alignItems: "center" }}>
                     <ClassDot color={classDotColor(row.className)} />
                     {row.className}
+                  </span>
+                  <span style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>
+                    {row.creditsUsed === null ? "—" : `−${fmtCredits(-row.creditsUsed)}`}
                   </span>
                 </TableRow>
               ))}
@@ -1862,31 +2077,16 @@ function StudentDetail({
         </Card>
       )}
 
-      {tab === "Practice" && (
-        <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <SectionTitle>{t("practiceSummary", { days: practice.streak })}</SectionTitle>
-          <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
-            {t("practiceHint")}
-          </p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, maxWidth: 320 }}>
-            {practice.days.map((on, i) => (
-              <span
-                key={i}
-                title={on ? t("practised") : t("noPractice")}
-                style={{
-                  aspectRatio: "1",
-                  borderRadius: 5,
-                  background: on ? COLORS.blue : COLORS.neutralBg,
-                  opacity: on ? 0.85 : 1,
-                }}
-              />
-            ))}
-          </div>
-        </Card>
-      )}
+      {tab === "Practice" && <PracticeTab studentId={student.id} />}
 
       {tab === "Payments" && (
         <Card style={{ padding: 0, overflow: "hidden" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", padding: 16 }}>
+            <SectionTitle>{t("tabPayments")}</SectionTitle>
+            <Badge color={COLORS.blue} bg={COLORS.light}>
+              {t("totalSpent", { amount: fmtTHB(payments.reduce((sum, p) => sum + p.spent, 0)) })}
+            </Badge>
+          </div>
           <Table columns={[tCommon("class"), t("colCredit"), tCommon("amount"), tCommon("date"), tCommon("method")]} template={equalTemplate(5, 80)} minWidth={640}>
             {payments.length === 0 && <EmptyRow>{t("noPayments")}</EmptyRow>}
             {payments.map((p) => (
@@ -1909,6 +2109,15 @@ function StudentDetail({
 }
 
 /* ---------------------------------------------------------------- wizard --- */
+
+type EmailOwner = { parentId: string | null; name: string };
+
+/** The guardian's email already has an account; the form shows it, not a toast. */
+class GuardianEmailTaken extends Error {
+  constructor(readonly email: string) {
+    super(`${email} already has an account`);
+  }
+}
 
 type Draft = {
   name: string;
@@ -1954,6 +2163,7 @@ function AddStudentWizard({
   initialName,
   classOptions,
   parentOptions,
+  emailOwner,
   onCancel,
   onCreate,
 }: {
@@ -1966,6 +2176,8 @@ function AddStudentWizard({
   /* Every guardian already on file, so a second child joins the first one's
      parent rather than getting a duplicate account. */
   parentOptions: Array<{ id: string; name: string }>;
+  /** Who already uses a sign-in email, if anyone. */
+  emailOwner: (email: string) => EmailOwner | null;
   onCancel: () => void;
   onCreate: (draft: Draft) => Promise<void>;
 }) {
@@ -1989,6 +2201,10 @@ function AddStudentWizard({
      accepting clicks, or a second press starts the whole thing again and the
      only sign of it is "email must be unique". */
   const [saving, setSaving] = useState(false);
+  /* The server's word that the guardian's email is taken — for an account
+     this screen could not see (one made a moment ago, or out of this
+     person's view). */
+  const [takenOnServer, setTakenOnServer] = useState("");
 
   function set<K extends keyof Draft>(key: K, value: Draft[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
@@ -2030,12 +2246,20 @@ function AddStudentWizard({
      the button rather than discovering it at the server is the difference
      between a form that will not submit yet and a registration that half
      happened. */
+  /* A new guardian's email that someone already signs in with. Caught here,
+     before anything is written. */
+  const owner = draft.parentId ? null : emailOwner(draft.parentEmail);
+  const emailTaken =
+    owner !== null ||
+    (takenOnServer !== "" && takenOnServer === draft.parentEmail.trim().toLowerCase());
+
   const canSubmit =
     draft.name.trim() !== "" &&
     (draft.parentId !== "" ||
       (draft.parentName.trim() !== "" &&
         draft.parentPhone.trim() !== "" &&
-        draft.parentEmail.trim() !== ""));
+        draft.parentEmail.trim() !== "" &&
+        !emailTaken));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 820 }}>
@@ -2340,10 +2564,43 @@ function AddStudentWizard({
                 </div>
                 <div>
                   <label style={labelStyle} htmlFor="w-pmail">{t("emailRequired")}</label>
-                  <input id="w-pmail" type="email" value={draft.parentEmail} onChange={(e) => set("parentEmail", e.target.value)} style={fieldStyle} />
-                  <p style={{ margin: "5px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-                    {t("guardianEmailHelp")}
-                  </p>
+                  <input
+                    id="w-pmail"
+                    type="email"
+                    value={draft.parentEmail}
+                    onChange={(e) => set("parentEmail", e.target.value)}
+                    aria-invalid={emailTaken || undefined}
+                    aria-describedby="w-pmail-note"
+                    style={{ ...fieldStyle, borderColor: emailTaken ? COLORS.danger : undefined }}
+                  />
+                  {emailTaken ? (
+                    <div id="w-pmail-note" role="alert" style={{ margin: "6px 0 0", display: "flex", flexDirection: "column", gap: 6, fontFamily: FONT, fontSize: 12.5, color: COLORS.danger }}>
+                      <span>
+                        {owner?.parentId
+                          ? t("guardianEmailIsParent", { name: owner.name })
+                          : t("guardianEmailTaken")}
+                      </span>
+                      {/* The fix, one click away: this is the child's guardian
+                          already, so link them rather than make a second. */}
+                      {owner?.parentId && (
+                        <button
+                          type="button"
+                          className="jt-btn-ghost"
+                          onClick={() => {
+                            const parentId = owner.parentId!;
+                            setDraft((d) => ({ ...d, parentId, parentEmail: "" }));
+                          }}
+                          style={{ ...secondaryButtonStyle, alignSelf: "flex-start", padding: "5px 11px", fontSize: 12.5 }}
+                        >
+                          {t("useExistingGuardian", { name: owner.name })}
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <p id="w-pmail-note" style={{ margin: "5px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+                      {t("guardianEmailHelp")}
+                    </p>
+                  )}
                 </div>
               </div>
             )}
@@ -2366,6 +2623,11 @@ function AddStudentWizard({
                 setSaving(true);
                 try {
                   await onCreate(draft);
+                } catch (e) {
+                  /* The one refusal this form can fix itself: stay, keep
+                     everything typed, and point at the email. */
+                  if (e instanceof GuardianEmailTaken) setTakenOnServer(e.email.toLowerCase());
+                  else throw e;
                 } finally {
                   setSaving(false);
                 }
@@ -2415,7 +2677,9 @@ export function StudentsPage({
   const [createdLogins, setCreatedLogins] = useState<{
     studentId: string;
     student: { email: string; password: string };
-    parent: { email: string; password: string } | null;
+    studentName: string;
+    /* A new guardian: not a password, the invite they were emailed. */
+    parent: { email: string; outcome: InviteOutcome } | null;
   } | null>(null);
   const [search, setSearch] = useState("");
   /* One control for the student's condition. There used to be two — a raw
@@ -2431,6 +2695,17 @@ export function StudentsPage({
      the enrolments are actually keyed on. */
   const [classId, setClassId] = useState("");
   const [page, setPage] = useState(0);
+  /* Rows showing every course. A student in several courses opens on the
+     first one and a "+N more" marker, so one busy child does not stretch
+     their row to four times everyone else's. */
+  const [openCourses, setOpenCourses] = useState<Set<string>>(() => new Set());
+  const toggleCourses = (id: string) =>
+    setOpenCourses((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   /* Filter values stay "" for "all" so the label can be localised without
      changing what the filter compares against. */
@@ -2496,12 +2771,34 @@ export function StudentsPage({
     return names.length > 0 ? names : [fallback];
   }
 
+  /* Each course's own balance, not the first course's standing in for all. */
+  function creditsOf(studentId: string): CourseCredit[] {
+    const rows = creditsByClass(raw, studentId);
+    /* No course and nothing held: a dash, as the Class column always said. */
+    if (rows.length === 1 && !rows[0].className && rows[0].balance === 0) return [{ label: "—", balance: 0, loose: true }];
+    return rows.map((c) => ({ label: c.className || t("notInACourse"), balance: c.balance, loose: !c.className }));
+  }
+
   const { pageRows, totalPages, page: current } = paginate(filtered, page);
 
   const parentOptions = useMemo(
     () => raw.parents.map((p) => ({ id: String(p["parent_id"]), name: String(p["name"] ?? "") })),
     [raw.parents],
   );
+
+  /* Who already signs in with an address, so the form can say so before a
+     registration is half-written. A guardian's account comes back with their
+     parent row, so the office can link them instead. */
+  function emailOwner(email: string): EmailOwner | null {
+    const wanted = email.trim().toLowerCase();
+    if (!wanted) return null;
+    const account = raw.accounts.find((a) => String(a["email"] ?? "").trim().toLowerCase() === wanted);
+    if (!account) return null;
+    const parent = raw.parents.find((p) => String(p["user_account_id"] ?? "") === String(account["user_account_id"]));
+    return parent
+      ? { parentId: String(parent["parent_id"]), name: String(parent["name"] ?? "") }
+      : { parentId: null, name: String(account["display_name"] ?? "") };
+  }
 
   /* Falls back to the design's list only while the classes are still loading,
      so the picker is never empty. */
@@ -2526,14 +2823,42 @@ export function StudentsPage({
    */
   async function registerStudent(draft: Draft) {
     const today = new Date().toISOString().slice(0, 10);
+    /* A new guardian's account, emailed an invite once everything is saved. */
+    let parentAccountId = "";
+    let parentEmail = "";
+    /* The child's login, emailed to a new guardian inside their invite. */
+    let childLogin: StudentLogin | null = null;
     try {
       await batch(async () => {
+        /* The guardian's account first. It is the step most likely to be
+           refused — their email already has an account — and refused first,
+           nothing else has been written: no student left without a guardian,
+           no login nobody will use. */
+        let guardianAccount: Record<string, unknown> | null = null;
+        if (!draft.parentId && draft.parentName.trim()) {
+          const loginEmail = draft.parentEmail.trim();
+          try {
+            guardianAccount = await create("user-accounts", {
+              email: loginEmail,
+              /* Never shown: the parent chooses their own from the invite. */
+              password: generateHiddenPassword(),
+              role: "Parent",
+              display_name: draft.parentName.trim(),
+            });
+          } catch (e) {
+            if (isTakenIdError(e)) throw new GuardianEmailTaken(loginEmail);
+            throw e;
+          }
+        }
+
         /* A student who can sign in to the portal, not just a row on a list.
            The ID is built from their name so the office can predict it, and
            stepped along if another child already holds it; the password is
            shown once, at the end. */
-        const studentPassword = generateTempPassword();
+        /* Readable: a child types it, and the desk reads it out. */
+        const studentPassword = generateReadablePassword();
         const studentAccount = await createStudentAccount(create, draft.name, studentPassword);
+        childLogin = { name: draft.name.trim(), loginId: studentAccount.loginId, password: studentPassword };
         const created = await create("students", {
           user_account_id: studentAccount.accountId,
           name: draft.name,
@@ -2558,7 +2883,6 @@ export function StudentsPage({
           });
         }
 
-        let parentCredentials: { email: string; password: string } | null = null;
         if (draft.parentId) {
           /* An existing guardian: link, and leave their account alone. */
           await create("student-parents", {
@@ -2577,13 +2901,7 @@ export function StudentsPage({
              So the form asks, and means it. The email is required beside the
              phone number rather than optional under it. */
           const loginEmail = draft.parentEmail.trim();
-          const parentPassword = generateTempPassword();
-          const parentAccount = await create("user-accounts", {
-            email: loginEmail,
-            password: parentPassword,
-            role: "Parent",
-            display_name: draft.parentName.trim(),
-          });
+          const parentAccount = guardianAccount!;
           const parent = await create("parents", {
             user_account_id: parentAccount.user_account_id,
             name: draft.parentName.trim(),
@@ -2604,7 +2922,8 @@ export function StudentsPage({
             parent_id: parentId,
             relationship_type: draft.parentRelation || "Guardian",
           });
-          parentCredentials = { email: loginEmail, password: parentPassword };
+          parentAccountId = String(parentAccount.user_account_id);
+          parentEmail = loginEmail;
         }
 
         setCreatedLogins({
@@ -2613,11 +2932,20 @@ export function StudentsPage({
              Rebuilding it from the name here would hand a second John Smith
              the *first* one's ID on the card the family walks out with. */
           student: { email: studentAccount.loginId, password: studentPassword },
-          parent: parentCredentials,
+          studentName: draft.name.trim(),
+          parent: null,
         });
       });
+      if (parentAccountId) {
+        const outcome = await inviteOutcome(parentAccountId, childLogin ? [childLogin] : []);
+        setCreatedLogins((c) => (c ? { ...c, parent: { email: parentEmail, outcome } } : c));
+      }
     } catch (e) {
+      /* Handed back to the form, which says what to do about it. */
+      if (e instanceof GuardianEmailTaken) throw e;
       showError(tCommon("createFailed"), e);
+      /* Stay on the form: what was typed is still there to try again. */
+      return;
     }
     setView({ kind: "list" });
   }
@@ -2684,6 +3012,7 @@ export function StudentsPage({
         initialName={startWizard ?? ""}
         classOptions={classNames}
         parentOptions={parentOptions}
+        emailOwner={emailOwner}
         onCancel={() => setView({ kind: "list" })}
         onCreate={registerStudent}
       />
@@ -2737,15 +3066,14 @@ export function StudentsPage({
             {createdLogins.parent && (
               <div>
                 <SectionTitle>{t("parentLogin")}</SectionTitle>
-                <InfoGrid
-                  rows={[
-                    { label: tCommon("email"), value: createdLogins.parent.email },
-                    {
-                      label: t("tempPassword"),
-                      value: <strong style={{ letterSpacing: "0.04em" }}>{createdLogins.parent.password}</strong>,
-                    },
-                  ]}
-                />
+                <InfoGrid rows={[{ label: tCommon("email"), value: createdLogins.parent.email }]} />
+                <div style={{ marginTop: 8 }}>
+                  <InviteOutcomeNote
+                    outcome={createdLogins.parent.outcome}
+                    email={createdLogins.parent.email}
+                    withLoginOf={createdLogins.studentName}
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -2765,7 +3093,7 @@ export function StudentsPage({
                   s.name,
                   classesOf(s.id, s.className).join(", "),
                   s.branch,
-                  s.credit,
+                  creditsOf(s.id).map((c) => `${c.label}: ${fmtCredits(c.balance)}`).join(", "),
                   s.status,
                   s.parentPhone,
                 ])
@@ -2806,47 +3134,32 @@ export function StudentsPage({
             )}
             {pageRows.map((s) => {
               const chip = statusChipColors(s.status);
-              const creditChip = creditChipFor(s.credit);
               return (
                 <EntityCard
                   key={s.id}
                   onClick={() => setView({ kind: "detail", id: s.id })}
                   avatar={<Avatar initials={initialsOf(s.name)} size={44} />}
                   title={s.name}
-                  actions={
-                    <RowActions
-                      label={s.name}
-                      onEdit={() => setView({ kind: "detail", id: s.id, edit: true })}
-                      onDelete={() => setView({ kind: "detail", id: s.id, remove: true })}
-                    />
-                  }
-                  subtitle={
-                    <span style={{ display: "inline-flex", alignItems: "center" }}>
-                      <ClassDot color={classDotColor(s.className)} />
-                      {classesOf(s.id, s.className).join(", ")}
-                    </span>
-                  }
-                  badges={
-                    <>
-                      <Badge color={chip.color} bg={chip.bg}>{tStatus(s.status)}</Badge>
-                      <Badge color={creditChip.color} bg={creditChip.bg}>
-                        {tCommon("creditsCount", { count: s.credit })}
-                      </Badge>
-                    </>
-                  }
-                  rows={[
-                    { label: t("level"), value: s.level },
-                    { label: t("creditsExpire"), value: s.expires || "—" },
-                    { label: t("parentLabel"), value: s.parentName },
-                  ]}
+                  titleBadge={<Badge color={chip.color} bg={chip.bg}>{tStatus(s.status)}</Badge>}
+                  /* Name, then the courses: each on its own line with its
+                     balance, rather than every class name run into one
+                     line under the name. */
                   footer={
-                    s.parentPhone ? (
-                      <ContactPill
-                        phone={s.parentPhone}
-                        label={t("contact")}
-                        style={{ justifyContent: "center" }}
+                    <>
+                      <CourseCreditList
+                        credits={creditsOf(s.id)}
+                        creditsWord={tCommon("credits")}
                       />
-                    ) : undefined
+                      {/* No edit or delete here, as in the list: both are on
+                          the student's page, which the card opens. */}
+                      {s.parentPhone && (
+                        <ContactPill
+                          phone={s.parentPhone}
+                          label={t("contact")}
+                          style={{ justifyContent: "center" }}
+                        />
+                      )}
+                    </>
                   }
                 />
               );
@@ -2862,7 +3175,17 @@ export function StudentsPage({
             )}
             {pageRows.map((s) => {
               const chip = statusChipColors(s.status);
-              const creditChip = creditChipFor(s.credit);
+              /* Filtered to one class: that class leads the row, so a
+                 collapsed row still says why the child is on this list. */
+              const filteredName = classId
+                ? String(raw.classes.find((c) => String(c["class_id"]) === classId)?.["name"] ?? "")
+                : "";
+              const allCredits = [...creditsOf(s.id)].sort(
+                (a, b) => Number(b.label === filteredName) - Number(a.label === filteredName),
+              );
+              const expanded = openCourses.has(s.id);
+              const hidden = expanded ? [] : allCredits.slice(1);
+              const credits = expanded ? allCredits : allCredits.slice(0, 1);
               return (
                 <TableRow key={s.id} template={TEMPLATE} onClick={() => setView({ kind: "detail", id: s.id })}>
                   <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
@@ -2871,13 +3194,77 @@ export function StudentsPage({
                       {s.name}
                     </span>
                   </span>
-                  <span style={{ display: "flex", alignItems: "center", color: COLORS.textSecondary }}>
-                    <ClassDot color={classDotColor(s.className)} />
-                    {classesOf(s.id, s.className).join(", ")}
+                  {/* One line per course, and its balance on the same line in
+                      the next column: "King Slayer … 20". */}
+                  <span style={COURSE_LINES}>
+                    {credits.map((c, i) => (
+                      <span key={`${c.label}-${i}`} style={{ ...COURSE_LINE, gap: 6, color: COLORS.textSecondary }}>
+                        {c.label !== "—" && <ClassDot color={classDotColor(c.label)} />}
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.label}</span>
+                        {/* On the first line: how many more courses there
+                            are, and a press to show them. Named in the
+                            tooltip so a hover is enough to know which. */}
+                        {i === 0 && (hidden.length > 0 || expanded) && allCredits.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleCourses(s.id);
+                            }}
+                            aria-expanded={expanded}
+                            title={
+                              expanded
+                                ? undefined
+                                : t("moreCoursesTitle", { names: hidden.map((h) => h.label).join(", ") })
+                            }
+                            aria-label={
+                              expanded
+                                ? t("fewerCourses")
+                                : t("moreCoursesTitle", { names: hidden.map((h) => h.label).join(", ") })
+                            }
+                            style={{
+                              flexShrink: 0,
+                              marginLeft: 2,
+                              padding: "1px 8px",
+                              borderRadius: 999,
+                              border: `1px solid ${COLORS.border}`,
+                              background: expanded ? "transparent" : COLORS.light,
+                              color: COLORS.blue,
+                              fontFamily: FONT,
+                              fontSize: 11.5,
+                              fontWeight: 700,
+                              lineHeight: 1.6,
+                              cursor: "pointer",
+                              whiteSpace: "nowrap",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 3,
+                            }}
+                          >
+                            {/* "+3 ⌄" to open; the arrow alone, flipped, to close. */}
+                            {!expanded && t("moreCourses", { count: hidden.length })}
+                            <span
+                              aria-hidden
+                              style={{ display: "inline-flex", transform: expanded ? "rotate(180deg)" : undefined }}
+                            >
+                              <Icon name="chevronDown" size={12} color={COLORS.blue} />
+                            </span>
+                          </button>
+                        )}
+                      </span>
+                    ))}
                   </span>
-                  <Badge color={creditChip.color} bg={creditChip.bg} style={{ justifySelf: "start" }}>
-                    {fmtCredits(s.credit)}
-                  </Badge>
+                  <span style={COURSE_LINES}>
+                    {credits.map((c, i) => (
+                      <span key={`${c.label}-${i}`} style={COURSE_LINE}>
+                        {c.label === "—" ? (
+                          <span style={{ color: COLORS.textSecondary }}>—</span>
+                        ) : (
+                          <span style={creditFigure}>{fmtCredits(c.balance)}</span>
+                        )}
+                      </span>
+                    ))}
+                  </span>
                   <Badge color={chip.color} bg={chip.bg} style={{ justifySelf: "start" }}>
                     {tStatus(s.status)}
                   </Badge>

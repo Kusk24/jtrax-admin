@@ -7,7 +7,7 @@
  * opened for.
  */
 import { describe, expect, it } from "vitest";
-import { classFilterOptions, classNamesOfStudent, isInClass } from "./student-classes";
+import { classFilterOptions, classNamesOfStudent, creditsByClass, isInClass } from "./student-classes";
 
 /* Anong is in two classes. Boon left Beginner for Intermediate. Chai finished
    Beginner. Dao is in a class the academy has since retired. */
@@ -89,5 +89,34 @@ describe("the Class column", () => {
 
   it("names none for a child who has left them all", () => {
     expect(classNamesOfStudent(RAW, "chai")).toEqual([]);
+  });
+});
+
+describe("the Credit column", () => {
+  const TXS = [
+    { enrollment_id: "e1", student_id: "anong", amount: 10 },
+    { enrollment_id: "e1", student_id: "anong", amount: -2 },
+    { enrollment_id: "e2", student_id: "anong", amount: 3 },
+    /* Boon's hours in the course he left do not count towards the one he is in. */
+    { enrollment_id: "e3", student_id: "boon", amount: 5 },
+    { enrollment_id: "e4", student_id: "boon", amount: 4 },
+    /* Chai's course was deleted; the hours stay his, outside any course. */
+    { enrollment_id: "", student_id: "chai", amount: 2 },
+  ];
+  const WITH_TXS = { ...RAW, creditTransactions: TXS };
+
+  it("gives each course its own balance, not the first course's", () => {
+    expect(creditsByClass(WITH_TXS, "anong")).toEqual([
+      { className: "Beginner", balance: 8 },
+      { className: "Intermediate", balance: 3 },
+    ]);
+  });
+
+  it("leaves out courses the child has left", () => {
+    expect(creditsByClass(WITH_TXS, "boon")).toEqual([{ className: "Intermediate", balance: 4 }]);
+  });
+
+  it("shows hours held outside any course, unnamed", () => {
+    expect(creditsByClass(WITH_TXS, "chai")).toEqual([{ className: "", balance: 2 }]);
   });
 });

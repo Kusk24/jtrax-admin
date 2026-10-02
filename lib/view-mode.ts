@@ -8,7 +8,7 @@
  */
 import { useCallback, useSyncExternalStore } from "react";
 
-export type ViewMode = "list" | "card" | "calendar";
+export type ViewMode = "list" | "card" | "calendar" | "boards" | "columns";
 
 const PREFIX = "jtrax.view.";
 
@@ -18,7 +18,7 @@ const listeners = new Set<() => void>();
 const cache = new Map<string, ViewMode | null>();
 
 function isMode(value: string | null): value is ViewMode {
-  return value === "list" || value === "card" || value === "calendar";
+  return value === "list" || value === "card" || value === "calendar" || value === "boards" || value === "columns";
 }
 
 function notify() {

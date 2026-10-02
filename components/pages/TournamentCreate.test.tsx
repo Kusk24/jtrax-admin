@@ -19,8 +19,21 @@ import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
 import type { AdminPerson } from "@/lib/data";
 
-const create = vi.fn(async (collection: string, _row: Record<string, unknown>) => ({
-  tournament_id: collection === "tournaments" ? "trn_new" : "cat_new",
+const create = vi.fn();
+
+/* The wizard writes through the API directly: a draft first, then its
+   categories, the preview link, and Publish. */
+const post = vi.fn(async (path: string, _body: Record<string, unknown>) => {
+  if (path === "tournaments") return { tournament_id: "trn_new" };
+  if (path === "tournament-categories") return { tournament_category_id: `cat_${post.mock.calls.length}` };
+  if (path.endsWith("/preview")) return { token: "tok" };
+  return {};
+});
+const patch = vi.fn(async () => ({}));
+const del = vi.fn(async () => ({}));
+vi.mock("@/lib/api", async (orig) => ({
+  ...(await orig<typeof import("@/lib/api")>()),
+  api: { post, patch, del, get: vi.fn(async () => ({})), put: vi.fn(), upload: vi.fn(async () => ({})) },
 }));
 
 vi.mock("@/components/DataProvider", () => ({
@@ -68,23 +81,21 @@ function openWizard() {
   return userEvent.setup();
 }
 
-/** The payload the wizard sent to `create("tournaments", …)`. */
-const tournamentWrite = () =>
-  create.mock.calls.find((c) => c[0] === "tournaments")?.[1];
+/** The draft the wizard saved — hidden, not yet open to registration. */
+const tournamentWrite = () => post.mock.calls.find((c) => c[0] === "tournaments")?.[1];
 
 /** Every category name the wizard created, in order. */
 const categoryWrites = () =>
-  create.mock.calls
-    .filter((c) => c[0] === "tournament-categories")
-    .map((c) => String(c[1].name));
+  post.mock.calls.filter((c) => c[0] === "tournament-categories").map((c) => String(c[1].name));
+
+const published = () => post.mock.calls.some((c) => c[0] === "tournaments/trn_new/publish");
 
 describe("the create wizard", () => {
   it("sends the categories and the discount with the tournament it creates", async () => {
-    create.mockClear();
+    post.mockClear();
     const user = openWizard();
     await user.click(screen.getByText(en.tournament.create));
-    // Step 1 offers the regulation; the fields are on step 2.
-    await user.click(screen.getByText(en.tournament.skipManual));
+    // The form opens straight away — there is no upload step first.
 
     await user.type(screen.getByLabelText(en.tournament.fieldName), "JCA Open");
 
@@ -98,8 +109,7 @@ describe("the create wizard", () => {
     await user.type(cat, "U12 Girls{Enter}");
     expect(screen.getByText("U8 Boys")).toBeTruthy();
 
-    await user.click(screen.getByText(en.tournament.publishAction));
-    await user.click(screen.getByText(en.tournament.viewTournament));
+    await user.click(screen.getByText(en.tournament.continueToReview));
 
     await waitFor(() => expect(tournamentWrite()).toBeTruthy());
     expect(tournamentWrite()!.student_discount_pct).toBe(20);
@@ -109,23 +119,52 @@ describe("the create wizard", () => {
   /* The same name twice would be two sections on the form and one in
      everybody's head, and there is no unique index behind this. */
   it("does not add the same category twice, whatever the casing", async () => {
-    create.mockClear();
+    post.mockClear();
     const user = openWizard();
     await user.click(screen.getByText(en.tournament.create));
-    await user.click(screen.getByText(en.tournament.skipManual));
 
     const cat = screen.getByLabelText(en.tournament.categoryPlaceholder);
     await user.type(cat, "U8 Boys{Enter}");
     await user.type(cat, "u8 boys{Enter}");
 
     await user.type(screen.getByLabelText(en.tournament.fieldName), "JCA Open");
-    await user.click(screen.getByText(en.tournament.publishAction));
-    await user.click(screen.getByText(en.tournament.viewTournament));
+    await user.click(screen.getByText(en.tournament.continueToReview));
 
     /* Asserted on the writes rather than the chips: a chip and the div
        wrapping it both have the same textContent, so counting rendered text
        would find two of a deduplicated single category. */
     await waitFor(() => expect(tournamentWrite()).toBeTruthy());
     expect(categoryWrites()).toEqual(["U8 Boys"]);
+  });
+
+  /* Review is a real step: nothing goes live until Publish at its foot. */
+  it("saves a hidden draft for review and publishes only on Publish", async () => {
+    post.mockClear();
+    const user = openWizard();
+    await user.click(screen.getByText(en.tournament.create));
+    await user.type(screen.getByLabelText(en.tournament.fieldName), "JCA Open");
+    await user.click(screen.getByText(en.tournament.continueToReview));
+
+    await waitFor(() => expect(screen.getByText(en.tournament.reviewTitle)).toBeTruthy());
+    expect(tournamentWrite()).toMatchObject({ draft: true, public_registration: false });
+    expect(published()).toBe(false);
+
+    await user.click(screen.getByText(en.tournament.publishAction));
+    await waitFor(() => expect(published()).toBe(true));
+    expect(await screen.findByText(en.tournament.viewTournament)).toBeTruthy();
+  });
+
+  it("throws the draft away when the organiser leaves before publishing", async () => {
+    post.mockClear();
+    del.mockClear();
+    const user = openWizard();
+    await user.click(screen.getByText(en.tournament.create));
+    await user.type(screen.getByLabelText(en.tournament.fieldName), "JCA Open");
+    await user.click(screen.getByText(en.tournament.continueToReview));
+    await waitFor(() => expect(screen.getByText(en.tournament.reviewTitle)).toBeTruthy());
+
+    await user.click(screen.getByText(en.tournament.backToTournaments));
+    await waitFor(() => expect(del).toHaveBeenCalledWith("tournaments/trn_new/draft"));
+    expect(published()).toBe(false);
   });
 });

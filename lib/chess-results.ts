@@ -134,3 +134,51 @@ export const getCategoryResultsLink = (categoryId: string) =>
   api
     .get<LinkedResults | { linked: false }>(`tournaments/categories/${categoryId}/chess-results`)
     .then((r) => ("source" in r ? r : null));
+
+/* ------------------------------------------ one link for the whole event --- */
+
+/**
+ * A results category: one section of the event as the arbiter published it on
+ * chess-results.com ("U14 + G14"). These are not the tournament's registration
+ * categories — they come from chess-results once the event is connected, and
+ * the Results tab follows them.
+ */
+export type ResultSection = {
+  chessResultsId: number;
+  name: string;
+  position: number;
+  url: string;
+  stage?: string;
+  fetchedAt?: string;
+  players: number;
+  academyPlayers: number;
+  /** False until the section's standings have been read once. */
+  tracked: boolean;
+};
+
+export type ResultSections = {
+  connected: boolean;
+  eventName?: string;
+  /** Scheduled rounds, from the event's details page. */
+  rounds?: number;
+  sections: ResultSection[];
+};
+
+export const getResultSections = (tournamentId: string) =>
+  api.get<ResultSections>(`tournaments/${tournamentId}/results-sections`);
+
+/** Connects from one pasted link: every section of the event is found and read. */
+export const connectResults = (tournamentId: string, url: string) =>
+  api.post<ResultSections>(`tournaments/${tournamentId}/results-sections`, { url });
+
+export const disconnectResults = (tournamentId: string) =>
+  api.del<ResultSections>(`tournaments/${tournamentId}/results-sections`);
+
+/** One section's stored standings and rounds. Null before its first read. */
+export const getResultSection = (tournamentId: string, chessResultsId: number) =>
+  api
+    .get<LinkedResults | { linked: false }>(`tournaments/${tournamentId}/results-sections/sections/${chessResultsId}`)
+    .then((r) => ("source" in r ? r : null));
+
+export const refreshResultSection = (tournamentId: string, chessResultsId: number) =>
+  api.post<LinkedResults>(`tournaments/${tournamentId}/results-sections/sections/${chessResultsId}/refresh`, {});

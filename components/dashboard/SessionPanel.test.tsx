@@ -7,7 +7,7 @@
  * `<input type="time">`, which reports "" until every segment is filled and
  * left the desk staring at a Create button that would not press.
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
@@ -45,6 +45,7 @@ const state = {
       { enrollment_id: "e4", student_id: "anong", class_id: "cls_master", status: "Withdrawn" },
     ],
   },
+  creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certSessions: 50, maxNegativeCredit: 0 },
 };
 
 vi.mock("@/components/DataProvider", () => ({
@@ -69,6 +70,7 @@ vi.mock("@/lib/session-draft", async (importOriginal) => {
 });
 
 const { SessionPanel } = await import("./SessionPanel");
+const { chooseLength, durationMinutes, durationPart, pickDuration, presetsOf } = await import("./duration-test-kit");
 const { ErrorToastProvider } = await import("@/components/ErrorToast");
 
 function renderPanel() {
@@ -83,7 +85,8 @@ function renderPanel() {
     klass: screen.getByLabelText("Course") as HTMLSelectElement,
     startHour: screen.getByLabelText("Start hour") as HTMLSelectElement,
     startMinute: screen.getByLabelText("Start minute") as HTMLSelectElement,
-    length: screen.getByLabelText("Length") as HTMLSelectElement,
+    /* The length the Duration control holds, in minutes. */
+    length: durationMinutes,
     button: screen.getAllByRole("button", { name: "Create Class" }).at(-1) as HTMLButtonElement,
   };
 }
@@ -102,7 +105,9 @@ async function runUntil(
 ) {
   const [sh, sm] = [Number(f.startHour.value), Number(f.startMinute.value || 0)];
   const [eh, em] = clock.split(":").map(Number);
-  await user.selectOptions(f.length, String(eh * 60 + em - (sh * 60 + sm)));
+  const total = eh * 60 + em - (sh * 60 + sm);
+  void f;
+  await chooseLength(user, total);
 }
 
 /** Sets one end of the session the way the desk does: hour, then minute. */
@@ -126,8 +131,20 @@ describe("choosing the times", () => {
      Two short lists reach the same times. */
   it("is two short lists rather than one long one", () => {
     const f = renderPanel();
-    expect(f.startHour.options).toHaveLength(24 + 1); // + the "--" placeholder
+    /* Today, from now (10:00 here) to 23:00, plus the "--" placeholder. */
+    expect(f.startHour.options).toHaveLength(14 + 1);
     expect(f.startMinute.options).toHaveLength(12 + 1);
+  });
+
+  /* A class that is already over is not created from the dashboard. */
+  it("offers only now and later on today's form", async () => {
+    const user = userEvent.setup();
+    const f = renderPanel();
+    const hours = Array.from(f.startHour.options).map((o) => o.value).filter(Boolean);
+    expect(hours[0]).toBe("10");
+    expect(hours).not.toContain("09");
+    await setTime(user, f.startHour, f.startMinute, "11:00");
+    expect(f.startHour.value).toBe("11");
   });
 
   it("still reaches the awkward times a real timetable uses", async () => {
@@ -156,7 +173,7 @@ describe("choosing the times", () => {
     const f = renderPanel();
     expect(f.startHour.value).toBe("10");
     expect(f.startMinute.value).toBe("00");
-    expect(f.length.value).toBe("120");
+    expect(f.length()).toBe(120);
     expect(screen.getAllByText(/Ends 12:00/).length).toBeGreaterThan(0);
   });
 
@@ -167,7 +184,7 @@ describe("choosing the times", () => {
     await user.selectOptions(f.startMinute, "");
     await user.selectOptions(f.startHour, "14");
     /* A whole start, so the class has a length and an end to show. */
-    expect(f.length.value).toBe("120");
+    expect(f.length()).toBe(120);
     expect(screen.getAllByText(/Ends 16:00/).length).toBeGreaterThan(0);
   });
 
@@ -185,23 +202,23 @@ describe("choosing the times", () => {
     const user = userEvent.setup();
     const f = renderPanel();
     await setTime(user, f.startHour, f.startMinute, "14:00");
-    expect(f.length.value).toBe("120");
+    expect(f.length()).toBe(120);
     expect(screen.getAllByText(/Ends 16:00/).length).toBeGreaterThan(0);
   });
 
   /* The whole reason for asking a length rather than an end time: moving the
      start slides the class, it does not resize it. Choosing two hours and then
-     correcting 10:00 to 09:00 used to leave a three-hour class. */
+     correcting 10:00 to 11:00 used to leave a one-hour class. */
   it("keeps the chosen length when the start moves", async () => {
     const user = userEvent.setup();
     const f = renderPanel();
     await setTime(user, f.startHour, f.startMinute, "10:00");
     await runUntil(user, f, "12:00");
-    expect(f.length.value).toBe("120");
+    expect(f.length()).toBe(120);
 
-    await setTime(user, f.startHour, f.startMinute, "09:00");
-    expect(f.length.value).toBe("120");
-    expect(screen.getAllByText(/Ends 11:00/).length).toBeGreaterThan(0);
+    await setTime(user, f.startHour, f.startMinute, "11:00");
+    expect(f.length()).toBe(120);
+    expect(screen.getAllByText(/Ends 13:00/).length).toBeGreaterThan(0);
   });
 
   it("has no length to offer once the start is cleared", async () => {
@@ -211,7 +228,7 @@ describe("choosing the times", () => {
        picker's step) — this rule is about the empty state, so it has to be
        got back to first. */
     await user.selectOptions(f.startHour, "");
-    expect(f.length.disabled).toBe(true);
+    expect(durationPart("Hours").disabled).toBe(true);
   });
 
   /* A late start shortens the class rather than offering a length that would
@@ -220,8 +237,9 @@ describe("choosing the times", () => {
     const user = userEvent.setup();
     const f = renderPanel();
     await setTime(user, f.startHour, f.startMinute, "23:00");
-    const offered = Array.from(f.length.options).map((o) => o.value).filter(Boolean);
-    expect(offered).toEqual(["30", "45", "60"]);
+    const hours = await presetsOf(user, "Hours");
+    expect(hours.map((h) => h.label)).toEqual(["0 hr", "1 hr"]);
+    expect(f.length()).toBeLessThanOrEqual(60);
   });
 });
 
@@ -233,9 +251,12 @@ describe("the half-hour floor", () => {
     const user = userEvent.setup();
     const f = renderPanel();
     await setTime(user, f.startHour, f.startMinute, "10:00");
-    const offered = Array.from(f.length.options).map((o) => o.value).filter(Boolean);
-    expect(offered[0]).toBe("30");
-    expect(offered.every((v) => Number(v) >= 30)).toBe(true);
+    await pickDuration(user, "Hours", 0);
+    /* With no whole hours, only the minutes that make half an hour or more
+       can be picked. */
+    const enabled = (await presetsOf(user, "Minutes")).filter((o) => o.allowed).map((o) => o.label);
+    expect(enabled).toEqual(["30 min", "45 min"]);
+    expect(f.length()).toBe(30);
   });
 
   it("says so while there is no length yet", async () => {
@@ -267,8 +288,7 @@ describe("the half-hour floor", () => {
     const f = renderPanel();
     await setTime(user, f.startHour, f.startMinute, "14:00");
 
-    const offered = Array.from(f.length.options).map((o) => o.value).filter(Boolean);
-    expect(offered.every((v) => Number(v) > 0)).toBe(true);
+    expect(f.length()).toBeGreaterThan(0);
     expect(screen.queryByText("The end time must be after the start.")).toBeNull();
   });
 });
@@ -277,24 +297,24 @@ describe("what it will cost", () => {
   it("shows an hour as one credit", async () => {
     const user = userEvent.setup();
     const f = renderPanel();
-    await setTime(user, f.startHour, f.startMinute, "10:00");
-    await runUntil(user, f, "11:00");
+    await setTime(user, f.startHour, f.startMinute, "12:00");
+    await runUntil(user, f, "13:00");
     expect(screen.getByText(/costs each student 1 credits/)).toBeTruthy();
   });
 
   it("shows half an hour as half a credit", async () => {
     const user = userEvent.setup();
     const f = renderPanel();
-    await setTime(user, f.startHour, f.startMinute, "10:00");
-    await runUntil(user, f, "10:30");
+    await setTime(user, f.startHour, f.startMinute, "12:00");
+    await runUntil(user, f, "12:30");
     expect(screen.getByText(/costs each student 0.5 credits/)).toBeTruthy();
   });
 
   it("shows ninety minutes as one and a half", async () => {
     const user = userEvent.setup();
     const f = renderPanel();
-    await setTime(user, f.startHour, f.startMinute, "09:00");
-    await runUntil(user, f, "10:30");
+    await setTime(user, f.startHour, f.startMinute, "11:00");
+    await runUntil(user, f, "12:30");
     expect(screen.getByText(/costs each student 1.5 credits/)).toBeTruthy();
   });
 });
@@ -323,8 +343,8 @@ describe("the students who can be added", () => {
        with them, not the count. */
     const f = renderPanel();
     const klass = f.klass;
-    await setTime(user, f.startHour, f.startMinute, "09:00");
-    await runUntil(user, f, "10:00");
+    await setTime(user, f.startHour, f.startMinute, "11:00");
+    await runUntil(user, f, "12:00");
 
     await user.click(screen.getByRole("checkbox", { name: /Anong Sri/ }));
     expect(screen.getByText(/1 student added/)).toBeTruthy();
@@ -350,8 +370,8 @@ describe("creating it", () => {
     const user = userEvent.setup();
     const f = renderPanel();
     const button = f.button;
-    await setTime(user, f.startHour, f.startMinute, "09:00");
-    await runUntil(user, f, "10:30");
+    await setTime(user, f.startHour, f.startMinute, "11:00");
+    await runUntil(user, f, "12:30");
     await user.click(screen.getByRole("checkbox", { name: /Anong Sri/ }));
     await user.click(screen.getByRole("checkbox", { name: /Boon Mek/ }));
     await user.click(button);
@@ -360,8 +380,8 @@ describe("creating it", () => {
     const [path, session] = create.mock.calls[0];
     expect(path).toBe("class-sessions");
     expect(session.class_id).toBe("cls_group");
-    expect(session.start_time).toBe("09:00");
-    expect(session.end_time).toBe("10:30");
+    expect(session.start_time).toBe("11:00");
+    expect(session.end_time).toBe("12:30");
 
     const attendance = create.mock.calls.slice(1);
     expect(attendance.map((c) => c[0])).toEqual(["attendance", "attendance"]);
@@ -375,8 +395,8 @@ describe("creating it", () => {
     const user = userEvent.setup();
     const f = renderPanel();
     const button = f.button;
-    await setTime(user, f.startHour, f.startMinute, "09:00");
-    await runUntil(user, f, "10:00");
+    await setTime(user, f.startHour, f.startMinute, "11:00");
+    await runUntil(user, f, "12:00");
     expect(button.disabled).toBe(false);
     await user.click(button);
 
@@ -385,14 +405,67 @@ describe("creating it", () => {
   });
 });
 
-/* A child may attend on credit and go below zero — the academy allows it. The
-   desk is warned, not stopped. Boon has 2.5 credits. */
+/* By default (maxNegativeCredit: 0) going below zero is refused outright,
+   not just warned about — this is what closes
+   [[a-child-can-check-in-on-expired-credit]]. Boon has 2.5 credits. */
 describe("a student whose balance will not cover the session", () => {
+  it("cannot be ticked, and is not written even if a stale tick reaches submit", async () => {
+    const user = userEvent.setup();
+    const f = renderPanel();
+    await setTime(user, f.startHour, f.startMinute, "11:00");
+    await runUntil(user, f, "14:00"); // 3 credits, they have 2.5
+
+    const boon = screen.getByRole("checkbox", { name: /Boon Mek/ }) as HTMLInputElement;
+    expect(boon.disabled).toBe(true);
+    expect(screen.getByText("Insufficient credits")).toBeTruthy();
+
+    await user.click(f.button);
+    const attendance = create.mock.calls.slice(1);
+    expect(attendance.map((c) => c[1].student_id)).not.toContain("boon");
+  });
+
+  it("is not marked when the session is within their balance", async () => {
+    const user = userEvent.setup();
+    const f = renderPanel();
+    await setTime(user, f.startHour, f.startMinute, "11:00");
+    await runUntil(user, f, "12:00"); // 1 credit
+
+    const boon = screen.getByRole("checkbox", { name: /Boon Mek/ }) as HTMLInputElement;
+    expect(boon.disabled).toBe(false);
+    expect(screen.queryByText("Insufficient credits")).toBeNull();
+  });
+
+  /* A tick made while affordable does not survive the session being
+     lengthened past the limit — there is nothing left to submit it with,
+     since the checkbox itself becomes disabled. */
+  it("drops its tick once lengthening the session crosses the limit", async () => {
+    const user = userEvent.setup();
+    const f = renderPanel();
+    await setTime(user, f.startHour, f.startMinute, "11:00");
+    await runUntil(user, f, "12:00");
+    await user.click(screen.getByRole("checkbox", { name: /Boon Mek/ }));
+    expect(screen.getByText(/1 student added/)).toBeTruthy();
+
+    await runUntil(user, f, "14:00");
+    expect(screen.getByText(/Nobody added yet/)).toBeTruthy();
+  });
+});
+
+/* An admin who raises Maximum Negative Credit in Settings gets the old,
+   pre-this-feature behavior back: a warning, not a refusal. */
+describe("a student whose balance will not cover the session, with a raised limit", () => {
+  beforeEach(() => {
+    state.creditRules = { ...state.creditRules, maxNegativeCredit: 5 };
+  });
+  afterEach(() => {
+    state.creditRules = { ...state.creditRules, maxNegativeCredit: 0 };
+  });
+
   it("can still be ticked, and is written like anyone else", async () => {
     const user = userEvent.setup();
     const f = renderPanel();
-    await setTime(user, f.startHour, f.startMinute, "09:00");
-    await runUntil(user, f, "12:00"); // 3 credits, they have 2.5
+    await setTime(user, f.startHour, f.startMinute, "11:00");
+    await runUntil(user, f, "14:00"); // 3 credits, they have 2.5
 
     const boon = screen.getByRole("checkbox", { name: /Boon Mek/ }) as HTMLInputElement;
     expect(boon.disabled).toBe(false);
@@ -405,35 +478,73 @@ describe("a student whose balance will not cover the session", () => {
     expect(attendance.map((c) => c[1].student_id)).toEqual(["boon"]);
   });
 
-  /* Marked so the desk knows who to chase, in red beside the name. */
+  /* Marked so the desk knows who to chase, in red beside the name — a
+     warning, not a refusal, since it is within the raised limit. */
   it("is marked as heading below zero", async () => {
     const user = userEvent.setup();
     const f = renderPanel();
-    await setTime(user, f.startHour, f.startMinute, "09:00");
-    await runUntil(user, f, "12:00");
+    await setTime(user, f.startHour, f.startMinute, "11:00");
+    await runUntil(user, f, "14:00");
 
     expect(screen.getByTitle(/takes them below zero/)).toBeTruthy();
   });
 
-  it("is not marked when the session is within their balance", async () => {
-    const user = userEvent.setup();
-    const f = renderPanel();
-    await setTime(user, f.startHour, f.startMinute, "09:00");
-    await runUntil(user, f, "10:00"); // 1 credit
-
-    expect(screen.queryByTitle(/takes them below zero/)).toBeNull();
-  });
-
-  /* A tick survives the session being lengthened: going negative is allowed,
-     so there is nothing to withdraw. */
+  /* A tick survives the session being lengthened: going negative is allowed
+     within the limit, so there is nothing to withdraw. */
   it("keeps its tick when the session is lengthened", async () => {
     const user = userEvent.setup();
     const f = renderPanel();
-    await setTime(user, f.startHour, f.startMinute, "09:00");
-    await runUntil(user, f, "10:00");
+    await setTime(user, f.startHour, f.startMinute, "11:00");
+    await runUntil(user, f, "12:00");
     await user.click(screen.getByRole("checkbox", { name: /Boon Mek/ }));
 
-    await runUntil(user, f, "12:00");
+    await runUntil(user, f, "14:00");
     expect(screen.getByText(/1 student added/)).toBeTruthy();
+  });
+});
+
+/* Anong is already in King Slayer from 10:00 to 12:00 today. She stays in the
+   list — nobody should wonder where she went — but cannot be ticked into a
+   class that overlaps it. */
+const { todayISO } = await import("@/lib/live");
+
+describe("a student already in another class at that time", () => {
+  const raw = state.raw as Record<string, unknown>;
+  beforeEach(() => {
+    raw.classes = [...state.raw.classes, { class_id: "cls_king", name: "King Slayer" }];
+    raw.classSessions = [
+      { session_id: "ses_king", class_id: "cls_king", session_date: todayISO(), start_time: "10:00", end_time: "12:00" },
+    ];
+    raw.attendance = [{ attendance_id: "att_1", student_id: "anong", session_id: "ses_king" }];
+  });
+  afterEach(() => {
+    raw.classes = state.raw.classes.filter((c) => c.class_id !== "cls_king");
+    delete raw.classSessions;
+    delete raw.attendance;
+  });
+
+  it("is listed, greyed, with the class they are in", async () => {
+    const user = userEvent.setup();
+    const f = renderPanel();
+    await setTime(user, f.startHour, f.startMinute, "11:00");
+    await runUntil(user, f, "12:00");
+
+    const anong = screen.getByRole("checkbox", { name: /Anong Sri/ }) as HTMLInputElement;
+    expect(anong.disabled).toBe(true);
+    expect(screen.getByText("In King Slayer")).toBeTruthy();
+
+    await user.click(f.button);
+    expect(create.mock.calls.slice(1).map((c) => c[1].student_id)).not.toContain("anong");
+  });
+
+  it("can join a class that starts when the other ends", async () => {
+    const user = userEvent.setup();
+    const f = renderPanel();
+    await setTime(user, f.startHour, f.startMinute, "12:00");
+    await runUntil(user, f, "13:00");
+
+    const anong = screen.getByRole("checkbox", { name: /Anong Sri/ }) as HTMLInputElement;
+    expect(anong.disabled).toBe(false);
+    expect(screen.queryByText("In King Slayer")).toBeNull();
   });
 });

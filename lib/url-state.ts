@@ -30,7 +30,7 @@ export function useUrlBackedState<T extends string>(
       screen (which tab is showing), or Back would walk back through every tab
       the person glanced at. */
   history: "push" | "replace" = "replace",
-): [T, (next: T) => void] {
+): [T, (next: T, how?: "push" | "replace") => void] {
   const router = useRouter();
   const pathname = usePathname();
   const [value, setValue] = useState<T>(initial);
@@ -47,7 +47,9 @@ export function useUrlBackedState<T extends string>(
   }
 
   const set = useCallback(
-    (next: T) => {
+    /* `how` overrides the default for one write: opening a game is a place
+       Back should return from, stepping to the next game in it is not. */
+    (next: T, how: "push" | "replace" = history) => {
       setValue(next);
       const q = new URLSearchParams(
         typeof window === "undefined" ? "" : window.location.search,
@@ -58,7 +60,7 @@ export function useUrlBackedState<T extends string>(
       } else q.set(key, next);
       const qs = q.toString();
       const url = qs ? `${pathname}?${qs}` : pathname;
-      if (history === "push") router.push(url, { scroll: false });
+      if (how === "push") router.push(url, { scroll: false });
       else router.replace(url, { scroll: false });
     },
     [router, pathname, key, clearWith, history],

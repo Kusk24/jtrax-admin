@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState, useSyncExternalStore } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useRef, useState, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 import { GlobalSearch } from "./GlobalSearch";
 import { LanguageToggle } from "./LanguageToggle";
@@ -11,6 +11,7 @@ import { signOut } from "@/app/actions/auth";
 import { Icon } from "@/lib/icons";
 import { navItemsForRole } from "@/lib/nav";
 import { COLORS, FONT, FONT_DISPLAY, ROLE_COLORS } from "@/lib/theme";
+import { useDashboardDate } from "./DashboardDate";
 import { useJtrax } from "./JtraxContext";
 
 
@@ -216,37 +217,112 @@ function useToday(): string {
   return useSyncExternalStore(subscribeToNothing, formatToday, () => "");
 }
 
+const formatDay = (iso: string) =>
+  new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+
+/**
+ * The date in the top bar, and the way to look at another day's dashboard.
+ *
+ * Opens the browser's own date picker: the one every desk machine already
+ * knows, keyboard- and screen-reader-ready, in the user's own locale. Picking a
+ * day from any page lands on the dashboard for that day; a Today button beside
+ * the chip brings it back.
+ */
+function DateChip() {
+  const t = useTranslations("shell");
+  const today = useToday();
+  const { day, isToday, setDay } = useDashboardDate();
+  const pathname = usePathname();
+  const router = useRouter();
+  const input = useRef<HTMLInputElement>(null);
+
+  function open() {
+    const el = input.current;
+    if (!el) return;
+    /* showPicker is the modern way; older browsers fall back to focusing the
+       field, whose own control then opens it. */
+    try {
+      el.showPicker();
+    } catch {
+      el.focus();
+      el.click();
+    }
+  }
+
+  function choose(next: string) {
+    setDay(next || null);
+    if (sectionFromPath(pathname) !== "home") router.push("/");
+  }
+
+  const chip = {
+    display: "flex",
+    alignItems: "center",
+    gap: 7,
+    padding: "7px 12px",
+    borderRadius: 999,
+    border: `1px solid ${isToday ? COLORS.border : COLORS.blue}`,
+    background: isToday ? COLORS.surface : COLORS.light,
+    fontFamily: FONT,
+    fontSize: 14,
+    fontWeight: 500,
+    color: isToday ? COLORS.textSecondary : COLORS.blue,
+    cursor: "pointer",
+    /* Reserve the row height before the date resolves on the client. */
+    minHeight: 34,
+  } as const;
+
+  return (
+    <span style={{ position: "relative", display: "flex", alignItems: "center", gap: 6 }}>
+      <button
+        type="button"
+        onClick={open}
+        aria-label={t("pickDashboardDate", { date: isToday ? today : formatDay(day) })}
+        title={t("pickDashboardDateTitle")}
+        style={chip}
+      >
+        <Icon name="calendar" size={15} color={COLORS.blue} />
+        {isToday ? today : formatDay(day)}
+      </button>
+      {/* The field the picker belongs to. Visually hidden rather than
+          display:none, which would leave nothing for showPicker to open. */}
+      <input
+        ref={input}
+        type="date"
+        tabIndex={-1}
+        aria-label={t("dashboardDate")}
+        value={day}
+        onChange={(e) => choose(e.target.value)}
+        style={{ position: "absolute", left: 0, bottom: 0, width: 1, height: 1, opacity: 0, pointerEvents: "none" }}
+      />
+      {!isToday && (
+        <button
+          type="button"
+          onClick={() => setDay(null)}
+          style={{ ...chip, color: COLORS.blue, background: COLORS.surface, borderColor: COLORS.border }}
+        >
+          {t("backToToday")}
+        </button>
+      )}
+    </span>
+  );
+}
+
 /* Identity, not a control. This used to be a dropdown that switched between
    mock people; the role now comes from the signed-in account, so the only way
    to see the console as someone else is to sign in as them. */
 function AccountChip() {
   const { person } = useJtrax();
   const tRole = useTranslations("roles");
-  const today = useToday();
   const roleColor = ROLE_COLORS[person.role];
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 7,
-          padding: "7px 12px",
-          borderRadius: 999,
-          border: `1px solid ${COLORS.border}`,
-          background: COLORS.surface,
-          fontFamily: FONT,
-          fontSize: 14,
-          fontWeight: 500,
-          color: COLORS.textSecondary,
-          /* Reserve the row height before the date resolves on the client. */
-          minHeight: 34,
-        }}
-      >
-        <Icon name="calendar" size={15} color={COLORS.blue} />
-        {today}
-      </div>
+      <DateChip />
 
       <div
         title={person.email}

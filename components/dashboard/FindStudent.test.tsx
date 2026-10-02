@@ -6,8 +6,8 @@
  * student and a refresh lost the lot. These tests assert the requests, because
  * the request is the entire point — a green chip proves nothing.
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
@@ -27,12 +27,22 @@ const state = {
   ],
   raw: {
     attendance: [] as Record<string, unknown>[],
+    students: [
+      { student_id: "anong", name: "Anong Sri" },
+      { student_id: "boon", name: "Boon Mek" },
+    ],
+    /* Long over by now — checking out of these is never "early". */
+    classSessions: [
+      { session_id: "ses_group", class_id: "cls_group", session_date: "2026-08-21", start_time: "10:00", end_time: "11:00" },
+      { session_id: "ses_master", class_id: "cls_master", session_date: "2026-08-21", start_time: "14:00", end_time: "15:00" },
+    ] as Record<string, unknown>[],
     enrollments: [
       { enrollment_id: "enr_anong", student_id: "anong", class_id: "cls_group" },
       { enrollment_id: "enr_boon_g", student_id: "boon", class_id: "cls_group" },
       { enrollment_id: "enr_boon_m", student_id: "boon", class_id: "cls_master" },
     ],
   },
+  creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certSessions: 50, maxNegativeCredit: 0, checkoutRoundMinutes: 15 },
 };
 
 vi.mock("@/components/DataProvider", () => ({
@@ -115,6 +125,52 @@ describe("dismissing", () => {
     const [path, id, body] = update.mock.calls[0] as unknown as [string, string, Record<string, unknown>];
     expect([path, id]).toEqual(["attendance", "att_1"]);
     expect(body.check_out_time).toBeTruthy();
+  });
+});
+
+/* A class running 08:00–10:00 at the academy; it is 09:30 there now, and
+   Anong arrived at 08:00. Only Date is faked — faking every timer would hang
+   userEvent, whose own delays run on real ones. */
+describe("dismissing before the class ends", () => {
+  const sessions = state.raw.classSessions;
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-27T09:30:00+07:00"));
+    state.raw.classSessions = [
+      { session_id: "ses_group", class_id: "cls_group", session_date: "2026-09-27", start_time: "08:00", end_time: "10:00" },
+    ];
+    state.raw.attendance = [
+      { attendance_id: "att_1", student_id: "anong", session_id: "ses_group", check_in_time: "2026-09-27T01:00:00Z" },
+    ];
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    state.raw.classSessions = sessions;
+  });
+
+  it("asks first, saying how long they stayed and what it will cost", async () => {
+    const user = userEvent.setup();
+    await user.type(renderDesk(), "Anong");
+    await user.click(await screen.findByRole("button", { name: "Check Out" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Check out Anong Sri early?" });
+    expect(dialog.textContent).toContain("Anong Sri attended 1 hr 30 min of a 2 hr class.");
+    expect(dialog.textContent).toContain("1.5 credits will be deducted.");
+    expect(update).not.toHaveBeenCalled();
+
+    await user.click(within(dialog).getByRole("button", { name: "Check Out" }));
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("writes nothing on Not yet", async () => {
+    const user = userEvent.setup();
+    await user.type(renderDesk(), "Anong");
+    await user.click(await screen.findByRole("button", { name: "Check Out" }));
+    await user.click(screen.getByRole("button", { name: "Not yet" }));
+
+    expect(update).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 });
 

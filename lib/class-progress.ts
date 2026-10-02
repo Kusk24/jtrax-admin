@@ -62,6 +62,20 @@ export function classProgress(time: string, now = new Date()): ClassProgress | n
   return { elapsed, total, fraction: elapsed / total };
 }
 
+/** How close to the end a class counts as "ending soon". */
+export const ENDING_SOON_MINUTES = 15;
+
+/**
+ * Minutes left in a class that has started and not yet ended, when that is
+ * `ENDING_SOON_MINUTES` or fewer; otherwise null.
+ */
+export function endingSoon(time: string, now = new Date()): number | null {
+  const p = classProgress(time, now);
+  if (!p || p.elapsed <= 0) return null;
+  const left = p.total - p.elapsed;
+  return left > 0 && left <= ENDING_SOON_MINUTES ? left : null;
+}
+
 /**
  * Whether a class's slot has run out, by the wall clock — not by whatever
  * `session_status` the desk last set.
@@ -76,6 +90,26 @@ export function classProgress(time: string, now = new Date()): ClassProgress | n
 export function hasClassEnded(time: string, now = new Date()): boolean {
   const progress = classProgress(time, now);
   return progress !== null && progress.fraction >= 1;
+}
+
+/**
+ * Whether a stored session is over: an earlier day, a Completed status, or
+ * today with its "HH:MM" end already passed. What Class History uses to stop
+ * a finished class being edited, the same line the dashboard draws.
+ */
+export function sessionFinished(
+  day: string,
+  endClock: string,
+  status: string,
+  now: Date,
+  today: string,
+): boolean {
+  if (status === "Completed") return true;
+  if (day < today) return true;
+  if (day > today) return false;
+  const m = /^(\d{1,2}):(\d{2})/.exec(endClock);
+  if (!m) return false;
+  return now.getHours() * 60 + now.getMinutes() >= Number(m[1]) * 60 + Number(m[2]);
 }
 
 /**
@@ -101,4 +135,25 @@ export function useMinuteClock(): Date {
     };
   }, []);
   return now;
+}
+
+/**
+ * What a class's status should read as right now, which is not always what
+ * the database says. `session_status` stays `Ongoing` until someone sets it
+ * otherwise, so a class the clock says has ended still reads `Ongoing` until
+ * the desk notices — and a class on another day is simply over, or not yet
+ * begun. Every reader of a class's status (the card's chip, the filter pills,
+ * the panel's edit gate) goes through this, so they cannot disagree.
+ */
+export function classStatusNow(
+  def: { status: "Ongoing" | "Finished" | "Upcoming" | "Cancelled"; time: string; date?: string },
+  now: Date,
+  today: string,
+): "Ongoing" | "Finished" | "Upcoming" | "Cancelled" {
+  /* Called off stays called off, whatever the clock says. */
+  if (def.status === "Cancelled") return "Cancelled";
+  if (def.status === "Finished") return "Finished";
+  if (def.date && def.date < today) return "Finished";
+  if (def.date && def.date > today) return "Upcoming";
+  return hasClassEnded(def.time, now) ? "Finished" : def.status;
 }

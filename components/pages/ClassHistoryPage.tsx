@@ -4,18 +4,16 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useData } from "@/components/DataProvider";
 import { useErrorToast } from "@/components/ErrorToast";
-import { type Student } from "@/lib/data";
-import { clockOf, fmtDate, liveClasses } from "@/lib/live";
+import { type ClassDef, type Student } from "@/lib/data";
+import { clockOf, fmtDate, liveClasses, todayISO, toTodaysClasses } from "@/lib/live";
+import { sessionFinished, useMinuteClock } from "@/lib/class-progress";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
 import {
   ActionButton,
   AddButton,
   ConfirmDeleteModal,
-  CrudFormModal,
   RowActions,
-  type CrudField,
-  type CrudValues,
 } from "../crud";
 import {
   ContactActions,
@@ -42,6 +40,7 @@ import { MonthCalendar, type CalendarEntry } from "../calendar";
 import { DeleteButton, DetailHeader, EditButton } from "../detail";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
+import { SessionPanel, type PanelState } from "../dashboard/SessionPanel";
 
 /* The chevron is the one column that is not data, so it keeps a fixed
    width; the five data columns share the rest equally. */
@@ -53,7 +52,6 @@ const TEMPLATE = `${equalTemplate(5, 100)} 44px`;
 const ATTENDEE_GRID = "1fr auto auto auto auto";
 const VIEWS = ["list", "card", "calendar"] as const;
 
-const SESSION_STATUSES = ["Scheduled", "Ongoing", "Completed"];
 
 /* The Others option's value. Not "" — that is All — and not a name a course
    could ever be given, because the filter compares it against real class ids. */
@@ -290,8 +288,8 @@ function SessionCard({
 }: {
   row: HistoryRow;
   onOpen: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }) {
   const t = useTranslations("classHistory");
   const tStatus = useTranslations("status");
@@ -339,12 +337,12 @@ function SessionDetail({
 }: {
   row: HistoryRow;
   onClose: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
   onViewAttendee: (name: string) => void;
-  onRemoveAttendee: (attendanceId: string) => void;
+  onRemoveAttendee?: (attendanceId: string) => void;
   onCheckOutAttendee: (attendanceId: string) => Promise<void>;
-  onAddAttendee: () => void;
+  onAddAttendee?: () => void;
 }) {
   const t = useTranslations("classHistory");
   const tStatus = useTranslations("status");
@@ -382,8 +380,8 @@ function SessionDetail({
           }
           actions={
             <>
-              <EditButton onClick={onEdit} />
-              <DeleteButton onClick={onDelete} />
+              {onEdit && <EditButton onClick={onEdit} />}
+              {onDelete && <DeleteButton onClick={onDelete} />}
             </>
           }
         />
@@ -494,25 +492,29 @@ function SessionDetail({
                     </ActionButton>
                   )}
                 </span>
-                <ActionButton
-                  onClick={async () => onRemoveAttendee(a.attendanceId)}
-                  ariaLabel={t("removeAttendee", { name: a.name })}
-                  style={{
-                    display: "inline-flex",
-                    border: "none",
-                    background: "transparent",
-                    cursor: "pointer",
-                    padding: 0,
-                    color: COLORS.textSecondary,
-                  }}
-                >
-                  <Icon name="x" size={14} />
-                </ActionButton>
+                {onRemoveAttendee && (
+                  <ActionButton
+                    onClick={async () => onRemoveAttendee(a.attendanceId)}
+                    ariaLabel={t("removeAttendee", { name: a.name })}
+                    style={{
+                      display: "inline-flex",
+                      border: "none",
+                      background: "transparent",
+                      cursor: "pointer",
+                      padding: 0,
+                      color: COLORS.textSecondary,
+                    }}
+                  >
+                    <Icon name="x" size={14} />
+                  </ActionButton>
+                )}
               </div>
             ))}
-            <span style={{ marginTop: 6 }}>
-              <AddButton label={t("addAttendee")} onClick={onAddAttendee} />
-            </span>
+            {onAddAttendee && (
+              <span style={{ marginTop: 6 }}>
+                <AddButton label={t("addAttendee")} onClick={onAddAttendee} />
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -542,15 +544,15 @@ export function ClassHistoryPage() {
   const [page, setPage] = useState(0);
   const [attendee, setAttendee] = useState<{ name: string; session: HistoryRow } | null>(null);
   const [sessionDetail, setSessionDetail] = useState<HistoryRow | null>(null);
-  const [sessionModal, setSessionModal] = useState<HistoryRow | "new" | null>(null);
-  const [sessionValues, setSessionValues] = useState<CrudValues>({});
   const [deletingSession, setDeletingSession] = useState<HistoryRow | null>(null);
   const [addingTo, setAddingTo] = useState<HistoryRow | null>(null);
   const [addStudentId, setAddStudentId] = useState("");
 
   /* Real sessions, each with the students actually checked in to it. */
   const all: HistoryRow[] = useMemo(() => {
-    return raw.classSessions
+    /* Cancelled classes stay in the history, marked, and are the only ones
+       that can be removed. */
+    return [...raw.classSessions, ...(raw.cancelledSessions ?? [])]
       .map((session) => {
         const id = String(session["session_id"]);
         const cls = raw.classes.find((c) => String(c["class_id"]) === String(session["class_id"]));
@@ -584,12 +586,12 @@ export function ClassHistoryPage() {
           time: start && end ? `${start} – ${end}` : start,
           startTime: start,
           endTime: end,
-          status: String(session["session_status"] ?? ""),
+          status: session["cancelled_at"] ? "Cancelled" : String(session["session_status"] ?? ""),
           attendees,
         };
       })
       .sort((a, b) => b.dateObj.getTime() - a.dateObj.getTime());
-  }, [raw.classSessions, raw.classes, raw.attendance, students]);
+  }, [raw.classSessions, raw.cancelledSessions, raw.classes, raw.attendance, students]);
 
   /* Live courses by id, which is also what the filter matches on. By name was
      near enough until two courses shared one — then a class of the retired
@@ -630,49 +632,26 @@ export function ClassHistoryPage() {
     return options;
   }, [raw.classes, all, liveCourseIds, t, tCommon]);
 
-  const sessionFields: CrudField[] = [
-    {
-      name: "class_id",
-      label: tCommon("class"),
-      kind: "select",
-      required: true,
-      /* A session cannot be created for a class the academy has retired. */
-      options: liveClasses({ classes: raw.classes }).map((c) => ({ value: String(c["class_id"]), label: String(c["name"] ?? "") })),
-    },
-    { name: "session_date", label: tCommon("date"), kind: "date", required: true, half: true },
-    {
-      name: "session_status",
-      label: tCommon("status"),
-      kind: "select",
-      half: true,
-      options: SESSION_STATUSES.map((v) => ({ value: v, label: tStatus(v) })),
-    },
-    { name: "start_time", label: t("startTime"), kind: "time", required: true, half: true },
-    { name: "end_time", label: t("endTime"), kind: "time", required: true, half: true },
-  ];
-
-  function openSessionModal(row: HistoryRow | "new") {
-    setSessionModal(row);
-    setSessionValues(
-      row === "new"
-        ? {
-            class_id: liveClasses({ classes: raw.classes })[0] ? String(liveClasses({ classes: raw.classes })[0]["class_id"]) : "",
-            session_date: new Date().toISOString().slice(0, 10),
-            session_status: "Scheduled",
-            start_time: "",
-            end_time: "",
-          }
-        : {
-            class_id: row.classId,
-            session_date: raw.classSessions.find((s) => String(s["session_id"]) === row.id)
-              ? String(raw.classSessions.find((s) => String(s["session_id"]) === row.id)!["session_date"] ?? "")
-              : "",
-            session_status: row.status,
-            start_time: row.startTime,
-            end_time: row.endTime,
-          },
-    );
+  /* Add and Edit open the dashboard's own class panel, so a class is made
+     and changed the same way everywhere. */
+  const [panel, setPanel] = useState<PanelState>(null);
+  function openEdit(row: HistoryRow) {
+    const def =
+      toTodaysClasses(raw, row.iso).find((c) => c.id === row.id) ??
+      ({
+        id: row.id, classId: row.classId, date: row.iso, start: row.startTime, category: "",
+        name: row.className, time: row.time, status: "Finished", students: [], more: 0,
+        teacher: "—", room: "—", roster: [],
+      } satisfies ClassDef);
+    setPanel({ mode: "view", def });
   }
+
+  /* The dashboard's line: once a class is over it is read-only — no edit, no
+     cancel, no one added or removed. Cancelled ones are only removable. */
+  const now = useMinuteClock();
+  const today = todayISO();
+  const isFinished = (row: HistoryRow) => sessionFinished(row.iso, row.endTime, row.status, now, today);
+  const canEdit = (row: HistoryRow) => row.status !== "Cancelled" && !isFinished(row);
 
   /**
    * Close out an attendance row from the history, days after the fact.
@@ -759,7 +738,7 @@ export function ClassHistoryPage() {
               columns={[tCommon("date"), tCommon("class"), t("time"), t("attendance")]}
               rows={() => filtered.map((row) => [row.date, row.className, row.time, row.attendees.length])}
             />
-            <AddButton label={t("addSession")} onClick={() => openSessionModal("new")} />
+            <AddButton label={t("addSession")} onClick={() => setPanel({ mode: "create", pickDay: true })} />
           </>
         }
       />
@@ -870,8 +849,8 @@ export function ClassHistoryPage() {
                     key={row.key}
                     row={row}
                     onOpen={() => setSessionDetail(row)}
-                    onEdit={() => openSessionModal(row)}
-                    onDelete={() => setDeletingSession(row)}
+                    onEdit={canEdit(row) ? () => openEdit(row) : undefined}
+                    onDelete={row.status === "Cancelled" ? () => setDeletingSession(row) : undefined}
                   />
                 ))}
               </CardGrid>
@@ -887,8 +866,8 @@ export function ClassHistoryPage() {
                 key={row.key}
                 row={row}
                 onOpen={() => setSessionDetail(row)}
-                onEdit={() => openSessionModal(row)}
-                onDelete={() => setDeletingSession(row)}
+                onEdit={canEdit(row) ? () => openEdit(row) : undefined}
+                onDelete={row.status === "Cancelled" ? () => setDeletingSession(row) : undefined}
               />
             ))}
           </CardGrid>
@@ -901,27 +880,38 @@ export function ClassHistoryPage() {
           {/* The row opens the session rather than unfolding underneath it: the
               roster is an editor, and an editor belongs on a screen you chose
               to open, not under a row you were scanning past. */}
-          {pageRows.map((row) => (
+          {pageRows.map((row) => {
+            /* A cancelled class stays in the table, faded, with a tag after its
+               name rather than a status column of its own. */
+            const cancelled = row.status === "Cancelled";
+            const fade = cancelled ? { opacity: 0.6 } : undefined;
+            return (
             <TableRow key={row.key} template={TEMPLATE} onClick={() => setSessionDetail(row)}>
-              <span style={{ color: COLORS.textSecondary }}>{row.date}</span>
-              <span style={{ display: "flex", alignItems: "center", fontWeight: 600 }}>
-                <ClassDot color={classDotColor(row.className)} />
-                {row.className}
+              <span style={{ color: COLORS.textSecondary, ...fade }}>{row.date}</span>
+              <span style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 600, minWidth: 0 }}>
+                <span style={{ display: "flex", alignItems: "center", ...fade }}>
+                  <ClassDot color={classDotColor(row.className)} />
+                  {row.className}
+                </span>
+                {cancelled && (
+                  <Badge color={COLORS.danger} bg={COLORS.dangerBg}>{tStatus("Cancelled")}</Badge>
+                )}
               </span>
-              <span style={{ color: COLORS.textSecondary }}>{row.time}</span>
-              <span style={{ color: COLORS.textSecondary }}>
-                {t("presentCount", { count: row.attendees.length })}
+              <span style={{ color: COLORS.textSecondary, ...fade }}>{row.time}</span>
+              <span style={{ color: COLORS.textSecondary, ...fade }}>
+                {cancelled ? "—" : t("presentCount", { count: row.attendees.length })}
               </span>
               <RowActions
                 label={t("sessionOn", { className: row.className, date: row.date })}
-                onEdit={() => openSessionModal(row)}
-                onDelete={() => setDeletingSession(row)}
+                onEdit={canEdit(row) ? () => openEdit(row) : undefined}
+                onDelete={row.status === "Cancelled" ? () => setDeletingSession(row) : undefined}
               />
               <span style={{ display: "inline-flex", justifySelf: "end", color: COLORS.textSecondary }}>
                 <Icon name="chevronRight" size={16} />
               </span>
             </TableRow>
-          ))}
+            );
+          })}
         </Table>
         <Pagination page={current} totalPages={totalPages} onChange={setPage} />
       </Card>
@@ -933,12 +923,12 @@ export function ClassHistoryPage() {
         <SessionDetail
           row={all.find((r) => r.key === sessionDetail.key) ?? sessionDetail}
           onClose={() => setSessionDetail(null)}
-          onEdit={() => { openSessionModal(sessionDetail); setSessionDetail(null); }}
-          onDelete={() => { setDeletingSession(sessionDetail); setSessionDetail(null); }}
+          onEdit={canEdit(sessionDetail) ? () => { openEdit(sessionDetail); setSessionDetail(null); } : undefined}
+          onDelete={sessionDetail.status === "Cancelled" ? () => { setDeletingSession(sessionDetail); setSessionDetail(null); } : undefined}
           onViewAttendee={(name) => setAttendee({ name, session: sessionDetail })}
-          onRemoveAttendee={(id) => remove("attendance", id)}
+          onRemoveAttendee={canEdit(sessionDetail) ? (id) => remove("attendance", id) : undefined}
           onCheckOutAttendee={checkOutAttendee}
-          onAddAttendee={() => { setAddingTo(sessionDetail); setAddStudentId(""); }}
+          onAddAttendee={canEdit(sessionDetail) ? () => { setAddingTo(sessionDetail); setAddStudentId(""); } : undefined}
         />
       )}
 
@@ -950,20 +940,7 @@ export function ClassHistoryPage() {
         />
       )}
 
-      {sessionModal && (
-        <CrudFormModal
-          title={sessionModal === "new" ? t("addSession") : t("editSession")}
-          isEdit={sessionModal !== "new"}
-          fields={sessionFields}
-          values={sessionValues}
-          onChange={setSessionValues}
-          onClose={() => setSessionModal(null)}
-          onSubmit={async (payload) => {
-            if (sessionModal === "new") await create("class-sessions", payload);
-            else await update("class-sessions", sessionModal.id, payload);
-          }}
-        />
-      )}
+      <SessionPanel state={panel} onClose={() => setPanel(null)} />
 
       {deletingSession && (
         <ConfirmDeleteModal

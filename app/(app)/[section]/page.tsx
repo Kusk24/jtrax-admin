@@ -16,7 +16,7 @@ export default async function SectionPage({
   searchParams,
 }: {
   params: Promise<{ section: string }>;
-  searchParams: Promise<{ new?: string; status?: string; student?: string; id?: string; tab?: string }>;
+  searchParams: Promise<{ new?: string; status?: string; student?: string; class?: string; id?: string; tab?: string }>;
 }) {
   const { section } = await params;
   /* Checked before the nav, because a merged id is deliberately no longer in
@@ -37,7 +37,8 @@ export default async function SectionPage({
      ?student=<id>, which opens the payment form for them. Read here rather
      than with useSearchParams in the client component, which would bail the
      whole route out of server rendering. */
-  const { new: startNew, status, student, id, tab } = await searchParams;
+  /* ?class= goes with ?student=: a top-up for one of the child's courses. */
+  const { new: startNew, status, student, class: classId, id, tab } = await searchParams;
 
   return (
     <SectionRouter
@@ -45,6 +46,7 @@ export default async function SectionPage({
       startNew={startNew}
       status={status}
       studentId={student}
+      classId={classId}
       detailId={id}
       detailTab={tab}
     />

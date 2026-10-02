@@ -18,15 +18,25 @@ export type CreditRules = {
      milestone at which the academy awards a certificate. The parent portal
      counts toward it. */
   certSessions: number;
+  /* How far a check-in may push a balance below zero before it is refused —
+     enforced by the backend too, so this is the true rule, not just a UI
+     hint. */
+  maxNegativeCredit: number;
+  /* The step an early check-out's attended time is rounded to, in minutes;
+     0 charges the exact minutes. Read by the backend when it charges. */
+  checkoutRoundMinutes: number;
 };
 
 /* Defaults from the design's `state.settingsCreditRules`; certSessions is the
-   academy's stated rule. */
+   academy's stated rule. maxNegativeCredit defaults to 0: no negative balance
+   until an admin says otherwise, matching the backend's own default. */
 export const DEFAULT_CREDIT_RULES: CreditRules = {
   lowCredit: 3,
   expiringDays: 7,
   inactiveDays: 30,
   certSessions: 50,
+  maxNegativeCredit: 0,
+  checkoutRoundMinutes: 15,
 };
 
 /** Where the thresholds live in `system_configuration`. */
@@ -35,6 +45,8 @@ export const RULE_KEYS: Record<keyof CreditRules, string> = {
   expiringDays: "credit_rule_expiring_days",
   inactiveDays: "credit_rule_inactive_days",
   certSessions: "certificate_sessions",
+  maxNegativeCredit: "credit_rule_max_negative",
+  checkoutRoundMinutes: "credit_rule_checkout_round_minutes",
 };
 
 export type FollowUpBucket = "low" | "expiring" | "expired" | "inactive";
@@ -84,16 +96,24 @@ export function buildFollowUps(students: Student[]): FollowUp[] {
 
 export type TrendPoint = { month: string; value: number };
 
-/** Maps a series to `points` strings for the SVG polyline and its fill polygon. */
-export function trendPointStrings(points: TrendPoint[]): { line: string; area: string } {
+/**
+ * Each point's height on the 0–100 box, top down — the one scale the line,
+ * its fill and a hover dot all share. Inset vertically so the stroke isn't
+ * clipped by the edges.
+ */
+export function trendPointY(points: TrendPoint[]): number[] {
   const max = Math.max(...points.map((p) => p.value));
   const min = Math.min(...points.map((p) => p.value));
   const span = max - min || 1;
-  /* Inset vertically so the stroke isn't clipped by the viewBox edges. */
-  const coords = points.map((p, i) => {
+  return points.map((p) => 90 - ((p.value - min) / span) * 80);
+}
+
+/** Maps a series to `points` strings for the SVG polyline and its fill polygon. */
+export function trendPointStrings(points: TrendPoint[]): { line: string; area: string } {
+  const ys = trendPointY(points);
+  const coords = points.map((_, i) => {
     const x = (i / (points.length - 1)) * 100;
-    const y = 90 - ((p.value - min) / span) * 80;
-    return `${x.toFixed(2)},${y.toFixed(2)}`;
+    return `${x.toFixed(2)},${ys[i].toFixed(2)}`;
   });
   return {
     line: coords.join(" "),

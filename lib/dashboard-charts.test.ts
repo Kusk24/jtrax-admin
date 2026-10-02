@@ -4,7 +4,7 @@
  * is checked against rows small enough to add up by hand.
  */
 import { describe, expect, it } from "vitest";
-import {
+import { axisTicks,
   attendanceSplit, byCourse, byMethod, monthToDate, parseAmount, revenueSeries, STATUS_ORDER,
   statusCounts,
 } from "./dashboard-charts";
@@ -230,5 +230,22 @@ describe("monthToDate", () => {
     expect(d.previous).toBe(100);
     expect(d.previousMonth.getFullYear()).toBe(2025);
     expect(d.previousMonth.getMonth()).toBe(11);
+  });
+});
+
+describe("axisTicks", () => {
+  const series = (n: number) => Array.from({ length: n }, (_, i) => ({ month: String(i), value: 0 }));
+
+  it("labels every day of a week", () => {
+    expect(axisTicks(series(7), "7D")).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  });
+
+  it("labels thirty days a week apart, ending on the last day", () => {
+    /* Sep 1, 8, 15, 22 … and today, Sep 30 — with 29 dropped as too close. */
+    expect(axisTicks(series(30), "30D")).toEqual([0, 7, 14, 21, 29]);
+  });
+
+  it("labels every month of a year", () => {
+    expect(axisTicks(series(12), "Year")).toHaveLength(12);
   });
 });

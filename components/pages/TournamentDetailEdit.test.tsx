@@ -144,7 +144,8 @@ describe("editing a tournament in place", () => {
     // name appears twice by design: the page title, and the Tournament
     // Information row underneath it.
     expect(screen.getAllByText("JCA Open").length).toBeGreaterThan(0);
-    expect(screen.getByText(en.tournament.viewOnMap)).toBeTruthy();
+    // The venue's map, which opens Google Maps when clicked.
+    expect(screen.getByTitle(en.tournament.mapPreviewTitle)).toBeTruthy();
     expect(screen.queryByLabelText(en.tournament.fieldName)).toBeNull();
 
     await user.click(screen.getByText(en.common.edit));
@@ -173,8 +174,8 @@ describe("editing a tournament in place", () => {
 
     await waitFor(() => expect(update).toHaveBeenCalled());
     expect(tournamentWrite()?.name).toBe("JCA Winter Open");
-    // Recomputed from the venue name, not just carried over unchanged.
-    expect(tournamentWrite()?.venue_map_url).toContain("Wellington%20College");
+    // Not sent: this backend has no such column and refuses the write.
+    expect(tournamentWrite()).not.toHaveProperty("venue_map_url");
     expect(categoryRemovals()).toEqual(["cat_1"]);
     expect(categoryWrites()).toEqual(["U10 Boys"]);
 
@@ -210,7 +211,11 @@ describe("editing a tournament in place", () => {
     tournaments = [makeTournament()];
     const user = openDetail({}); // no detailId: start on the list
 
-    const card = screen.getByText("JCA Open").closest(".jt-course-card") as HTMLElement;
+    /* The card's banner draws the name too, so the card is found from the
+       list's own title rather than the first "JCA Open" on the page. */
+    const card = screen.getAllByText("JCA Open")
+      .map((el) => el.closest(".jt-course-card"))
+      .find(Boolean) as HTMLElement;
     await user.click(within(card).getByLabelText(en.common.editThing.replace("{what}", "JCA Open")));
 
     // Landed on the detail page, already editing — not a modal, and not the

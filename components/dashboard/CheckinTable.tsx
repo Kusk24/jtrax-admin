@@ -1,20 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { fmtCredits } from "@/lib/live";
+import { byRegisterOrder, fmtCredits, fmtDate, toCheckins } from "@/lib/live";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
 import { ActionButton } from "../crud";
+import { useDashboardDate } from "../DashboardDate";
 import { useData } from "../DataProvider";
 import { useErrorToast } from "../ErrorToast";
-import { Table, TableRow } from "../page-kit";
+import { SelectFilter, Table, TableRow } from "../page-kit";
 import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
+import { useEarlyCheckout } from "./EarlyCheckout";
 
 const COLLAPSED_ROWS = 5;
-/* The fixed first column is the tick box; names and courses get the flexible
-   room while the short operational fields keep compact, predictable widths. */
-const GRID = "32px minmax(116px, 1.5fr) 58px minmax(104px, 1fr) 72px 72px 78px 82px";
+/* The fixed first column is the tick box; the seven after it share the
+   width equally. */
+const GRID = "32px repeat(7, minmax(0, 1fr))";
 
 function creditColors(credit: number) {
   if (credit <= 0) return { color: COLORS.danger, bg: COLORS.dangerBg };
@@ -26,21 +28,38 @@ export function CheckinTable() {
   const t = useTranslations("dashboard");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
-  const { checkins: rows, batch, update } = useData();
+  const { raw, checkins, batch, update } = useData();
+  const { day, isToday } = useDashboardDate();
+  /* Today's register comes ready-made from the data provider; another day's
+     is read from the same rows. */
+  const allRows = useMemo(() => (isToday ? checkins : toCheckins(raw, day)), [isToday, checkins, raw, day]);
+  /* One course at a time, when the desk wants it. Everything below — the
+     count, select-all, check-out — works on the filtered rows, so ticking
+     "all" never reaches a child the desk cannot see. */
+  const [course, setCourse] = useState("");
+  const courses = useMemo(() => [...new Set(allRows.map((r) => r.class).filter(Boolean))].sort(), [allRows]);
+  const activeCourse = courses.includes(course) ? course : "";
+  const rows = useMemo(
+    () => (activeCourse ? allRows.filter((r) => r.class === activeCourse) : allRows).slice().sort(byRegisterOrder),
+    [allRows, activeCourse],
+  );
   const { showError } = useErrorToast();
   const [expanded, setExpanded] = useState(false);
   /* Attendance ids, not student ids: the write is against the attendance row,
      and a child could in principle have one for a class that already ended. */
   const [selected, setSelected] = useState<string[]>([]);
   const [checkingOut, setCheckingOut] = useState(false);
+  const early = useEarlyCheckout();
   const visible = expanded ? rows : rows.slice(0, COLLAPSED_ROWS);
 
   /* Everyone still in a class — the only rows a check-out means anything for.
      Read from `rows`, not `visible`: "all" means all of today, and a desk
      clearing the building at closing time should not have to press View all
      first to reach the sixth child. */
+  /* Only today's: checking out on another day's register would stamp today's
+     time on a visit that was not today. */
   const checkable = rows
-    .filter((r) => r.status === "In class" && r.attendanceId)
+    .filter((r) => isToday && r.status === "In class" && r.attendanceId)
     .map((r) => r.attendanceId!);
   const chosen = selected.filter((id) => checkable.includes(id));
   const allChosen = checkable.length > 0 && chosen.length === checkable.length;
@@ -103,11 +122,23 @@ export function CheckinTable() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-          <SectionTitle>{t("todaysCheckin")}</SectionTitle>
+          <SectionTitle>{isToday ? t("todaysCheckin") : t("checkinsOn", { date: fmtDate(day) })}</SectionTitle>
           <Badge color={COLORS.blue} bg={COLORS.light}>
             {t("studentCount", { count: rows.length })}
           </Badge>
         </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        {courses.length > 1 && (
+          <SelectFilter
+            value={activeCourse}
+            onChange={(v) => {
+              setCourse(v);
+              setSelected([]);
+            }}
+            options={[{ value: "", label: tCommon("allClasses") }, ...courses.map((c) => ({ value: c, label: c }))]}
+            label={t("filterByCourse")}
+          />
+        )}
         {rows.length > COLLAPSED_ROWS && (
           <button
             type="button"
@@ -125,6 +156,7 @@ export function CheckinTable() {
             {expanded ? tCommon("showLess") : tCommon("viewAll")}
           </button>
         )}
+        </div>
       </div>
 
       {/* Only once something is ticked. An always-there bar with a disabled
@@ -163,7 +195,7 @@ export function CheckinTable() {
               onClick={async () => {
                 setCheckingOut(true);
                 try {
-                  await checkOut(chosen);
+                  await early.request(chosen, () => checkOut(chosen));
                 } finally {
                   setCheckingOut(false);
                 }
@@ -191,8 +223,8 @@ export function CheckinTable() {
           <span className="jt-dashboard-empty-icon">
             <Icon name="userCheck" size={20} color={COLORS.blue} />
           </span>
-          <strong>{t("noCheckinsToday")}</strong>
-          <span>{t("noCheckinsTodaySub")}</span>
+          <strong>{isToday ? t("noCheckinsToday") : t("noCheckinsOn", { date: fmtDate(day) })}</strong>
+          {isToday && <span>{t("noCheckinsTodaySub")}</span>}
         </div>
       ) : (
         <Table
@@ -227,7 +259,7 @@ export function CheckinTable() {
           {visible.map((row) => {
           const credit = creditColors(row.credit);
           const status = statusChipColors(row.status === "In class" ? "Ongoing" : "Dismissed");
-          const canCheckOut = row.status === "In class" && Boolean(row.attendanceId);
+          const canCheckOut = isToday && row.status === "In class" && Boolean(row.attendanceId);
           const ticked = Boolean(row.attendanceId) && chosen.includes(row.attendanceId!);
           return (
             <TableRow key={row.attendanceId} template={GRID}>
@@ -281,7 +313,7 @@ export function CheckinTable() {
                   <ActionButton
                     className="jt-chip"
                     busyLabel={tCommon("saving")}
-                    onClick={() => checkOut([row.attendanceId!])}
+                    onClick={() => early.request([row.attendanceId!], () => checkOut([row.attendanceId!]))}
                     style={{
                       padding: "5px 12px",
                       borderRadius: 999,
@@ -305,6 +337,7 @@ export function CheckinTable() {
         </Table>
       )}
 
+      {early.dialog}
     </Card>
   );
 }

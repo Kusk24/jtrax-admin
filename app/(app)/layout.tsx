@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { JtraxProvider } from "@/components/JtraxContext";
 import { ErrorToastProvider } from "@/components/ErrorToast";
 import { DataProvider } from "@/components/DataProvider";
+import { DashboardDateProvider } from "@/components/DashboardDate";
 import { JtraxShell } from "@/components/JtraxShell";
 import { SESSION_COOKIE, fetchIdentity, identityToPerson } from "@/lib/auth";
 import { toTheme } from "@/lib/theme";
@@ -27,7 +28,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <JtraxProvider person={person} theme={toTheme(me.themePreference)}>
       <ErrorToastProvider>
         <DataProvider>
-          <JtraxShell>{children}</JtraxShell>
+          <DashboardDateProvider>
+            <JtraxShell>{children}</JtraxShell>
+          </DashboardDateProvider>
         </DataProvider>
       </ErrorToastProvider>
     </JtraxProvider>

@@ -8,6 +8,7 @@ import type {
   Student, Tournament, Participant,
 } from "./data";
 import { MONTH_SHORT } from "./theme";
+import { ageCheck, ageOn } from "./age-group";
 import { DEFAULT_CREDIT_RULES, RULE_KEYS, type CreditRules, type TrendPoint } from "./derive";
 import type { JtraxRole } from "./theme";
 
@@ -25,6 +26,14 @@ export type LiveCollections = {
   classSessions: Row[];
   attendance: Row[];
   enrollments: Row[];
+  /** Enrolments the office deleted (migration 0044). Kept apart so nothing
+      that reads `enrollments` has to know to skip them; only the student's
+      course history lists them. */
+  deletedEnrollments?: Row[];
+  /** Sessions the office cancelled (migration 0053). Kept apart for the same
+      reason: nothing that reads `classSessions` should count a class that
+      never ran. Only Today's Classes lists them, marked Cancelled. */
+  cancelledSessions?: Row[];
   creditTransactions: Row[];
   creditPackages: Row[];
   payments: Row[];
@@ -102,6 +111,8 @@ export function creditRulesOf(c: LiveCollections): CreditRules {
     expiringDays: read(RULE_KEYS.expiringDays, DEFAULT_CREDIT_RULES.expiringDays),
     inactiveDays: read(RULE_KEYS.inactiveDays, DEFAULT_CREDIT_RULES.inactiveDays),
     certSessions: read(RULE_KEYS.certSessions, DEFAULT_CREDIT_RULES.certSessions),
+    maxNegativeCredit: read(RULE_KEYS.maxNegativeCredit, DEFAULT_CREDIT_RULES.maxNegativeCredit),
+    checkoutRoundMinutes: read(RULE_KEYS.checkoutRoundMinutes, DEFAULT_CREDIT_RULES.checkoutRoundMinutes),
   };
 }
 
@@ -112,7 +123,7 @@ export function creditRulesOf(c: LiveCollections): CreditRules {
  * dashboard read the saved ones — editing them in Settings moved the counts
  * and left the chips alone.
  */
-function studentStatus(
+export function studentStatus(
   credit: number,
   expiresISO: string,
   lastAttended: string,
@@ -129,6 +140,30 @@ function studentStatus(
   }
   if (credit <= rules.lowCredit) return "Low Credit";
   return "Normal";
+}
+
+/**
+ * One enrolment's own credit condition, from that course's ledger alone: its
+ * balance, its latest expiry, and when the child last spent an hour of it.
+ * A child in two courses can be Low Credit in one and Normal in the other,
+ * and the student-level status — read off a single enrolment — cannot say so.
+ */
+export function enrolmentStatus(
+  c: Pick<LiveCollections, "creditTransactions">,
+  enrolmentId: string,
+  rules: CreditRules,
+): { balance: number; expiry: string; status: Student["status"] } {
+  const txs = c.creditTransactions.filter((t) => s(t, "enrollment_id") === enrolmentId);
+  const balance = txs.reduce((sum, t) => sum + n(t, "amount"), 0);
+  const expiry = txs.map((t) => s(t, "expiry_date")).filter(Boolean).sort().at(-1) ?? "";
+  const lastSpent =
+    txs
+      .filter((t) => s(t, "transaction_type") === "consumption")
+      .map((t) => s(t, "transaction_date"))
+      .filter(Boolean)
+      .sort()
+      .at(-1) ?? "";
+  return { balance, expiry, status: studentStatus(balance, expiry, lastSpent, rules) };
 }
 
 /** One student row joined across enrollment, class, credits and parent info. */
@@ -156,6 +191,9 @@ export function toStudents(c: LiveCollections): Student[] {
     const parent = link ? c.parents.find((p) => s(p, "parent_id") === s(link, "parent_id")) : undefined;
     const contacts = parent ? c.parentContacts.filter((pc) => s(pc, "parent_id") === s(parent, "parent_id")) : [];
     const contact = (type: string) => s(contacts.find((pc) => s(pc, "contact_type") === type) ?? {}, "value");
+    /* The parent's one email is the address they sign in with; the contact
+       row is only a fallback for families recorded before the two merged. */
+    const parentEmail = (parent ? s(parent, "email") : "") || contact("email");
     return {
       id: sid,
       name: s(st, "name"),
@@ -180,7 +218,7 @@ export function toStudents(c: LiveCollections): Student[] {
       parentName: parent ? s(parent, "name") : "—",
       parentRelation: link ? s(link, "relationship_type") || "Guardian" : "—",
       parentPhone: contact("phone"),
-      parentEmail: contact("email"),
+      parentEmail,
       parentLineId: contact("line_id"),
       joinedDate: enr ? fmtDate(s(enr, "enrolled_date")) : "",
     };
@@ -238,11 +276,13 @@ export function toPayments(c: LiveCollections): Payment[] {
          while the student exists, the snapshot is what the till recorded. */
       return {
         id: s(p, "payment_id"),
+        kind: s(p, "tournament_registration_id") ? ("tournament" as const) : ("course" as const),
         name: s(p, "student_name") || (st ? s(st, "name") : s(p, "student_id")),
         className: s(p, "class_name") || (cls ? s(cls, "name") : "—"),
         payer: s(p, "parent_name"),
         detached: !s(p, "student_id"),
-        credits: pkg ? `+${n(pkg, "credit_amount")}` : "—",
+        /* The payment's own count (a custom sale has no package), else the package's. */
+        credits: n(p, "credit_amount") > 0 ? `+${n(p, "credit_amount")}` : pkg ? `+${n(pkg, "credit_amount")}` : "—",
         amount: fmtTHB(n(p, "final_amount")),
         gross: fmtTHB(n(p, "amount")),
         discount: n(p, "discount_amount") > 0 ? fmtTHB(n(p, "discount_amount")) : "—",
@@ -282,20 +322,37 @@ export function toAdmins(c: LiveCollections): AdminPerson[] {
   });
 }
 
+function audienceKindOf(value: string): Announcement["audienceKind"] {
+  return value === "classes" || value === "parents" ? value : "all";
+}
+
+/** audience_ids is a JSON array; anything unreadable counts as none. */
+function idsOf(raw: string): string[] {
+  try {
+    const parsed: unknown = JSON.parse(raw || "[]");
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
 export function toAnnouncements(c: LiveCollections): Announcement[] {
   return [...c.announcements]
     .sort((a, b) => s(b, "posted_at").localeCompare(s(a, "posted_at")))
     .map((a) => ({
       id: s(a, "announcement_id"),
       title: s(a, "title"),
-      audience: "All",
+      audienceKind: audienceKindOf(s(a, "audience")),
+      audienceIds: idsOf(s(a, "audience_ids")),
       date: fmtDate(s(a, "posted_at")),
       body: s(a, "body"),
     }));
 }
 
 export function toTournaments(c: LiveCollections): Tournament[] {
-  return c.tournaments.map((t) => {
+  /* A draft is the create wizard's, mid-review. It is not a tournament yet:
+     nothing lists it until it is published. */
+  return c.tournaments.filter((t) => n(t, "draft") !== 1).map((t) => {
     const tid = s(t, "tournament_id");
     const cats = c.tournamentCategories.filter((k) => s(k, "tournament_id") === tid);
     /* Only people who are actually in the event. A public sign-up waiting for
@@ -307,6 +364,9 @@ export function toTournaments(c: LiveCollections): Tournament[] {
     const regs = c.tournamentRegistrations.filter(
       (k) => s(k, "tournament_id") === tid && (s(k, "status") || "Approved") === "Approved",
     );
+    const startISO = s(t, "start_date");
+    const catName = (r: Row) =>
+      s(cats.find((k) => s(k, "tournament_category_id") === s(r, "tournament_category_id")) ?? {}, "name");
     const participants: Participant[] = regs.map((r, i) => ({
       id: s(r, "tournament_registration_id"),
       studentId: s(r, "student_id"),
@@ -316,6 +376,9 @@ export function toTournaments(c: LiveCollections): Tournament[] {
          the same order the backend collects by. */
       feeCharged: r["fee_charged"] == null ? n(r, "fee_quoted") : n(r, "fee_charged"),
       name: s(r, "participant_name"),
+      arrival: (s(r, "arrival_status") || "Pending") as Participant["arrival"],
+      arrivalAsked: !!r["arrival_reminded_at"],
+      arrivalRemindedAt: s(r, "arrival_reminded_at") || undefined,
       rating: n(r, "fide_rating"),
       category: s(cats.find((k) => s(k, "tournament_category_id") === s(r, "tournament_category_id")) ?? {}, "name") || "—",
       score: "—",
@@ -331,9 +394,16 @@ export function toTournaments(c: LiveCollections): Tournament[] {
         c.payments.find((p) => s(p, "tournament_registration_id") === s(r, "tournament_registration_id")) ?? {},
         "status",
       ) === "Paid" ? "Paid" : "Pending",
-      age: 0,
+      /* On the tournament's first day, from the date of birth given; the age
+         the family typed when there is none. */
+      age: s(r, "participant_date_of_birth")
+        ? ageOn(s(r, "participant_date_of_birth"), startISO || todayISO())
+        : n(r, "participant_age"),
       guardian: "—",
-      contact: s(r, "participant_contact"),
+      /* The public form and the desk both write contact_phone now; older desk
+         entries have only participant_contact. */
+      contact: s(r, "participant_contact") || s(r, "contact_phone"),
+      nickname: s(r, "nickname"),
       wins: 0,
       losses: 0,
       draws: 0,
@@ -342,12 +412,37 @@ export function toTournaments(c: LiveCollections): Tournament[] {
          row until 0033 gave them columns to come from. */
       medicalNotes: s(r, "medical_notes"),
       notes: s(r, "remarks"),
+      nameTh: s(r, "participant_name_th"),
+      documentType: s(r, "id_document_type"),
+      scannedName: s(r, "ocr_name"),
+      scannedDateOfBirth: s(r, "ocr_date_of_birth"),
+      ageCheck: ageCheck({
+        category: catName(r),
+        startDate: startISO,
+        dateOfBirth: s(r, "participant_date_of_birth"),
+        scannedDateOfBirth: s(r, "ocr_date_of_birth"),
+      }),
+      earlyBirdLapsed: !!s(r, "early_bird_lapsed_at"),
+      contactPhone: s(r, "contact_phone"),
+      contactEmail: s(r, "contact_email"),
+      resultsSectionId: n(r, "results_section_id") || undefined,
+      resultsPlayerName: s(r, "results_player_name") || undefined,
     }));
+    const released = c.tournamentRegistrations
+      .filter((k) => s(k, "tournament_id") === tid && s(k, "status") === "Withdrawn" && s(k, "released_at"))
+      .map((r) => ({
+        id: s(r, "tournament_registration_id"),
+        name: s(r, "participant_name"),
+        category: catName(r) || "—",
+        releasedAt: fmtDate(s(r, "released_at").slice(0, 10)),
+      }));
     const backendStatus = s(t, "tournament_status");
     return {
       id: tid,
       name: s(t, "name"),
-      status: backendStatus === "Completed" ? "Completed" : "Ongoing",
+      /* Worked out from the dates on the server, or pinned by the office. */
+      status: backendStatus === "Completed" || backendStatus === "Ongoing" ? backendStatus : "Upcoming",
+      statusLocked: n(t, "status_locked") === 1,
       hasStarted: backendStatus !== "Upcoming",
       date: fmtDate(s(t, "start_date")),
       endDate: t["end_date"] == null ? "" : fmtDate(s(t, "end_date")),
@@ -359,10 +454,13 @@ export function toTournaments(c: LiveCollections): Tournament[] {
          real column, so the Results tab reports the actual state. */
       published: n(t, "results_public") === 1,
       publicRegistration: n(t, "public_registration") === 1,
+      hasBanner: t["has_banner"] === true || n(t, "has_banner") === 1,
       chessResultsId: t["chess_results_id"] == null ? undefined : n(t, "chess_results_id"),
       studentDiscountPct: n(t, "student_discount_pct"),
       studentGetsDiscount: t["student_gets_discount"] == null || n(t, "student_gets_discount") === 1,
       studentGetsEarlyBird: n(t, "student_gets_early_bird") === 1,
+      arrivalReminderDays: n(t, "arrival_reminder_days"),
+      startISO: s(t, "start_date"),
       studentFeeNow: t["student_fee"] == null ? undefined : n(t, "student_fee"),
       entryFeeAmount: t["regular_fee"] == null ? 0 : n(t, "regular_fee"),
       categories: cats.map((k) => s(k, "name")),
@@ -382,6 +480,7 @@ export function toTournaments(c: LiveCollections): Tournament[] {
       rounds: 0,
       revenue: fmtTHB(regs.reduce((sum, r) => sum + n(r, "fee_charged"), 0)),
       participants,
+      released,
     };
   });
 }
@@ -407,6 +506,17 @@ function fmtTime(value: string): string {
   return `${hour}:${String(m ?? 0).padStart(2, "0")} ${suffix}`;
 }
 
+/** A session's scheduled time, compact: "3:00–5:00 PM", or "11:30 AM–1:00 PM"
+    when it crosses noon. */
+export function fmtSessionTime(start: string, end: string): string {
+  if (!start) return "—";
+  if (!end) return fmtTime(start);
+  const from = fmtTime(start);
+  const to = fmtTime(end);
+  const sameHalf = from.slice(-2) === to.slice(-2);
+  return `${sameHalf ? from.slice(0, -3) : from}–${to}`;
+}
+
 /* The dashboard colours and picks an icon by category, which the ER model
    spells as class_type. */
 function categoryOf(className: string, classType: string): string {
@@ -424,8 +534,12 @@ export function toTodaysClasses(c: LiveCollections, day = todayISO()): ClassDef[
       const id = s(session, "session_id");
       const cls = c.classes.find((k) => s(k, "class_id") === s(session, "class_id"));
       const name = cls ? s(cls, "name") : "—";
-      const roster = c.attendance
-        .filter((a) => s(a, "session_id") === id)
+      const visits = c.attendance.filter((a) => s(a, "session_id") === id);
+      /* Everyone who came has gone home: the class is over, whatever the
+         timetable said. Derived, not written — checking a child back in
+         brings it back to Ongoing. */
+      const everyoneLeft = visits.length > 0 && visits.every((a) => s(a, "check_out_time") !== "");
+      const roster = visits
         .map((a) => {
           const student = c.students.find((st) => s(st, "student_id") === s(a, "student_id"));
           return student ? s(student, "name") : s(a, "student_id");
@@ -434,13 +548,15 @@ export function toTodaysClasses(c: LiveCollections, day = todayISO()): ClassDef[
       const end = s(session, "end_time");
       return {
         id,
+        date: s(session, "session_date"),
+        start,
         classId: s(session, "class_id"),
         category: categoryOf(name, cls ? s(cls, "class_type") : ""),
         name,
         time: start && end ? `${fmtTime(start)} – ${fmtTime(end)}` : fmtTime(start),
         /* The design's card has two states; a session not yet started reads as
            upcoming, which its own chip already says. */
-        status: s(session, "session_status") === "Completed" ? "Finished" : "Ongoing",
+        status: s(session, "session_status") === "Completed" || everyoneLeft ? "Finished" : "Ongoing",
         students: roster.slice(0, 2),
         more: Math.max(0, roster.length - 2),
         teacher: "—",
@@ -448,7 +564,37 @@ export function toTodaysClasses(c: LiveCollections, day = todayISO()): ClassDef[
         roster,
       } satisfies ClassDef;
     })
-    .sort((a, b) => a.time.localeCompare(b.time));
+    /* Latest first, by the clock — not by the display string, where
+       "1:30 PM" sorted above "9:00 AM". */
+    .sort((a, b) => b.start.localeCompare(a.start));
+}
+
+/** The day's cancelled sessions, as cards that say so. Nobody is on them:
+    cancelling refunds and removes the roster. */
+export function toCancelledClasses(c: LiveCollections, day = todayISO()): ClassDef[] {
+  return (c.cancelledSessions ?? [])
+    .filter((session) => s(session, "session_date") === day)
+    .map((session) => {
+      const cls = c.classes.find((k) => s(k, "class_id") === s(session, "class_id"));
+      const name = cls ? s(cls, "name") : "—";
+      const start = s(session, "start_time");
+      const end = s(session, "end_time");
+      return {
+        id: s(session, "session_id"),
+        date: s(session, "session_date"),
+        start,
+        classId: s(session, "class_id"),
+        category: categoryOf(name, cls ? s(cls, "class_type") : ""),
+        name,
+        time: start && end ? `${fmtTime(start)} – ${fmtTime(end)}` : fmtTime(start),
+        status: "Cancelled",
+        students: [],
+        more: 0,
+        teacher: "—",
+        room: "—",
+        roster: [],
+      } satisfies ClassDef;
+    });
 }
 
 /** Who is at the academy today, from attendance on today's sessions. */
@@ -477,11 +623,23 @@ export function toCheckins(c: LiveCollections, day = todayISO()): CheckinDef[] {
         class: cls ? categoryOf(s(cls, "name"), s(cls, "class_type")) : "—",
         timeIn: clockOf(s(a, "check_in_time")),
         timeOut: out ? clockOf(out) : "—",
+        checkInAt: s(a, "check_in_time"),
         status: out ? "Dismissed" : "In class",
         credit,
       } satisfies CheckinDef;
     })
-    .sort((a, b) => a.timeIn.localeCompare(b.timeIn));
+    .sort(byRegisterOrder);
+}
+
+/**
+ * The register's order: everyone still in class first, then those checked
+ * out; within each, the latest arrival first. It used to sort the display
+ * time as text, which put "10:05" before "9:30".
+ */
+export function byRegisterOrder(a: CheckinDef, b: CheckinDef): number {
+  const inClass = Number(b.status === "In class") - Number(a.status === "In class");
+  if (inClass !== 0) return inClass;
+  return (b.checkInAt ?? "").localeCompare(a.checkInAt ?? "");
 }
 
 /**
@@ -615,7 +773,7 @@ export function fmtCredits(credit: number): string {
    sitting Pending has not cleared and a Refunded one went back out, so neither
    belongs in a total — a row with no status at all predates the column and was
    taken at the till, which is Paid. */
-function isRevenue(p: Row): boolean {
+export function isRevenue(p: Row): boolean {
   return (s(p, "status") || "Paid") === "Paid";
 }
 
@@ -623,33 +781,4 @@ export function monthRevenue(c: LiveCollections, now = new Date()): { total: num
   const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const rows = c.payments.filter((p) => isRevenue(p) && s(p, "payment_date").startsWith(prefix));
   return { total: rows.reduce((sum, p) => sum + n(p, "final_amount"), 0), count: rows.length };
-}
-
-/** A student's last 35 days of practice, and the streak trailing off today. */
-export function practiceStrip(
-  c: LiveCollections,
-  studentId: string,
-  now = new Date(),
-): { days: boolean[]; streak: number } {
-  /* Practised means the pupil did something that day — solved puzzles or sat
-     with the board. Minutes alone used to be the test, which now hides every
-     real solve: the backend records puzzles honestly and leaves minutes at 0,
-     because nothing measures how long a child sat with a position. */
-  const done = new Set(
-    c.practiceActivities
-      .filter(
-        (a) =>
-          s(a, "student_id") === studentId &&
-          (n(a, "puzzles_completed") > 0 || n(a, "minutes_practiced") > 0),
-      )
-      .map((a) => s(a, "activity_date")),
-  );
-  const days: boolean[] = [];
-  for (let back = 34; back >= 0; back--) {
-    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - back);
-    days.push(done.has(todayISO(d)));
-  }
-  let streak = 0;
-  for (let i = days.length - 1; i >= 0 && days[i]; i--) streak++;
-  return { days, streak };
 }

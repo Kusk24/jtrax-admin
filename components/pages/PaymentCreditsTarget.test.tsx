@@ -69,11 +69,11 @@ vi.mock("@/components/DataProvider", () => ({
 const { PaymentPage } = await import("./PaymentPage");
 const { ErrorToastProvider } = await import("@/components/ErrorToast");
 
-function renderPaymentFor(studentId: string) {
+function renderPaymentFor(studentId: string, classId?: string) {
   render(
     <NextIntlClientProvider locale="en" messages={en}>
       <ErrorToastProvider>
-        <PaymentPage startStudentId={studentId} />
+        <PaymentPage startStudentId={studentId} startClassId={classId} />
       </ErrorToastProvider>
     </NextIntlClientProvider>,
   );
@@ -148,5 +148,71 @@ describe("crediting the class the package was actually for", () => {
     );
     expect(bodyOf("payments").enrollment_id).toBe("enr_new");
     expect(bodyOf("credit-transactions").enrollment_id).toBe("enr_new");
+  });
+});
+
+/* A course's "Top up" on the student's page arrives with that course. */
+describe("topping up one course", () => {
+  it("opens with that course's package chosen", () => {
+    renderPaymentFor("mini", "master");
+    expect((screen.getByLabelText("Credit Package") as HTMLSelectElement).value).toBe("pkg_master");
+  });
+
+  it("falls back to the child's own class when none is given", () => {
+    renderPaymentFor("mini");
+    expect((screen.getByLabelText("Credit Package") as HTMLSelectElement).value).toBe("pkg_king");
+  });
+});
+
+/* Packages are the common case, not the only one: the desk can sell any
+   number of credits for a course at any price. */
+describe("custom credits", () => {
+  it("writes the typed credits to the chosen course, with no package", async () => {
+    const user = renderPaymentFor("mini");
+    await user.selectOptions(screen.getByLabelText("Credit Package"), "Custom credits");
+    await user.selectOptions(screen.getByLabelText("Course"), "master");
+    await user.type(screen.getByLabelText("Credits"), "7");
+    const amount = screen.getByLabelText("Amount (THB)");
+    await user.clear(amount);
+    await user.type(amount, "5000");
+    await user.click(screen.getByRole("button", { name: "Save Payment" }));
+
+    expect(bodyOf("payments")).toEqual(
+      expect.objectContaining({ credit_package_id: null, credit_amount: 7, enrollment_id: "enr_master", class_name: "Master" }),
+    );
+    expect(bodyOf("credit-transactions")).toEqual(
+      expect.objectContaining({ amount: 7, class_id: "master", enrollment_id: "enr_master" }),
+    );
+    /* Expires like Master's own package (90 days). */
+    expect(bodyOf("credit-transactions").expiry_date).toBeTruthy();
+  });
+
+  it("cannot be saved without a number of credits", async () => {
+    const user = renderPaymentFor("mini");
+    await user.selectOptions(screen.getByLabelText("Credit Package"), "Custom credits");
+    expect((screen.getByRole("button", { name: "Save Payment" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+describe("discount", () => {
+  it("is a percentage, saved as the baht it takes off", async () => {
+    const user = renderPaymentFor("mini");
+    await user.selectOptions(screen.getByLabelText("Credit Package"), "pkg_king"); // 12,000
+    const pct = screen.getByLabelText("Discount (%)");
+    await user.clear(pct);
+    await user.type(pct, "10");
+    await user.click(screen.getByRole("button", { name: "Save Payment" }));
+
+    expect(bodyOf("payments")).toEqual(
+      expect.objectContaining({ amount: 12000, discount_amount: 1200, final_amount: 10800 }),
+    );
+  });
+});
+
+describe("the package list", () => {
+  it("offers custom credits first", () => {
+    renderPaymentFor("mini");
+    const options = (screen.getByLabelText("Credit Package") as HTMLSelectElement).options;
+    expect(options[0].textContent).toBe("Custom credits");
   });
 });

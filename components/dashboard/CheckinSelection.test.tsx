@@ -11,7 +11,7 @@
  * in-memory API, because what is being checked is that a tick, a press and a
  * refetch end with the right rows stamped and the right names on screen.
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
@@ -19,6 +19,18 @@ import en from "@/messages/en.json";
 import { todayISO } from "@/lib/live";
 
 const today = todayISO();
+
+/* The class runs 09:00–10:00 today and these check-outs come after it. Without
+   a fixed clock, a run before 10:00 Bangkok reaches the early check-out
+   confirmation instead, and every assertion here misses. Only Date is faked,
+   so the waits in these tests still run on real timers. */
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(`${today}T18:00:00+07:00`));
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 const db: Record<string, Record<string, unknown>[]> = {};
 
@@ -104,7 +116,9 @@ async function renderTable() {
       </ErrorToastProvider>
     </NextIntlClientProvider>,
   );
-  await waitFor(() => expect(screen.getByText("Anong")).toBeTruthy());
+  /* Latest arrival first, so Fon heads the register and Anong, first in,
+     is the sixth row — below the fold until the list opens. */
+  await waitFor(() => expect(screen.getByText("Fon")).toBeTruthy());
   /* Whatever is on screen now cost exactly one refetch, so `gets` is the price
      of a round — no need to hard-code how many collections there are. */
   return { user, round: gets };
@@ -129,11 +143,11 @@ describe("selecting who goes home", () => {
     const { user } = await renderTable();
 
     /* Collapsed, the table shows five of the six. */
-    expect(screen.queryByText("Fon")).toBeNull();
+    expect(screen.queryByText("Anong")).toBeNull();
 
     await user.click(selectAll());
 
-    expect(screen.getByText("Fon")).toBeTruthy();
+    expect(screen.getByText("Anong")).toBeTruthy();
   });
 
   it("checks the whole selection out in one act", async () => {
@@ -156,13 +170,13 @@ describe("selecting who goes home", () => {
   it("checks out only what was ticked", async () => {
     const { user } = await renderTable();
 
-    await user.click(screen.getByLabelText("Select Anong"));
+    await user.click(screen.getByLabelText("Select Fon"));
     await user.click(screen.getByLabelText("Select Chai"));
 
     expect(screen.getByText("2 students selected")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Check out 2 students" }));
 
-    /* Gaew was already out; Anong and Chai make three. */
+    /* Gaew was already out; Fon and Chai make three. */
     await waitFor(() => expect(stampedOut()).toBe(3));
     expect(db.attendance.find((a) => a["attendance_id"] === "att_1")?.["check_out_time"]).toBeFalsy();
   });

@@ -1,72 +1,46 @@
 "use client";
 
-/* The Results tab, after the academy said out loud how tournaments really run:
- * everything is managed in Swiss-Manager and published to chess-results.com —
- * player list → pairing → upload → results → upload again. JTrax's job here is
- * registration tracking (the Participants tab) and *showing* the arbiter's
- * results, never authoring them.
+/* The Results tab: the arbiter's results, as published on chess-results.com.
  *
- * This tab therefore has four pieces, in the order the questions come: the
- * chess-results link (the results source), the public page (where families see
- * it), the boards round by round, and the ranked list under them. The
- * round-and-result entry UI that used to live below them is gone on purpose —
- * a second place to type results is a second version of the truth.
+ * The academy runs its events in Swiss-Manager and publishes to
+ * chess-results.com; JTrax shows that, it never authors it. Connecting takes
+ * one link — any category of the event — because the site lists every section
+ * of an event on each section's details page, and the backend reads them all.
  *
- * The boards are the bulk of it and live in `ResultsTable`. They used to be a
- * strip of columns scrolled sideways; what an organiser is actually asked at a
- * venue is about one round or one child, and neither was answerable by
- * scrolling.
+ * Two lists of categories are in play and they are kept apart on purpose:
  *
- * ---- how an age-group event arrives ----
+ *   - Registration categories are the office's (Overview tab). Families enter
+ *     them before the day.
+ *   - Chess-Results categories are the arbiter's. They are how the event was
+ *     actually run, may include a section nobody registered for (a late U16)
+ *     or two groups in one ("U14 + G14"), and they are what results follow.
  *
- * Two ways, and the tab strip has to handle both because arbiters use both.
- *
- *   Several events. Swiss-Manager uploads each group as its own tournament,
- *   so OPEN, U18, U12, U10 and U08 are five tnr numbers and five links. Each
- *   of the tournament's own categories carries one, and switching tab fetches
- *   that group's link. This is what the console already did.
- *
- *   One event. Swiss-Manager uploads a single tournament and names each
- *   player's group in the ranking table's "Typ" column — which is how
- *   "WCIB CHESS CHAMPIONSHIP 2025 [U14 + G14]" is published. There is one
- *   link to give, so linking per category cannot divide it, and the console
- *   used to show both age groups as one undivided list of twenty children.
- *   The tabs are now read off that column instead.
- *
- * The strip carries both, and this is the part that was got wrong once: it
- * used to build from the groups *or* the categories, so adding a category to
- * a linked event added nothing to the strip. They are not alternatives. They
- * are the same age groups named twice — once by the office, in the categories
- * it manages and prices and edits on the Overview tab, and once by the arbiter
- * in whatever they typed into Swiss-Manager.
- *
- * So every category gets a tab, and each is answered by whichever source has
- * results behind it: its own linked event if there is one, else the matching
- * group inside the whole event, else nothing yet. A group the arbiter named
- * that the office has no category for gets a tab of its own, because a result
- * with no tab is a result nobody can reach.
+ * Neither list is copied into the other. Each tab here is one Chess-Results
+ * category; a category that holds two groups offers a chip per group.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
+import type { Participant } from "@/lib/data";
 import { useTranslations } from "next-intl";
 import {
-  getCategoryResultsLink,
-  getChessResultsLink,
+  connectResults,
+  disconnectResults,
+  getResultSection,
+  getResultSections,
+  refreshResultSection,
+  type ExternalStanding,
   type LinkedResults,
+  type LinkedRound,
+  type ResultSections,
 } from "@/lib/chess-results";
-import { COLORS, FONT } from "@/lib/theme";
+import { COLORS, FONT, FONT_DISPLAY } from "@/lib/theme";
 import { Icon } from "@/lib/icons";
-import { errorText } from "../crud";
+import { ErrorNote, errorText } from "../crud";
 import { formatPoints } from "@/lib/tournament-results";
 import { groupsIn, roundsInGroup, standingsInGroup } from "@/lib/tournament-rounds";
 import { primaryButtonStyle, secondaryButtonStyle } from "../page-kit";
 import { Badge, Card, SectionTitle } from "../ui";
-import { LinkedResultsCard } from "./LinkedResultsCard";
+import { ParticipantProfile, type ProfileTarget, type ResultsLink } from "./ParticipantProfile";
 import { ResultsTable } from "./ResultsTable";
-import { ShareLink } from "./ShareLink";
-
-/** How many mirrored rows the preview shows; the full table lives on the
-    public page and the preview only exists for a sanity glance. */
-const PREVIEW_ROWS = 10;
 
 export function ResultsTab({
   tournamentId,
@@ -75,110 +49,870 @@ export function ResultsTab({
   totalRounds,
   resultsPublic,
   onPublishChange,
+  participants = [],
+  onLinkParticipant,
 }: {
   tournamentId: string;
-  /** Used to search chess-results for this event by name. */
+  /** Copied for the chess-results search, so staff never retype it. */
   tournamentName: string;
-  /** The event's age groups, in the order the organiser entered them. */
+  /** The registration categories — named beside the Chess-Results ones so the
+      two lists are never mistaken for each other. */
   categories: Array<{ id: string; name: string }>;
-  /** How many rounds the event is scheduled for. chess-results has no page
-      for a round it has not published, so without this an event four rounds
-      into five reads as finished. */
+  /** The tournament's own round count, used until chess-results says. */
   totalRounds: number;
+  resultsPublic: boolean;
+  onPublishChange: (next: boolean) => Promise<void>;
+  /** The tournament's entries — a clicked player opens the same profile the
+      Participants tab does. */
+  participants?: Participant[];
+  onLinkParticipant?: (participantId: string, link: ResultsLink) => Promise<void>;
+}) {
+  const tCommon = useTranslations("common");
+  const [profile, setProfile] = useState<ProfileTarget | null>(null);
+  /* True from pasting a link until the admin says it is the right event. The
+     category check is shown only then — not every time the tab opens. */
+  const [checking, setChecking] = useState(false);
+
+  const [sections, setSections] = useState<ResultSections | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getResultSections(tournamentId)
+      .then((s) => !cancelled && setSections(s))
+      .catch((e) => !cancelled && setLoadError(errorText(e, tCommon("loadFailed"))));
+    return () => {
+      cancelled = true;
+    };
+  }, [tournamentId, tCommon]);
+
+  /* The public page's link, with Copy, Open and Publish beside it — the one
+     place to find the link to share. Inside the Chess-Results box, since the
+     page shows exactly what that connection brings in. */
+  const publish = <PublicLinkRow tournamentId={tournamentId} resultsPublic={resultsPublic} onPublishChange={onPublishChange} />;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {loadError && <ErrorNote>{loadError}</ErrorNote>}
+
+      {sections === null && !loadError && (
+        <Card>
+          <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>{tCommon("loading")}</p>
+        </Card>
+      )}
+
+      {sections && !sections.connected && (
+        <ConnectCard
+          tournamentId={tournamentId}
+          tournamentName={tournamentName}
+          onConnected={(s) => {
+            setSections(s);
+            setChecking(true);
+          }}
+          publish={publish}
+        />
+      )}
+
+      {sections?.connected && (
+        <ConnectedResults
+          tournamentId={tournamentId}
+          tournamentName={tournamentName}
+          sections={sections}
+          registration={categories}
+          totalRounds={sections.rounds || totalRounds}
+          onChange={setSections}
+          publish={publish}
+          onOpenPlayer={setProfile}
+          checking={checking}
+          onChecking={setChecking}
+        />
+      )}
+
+      {profile && (
+        <ParticipantProfile
+          tournamentId={tournamentId}
+          participants={participants}
+          target={profile}
+          onLink={async (id, link) => onLinkParticipant?.(id, link)}
+          onClose={() => setProfile(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------- connect -- */
+
+function ConnectCard({
+  tournamentId,
+  tournamentName,
+  onConnected,
+  onCancel,
+  publish,
+}: {
+  tournamentId: string;
+  tournamentName: string;
+  onConnected: (s: ResultSections) => void;
+  /** Present when changing an existing connection. */
+  onCancel?: () => void;
+  /** The publish section, shown at the foot of the box. */
+  publish?: React.ReactNode;
+}) {
+  const t = useTranslations("resultsLink");
+  const [url, setUrl] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  async function connect() {
+    if (!url.trim() || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      onConnected(await connectResults(tournamentId, url.trim()));
+    } catch (e) {
+      setError(errorText(e, t("connectFailed")));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+        <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 40, height: 40, borderRadius: 12, background: COLORS.light, flexShrink: 0 }}>
+          <Icon name="link" size={18} color={COLORS.blue} />
+        </span>
+        <div style={{ minWidth: 0 }}>
+          <SectionTitle>{t("connectTitle")}</SectionTitle>
+          <p style={{ margin: "4px 0 0", fontFamily: FONT, fontSize: 13.5, lineHeight: 1.55, color: COLORS.textSecondary, maxWidth: 680 }}>
+            {t("connectBody")}
+          </p>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <button
+          type="button"
+          className="jt-btn-ghost"
+          style={{ ...secondaryButtonStyle, padding: "4px 12px", fontSize: 13 }}
+          onClick={() => {
+            /* The site's search is a postback form that cannot be filled from
+               a URL, so the name goes to the clipboard for a paste. */
+            void navigator.clipboard
+              ?.writeText(tournamentName)
+              .then(() => {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 4000);
+              })
+              .catch(() => {});
+            window.open("https://chess-results.com/TurnierSuche.aspx?lan=1", "_blank", "noopener,noreferrer");
+          }}
+        >
+          <Icon name="search" size={13} /> {t("findOnSource")}
+        </button>
+        {copied && <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.success }}>{t("nameCopied")}</span>}
+      </div>
+
+      {error && <ErrorNote>{error}</ErrorNote>}
+
+      <div style={{ display: "flex", gap: 9, flexWrap: "wrap" }}>
+        <input
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && void connect()}
+          placeholder="https://chess-results.com/tnr1193905.aspx"
+          aria-label={t("urlLabel")}
+          disabled={busy}
+          style={{
+            flex: "1 1 340px",
+            minWidth: 0,
+            minHeight: 44,
+            padding: "9px 12px",
+            borderRadius: 9,
+            border: `1px solid ${COLORS.border}`,
+            fontFamily: FONT,
+            fontSize: 14.5,
+            color: COLORS.text,
+            background: COLORS.surface,
+          }}
+        />
+        <button type="button" className="jt-btn-primary" style={primaryButtonStyle} disabled={busy || !url.trim()} onClick={() => void connect()}>
+          <Icon name="link" size={15} color={COLORS.surface} /> {busy ? t("connecting") : t("connect")}
+        </button>
+        {onCancel && (
+          <button type="button" className="jt-btn-ghost" style={secondaryButtonStyle} disabled={busy} onClick={onCancel}>
+            {t("cancel")}
+          </button>
+        )}
+      </div>
+      {busy && <p style={{ margin: 0, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>{t("connectingHint")}</p>}
+      {publish}
+    </Card>
+  );
+}
+
+/* -------------------------------------------------------------- connected -- */
+
+function ConnectedResults({
+  tournamentId,
+  tournamentName,
+  sections,
+  registration,
+  totalRounds,
+  onChange,
+  publish,
+  onOpenPlayer,
+  checking,
+  onChecking,
+}: {
+  tournamentId: string;
+  tournamentName: string;
+  sections: ResultSections;
+  registration: Array<{ id: string; name: string }>;
+  totalRounds: number;
+  onChange: (s: ResultSections) => void;
+  /** The public link row: link, Copy, Open, Publish. */
+  publish: React.ReactNode;
+  onOpenPlayer: (target: ProfileTarget) => void;
+  /** Just connected: show the categories found, for the admin to confirm. */
+  checking: boolean;
+  onChecking: (on: boolean) => void;
+}) {
+  const t = useTranslations("resultsLink");
+  const [changing, setChanging] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [picked, setPicked] = useState<number | null>(null);
+  const current = sections.sections.find((s) => s.chessResultsId === picked) ?? sections.sections[0];
+
+  async function disconnect() {
+    if (!window.confirm(t("disconnectConfirm"))) return;
+    setBusy(true);
+    setError(null);
+    try {
+      onChange(await disconnectResults(tournamentId));
+    } catch (e) {
+      setError(errorText(e, t("disconnectFailed")));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (changing) {
+    return (
+      <ConnectCard
+        tournamentId={tournamentId}
+        tournamentName={tournamentName}
+        onConnected={(s) => {
+          setChanging(false);
+          setPicked(null);
+          onChange(s);
+          onChecking(true);
+        }}
+        onCancel={() => setChanging(false)}
+        publish={publish}
+      />
+    );
+  }
+
+  return (
+    <>
+      {/* ---- what is connected ---- */}
+      <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ margin: 0, fontFamily: FONT, fontSize: 12, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: COLORS.textSecondary }}>
+              {t("connectedEyebrow")}
+            </p>
+            <p style={{ margin: "3px 0 0", fontFamily: FONT_DISPLAY, fontSize: 18, fontWeight: 700, color: COLORS.text }}>
+              {sections.eventName || tournamentName}
+            </p>
+            <p style={{ margin: "3px 0 0", fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
+              {t("connectedSummary", { categories: sections.sections.length, rounds: totalRounds })}
+            </p>
+          </div>
+        </div>
+        {error && <ErrorNote>{error}</ErrorNote>}
+
+        {/* Two links, one above the other and named for whose page each is:
+            the arbiter's on chess-results, and ours that families are sent. */}
+        {sections.sections[0] && (
+          <SourceLinkRow url={sections.sections[0].url}>
+            {/* What is done to the connection sits with its link. */}
+            <button type="button" className="jt-btn-ghost" style={secondaryButtonStyle} disabled={busy} onClick={() => setChanging(true)}>
+              <Icon name="link" size={14} /> {t("changeLink")}
+            </button>
+            <button type="button" className="jt-act-danger" style={secondaryButtonStyle} disabled={busy} onClick={() => void disconnect()}>
+              <Icon name="x" size={14} /> {t("disconnect")}
+            </button>
+          </SourceLinkRow>
+        )}
+        {publish}
+
+        {/* Right after a link is pasted: the categories chess-results has
+            beside the ones families registered in, so the admin can see it is
+            the right event. Once they say so, this goes away for good. */}
+        {checking && (
+          <section style={{ display: "flex", flexDirection: "column", gap: 10, padding: "14px 16px", borderRadius: 14, border: `2px solid ${COLORS.blue}`, background: COLORS.light }}>
+            <div>
+              <strong style={{ display: "block", fontFamily: FONT, fontSize: 14.5, color: COLORS.text }}>{t("checkTitle")}</strong>
+              <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>{t("checkBody")}</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 10 }}>
+              <CategoryList
+                title={t("resultsCategories")}
+                hint={t("resultsCategoriesHint")}
+                names={sections.sections.map((s) => s.name)}
+                tone="blue"
+              />
+              <CategoryList
+                title={t("registrationCategories")}
+                hint={t("registrationCategoriesHint")}
+                names={registration.map((c) => c.name)}
+                tone="neutral"
+                empty={t("noRegistrationCategories")}
+              />
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button type="button" className="jt-btn-primary" style={primaryButtonStyle} onClick={() => onChecking(false)}>
+                <Icon name="check" size={14} color={COLORS.surface} /> {t("checkConfirm")}
+              </button>
+              <button type="button" className="jt-btn-ghost" style={secondaryButtonStyle} onClick={() => setChanging(true)}>
+                <Icon name="link" size={14} /> {t("changeLink")}
+              </button>
+            </div>
+          </section>
+        )}
+      </Card>
+
+      {/* ---- one tab per Chess-Results category ---- */}
+      <div role="tablist" aria-label={t("resultsCategories")} style={{ display: "flex", gap: 4, borderBottom: `1px solid ${COLORS.border}`, overflowX: "auto" }}>
+        {sections.sections.map((s) => {
+          const on = s.chessResultsId === current?.chessResultsId;
+          return (
+            <button
+              key={s.chessResultsId}
+              type="button"
+              role="tab"
+              aria-selected={on}
+              onClick={() => setPicked(s.chessResultsId)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 7,
+                border: "none",
+                background: "transparent",
+                padding: "10px 12px",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                fontFamily: FONT,
+                fontSize: 13.5,
+                fontWeight: on ? 700 : 600,
+                color: on ? COLORS.blue : COLORS.textSecondary,
+                borderBottom: `2px solid ${on ? COLORS.blue : "transparent"}`,
+                marginBottom: -1,
+              }}
+            >
+              {s.name}
+              {s.academyPlayers > 0 && (
+                <span
+                  title={t("jcaCount", { count: s.academyPlayers })}
+                  style={{ borderRadius: 999, padding: "1px 7px", fontSize: 11.5, fontWeight: 700, background: COLORS.successBg, color: COLORS.success }}
+                >
+                  {s.academyPlayers}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {current && (
+        <SectionResults
+          /* Remounted per category: filters, the chosen group and a picked
+             player belong to the category they were chosen in. */
+          key={current.chessResultsId}
+          tournamentId={tournamentId}
+          tournamentName={sections.eventName || tournamentName}
+          sectionName={current.name}
+          chessResultsId={current.chessResultsId}
+          totalRounds={totalRounds}
+          onOpenPlayer={(name) => onOpenPlayer({ sectionId: current.chessResultsId, name })}
+          onRefreshed={(r) =>
+            onChange({
+              ...sections,
+              sections: sections.sections.map((s) =>
+                s.chessResultsId === current.chessResultsId
+                  ? { ...s, tracked: true, stage: r.stage, fetchedAt: r.fetchedAt, players: r.standings.length, academyPlayers: r.standings.filter((x) => x.studentId).length }
+                  : s,
+              ),
+            })
+          }
+        />
+      )}
+    </>
+  );
+}
+
+function CategoryList({ title, hint, names, tone, empty }: { title: string; hint: string; names: string[]; tone: "blue" | "neutral"; empty?: string }) {
+  return (
+    <div style={{ borderRadius: 12, border: `1px solid ${COLORS.border}`, background: tone === "blue" ? COLORS.light : COLORS.bg, padding: "10px 12px" }}>
+      <p style={{ margin: 0, fontFamily: FONT, fontSize: 13, fontWeight: 700, color: tone === "blue" ? COLORS.blue : COLORS.text }}>{title}</p>
+      <p style={{ margin: "2px 0 8px", fontFamily: FONT, fontSize: 12, color: COLORS.textSecondary }}>{hint}</p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {names.length === 0 && empty && <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>{empty}</span>}
+        {names.map((n) => (
+          <Badge key={n} color={tone === "blue" ? COLORS.blue : COLORS.textSecondary} bg={COLORS.surface}>
+            {n}
+          </Badge>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* --------------------------------------------------------------- category -- */
+
+function SectionResults({
+  tournamentId,
+  tournamentName,
+  sectionName,
+  chessResultsId,
+  totalRounds,
+  onRefreshed,
+  onOpenPlayer,
+}: {
+  tournamentId: string;
+  tournamentName: string;
+  sectionName: string;
+  chessResultsId: number;
+  totalRounds: number;
+  onRefreshed: (r: LinkedResults) => void;
+  onOpenPlayer: (name: string) => void;
+}) {
+  const t = useTranslations("resultsLink");
+  const tCommon = useTranslations("common");
+  const [data, setData] = useState<LinkedResults | null | undefined>(undefined);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [group, setGroup] = useState("");
+  const [jcaOnly, setJcaOnly] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    getResultSection(tournamentId, chessResultsId)
+      .then((r) => !cancelled && setData(r))
+      .catch((e) => {
+        if (cancelled) return;
+        setData(null);
+        setError(errorText(e, tCommon("loadFailed")));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tournamentId, chessResultsId, tCommon]);
+
+  async function refresh() {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await refreshResultSection(tournamentId, chessResultsId);
+      setData(r);
+      onRefreshed(r);
+    } catch (e) {
+      setError(errorText(e, t("refreshFailed")));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const allStandings = useMemo(() => data?.standings ?? [], [data]);
+  const allRounds = useMemo(() => data?.rounds ?? [], [data]);
+  const groups = useMemo(() => groupsIn(allStandings), [allStandings]);
+  const inGroup = group && groups.includes(group);
+
+  /* The chosen group first, then our students on top of it. */
+  const standings = useMemo(() => {
+    const rows = inGroup ? standingsInGroup(group, allStandings) : allStandings;
+    return jcaOnly ? rows.filter((r) => r.studentId) : rows;
+  }, [inGroup, group, allStandings, jcaOnly]);
+  const rounds = useMemo(() => {
+    const rs = inGroup ? roundsInGroup(group, allStandings, allRounds) : allRounds;
+    return jcaOnly ? onlyOurBoards(rs) : rs;
+  }, [inGroup, group, allStandings, allRounds, jcaOnly]);
+
+  const played = allRounds.filter((r) => r.played).length;
+  const ours = allStandings.filter((r) => r.studentId).length;
+
+  const jcaToggle = (
+    <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontFamily: FONT, fontSize: 13.5, fontWeight: 600, color: COLORS.text, cursor: "pointer", whiteSpace: "nowrap" }}>
+      <input type="checkbox" checked={jcaOnly} onChange={(e) => setJcaOnly(e.target.checked)} style={{ width: 18, height: 18, accentColor: "var(--jt-blue)" }} />
+      {t("jcaOnly")}
+    </label>
+  );
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* ---- status strip ---- */}
+      <Card style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "12px 16px" }}>
+        <span
+          style={{
+            width: 9,
+            height: 9,
+            borderRadius: "50%",
+            background: !data ? COLORS.disabled : isFinal(data.stage) ? COLORS.successFill : COLORS.warningFill,
+            flexShrink: 0,
+          }}
+          aria-hidden
+        />
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <p style={{ margin: 0, fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text }}>
+            {data === undefined
+              ? tCommon("loading")
+              : !data
+                ? t("notReadYet")
+                : data.stage || t("notStarted")}
+          </p>
+          <p style={{ margin: "2px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+            {[
+              data ? t("roundOf", { played, total: totalRounds || played }) : "",
+              data ? t("players", { count: allStandings.length }) : "",
+              data && ours > 0 ? t("jcaCount", { count: ours }) : "",
+              data?.fetchedAt ? t("updated", { at: fetchedLabel(data.fetchedAt) }) : "",
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        </div>
+        <button type="button" className="jt-btn-ghost" style={secondaryButtonStyle} disabled={busy} onClick={() => void refresh()}>
+          <Icon name="refund" size={14} /> {busy ? t("refreshing") : t("refresh")}
+        </button>
+        <a
+          href={`https://chess-results.com/tnr${chessResultsId}.aspx?lan=1`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="jt-btn-ghost"
+          style={{ ...secondaryButtonStyle, textDecoration: "none" }}
+        >
+          <Icon name="globe" size={14} /> {t("openSource")}
+        </a>
+      </Card>
+
+      {error && <ErrorNote>{error}</ErrorNote>}
+
+      {/* ---- filters ---- */}
+      {data && groups.length > 1 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          {["", ...groups].map((g) => {
+              const on = (g === "" && !inGroup) || g === group;
+              return (
+                <button
+                  key={g || "all"}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => setGroup(g)}
+                  style={{
+                    minHeight: 34,
+                    padding: "5px 14px",
+                    borderRadius: 999,
+                    border: `1px solid ${on ? COLORS.blue : COLORS.border}`,
+                    background: on ? COLORS.blue : COLORS.surface,
+                    color: on ? COLORS.surface : COLORS.text,
+                    fontFamily: FONT,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  {g || t("allGroups", { name: sectionName })}
+                </button>
+              );
+            })}
+        </div>
+      )}
+
+      {data === null && !error && (
+        <Card>
+          <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>{t("notReadYetBody")}</p>
+        </Card>
+      )}
+
+      {/* ---- rounds ---- */}
+      {data &&
+        (rounds.length > 0 ? (
+          <ResultsTable
+            key={group}
+            rounds={rounds}
+            standings={standings}
+            totalRounds={totalRounds}
+            eventName={tournamentName}
+            categoryName={inGroup ? group : sectionName}
+            filters={jcaToggle}
+            onOpenPlayer={onOpenPlayer}
+          />
+        ) : (
+          <Card style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <p style={{ margin: 0, flex: 1, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
+              {jcaOnly ? t("noJcaBoards") : t("noRounds")}
+            </p>
+            {/* Kept here too, so the filter can be switched off when it hides every board. */}
+            {jcaToggle}
+          </Card>
+        ))}
+
+      {/* ---- full standings ---- */}
+      {data && <StandingsTable rows={standings} showGroup={groups.length > 1 && !inGroup} jcaOnly={jcaOnly} onOpenPlayer={onOpenPlayer} />}
+    </div>
+  );
+}
+
+function StandingsTable({
+  rows,
+  showGroup,
+  jcaOnly,
+  onOpenPlayer,
+}: {
+  rows: ExternalStanding[];
+  showGroup: boolean;
+  jcaOnly: boolean;
+  onOpenPlayer: (name: string) => void;
+}) {
+  const t = useTranslations("resultsLink");
+  const tCommon = useTranslations("common");
+  /* Folded to begin with, like the round cards, so the page opens short. */
+  const [open, setOpen] = useState(false);
+  const headerId = useId();
+  const panelId = useId();
+  const th: React.CSSProperties = {
+    padding: "10px 14px",
+    textAlign: "left",
+    fontSize: 12.5,
+    fontWeight: 600,
+    letterSpacing: "0.04em",
+    textTransform: "uppercase",
+    color: COLORS.textSecondary,
+    background: COLORS.light,
+    whiteSpace: "nowrap",
+  };
+  return (
+    <Card style={{ padding: 0, overflow: "hidden" }}>
+      <button
+        type="button"
+        id={headerId}
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-controls={panelId}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          width: "100%",
+          padding: "14px 16px",
+          border: "none",
+          borderBottom: open ? `1px solid ${COLORS.border}` : "none",
+          background: "transparent",
+          cursor: "pointer",
+          textAlign: "left",
+          flexWrap: "wrap",
+        }}
+      >
+        <strong style={{ fontFamily: FONT, fontSize: 15, color: COLORS.text, whiteSpace: "nowrap" }}>{t("standingsTitle")}</strong>
+        <span style={{ flex: 1, minWidth: 120, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>{t("players", { count: rows.length })}</span>
+        {/* Rotated like a round card's, so both read as the same control. */}
+        <span
+          aria-hidden
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 28,
+            height: 28,
+            borderRadius: 8,
+            border: `1px solid ${COLORS.border}`,
+            flexShrink: 0,
+            transform: open ? "rotate(180deg)" : "none",
+            transition: "transform 160ms ease",
+          }}
+        >
+          <Icon name="chevronDown" size={15} color={COLORS.textSecondary} />
+        </span>
+      </button>
+      {open && (
+        <div id={panelId} style={{ overflowX: "auto" }} tabIndex={0} role="region" aria-label={tCommon("tableRegion")}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: FONT, fontSize: 14 }}>
+            <thead>
+              <tr>
+                <th style={{ ...th, width: 56 }}>{t("colRank")}</th>
+                <th style={th}>{t("colName")}</th>
+                {showGroup && <th style={th}>{t("colGroup")}</th>}
+                <th style={th}>{t("colClub")}</th>
+                <th style={{ ...th, textAlign: "right" }}>{t("colRating")}</th>
+                <th style={{ ...th, textAlign: "right" }}>{t("colPoints")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={6} style={{ padding: "16px", fontSize: 13.5, color: COLORS.textSecondary }}>
+                    {jcaOnly ? t("noJcaPlayers") : t("noPlayers")}
+                  </td>
+                </tr>
+              )}
+              {rows.map((s, i) => (
+                <tr
+                  key={`${s.rank}-${s.name}-${i}`}
+                  className="jt-table-row"
+                  /* Our students stand out without a filter: that is who the
+                     office is asked about. */
+                  style={{ borderTop: `1px solid ${COLORS.border}`, background: s.studentId ? COLORS.successBg : undefined }}
+                >
+                  <td style={{ padding: "9px 14px", fontWeight: 700, color: COLORS.textSecondary }}>{s.rank || ""}</td>
+                  <td style={{ padding: "9px 14px" }}>
+                    {/* Opens the participant's profile, the same one as the Participants tab. */}
+                    <button
+                      type="button"
+                      onClick={() => onOpenPlayer(s.name)}
+                      style={{ padding: 0, border: "none", background: "transparent", cursor: "pointer", fontFamily: FONT, fontSize: 14, fontWeight: s.studentId ? 700 : 500, color: COLORS.text, textAlign: "left" }}
+                    >
+                      {s.name}
+                    </button>
+                    {s.studentId && (
+                      <span style={{ marginLeft: 8 }}>
+                        <Badge color={COLORS.success} bg={COLORS.surface}>
+                          {t("jcaBadge")}
+                        </Badge>
+                      </span>
+                    )}
+                  </td>
+                  {showGroup && <td style={{ padding: "9px 14px", color: COLORS.textSecondary }}>{s.type || ""}</td>}
+                  <td style={{ padding: "9px 14px", color: COLORS.textSecondary }}>{s.club || ""}</td>
+                  <td style={{ padding: "9px 14px", textAlign: "right", color: COLORS.textSecondary }}>{s.rating || ""}</td>
+                  <td style={{ padding: "9px 14px", textAlign: "right", fontWeight: 700 }}>{formatPoints(s.points)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+/* ------------------------------------------------------------ public page -- */
+
+/** The event's own page on chess-results.com — where the results come from.
+    Shown beside our public link so the two are never mistaken for each other. */
+function SourceLinkRow({ url, children }: { url: string; children?: React.ReactNode }) {
+  const t = useTranslations("results");
+  return (
+    <section style={{ display: "flex", flexDirection: "column", gap: 10, padding: "14px 16px", borderRadius: 14, border: `1px solid ${COLORS.border}`, background: COLORS.surface }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <Icon name="link" size={16} color={COLORS.textSecondary} />
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <strong style={{ display: "block", fontFamily: FONT, fontSize: 14.5, color: COLORS.text }}>{t("sourceLinkTitle")}</strong>
+          <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>{t("sourceLinkHint")}</span>
+        </span>
+      </div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <LinkBox url={url} label={t("sourceLinkTitle")} />
+        <a href={url} target="_blank" rel="noopener noreferrer" className="jt-btn-ghost" style={{ ...secondaryButtonStyle, textDecoration: "none" }}>
+          <Icon name="globe" size={14} /> {t("openPage")}
+        </a>
+        {children}
+      </div>
+    </section>
+  );
+}
+
+/** A link in a read-only box, with Copy tucked into its right-hand corner. */
+function LinkBox({ url, label }: { url: string; label: string }) {
+  return (
+    <div style={{ position: "relative", flex: "1 1 280px", minWidth: 0 }}>
+      <input
+        readOnly
+        value={url}
+        aria-label={label}
+        onFocus={(e) => e.currentTarget.select()}
+        style={{
+          width: "100%",
+          minHeight: 40,
+          padding: "8px 92px 8px 12px",
+          borderRadius: 9,
+          border: `1px solid ${COLORS.border}`,
+          background: COLORS.surface,
+          color: COLORS.text,
+          fontFamily: FONT,
+          fontSize: 13.5,
+          textOverflow: "ellipsis",
+        }}
+      />
+      <span style={{ position: "absolute", right: 5, top: "50%", transform: "translateY(-50%)" }}>
+        <CopyButton text={url} />
+      </span>
+    </div>
+  );
+}
+
+function CopyButton({ text }: { text: string }) {
+  const t = useTranslations("results");
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 5,
+        minHeight: 30,
+        padding: "4px 10px",
+        borderRadius: 7,
+        border: "none",
+        background: copied ? COLORS.successBg : COLORS.light,
+        color: copied ? COLORS.success : COLORS.blue,
+        cursor: "pointer",
+        fontFamily: FONT,
+        fontSize: 12.5,
+        fontWeight: 600,
+      }}
+      onClick={() => {
+        void navigator.clipboard
+          ?.writeText(text)
+          .then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2500);
+          })
+          .catch(() => {});
+      }}
+    >
+      <Icon name={copied ? "check" : "copy"} size={14} color={copied ? COLORS.success : undefined} /> {copied ? t("linkCopied") : t("copyShort")}
+    </button>
+  );
+}
+
+/** The public results page's link, and everything done with it in one row:
+    Copy it for a post, Open it to check, Publish or stop publishing it. The
+    link is shown before publishing too, so it is never hard to find; until
+    then it leads to a not-found page, and the row says so. */
+function PublicLinkRow({
+  tournamentId,
+  resultsPublic,
+  onPublishChange,
+}: {
+  tournamentId: string;
   resultsPublic: boolean;
   onPublishChange: (next: boolean) => Promise<void>;
 }) {
   const t = useTranslations("results");
   const tCommon = useTranslations("common");
-  const tExt = useTranslations("external");
-
-  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  /* Both links carry the scope they were fetched for, so "loaded" is derived
-     rather than toggled: a separate boolean has to be set false on the way
-     into the effect, and that is a render where the previous tab's card is
-     still showing — which reads as this group being linked to that event. */
-  /**
-   * The whole event's link, held on its own and fetched once.
-   *
-   * Separate from the per-category link because a category tab may need both:
-   * its own link if the arbiter published that group separately, and this one
-   * if they published the groups together and named them in a column. Holding
-   * only whichever the current tab asked for meant a category could not fall
-   * back to the event it is part of.
-   */
-  const [eventLink, setEventLink] = useState<{ done: boolean; link: LinkedResults | null }>({
-    done: false,
-    link: null,
-  });
-  const [catLink, setCatLink] = useState<{ scope: string; link: LinkedResults | null } | null>(null);
-  /**
-   * Which tab is showing, as `""` for the whole event, `c:<id>` for one of the
-   * tournament's own categories, or `g:<name>` for a group the linked event
-   * names in its own ranking table.
-   *
-   * The prefix exists because the two are different in kind. A `c:` tab is one
-   * of the office's own age groups, which may have a separate chess-results
-   * event behind it; a `g:` tab is a group the arbiter named inside one event,
-   * and asking the server for a link to that would be asking for a link nobody
-   * ever made.
-   */
-  const [tab, setTab] = useState("");
-  const categoryTab = tab.startsWith("c:") ? tab.slice(2) : "";
-  const groupTab = tab.startsWith("g:") ? tab.slice(2) : "";
+  const [error, setError] = useState<string | null>(null);
+  const url = publicUrlOf(tournamentId);
 
-  /* The event itself, once. */
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      let link: LinkedResults | null = null;
-      try {
-        link = await getChessResultsLink(tournamentId);
-      } catch {
-        /* Nothing linked (or an older backend): the card then offers to link,
-           which is the correct thing to show. */
-      }
-      if (!cancelled) setEventLink({ done: true, link });
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [tournamentId]);
-
-  /* And one fetch per *category* tab, because an arbiter may publish OPEN,
-     U18, U12, U10 and U08 as separate events with separate links.
-
-     Group tabs are deliberately not in the dependencies. They divide the event
-     already in hand, so switching between them must not cost chess-results a
-     request — or worse, ask for a per-category link that does not exist and
-     blank the screen. */
-  useEffect(() => {
-    const scope = categoryTab;
-    /* Nothing to fetch off a category tab. The previous category's link is
-       left in place rather than cleared: `linkLoaded` compares the scope it
-       was fetched for against the tab now showing, so a stale one is already
-       invisible — and clearing it here would be a setState in an effect,
-       which is a second render for no gain. */
-    if (!scope) return;
-    let cancelled = false;
-    (async () => {
-      let link: LinkedResults | null = null;
-      try {
-        link = await getCategoryResultsLink(scope);
-      } catch {
-        /* Not linked separately — the group may still be inside the event. */
-      }
-      if (!cancelled) setCatLink({ scope, link });
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [tournamentId, categoryTab]);
-
-  async function publish(next: boolean) {
+  async function togglePublish() {
     setBusy(true);
     try {
-      await onPublishChange(next);
+      await onPublishChange(!resultsPublic);
       setError(null);
     } catch (e) {
       setError(errorText(e, tCommon("saveFailed")));
@@ -187,277 +921,79 @@ export function ResultsTab({
     }
   }
 
-  const portalBase = process.env.NEXT_PUBLIC_PORTAL_URL;
-  const publicUrl = portalBase ? `${portalBase.replace(/\/$/, "")}/t/${tournamentId}` : null;
-  /* Ready when everything this tab needs has been asked for: the event always,
-     and a category's own link as well when one is selected. */
-  const linkLoaded = eventLink.done && (!categoryTab || catLink?.scope === categoryTab);
-
-  /**
-   * The groups the event names in its own ranking table — Swiss-Manager's
-   * "Typ" column, where the arbiter uploaded every age group as one
-   * tournament rather than several.
-   */
-  const eventStandings = eventLink.link?.standings ?? [];
-  const groups = groupsIn(eventStandings);
-
-  /**
-   * Which slice of which link this tab is showing.
-   *
-   * A category tab is answered two ways and has to try both, which is the bug
-   * this replaced: tabs were built from the groups *or* the categories, so
-   * adding a category to a linked event added nothing to the strip. The
-   * office's categories and the arbiter's groups are not alternatives — they
-   * are the same age groups named twice, by two different people, and a
-   * category is served by whichever of them has results behind it.
-   */
-  const active = (() => {
-    if (groupTab) return { link: eventLink.link, group: groupTab };
-    if (!categoryTab) return { link: eventLink.link, group: "" };
-    /* Its own chess-results event, where the arbiter published one. */
-    if (catLink?.link) return { link: catLink.link, group: "" };
-    /* Otherwise the same name inside the whole event, if it is one of the
-       groups there. Matched on the name because that is all the two have in
-       common — the office's category id means nothing to chess-results. */
-    const named = categories.find((c) => c.id === categoryTab)?.name ?? "";
-    const match = groups.find((g) => g.toLowerCase().trim() === named.toLowerCase().trim());
-    return match ? { link: eventLink.link, group: match } : { link: null, group: "" };
-  })();
-
-  const linkedResults = linkLoaded ? active.link : null;
-  const linked = linkedResults !== null;
-  const allStandings = linkedResults?.standings ?? [];
-  const allRounds = linkedResults?.rounds ?? [];
-
-  /* Filtering, not refetching, when the group came from inside the event. The
-     ranks stay the arbiter's own overall ranks — renumbering each group 1..n
-     would be the console inventing a placing, and a placing is the one thing
-     at a tournament that is not ours to write. */
-  const shownGroup = linkLoaded ? active.group : "";
-  const standings = shownGroup ? standingsInGroup(shownGroup, allStandings) : allStandings;
-  const rounds = shownGroup ? roundsInGroup(shownGroup, allStandings, allRounds) : allRounds;
-
-  const preview = standings.slice(0, PREVIEW_ROWS);
-  const shownCount = standings.length;
-  const hasStandings = shownCount > 0;
-
-  /**
-   * The tab strip: the whole event, the tournament's own age groups, then any
-   * group the link names that the office has not got a category for.
-   *
-   * Both, not one or the other. The categories are what the office manages and
-   * what the Overview tab edits, so a category added there has to appear here
-   * — that was the regression. The extra groups are there because an arbiter
-   * can publish a division the office never entered, and a result with no tab
-   * is a result nobody can reach.
-   */
-  const named = new Set(categories.map((c) => c.name.toLowerCase().trim()));
-  const tabs = [
-    { id: "", name: t("wholeEvent") },
-    ...categories.map((c) => ({ id: `c:${c.id}`, name: c.name })),
-    ...groups
-      .filter((g) => !named.has(g.toLowerCase().trim()))
-      .map((g) => ({ id: `g:${g}`, name: g })),
-  ];
-  /* One tab is furniture, not navigation. */
-  const tabbed = tabs.length > 1;
-
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {error && (
-        <p style={{ margin: 0, fontFamily: FONT, fontSize: 13, color: COLORS.danger }}>{error}</p>
-      )}
+    <section style={{ display: "flex", flexDirection: "column", gap: 10, padding: "14px 16px", borderRadius: 14, border: `1px solid ${COLORS.border}`, background: COLORS.bg }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <Icon name="globe" size={16} color={resultsPublic ? COLORS.success : COLORS.textSecondary} />
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <strong style={{ display: "block", fontFamily: FONT, fontSize: 14.5, color: COLORS.text }}>{t("publicLinkTitle")}</strong>
+          <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>{t("publicLinkHint")}</span>
+        </span>
+        <Badge color={resultsPublic ? COLORS.success : COLORS.textSecondary} bg={resultsPublic ? COLORS.successBg : COLORS.neutralBg}>
+          {t(resultsPublic ? "published" : "notPublished")}
+        </Badge>
+      </div>
 
-      {/* The group strip comes first: it decides what everything below is
-          about, and a card that changes meaning under a control further down
-          reads as the control having done nothing. */}
-      {tabbed && (
-        <div
-          role="tablist"
-          aria-label={t("byCategory")}
-          style={{ display: "flex", gap: 4, borderBottom: `1px solid ${COLORS.border}`, overflowX: "auto" }}
-        >
-          {tabs.map((g) => {
-            const current = g.id === tab;
-            return (
-              <button
-                key={g.id}
-                type="button"
-                role="tab"
-                aria-selected={current}
-                onClick={() => setTab(g.id)}
-                style={{
-                  border: "none",
-                  background: "transparent",
-                  padding: "10px 12px",
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                  fontFamily: FONT,
-                  fontSize: 13.5,
-                  fontWeight: current ? 700 : 600,
-                  color: current ? COLORS.blue : COLORS.textSecondary,
-                  borderBottom: `2px solid ${current ? COLORS.blue : "transparent"}`,
-                  marginBottom: -1,
-                }}
-              >
-                {g.name}
-              </button>
-            );
-          })}
+      {url ? (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <LinkBox url={url} label={t("publicLinkTitle")} />
+          <a href={url} target="_blank" rel="noopener noreferrer" className="jt-btn-ghost" style={{ ...secondaryButtonStyle, textDecoration: "none" }}>
+            <Icon name="globe" size={14} /> {t("openPage")}
+          </a>
+          <button
+            type="button"
+            className={resultsPublic ? "jt-btn-ghost" : "jt-btn-primary"}
+            style={{ ...(resultsPublic ? secondaryButtonStyle : primaryButtonStyle), opacity: busy ? 0.75 : 1 }}
+            disabled={busy}
+            title={t("publicBody")}
+            onClick={() => void togglePublish()}
+          >
+            {t(resultsPublic ? "unpublish" : "publish")}
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <p style={{ flex: 1, margin: 0, fontFamily: FONT, fontSize: 13, color: COLORS.warning }}>{t("publicUrlMissing")}</p>
+          <button
+            type="button"
+            className={resultsPublic ? "jt-btn-ghost" : "jt-btn-primary"}
+            style={resultsPublic ? secondaryButtonStyle : primaryButtonStyle}
+            disabled={busy}
+            onClick={() => void togglePublish()}
+          >
+            {t(resultsPublic ? "unpublish" : "publish")}
+          </button>
         </div>
       )}
 
-      {/* The results source for whichever group is selected. This card *is*
-          the results feature now. `key` remounts it on a group change: it
-          keeps the pasted URL in its own state, and carrying that across would
-          offer one group's half-typed link on another. */}
-      {linkLoaded && (
-        <LinkedResultsCard
-          /* Prefixed because this card and the table below are siblings in one
-             list: keyed on the tab alone they collide, and React quietly drops
-             one of the two. */
-          key={`link-${categoryTab || tournamentId}`}
-          tournamentId={tournamentId}
-          tournamentName={tournamentName}
-          categoryId={categoryTab || undefined}
-          initial={linkedResults}
-        />
+      {!resultsPublic && url && (
+        <p style={{ margin: 0, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>{t("notPublishedNote")}</p>
       )}
-
-      {/* ---- the public page ---- */}
-      <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <Icon name="globe" size={17} color={resultsPublic ? COLORS.success : COLORS.textSecondary} />
-          <SectionTitle style={{ flex: 1 }}>{t("publicTitle")}</SectionTitle>
-          <Badge
-            color={resultsPublic ? COLORS.success : COLORS.textSecondary}
-            bg={resultsPublic ? COLORS.successBg : COLORS.neutralBg}
-          >
-            {t(resultsPublic ? "published" : "notPublished")}
-          </Badge>
-        </div>
-        <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, lineHeight: 1.55, color: COLORS.textSecondary }}>
-          {t("publicBody")}
-        </p>
-
-        {/* Published without a link yet: families see the registered list, and
-            the live table appears the moment the event is linked. Said here so
-            nobody hunts for a missing "enter results" button. */}
-        {resultsPublic && !linked && (
-          <p style={{ margin: 0, fontFamily: FONT, fontSize: 13, lineHeight: 1.5, color: COLORS.warning }}>
-            {t("unlinkedNote")}
-          </p>
-        )}
-
-        {resultsPublic && !publicUrl && (
-          <p style={{ margin: 0, fontFamily: FONT, fontSize: 13, lineHeight: 1.5, color: COLORS.warning }}>
-            {t("publicUrlMissing")}
-          </p>
-        )}
-
-        {resultsPublic && publicUrl && (
-          <ShareLink url={publicUrl} qrLabel={t("qrLabel")} openLabel={t("openPage")} />
-        )}
-
-        <button
-          type="button"
-          className={resultsPublic ? "jt-btn-ghost" : "jt-btn-primary"}
-          style={{
-            ...(resultsPublic ? secondaryButtonStyle : primaryButtonStyle),
-            alignSelf: "flex-start",
-            opacity: busy ? 0.75 : 1,
-          }}
-          disabled={busy}
-          onClick={() => void publish(!resultsPublic)}
-        >
-          {t(resultsPublic ? "unpublish" : "publish")}
-        </button>
-      </Card>
-
-      {/* ---- the boards, round by round ---- */}
-      {linked &&
-        (rounds.length > 0 ? (
-          <ResultsTable
-            /* Remounted per tab so a player picked in U18 does not stay
-               selected over U12's boards, where that name is not on one.
-               Keyed on the whole tab, groups included: those do not refetch,
-               so nothing else would clear the selection. */
-            key={`table-${tab || tournamentId}`}
-            rounds={rounds}
-            /* The group's own rows on a group tab, so its ranked list and its
-               player cards agree with the boards beside them. */
-            standings={standings}
-            totalRounds={totalRounds}
-            eventName={tournamentName}
-            categoryName={shownGroup || categories.find((c) => c.id === categoryTab)?.name}
-          />
-        ) : (
-          <Card>
-            <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
-              {t("noMirroredRounds")}
-            </p>
-          </Card>
-        ))}
-
-      {linked && hasStandings && (
-        <Card style={{ padding: 0, overflow: "hidden" }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", padding: "14px 16px", borderBottom: `1px solid ${COLORS.border}` }}>
-            <SectionTitle>{tExt("previewTitle")}</SectionTitle>
-            <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-              {tExt("previewSub", { count: shownCount })}
-            </span>
-            {/* The list is this group's, but the numbers beside it are the
-                arbiter's overall ranks — the winner of the group is the top
-                row, which may well be ranked fourth in the event. Said out
-                loud, because renumbering the group 1..n would read better and
-                would be the console inventing a placing. */}
-            {shownGroup && (
-              <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.warning }}>
-                {t("overallRanksNote", { group: shownGroup })}
-              </span>
-            )}
-          </div>
-          <div
-            style={{ overflowX: "auto" }}
-            tabIndex={0}
-            role="region"
-            aria-label={tCommon("tableRegion")}
-          >
-            <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: FONT, fontSize: 14 }}>
-              <tbody>
-                {preview.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={4}
-                      style={{ padding: "14px 16px", fontSize: 13.5, color: COLORS.textSecondary }}
-                    >
-                      {t("noneInCategory")}
-                    </td>
-                  </tr>
-                )}
-                {preview.map((s) => (
-                  <tr key={`${s.rank}-${s.name}`} style={{ borderTop: `1px solid ${COLORS.border}` }}>
-                    <td style={{ padding: "8px 14px", width: 40, fontWeight: 700, color: COLORS.textSecondary }}>{s.rank}</td>
-                    <td style={{ padding: "8px 14px" }}>
-                      {s.name}
-                      {/* The reason the mirror knows about students at all:
-                          staff can see at a glance which rows matched ours. */}
-                      {s.studentName && (
-                        <span style={{ marginLeft: 8 }}>
-                          <Badge color={COLORS.success} bg={COLORS.successBg}>{s.studentName}</Badge>
-                        </span>
-                      )}
-                    </td>
-                    <td style={{ padding: "8px 14px", textAlign: "right", color: COLORS.textSecondary }}>{s.rating || ""}</td>
-                    <td style={{ padding: "8px 14px", textAlign: "right", fontWeight: 700 }}>{formatPoints(s.points)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
-
-    </div>
+      {error && <ErrorNote>{error}</ErrorNote>}
+    </section>
   );
+}
+
+/** The public results page, or null when this deployment has no portal URL. */
+function publicUrlOf(tournamentId: string): string | null {
+  const portalBase = process.env.NEXT_PUBLIC_PORTAL_URL;
+  return portalBase ? `${portalBase.replace(/\/$/, "")}/t/${tournamentId}` : null;
+}
+
+/* ---------------------------------------------------------------- helpers -- */
+
+/** Only the boards with one of our students on them; rounds keep their place. */
+function onlyOurBoards(rounds: LinkedRound[]): LinkedRound[] {
+  return rounds.map((r) => ({ ...r, pairings: r.pairings.filter((p) => p.whiteStudentId || p.blackStudentId) }));
+}
+
+function isFinal(stage?: string): boolean {
+  return !!stage && stage.toLowerCase().startsWith("final");
+}
+
+/* The backend stores UTC without a zone marker. */
+function fetchedLabel(raw: string): string {
+  const d = new Date(raw.includes("T") ? raw : `${raw.replace(" ", "T")}Z`);
+  if (Number.isNaN(d.getTime())) return raw;
+  return new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(d);
 }

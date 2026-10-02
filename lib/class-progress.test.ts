@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classProgress, parseClockTime } from "./class-progress";
+import { classProgress, classStatusNow, endingSoon, parseClockTime, sessionFinished } from "./class-progress";
 
 /** 18 Sep 2026 at the given wall-clock time. */
 const at = (hour: number, minute = 0) => new Date(2026, 8, 18, hour, minute);
@@ -63,5 +63,54 @@ describe("classProgress", () => {
     expect(classProgress("", at(10))).toBeNull();
     expect(classProgress("Afternoons", at(10))).toBeNull();
     expect(classProgress("1:00 AM – 1:00 AM", at(1))).toBeNull();
+  });
+});
+
+describe("classStatusNow", () => {
+  const now = new Date(2026, 8, 27, 10, 15);
+  const today = "2026-09-27";
+  const def = (date: string, time = "10:00 AM – 11:00 AM") => ({ status: "Ongoing" as const, time, date });
+
+  it("reads a class on an earlier day as Finished", () => {
+    expect(classStatusNow(def("2026-09-26"), now, today)).toBe("Finished");
+  });
+  it("reads a class on a later day as Upcoming", () => {
+    expect(classStatusNow(def("2026-09-28"), now, today)).toBe("Upcoming");
+  });
+  it("follows the clock today", () => {
+    expect(classStatusNow(def(today), now, today)).toBe("Ongoing");
+    expect(classStatusNow(def(today, "8:00 AM – 9:00 AM"), now, today)).toBe("Finished");
+  });
+  it("keeps a finished class finished whatever the day", () => {
+    expect(classStatusNow({ ...def("2026-09-28"), status: "Finished" }, now, today)).toBe("Finished");
+  });
+});
+
+describe("endingSoon", () => {
+  const at = (h: number, m: number) => new Date(2026, 8, 29, h, m);
+  it("gives the minutes left in the last quarter hour", () => {
+    expect(endingSoon("4:00 PM – 5:00 PM", at(16, 45))).toBe(15);
+    expect(endingSoon("4:00 PM – 5:00 PM", at(16, 58))).toBe(2);
+  });
+  it("is null earlier, after the end, and before the start", () => {
+    expect(endingSoon("4:00 PM – 5:00 PM", at(16, 44))).toBeNull();
+    expect(endingSoon("4:00 PM – 5:00 PM", at(17, 0))).toBeNull();
+    expect(endingSoon("4:00 PM – 4:10 PM", at(15, 55))).toBeNull();
+  });
+});
+
+describe("sessionFinished", () => {
+  const now = new Date(2026, 8, 29, 11, 30);
+  const today = "2026-09-29";
+  it("is over on an earlier day, or once Completed", () => {
+    expect(sessionFinished("2026-09-28", "23:00", "Ongoing", now, today)).toBe(true);
+    expect(sessionFinished("2026-09-30", "12:00", "Completed", now, today)).toBe(true);
+  });
+  it("is over today once the end has passed", () => {
+    expect(sessionFinished(today, "11:30", "Ongoing", now, today)).toBe(true);
+    expect(sessionFinished(today, "12:00", "Ongoing", now, today)).toBe(false);
+  });
+  it("is not over on a later day", () => {
+    expect(sessionFinished("2026-09-30", "09:00", "Scheduled", now, today)).toBe(false);
   });
 });

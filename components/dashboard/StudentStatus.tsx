@@ -1,97 +1,87 @@
 "use client";
 
 /**
- * The roster's five credit conditions as compact concentric rings.
- * Every legend row is also the shortest path to the matching student list.
+ * The roster's five credit conditions as one donut, each slice its share of
+ * the students. Every legend row is also the shortest path to the matching
+ * student list.
  */
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { statusCounts, STATUS_ORDER } from "@/lib/dashboard-charts";
 import type { Student } from "@/lib/data";
-import { ACCENTS, COLORS, FONT, FONT_DISPLAY } from "@/lib/theme";
+import { COLORS, FONT, FONT_DISPLAY, STUDENT_STATUS_COLOR } from "@/lib/theme";
 import { useData } from "../DataProvider";
-import { Card, SectionTitle } from "../ui";
-import { CreditReminders } from "./CreditReminders";
+import { Badge, Card, SectionTitle } from "../ui";
 
-/* Keyed to the approved dashboard reference: the two conditions that need a
-   call today are the loud ones, and the lapsed pair sits back. Red is "ring
-   this family", not "worst case" — an expired account has already stopped
-   costing the desk anything, where a low balance is the call that still has to
-   be made. */
-const STATUS_COLOR: Record<Student["status"], string> = {
-  Normal: ACCENTS.green,
-  "Low Credit": ACCENTS.red,
-  Expiring: ACCENTS.blue,
-  Expired: ACCENTS.amber,
-  Inactive: COLORS.disabled,
-};
+/* Soft fills of their own rather than the text accents, which were too heavy
+   as slices — shared with every other place a student's status is shown. */
+const STATUS_COLOR: Record<Student["status"], string> = STUDENT_STATUS_COLOR;
 
 const statusKey = (status: Student["status"]) => status.replace(/\s/g, "");
+
+const SIZE = 142;
+const STROKE = 18;
+const RADIUS = (SIZE - STROKE) / 2;
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+/* A hairline between slices so neighbours read as two, not one blended arc. */
+const GAP = 2;
 
 export function StudentStatus() {
   const t = useTranslations("dashboard");
   const { students } = useData();
   const counts = statusCounts(students);
   const total = students.length;
-  const size = 142;
-  const centre = size / 2;
+  const centre = SIZE / 2;
+
+  const present = STATUS_ORDER.filter((status) => counts[status] > 0);
+  /* Each slice starts where the one before it ended. */
+  const slices = present.reduce<Array<{ status: Student["status"]; dash: number; offset: number; end: number }>>(
+    (acc, status) => {
+      const offset = acc.at(-1)?.end ?? 0;
+      const length = total > 0 ? (counts[status] / total) * CIRCUMFERENCE : 0;
+      const gap = present.length > 1 ? Math.min(GAP, length / 2) : 0;
+      return [...acc, { status, dash: length - gap, offset, end: offset + length }];
+    },
+    [],
+  );
 
   return (
     <Card className="jt-student-status" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
         <div>
           <SectionTitle>{t("studentStatus")}</SectionTitle>
           <p style={{ margin: "3px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
             {t("statusFilterHint")}
           </p>
         </div>
-        {/* The two reminders live on the card that shows who needs them: the
-            red ring is the low-credit families, the blue one the expiring.
-            Nothing is sent unless somebody presses one of these. */}
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <CreditReminders kind="lowCredit" />
-          <CreditReminders kind="expiry" />
-        </div>
+        <Badge color={COLORS.blue} bg={COLORS.light}>
+          {t("studentCount", { count: total })}
+        </Badge>
       </div>
 
       <div className="jt-status-content">
         <div
-          className="jt-status-rings"
+          className="jt-status-donut"
           role="img"
           aria-label={t("studentStatusLabel", { count: total })}
-          style={{ width: size, height: size }}
+          style={{ width: SIZE, height: SIZE }}
         >
-          <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
-            {STATUS_ORDER.map((status, index) => {
-              const radius = 61 - index * 10;
-              const circumference = 2 * Math.PI * radius;
-              const fraction = total > 0 ? counts[status] / total : 0;
-              return (
-                <g key={status}>
-                  <circle
-                    cx={centre}
-                    cy={centre}
-                    r={radius}
-                    fill="none"
-                    stroke={COLORS.light}
-                    strokeWidth={6}
-                  />
-                  {fraction > 0 && (
-                    <circle
-                      cx={centre}
-                      cy={centre}
-                      r={radius}
-                      fill="none"
-                      stroke={STATUS_COLOR[status]}
-                      strokeWidth={6}
-                      strokeLinecap="round"
-                      strokeDasharray={`${circumference * fraction} ${circumference}`}
-                    />
-                  )}
-                </g>
-              );
-            })}
+          <svg width={SIZE} height={SIZE} style={{ transform: "rotate(-90deg)" }}>
+            <circle cx={centre} cy={centre} r={RADIUS} fill="none" stroke={COLORS.light} strokeWidth={STROKE} />
+            {slices.map((slice) => (
+              <circle
+                key={slice.status}
+                cx={centre}
+                cy={centre}
+                r={RADIUS}
+                fill="none"
+                stroke={STATUS_COLOR[slice.status]}
+                strokeWidth={STROKE}
+                strokeDasharray={`${slice.dash} ${CIRCUMFERENCE}`}
+                strokeDashoffset={-slice.offset}
+              />
+            ))}
           </svg>
           <span className="jt-status-centre">
             <strong style={{ fontFamily: FONT_DISPLAY, fontSize: 25, lineHeight: 1, color: COLORS.text }}>

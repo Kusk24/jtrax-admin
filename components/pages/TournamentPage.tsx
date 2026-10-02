@@ -1,15 +1,21 @@
 "use client";
 
+import { arrivalState, reminderDay, reminderDays, type ArrivalState } from "@/lib/arrival";
 import { useMemo, useState } from "react";
 import { ResultsTab } from "../tournament/ResultsTab";
 import { ExternalTournaments } from "../tournament/ExternalTournaments";
-import { EntryFeeCard } from "../tournament/EntryFeeCard";
+import { ParticipantProfile, type ResultsLink } from "../tournament/ParticipantProfile";
+import { api } from "@/lib/api";
+import { fmtDate, fmtTHB, todayISO } from "@/lib/live";
 import { RegistrationCard } from "../tournament/RegistrationCard";
 import { RegistrationQueue } from "../tournament/RegistrationQueue";
-import { StudentPricingChoice } from "../tournament/StudentPricingChoice";
 import { RegulationCard } from "../tournament/RegulationCard";
+import { CreateWizard } from "../tournament/CreateWizard";
+import { TournamentBanner } from "../tournament/TournamentBanner";
+import { BannerCard } from "../tournament/BannerCard";
+import { mapEmbedUrl } from "@/lib/maps";
+import { useNewParticipants } from "@/lib/seen-participants";
 import { useTranslations } from "next-intl";
-import { api } from "@/lib/api";
 import { removeIfPresent } from "@/lib/credentials";
 import { type Participant, type Tournament } from "@/lib/data";
 import { useData } from "@/components/DataProvider";
@@ -28,7 +34,6 @@ import {
   type CrudValues,
 } from "../crud";
 import {
-  Drawer,
   EmptyRow,
   fieldStyle,
   InfoGrid,
@@ -41,11 +46,12 @@ import {
   primaryButtonStyle,
   SearchInput,
   secondaryButtonStyle,
+  selectStyle,
   Table,
   TableRow,
 } from "../page-kit";
 import { Avatar, Badge, Card, SectionTitle } from "../ui";
-import { BackLink, DeleteButton, DetailHeader, EditButton } from "../detail";
+import { BackLink, DeleteButton, EditButton } from "../detail";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 import { useErrorToast } from "../ErrorToast";
@@ -53,445 +59,31 @@ import { useUrlBackedState } from "@/lib/url-state";
 import { ApiError } from "@/lib/api";
 import { refreshLinkedResults } from "@/lib/chess-results";
 
-const PARTICIPANT_TEMPLATE = equalTemplate(6, 70);
+const PARTICIPANT_TEMPLATE = "0.45fr 1.6fr 0.5fr 1.25fr 0.8fr 0.8fr 0.9fr 70px";
+
+/* Answers to the arrival reminder, in the order the desk reads them. */
+const ARRIVAL = ["Pending", "Confirmed", "NotAttending"] as const;
+
+/** Where an entrant stands with the confirmation email. */
+function ArrivalBadge({ state }: { state: ArrivalState }) {
+  const t = useTranslations("tournament");
+  const look: Record<ArrivalState, { color: string; bg: string }> = {
+    notSent: { color: COLORS.textSecondary, bg: COLORS.neutralBg },
+    sent: { color: COLORS.blue, bg: COLORS.light },
+    attending: { color: COLORS.success, bg: COLORS.successBg },
+    notAttending: { color: COLORS.danger, bg: COLORS.dangerBg },
+    noResponse: { color: COLORS.warning, bg: COLORS.warningBg },
+  };
+  return (
+    <span>
+      <Badge color={look[state].color} bg={look[state].bg}>{t(`arrivalState.${state}`)}</Badge>
+    </span>
+  );
+}
 const TOURNAMENT_TEMPLATE = equalTemplate(5, 100);
 const CARD_FIRST = ["card", "list"] as const;
 const LIST_FIRST = ["list", "card"] as const;
 
-
-/** Branded stand-in for the tournament photo (design assets weren't imported). */
-function TournamentArt({ name, height = 120 }: { name: string; height?: number }) {
-  const hue = Array.from(name).reduce((n, ch) => n + ch.charCodeAt(0), 0) % 360;
-  return (
-    <div
-      aria-hidden
-      style={{
-        height,
-        borderRadius: 11,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: `linear-gradient(135deg, hsl(${hue} 46% 42%), hsl(${(hue + 42) % 360} 52% 58%))`,
-        flexShrink: 0,
-      }}
-    >
-      <Icon name="trophy" size={height > 100 ? 34 : 24} color={COLORS.surface} />
-    </div>
-  );
-}
-
-/* ---------------------------------------------------------------- wizard --- */
-
-const WIZARD_STEP_KEYS = ["stepUpload", "stepReview", "stepPublish"];
-
-/** Google's keyless embed — no API key, no billing account, just a search
-    query rendered as a map. It is not the officially supported Maps Embed
-    API, but it has worked unauthenticated for years and this app has no
-    Maps/Places key to spend on a fancier version. */
-function mapEmbedUrl(venue: string): string {
-  return `https://maps.google.com/maps?q=${encodeURIComponent(venue)}&output=embed`;
-}
-
-/** The link stored with the tournament and handed to registrants — Google's
-    own documented "Maps URLs" scheme, so it opens the venue in the Maps app
-    on a phone and in the browser on a desktop, both without a key. */
-function mapSearchUrl(venue: string): string {
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(venue)}`;
-}
-
-function CreateWizard({
-  onCancel,
-  onPublish,
-}: {
-  onCancel: () => void;
-  /* Awaited by Publish, so a second press cannot open a second tournament.
-     The regulation rides along: it can only be stored once the tournament it
-     belongs to has an id. */
-  onPublish: (t: Tournament, regulation: File | null) => Promise<void>;
-}) {
-  const t = useTranslations("tournament");
-  const tCommon = useTranslations("common");
-  const [step, setStep] = useState(1);
-  /* The regulation the organiser sent. Held until the tournament exists —
-     it is attached to a tournament id, which there is not one of until
-     Publish — and then uploaded. */
-  const [regulation, setRegulation] = useState<File | null>(null);
-  const [draft, setDraft] = useState({
-    name: "",
-    startDate: "",
-    endDate: "",
-    venue: "",
-    maxParticipants: "100",
-    regularFee: "",
-    earlyBirdFee: "",
-    earlyBirdDeadline: "",
-    registrationDeadline: "",
-    studentDiscountPct: "0",
-  });
-
-  /* Categories are set here rather than after the event exists, because they
-     are how the entry form asks "which section are you in" — and the form can
-     be open from the moment the tournament is published. An event created
-     without them had a registration link that could only collect a pile of
-     entries nobody had sorted. */
-  const [categories, setCategories] = useState<string[]>([]);
-  const [categoryDraft, setCategoryDraft] = useState("");
-  /* Kept apart from `draft`, which is all text inputs. The defaults are the
-     rule every tournament had before the organiser could choose. */
-  const [studentPricing, setStudentPricing] = useState({ discount: true, earlyBird: false });
-
-  function addCategory() {
-    const name = categoryDraft.trim();
-    /* Case-insensitively unique: "U8 Boys" and "u8 boys" would be two
-       sections on the form and one in everybody's head. */
-    if (!name || categories.some((c) => c.toLowerCase() === name.toLowerCase())) return;
-    setCategories([...categories, name]);
-    setCategoryDraft("");
-  }
-
-  /* Takes the regulation and moves on. It used to wait 1.8 seconds and then
-     fill the form with a tournament that does not exist — "JCA Youth Monthly
-     Rapid Chess Tournament" at "Paradise Park" — which reads exactly like a
-     document having been parsed. Nothing parses it yet, so the fields stay
-     empty and the file is kept for what it is worth: the regulation itself,
-     attached to the tournament and readable by parents. */
-  function accept(file: File) {
-    setRegulation(file);
-    setStep(2);
-  }
-
-  /* `kind` because a date typed as free text is a date nothing can compare:
-     "12–13 Sep 2026" went into the database as NULL every time. */
-  const fields: Array<{
-    key: keyof typeof draft;
-    labelKey: string;
-    kind?: "text" | "date" | "number";
-    hintKey?: string;
-  }> = [
-    { key: "name", labelKey: "fieldName" },
-    { key: "startDate", labelKey: "fieldDate", kind: "date" },
-    { key: "endDate", labelKey: "endDate", kind: "date" },
-    { key: "venue", labelKey: "fieldVenue" },
-    { key: "maxParticipants", labelKey: "fieldMaxParticipants", kind: "number" },
-    { key: "registrationDeadline", labelKey: "registrationCloses", kind: "date" },
-    { key: "regularFee", labelKey: "entryFee", kind: "number" },
-    /* Optional, and paired: a discount with no end date can never be charged,
-       which is how early_bird_fee sat unused in the schema for months. */
-    { key: "earlyBirdFee", labelKey: "earlyBirdFee", kind: "number", hintKey: "earlyBirdHint" },
-    { key: "earlyBirdDeadline", labelKey: "earlyBirdUntil", kind: "date" },
-    /* The other price on the form, beside the one it is a percentage of.
-       It used to be set on the tournament's own screen afterwards, which
-       meant the first people through a freshly-opened form were quoted a
-       discount of zero. */
-    { key: "studentDiscountPct", labelKey: "discountLabel", kind: "number", hintKey: "discountHint" },
-  ];
-
-  const renderField = (f: (typeof fields)[number]) => (
-    <div key={f.key}>
-      <label style={labelStyle} htmlFor={`tw-${f.key}`}>{t(f.labelKey)}</label>
-      <input
-        id={`tw-${f.key}`}
-        type={f.kind ?? "text"}
-        min={f.kind === "number" ? 0 : undefined}
-        value={draft[f.key]}
-        onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })}
-        style={fieldStyle}
-      />
-      {f.hintKey && <p style={{ margin: "4px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>{t(f.hintKey)}</p>}
-    </div>
-  );
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18, maxWidth: 1060 }}>
-      <button
-        type="button"
-        onClick={onCancel}
-        style={{
-          alignSelf: "flex-start",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 5,
-          border: "none",
-          background: "transparent",
-          cursor: "pointer",
-          fontFamily: FONT,
-          fontSize: 14,
-          fontWeight: 600,
-          color: COLORS.textSecondary,
-          padding: 0,
-        }}
-      >
-        <Icon name="chevronLeft" size={16} color={COLORS.textSecondary} /> {t("backToTournaments")}
-      </button>
-
-      <PageHeader title={t("create")} sub={t("wizardSub")} />
-
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        {WIZARD_STEP_KEYS.map((labelKey, i) => {
-          const n = i + 1;
-          const done = step > n;
-          const current = step === n;
-          return (
-            <div key={labelKey} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: 26,
-                  height: 26,
-                  borderRadius: "50%",
-                  background: done || current ? COLORS.blue : COLORS.neutralBg,
-                  color: done || current ? COLORS.surface : COLORS.textSecondary,
-                  fontFamily: FONT,
-                  fontSize: 13,
-                  fontWeight: 700,
-                }}
-              >
-                {done ? <Icon name="check" size={13} color={COLORS.surface} /> : n}
-              </span>
-              <span
-                style={{
-                  fontFamily: FONT,
-                  fontSize: 14,
-                  fontWeight: current ? 700 : 500,
-                  color: current ? COLORS.text : COLORS.textSecondary,
-                }}
-              >
-                {t(labelKey)}
-              </span>
-              {i < WIZARD_STEP_KEYS.length - 1 && (
-                <span style={{ width: 28, height: 1, background: COLORS.border }} />
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {step === 1 && (
-        <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 13, padding: 34 }}>
-          <Icon name="fileText" size={30} color={COLORS.blue} />
-              <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 600, color: COLORS.text }}>
-                {t("uploadPrompt")}
-              </span>
-              <span style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
-                {t("uploadHint")}
-              </span>
-              <label style={{ ...primaryButtonStyle, cursor: "pointer" }}>
-                {t("chooseFile")}
-                <input
-                  type="file"
-                  accept=".pdf,.png,.jpg,.jpeg"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) accept(f);
-                  }}
-                  style={{ display: "none" }}
-                />
-              </label>
-          <button
-            type="button"
-            onClick={() => setStep(2)}
-            style={{ border: "none", background: "transparent", cursor: "pointer", fontFamily: FONT, fontSize: 13.5, color: COLORS.blue }}
-          >
-            {t("skipManual")}
-          </button>
-        </Card>
-      )}
-
-      {step === 2 && (
-        <>
-          <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <SectionTitle>{t("tournamentInformation")}</SectionTitle>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 13 }}>
-              {[fields[0], fields[1], fields[2], fields[4]].map(renderField)}
-            </div>
-          </Card>
-          <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <SectionTitle>{t("venueLocation")}</SectionTitle>
-            {/* auto-fit, like the sections either side: two fixed columns are
-                440px wide before the gap and run off a 390px phone. */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 13 }}>
-              {renderField(fields[3])}
-              {draft.venue.trim() ? (
-                <iframe
-                  key={draft.venue}
-                  title={t("mapPreviewTitle")}
-                  src={mapEmbedUrl(draft.venue)}
-                  style={{ minHeight: 140, width: "100%", border: `1px solid ${COLORS.border}`, borderRadius: 10 }}
-                  loading="lazy"
-                />
-              ) : (
-                <div style={{ minHeight: 78, border: `1px dashed ${COLORS.border}`, borderRadius: 10, background: COLORS.light, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, color: COLORS.textSecondary, fontFamily: FONT, fontSize: 13 }}><Icon name="pin" size={16} color={COLORS.blue} />{t("mapHint")}</div>
-              )}
-            </div>
-          </Card>
-          <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <SectionTitle>{t("registrationPricing")}</SectionTitle>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 13 }}>
-              {fields.slice(5).map(renderField)}
-            </div>
-            <StudentPricingChoice
-              discount={studentPricing.discount}
-              earlyBird={studentPricing.earlyBird}
-              onChange={setStudentPricing}
-            />
-          </Card>
-          <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <SectionTitle>{t("categoriesTitle")}</SectionTitle>
-            <p style={{ margin: 0, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-              {t("categoriesHint")}
-            </p>
-            {categories.length > 0 && (
-              <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
-                {categories.map((name) => (
-                  <span
-                    key={name}
-                    style={{
-                      display: "inline-flex", alignItems: "center", gap: 6,
-                      padding: "5px 10px", borderRadius: 999,
-                      background: COLORS.light, fontFamily: FONT, fontSize: 13.5,
-                      color: COLORS.text,
-                    }}
-                  >
-                    {name}
-                    <button
-                      type="button"
-                      aria-label={tCommon("deleteThing", { what: name })}
-                      onClick={() => setCategories(categories.filter((c) => c !== name))}
-                      style={{
-                        display: "inline-flex", border: "none", background: "transparent",
-                        padding: 0, cursor: "pointer", color: COLORS.textSecondary,
-                      }}
-                    >
-                      <Icon name="x" size={13} />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <input
-                value={categoryDraft}
-                onChange={(e) => setCategoryDraft(e.target.value)}
-                /* Enter adds the category rather than submitting the step —
-                   typing four sections should not need the mouse four times. */
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addCategory();
-                  }
-                }}
-                placeholder={t("categoryPlaceholder")}
-                aria-label={t("categoryPlaceholder")}
-                style={{ ...fieldStyle, flex: "1 1 180px", width: "auto" }}
-              />
-              <button
-                type="button"
-                className="jt-btn-ghost"
-                style={secondaryButtonStyle}
-                disabled={!categoryDraft.trim()}
-                onClick={addCategory}
-              >
-                <Icon name="plus" size={13} /> {tCommon("add")}
-              </button>
-            </div>
-          </Card>
-          <Card style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            <span style={{ display: "flex", width: 38, height: 38, alignItems: "center", justifyContent: "center", borderRadius: 10, background: COLORS.light }}><Icon name="fileText" size={18} color={COLORS.blue} /></span>
-            <span style={{ flex: 1, minWidth: 200 }}><SectionTitle>{t("regulationDocument")}</SectionTitle><span style={{ display: "block", marginTop: 3, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>{regulation ? t("regulationAttached", { file: regulation.name }) : t("regulationOptional")}</span></span>
-            <label className="jt-btn-ghost" style={{ ...secondaryButtonStyle, cursor: "pointer" }}>{regulation ? t("replaceFile") : t("chooseFile")}<input type="file" accept=".pdf,.png,.jpg,.jpeg" onChange={(e) => { const f = e.target.files?.[0]; if (f) accept(f); }} style={{ display: "none" }} /></label>
-          </Card>
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-            <button type="button" className="jt-btn-ghost" style={secondaryButtonStyle} onClick={() => setStep(1)}>
-              {tCommon("back")}
-            </button>
-            <button
-              type="button"
-              className="jt-btn-primary"
-              style={{
-                ...primaryButtonStyle,
-                opacity: draft.name ? 1 : 0.75,
-                cursor: draft.name ? "pointer" : "not-allowed",
-              }}
-              disabled={!draft.name}
-              onClick={() => setStep(3)}
-            >
-              {t("publishAction")}
-            </button>
-          </div>
-        </>
-      )}
-
-      {step === 3 && (
-        <Card style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 15, padding: 30, textAlign: "center" }}>
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 52,
-              height: 52,
-              borderRadius: "50%",
-              background: COLORS.successBg,
-            }}
-          >
-            <Icon name="check" size={25} color={COLORS.success} />
-          </span>
-          <SectionTitle>{t("liveTitle", { name: draft.name })}</SectionTitle>
-          <p style={{ margin: 0, fontFamily: FONT, fontSize: 14, color: COLORS.textSecondary }}>
-            {t("liveSub")}
-          </p>
-          {/* No registration link here: the tournament does not have an id
-              until it is saved, and a link built before then could only be a
-              placeholder. It appears on the tournament's own screen, where it
-              is real and scannable. */}
-          <ActionButton
-            className="jt-btn-primary"
-            style={primaryButtonStyle}
-            busyLabel={tCommon("saving")}
-            onClick={() =>
-              onPublish({
-                id: `t-${Date.now()}`,
-                name: draft.name,
-                status: "Ongoing",
-                date: draft.startDate || "TBC",
-                endDate: draft.endDate || undefined,
-                venue: draft.venue || "TBC",
-                venueMapUrl: draft.venue.trim() ? mapSearchUrl(draft.venue) : undefined,
-                format: "Swiss",
-                published: true,
-                publicRegistration: false,
-                studentDiscountPct: Number(draft.studentDiscountPct) || 0,
-                studentGetsDiscount: studentPricing.discount,
-                studentGetsEarlyBird: studentPricing.earlyBird,
-                entryFeeAmount: 0,
-                categories,
-                organizer: "JCA Chess Academy",
-                chiefArbiter: "—",
-                registrationDeadline: draft.registrationDeadline || "TBC",
-                timeControl: "—",
-                entryFeeMember: draft.regularFee || "—",
-                earlyBirdFeeMember: draft.earlyBirdFee || undefined,
-                earlyBirdEnd: draft.earlyBirdDeadline || undefined,
-                entryFeeNonMember: "—",
-                address: draft.venue,
-                contactPerson: "—",
-                maxParticipants: Number(draft.maxParticipants) || 100,
-                currentParticipants: 0,
-                rounds: 0,
-                revenue: "0 THB",
-                participants: [],
-              }, regulation)
-            }
-          >
-            {t("viewTournament")}
-          </ActionButton>
-        </Card>
-      )}
-    </div>
-  );
-}
 
 /* ---------------------------------------------------------------- detail --- */
 
@@ -505,7 +97,8 @@ function draftFromRow(row: Record<string, unknown> | undefined): Record<string, 
   const read = (k: string) => (row[k] == null ? "" : String(row[k]));
   return {
     name: read("name"),
-    tournament_status: read("tournament_status"),
+    /* "auto" unless the office pinned a status by hand. */
+    tournament_status: Number(row["status_locked"] ?? 0) === 1 ? read("tournament_status") : "auto",
     organizer_name: read("organizer_name"),
     start_date: read("start_date"),
     end_date: read("end_date"),
@@ -517,6 +110,7 @@ function draftFromRow(row: Record<string, unknown> | undefined): Record<string, 
     early_bird_fee: read("early_bird_fee"),
     early_bird_deadline: read("early_bird_deadline"),
     student_discount_pct: read("student_discount_pct"),
+    arrival_reminder_days: read("arrival_reminder_days"),
   };
 }
 
@@ -539,8 +133,8 @@ function TournamentDetail({
   const t = useTranslations("tournament");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
-  const tExternal = useTranslations("external");
-  const { students, raw, batch, create, update, remove } = useData();
+  const { students, raw, batch, create, update, remove, refresh } = useData();
+  const { showError: toastError } = useErrorToast();
   /* Also in the address bar: refreshing while reading Results should not
      silently return to Overview. */
   const [tab, setTab] = useUrlBackedState<"overview" | "participants" | "results">(
@@ -646,22 +240,25 @@ function TournamentDetail({
         const venueName = (draft.venue_name ?? "").trim();
         await update("tournaments", tournament.id, {
           name: draft.name,
-          tournament_status: draft.tournament_status,
+          /* Automatic: the server sets it from the dates on save. */
+          ...(draft.tournament_status === "auto" || !draft.tournament_status
+            ? { status_locked: false }
+            : { status_locked: true, tournament_status: draft.tournament_status }),
           organizer_name: draft.organizer_name || null,
           start_date: draft.start_date || null,
           end_date: draft.end_date || null,
           venue_name: venueName || null,
           venue_address: draft.venue_address || null,
-          /* Recomputed from the venue name every save, exactly like the
-             Create wizard does at Publish — never left pointing at a venue
-             that has since been edited to something else. */
-          venue_map_url: venueName ? mapSearchUrl(venueName) : null,
+          /* No venue_map_url: the column is on an unmerged backend branch,
+             and this backend refuses a field it has no column for. The map
+             is drawn from the venue name instead. */
           registration_deadline: draft.registration_deadline || null,
           max_participants: draft.max_participants ? Number(draft.max_participants) : null,
           regular_fee: draft.regular_fee ? Number(draft.regular_fee) : null,
           early_bird_fee: draft.early_bird_fee ? Number(draft.early_bird_fee) : null,
           early_bird_deadline: draft.early_bird_deadline || null,
           student_discount_pct: Math.min(100, Math.max(0, Math.round(Number(draft.student_discount_pct) || 0))),
+          arrival_reminder_days: reminderDays(draft.arrival_reminder_days),
         });
       });
       setEditing(false);
@@ -674,46 +271,98 @@ function TournamentDetail({
 
   const participantFields: CrudField[] = useMemo(
     () => [
+      /* The same fields as the public registration form, less the ID card:
+         at the desk the office looks at the card itself. A player from
+         outside JCA is entered the same way, with no student picked. */
       {
         name: "student_id",
-        label: tCommon("student"),
+        label: t("participantStudent"),
         kind: "select",
-        required: true,
         options: students.map((s) => ({ value: s.id, label: s.name })),
         help: t("participantStudentHelp"),
       },
-      { name: "participant_name", label: t("player"), required: true, half: true },
-      { name: "participant_contact", label: tCommon("phone"), half: true },
-      { name: "participant_date_of_birth", label: t("dateOfBirth"), kind: "date", half: true },
+      { name: "participant_name", label: t("nameEnglish"), required: true, half: true },
+      { name: "participant_name_th", label: t("nameThai"), half: true },
+      { name: "nickname", label: t("nickname"), required: true, half: true },
+      { name: "participant_date_of_birth", label: t("dateOfBirth"), kind: "date", required: true, half: true },
+      { name: "contact_phone", label: tCommon("phone"), required: true, half: true },
+      { name: "contact_email", label: t("parentEmail"), required: true, half: true },
       {
         name: "tournament_category_id",
         label: t("category"),
         kind: "select",
+        required: true,
         half: true,
         options: categoryRows.map((c) => ({ value: c.id, label: c.name })),
       },
       { name: "fide_rating", label: t("rating"), kind: "number", half: true, min: 0 },
       { name: "fee_charged", label: t("feeCharged"), kind: "number", half: true, min: 0 },
+      /* The answer to the arrival reminder — or a phone call the desk took. */
+      ...(participantModal !== "new"
+        ? [
+            {
+              name: "arrival_status",
+              label: t("arrivalStatus"),
+              kind: "select" as const,
+              half: true,
+              options: ARRIVAL.map((a) => ({ value: a, label: t(`arrival${a}`) })),
+            },
+          ]
+        : []),
+      /* Paying at sign-up: recorded with the entry, as the desk takes it.
+         Only on a new entry — a later payment is taken on the profile. */
+      ...(participantModal === "new"
+        ? [
+            {
+              name: PAY_METHOD,
+              label: t("paymentMethod"),
+              kind: "select" as const,
+              half: true,
+              placeholder: t("notPaidYet"),
+              options: DESK_METHODS.map((m) => ({ value: m, label: t(`method${m}`) })),
+            },
+            ...(participantValues[PAY_METHOD] && participantValues[PAY_METHOD] !== "Cash"
+              ? [{ name: PAY_REFERENCE, label: t("referenceNumber"), half: true, placeholder: t("referencePlaceholder") }]
+              : []),
+          ]
+        : []),
     ],
-    [students, categoryRows, t, tCommon],
+    [students, categoryRows, t, tCommon, participantModal, participantValues],
   );
+
+  /* Sends the confirmation email again to someone who has not answered. */
+  async function resendArrival(p: Participant) {
+    if (!p.id) return;
+    try {
+      await api.post(`tournament-registrations/${p.id}/arrival-reminder`, {});
+      await refresh();
+    } catch (e) {
+      toastError(t("resendFailed"), e);
+    }
+  }
 
   function openParticipant(p: Participant | "new") {
     setParticipantModal(p);
     setParticipantValues(
       p === "new"
         ? {
-            student_id: "", participant_name: "", participant_contact: "",
-            participant_date_of_birth: "", tournament_category_id: "", fide_rating: "", fee_charged: "",
+            student_id: "", participant_name: "", participant_name_th: "", nickname: "",
+            participant_date_of_birth: "", contact_phone: "", contact_email: "",
+            tournament_category_id: "", fide_rating: "", fee_charged: "",
           }
         : {
             student_id: p.studentId ?? "",
             participant_name: p.name,
-            participant_contact: p.contact === "—" ? "" : p.contact,
+            participant_name_th: p.nameTh ?? "",
+            nickname: p.nickname ?? "",
             participant_date_of_birth: p.dateOfBirth ?? "",
+            /* Older desk entries kept the phone in participant_contact. */
+            contact_phone: p.contactPhone || (p.contact === "—" ? "" : p.contact),
+            contact_email: p.contactEmail ?? "",
             tournament_category_id: p.categoryId ?? "",
             fide_rating: p.rating ? String(p.rating) : "",
             fee_charged: p.feeCharged ? String(p.feeCharged) : "",
+            arrival_status: p.arrival ?? "Pending",
           },
     );
   }
@@ -722,18 +371,24 @@ function TournamentDetail({
   const [page, setPage] = useState(0);
   const [mode, setMode] = useViewMode("participants", LIST_FIRST);
   const [drawer, setDrawer] = useState<Participant | null>(null);
-  /* Re-read from the live list, so a fee saved or paid from inside the drawer
-     shows at once rather than when it is closed and opened again. */
-  const shown = drawer ? tournament.participants.find((p) => p.id === drawer.id) ?? drawer : null;
+  /* Which chess-results player an entry is, when staff picked one because the
+     names did not match. Null goes back to matching by name. */
+  const linkResults = async (participantId: string, link: ResultsLink) => {
+    await update("tournament-registrations", participantId, {
+      results_section_id: link?.sectionId ?? null,
+      results_player_name: link?.name ?? null,
+    });
+  };
 
   const status = statusChipColors(tournament.status);
+  /* Entries that arrived since this desk last looked at Participants. */
+  const newEntries = useNewParticipants(
+    tournament.id,
+    tournament.participants.map((p) => p.id ?? "").filter(Boolean),
+  );
   const filled = tournament.maxParticipants
     ? Math.round((tournament.currentParticipants / tournament.maxParticipants) * 100)
     : 0;
-  /* Falls back to a freshly computed link when a tournament predates the
-     stored one (see 0037 in jtrax-backend) — old rows are not stuck showing
-     nothing just because the column was empty when they were created. */
-  const mapHref = tournament.venueMapUrl || (tournament.venue ? mapSearchUrl(tournament.venue) : undefined);
 
   const infoFields: Array<{ key: string; labelKey: string; kind?: "text" | "date" | "number" }> = [
     { key: "name", labelKey: "fieldName" },
@@ -745,12 +400,14 @@ function TournamentDetail({
   const pricingFields: Array<{ key: string; labelKey: string; kind?: "text" | "date" | "number"; hintKey?: string }> = [
     { key: "registration_deadline", labelKey: "registrationCloses", kind: "date" },
     { key: "regular_fee", labelKey: "entryFee", kind: "number" },
-    { key: "early_bird_fee", labelKey: "earlyBirdFee", kind: "number", hintKey: "earlyBirdHint" },
-    { key: "early_bird_deadline", labelKey: "earlyBirdUntil", kind: "date" },
     { key: "student_discount_pct", labelKey: "discountLabel", kind: "number", hintKey: "discountHint" },
+    { key: "early_bird_fee", labelKey: "earlyBirdFee", kind: "number" },
+    { key: "early_bird_deadline", labelKey: "earlyBirdUntil", kind: "date" },
+    { key: "arrival_reminder_days", labelKey: "arrivalReminder", kind: "number", hintKey: "arrivalReminderHint" },
   ];
   const renderDraftField = (f: (typeof infoFields)[number] & { hintKey?: string }) => (
-    <div key={f.key}>
+    /* The arrival reminder spans the whole row, as it does on the create form. */
+    <div key={f.key} style={f.key === "arrival_reminder_days" ? { gridColumn: "1 / -1" } : undefined}>
       <label style={labelStyle} htmlFor={`td-${f.key}`}>{t(f.labelKey)}</label>
       <input
         id={`td-${f.key}`}
@@ -778,15 +435,11 @@ function TournamentDetail({
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <BackLink label={t("backToTournaments")} onClick={onBack} />
 
-      <DetailHeader
-        avatar={
-          <div style={{ width: 120 }}>
-            <TournamentArt name={tournament.name} height={92} />
-          </div>
-        }
-        title={tournament.name}
-        subtitle={`${tournament.date} · ${tournament.venue}`}
-        badges={
+      {/* The banner is the header: the status sits on it, and the tournament's
+          own actions — chess-results, Edit, Delete — sit under it. */}
+      <BannerCard
+        tournament={tournament}
+        badge={
           <Badge color={status.color} bg={status.bg}>
             {tStatus(tournament.status)}
           </Badge>
@@ -817,24 +470,6 @@ function TournamentDetail({
             </>
           ) : (
             <>
-              {tournament.chessResultsId ? (
-                <>
-                  <ChessResultsJump id={tournament.chessResultsId} name={tournament.name} />
-                  <UpdateResultsButton tournamentId={tournament.id} />
-                </>
-              ) : (
-                /* Unlinked: the link form lives on the Results tab, which nobody
-                   finds by guessing. This is the signpost — same place the jump
-                   buttons appear once it *is* linked. */
-                <button
-                  type="button"
-                  className="jt-btn-ghost"
-                  style={secondaryButtonStyle}
-                  onClick={() => setTab("results")}
-                >
-                  <Icon name="globe" size={14} /> {tExternal("linkAction")}
-                </button>
-              )}
               <EditButton onClick={startEdit} />
               <DeleteButton onClick={onDelete} />
             </>
@@ -850,15 +485,47 @@ function TournamentDetail({
           isEdit={participantModal !== "new"}
           fields={participantFields}
           values={participantValues}
-          onChange={setParticipantValues}
+          onChange={(next) => {
+            /* Picking a JCA student fills what their record already knows.
+               Changing to another student replaces what the first one filled
+               in; anything typed by hand stays as typed. Clearing the student
+               clears what they filled in. */
+            if (next.student_id !== participantValues.student_id) {
+              const from = studentFill(students.find((s) => s.id === participantValues.student_id));
+              const to = studentFill(students.find((s) => s.id === next.student_id));
+              const filled = { ...next };
+              for (const key of Object.keys(to) as Array<keyof typeof to>) {
+                const now = String(next[key] ?? "");
+                if (now === "" || now === from[key]) filled[key] = to[key];
+              }
+              next = filled;
+            }
+            setParticipantValues(next);
+          }}
           onClose={() => setParticipantModal(null)}
           onSubmit={async (payload) => {
             if (participantModal === "new") {
-              await create("tournament-registrations", {
-                ...payload,
+              /* The payment fields are not the entry's own columns. */
+              const { [PAY_METHOD]: method, [PAY_REFERENCE]: reference, ...entry } = payload;
+              if (method && !(Number(entry.fee_charged) > 0)) throw new Error(t("needFeeForPayment"));
+              const row = await create("tournament-registrations", {
+                ...entry,
                 tournament_id: tournament.id,
                 registered_at: new Date().toISOString(),
               });
+              if (method) {
+                /* The entry is saved by now. A failed payment is reported on
+                   the page rather than here, so a retry cannot add them twice. */
+                try {
+                  await api.post(`tournament-registrations/${String(row.tournament_registration_id)}/desk-payment`, {
+                    payment_method: method,
+                    reference_number: method === "Cash" ? "" : String(reference ?? ""),
+                  });
+                  await refresh();
+                } catch (e) {
+                  setEditError(t("paymentNotRecorded", { error: errorText(e, tCommon("saveFailed")) }));
+                }
+              }
             } else {
               await update("tournament-registrations", participantModal.id!, payload);
             }
@@ -874,29 +541,21 @@ function TournamentDetail({
         />
       )}
 
-      <RegistrationCard
-        tournamentId={tournament.id}
-        tournamentName={tournament.name}
-        open={tournament.publicRegistration}
-        fee={tournament.entryFeeAmount}
-        discountPct={tournament.studentDiscountPct}
-        studentFeeNow={tournament.studentFeeNow}
-        studentGetsDiscount={tournament.studentGetsDiscount ?? true}
-        studentGetsEarlyBird={tournament.studentGetsEarlyBird ?? false}
-        onChange={async (patch) => {
-          await update("tournaments", tournament.id, patch);
-        }}
-      />
-
-      <RegulationCard tournamentId={tournament.id} />
-
-      <div style={{ display: "flex", gap: 18, borderBottom: `1px solid ${COLORS.border}` }}>
+      {/* Straight into the tabs; the registration and regulation cards
+          belong to the Overview. */}
+      <div style={{ display: "flex", gap: 26, borderBottom: `1px solid ${COLORS.border}` }}>
         {(["overview", "participants", "results"] as const).map((tab_) => (
           <button
             key={tab_}
             type="button"
-            onClick={() => setTab(tab_)}
+            onClick={() => {
+              /* Opening Participants, or leaving it, counts as having seen
+                 everybody in it. */
+              if (tab_ === "participants" || tab === "participants") newEntries.markSeen();
+              setTab(tab_);
+            }}
             style={{
+              position: "relative",
               border: "none",
               background: "transparent",
               cursor: "pointer",
@@ -909,12 +568,38 @@ function TournamentDetail({
             }}
           >
             {tab_ === "overview" ? t("tabOverview") : tab_ === "participants" ? t("tabParticipants") : t("tabResults")}
+            {tab_ === "participants" && tab !== "participants" && newEntries.count > 0 && (
+              <span
+                aria-label={t("newParticipants", { count: newEntries.count })}
+                style={{
+                  position: "absolute", top: -2, right: -16,
+                  minWidth: 19, height: 19, padding: "0 5px", borderRadius: 999,
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  background: COLORS.danger, color: COLORS.surface,
+                  fontFamily: FONT, fontSize: 11, fontWeight: 700, lineHeight: 1,
+                  boxShadow: `0 0 0 2px ${COLORS.surface}`,
+                }}
+              >
+                {newEntries.count > 99 ? "99+" : newEntries.count}
+              </span>
+            )}
           </button>
         ))}
       </div>
 
       {tab === "overview" ? (
         <>
+          <RegistrationCard
+            tournamentId={tournament.id}
+            tournamentName={tournament.name}
+            open={tournament.publicRegistration}
+            onChange={async (patch) => {
+              await update("tournaments", tournament.id, patch);
+            }}
+          />
+
+          <RegulationCard tournamentId={tournament.id} />
+
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
             {[
               { label: t("totalRevenue"), value: tournament.revenue, icon: "wallet" as const, color: COLORS.success, bg: COLORS.successBg },
@@ -950,16 +635,17 @@ function TournamentDetail({
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 13 }}>
                 {infoFields.map(renderDraftField)}
                 <div>
-                  <label style={labelStyle} htmlFor="td-status">{tCommon("status")}</label>
+                  <label style={labelStyle} htmlFor="td-status">{t("statusField")}</label>
                   <select
                     id="td-status"
-                    style={{ ...fieldStyle, cursor: "pointer" }}
-                    value={draft.tournament_status ?? ""}
+                    value={draft.tournament_status || "auto"}
                     onChange={(e) => setDraft({ ...draft, tournament_status: e.target.value })}
+                    style={selectStyle}
                   >
-                    {TOURNAMENT_STATUSES.map((s) => (
-                      <option key={s} value={s}>{tStatus(s)}</option>
-                    ))}
+                    <option value="auto">{t("statusAuto")}</option>
+                    <option value="Upcoming">{tStatus("Upcoming")}</option>
+                    <option value="Ongoing">{tStatus("Ongoing")}</option>
+                    <option value="Completed">{tStatus("Completed")}</option>
                   </select>
                 </div>
               </div>
@@ -971,184 +657,183 @@ function TournamentDetail({
                   { label: t("endDate"), value: tournament.endDate || "—" },
                   { label: t("fieldMaxParticipants"), value: tournament.maxParticipants ? String(tournament.maxParticipants) : "—" },
                   { label: t("organizer"), value: tournament.organizer || "—" },
-                  { label: tCommon("status"), value: tStatus(tournament.status) },
+                  {
+                    label: t("confirmationEmail"),
+                    value: tournament.arrivalReminderDays
+                      ? t("confirmationEmailOn", {
+                          days: tournament.arrivalReminderDays,
+                          date: fmtDate(reminderDay(tournament.startISO ?? "", tournament.arrivalReminderDays)) || "—",
+                        })
+                      : t("confirmationEmailOff"),
+                  },
                 ]}
               />
             )}
-          </Card>
-
-          <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <SectionTitle>{t("venueLocation")}</SectionTitle>
-            {editing ? (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 13 }}>
-                <div>
-                  <label style={labelStyle} htmlFor="td-venue-name">{t("fieldVenue")}</label>
-                  <input
-                    id="td-venue-name"
-                    style={fieldStyle}
-                    value={draft.venue_name ?? ""}
-                    onChange={(e) => setDraft({ ...draft, venue_name: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label style={labelStyle} htmlFor="td-venue-address">{t("address")}</label>
-                  <input
-                    id="td-venue-address"
-                    style={fieldStyle}
-                    value={draft.venue_address ?? ""}
-                    onChange={(e) => setDraft({ ...draft, venue_address: e.target.value })}
-                  />
-                </div>
-                {(draft.venue_name ?? "").trim() && (
-                  <iframe
-                    title={t("mapPreviewTitle")}
-                    src={mapEmbedUrl(draft.venue_name)}
-                    style={{ minHeight: 140, width: "100%", border: `1px solid ${COLORS.border}`, borderRadius: 10 }}
-                    loading="lazy"
-                  />
-                )}
-              </div>
-            ) : (
-              <>
-                <InfoGrid
-                  rows={[
-                    { label: t("fieldVenue"), value: tournament.venue || "—" },
-                    { label: t("address"), value: tournament.address || "—" },
-                  ]}
-                />
-                {(tournament.venue || mapHref) && (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 13 }}>
-                    {tournament.venue && (
-                      <iframe
-                        title={t("mapPreviewTitle")}
-                        src={mapEmbedUrl(tournament.venue)}
-                        style={{ minHeight: 140, width: "100%", border: `1px solid ${COLORS.border}`, borderRadius: 10 }}
-                        loading="lazy"
-                      />
-                    )}
-                    {mapHref && (
-                      <a
-                        href={mapHref}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="jt-btn-ghost"
-                        style={{ ...secondaryButtonStyle, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, textDecoration: "none", alignSelf: "center" }}
-                      >
-                        <Icon name="pin" size={14} /> {t("viewOnMap")}
-                      </a>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
-          </Card>
-
-          <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <SectionTitle>{t("registrationPricing")}</SectionTitle>
-            {editing ? (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 13 }}>
-                {pricingFields.map(renderDraftField)}
-              </div>
-            ) : (
-              <InfoGrid
-                rows={[
-                  { label: t("registrationCloses"), value: tournament.registrationDeadline || "—" },
-                  { label: t("entryFee"), value: tournament.entryFeeMember },
-                  { label: t("earlyBirdFee"), value: tournament.earlyBirdFeeMember || "—" },
-                  { label: t("earlyBirdUntil"), value: tournament.earlyBirdEnd || "—" },
-                  { label: t("discountLabel"), value: String(tournament.studentDiscountPct) },
-                ]}
-              />
-            )}
-          </Card>
-
-          <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <SectionTitle>{t("categoriesTitle")}</SectionTitle>
-            {editing ? (
-              <>
-                {draftCategories.length > 0 && (
-                  <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
-                    {draftCategories.map((c) => (
-                      <span
-                        key={c.id ?? c.name}
-                        style={{
-                          display: "inline-flex", alignItems: "center", gap: 6,
-                          padding: "5px 10px", borderRadius: 999,
-                          background: COLORS.light, fontFamily: FONT, fontSize: 13.5,
-                          color: COLORS.text,
-                        }}
-                      >
-                        {c.name}
-                        {/* How many are in it, so the cost of the × beside it
-                            is visible before it is pressed rather than only in
-                            the dialog after. */}
-                        {entrantsIn(c) > 0 && (
-                          <span style={{ fontSize: 12, color: COLORS.textSecondary }}>
-                            {entrantsIn(c)}
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          aria-label={tCommon("deleteThing", { what: c.name })}
-                          onClick={() => removeDraftCategory(c)}
+            {/* The age groups, as part of what the tournament is. */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 12, borderTop: `1px solid ${COLORS.border}` }}>
+              <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.textSecondary }}>{t("categoriesTitle")}</span>
+              {editing ? (
+                <>
+                  {draftCategories.length > 0 && (
+                    <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+                      {draftCategories.map((c) => (
+                        <span
+                          key={c.id ?? c.name}
                           style={{
-                            display: "inline-flex", border: "none", background: "transparent",
-                            padding: 0, cursor: "pointer", color: COLORS.textSecondary,
+                            display: "inline-flex", alignItems: "center", gap: 6,
+                            padding: "5px 10px", borderRadius: 999,
+                            background: COLORS.light, fontFamily: FONT, fontSize: 13.5,
+                            color: COLORS.text,
                           }}
                         >
-                          <Icon name="x" size={13} />
-                        </button>
-                      </span>
-                    ))}
+                          {c.name}
+                          {/* How many are in it, so the cost of the × beside it
+                              is visible before it is pressed rather than only in
+                              the dialog after. */}
+                          {entrantsIn(c) > 0 && (
+                            <span style={{ fontSize: 12, color: COLORS.textSecondary }}>
+                              {entrantsIn(c)}
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            aria-label={tCommon("deleteThing", { what: c.name })}
+                            onClick={() => removeDraftCategory(c)}
+                            style={{
+                              display: "inline-flex", border: "none", background: "transparent",
+                              padding: 0, cursor: "pointer", color: COLORS.textSecondary,
+                            }}
+                          >
+                            <Icon name="x" size={13} />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <input
+                      value={categoryDraft}
+                      onChange={(e) => setCategoryDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addDraftCategory();
+                        }
+                      }}
+                      placeholder={t("categoryPlaceholder")}
+                      aria-label={t("categoryPlaceholder")}
+                      style={{ ...fieldStyle, flex: "1 1 180px", width: "auto" }}
+                    />
+                    <button
+                      type="button"
+                      className="jt-btn-ghost"
+                      style={secondaryButtonStyle}
+                      disabled={!categoryDraft.trim()}
+                      onClick={addDraftCategory}
+                    >
+                      <Icon name="plus" size={13} /> {tCommon("add")}
+                    </button>
                   </div>
-                )}
+                </>
+              ) : categoryRows.length === 0 ? (
+                <p style={{ margin: 0, fontFamily: FONT, fontSize: 14, color: COLORS.textSecondary }}>
+                  {t("noCategories")}
+                </p>
+              ) : (
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <input
-                    value={categoryDraft}
-                    onChange={(e) => setCategoryDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addDraftCategory();
-                      }
-                    }}
-                    placeholder={t("categoryPlaceholder")}
-                    aria-label={t("categoryPlaceholder")}
-                    style={{ ...fieldStyle, flex: "1 1 180px", width: "auto" }}
-                  />
-                  <button
-                    type="button"
-                    className="jt-btn-ghost"
-                    style={secondaryButtonStyle}
-                    disabled={!categoryDraft.trim()}
-                    onClick={addDraftCategory}
-                  >
-                    <Icon name="plus" size={13} /> {tCommon("add")}
-                  </button>
+                  {categoryRows.map((c) => (
+                    <span
+                      key={c.id}
+                      style={{
+                        display: "inline-flex", alignItems: "center",
+                        padding: "6px 12px", borderRadius: 999,
+                        border: `1px solid ${COLORS.border}`, fontFamily: FONT, fontSize: 13.5,
+                        color: COLORS.text,
+                      }}
+                    >
+                      {c.name}
+                    </span>
+                  ))}
                 </div>
-              </>
-            ) : categoryRows.length === 0 ? (
-              <p style={{ margin: 0, fontFamily: FONT, fontSize: 14, color: COLORS.textSecondary }}>
-                {t("noCategories")}
-              </p>
-            ) : (
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {categoryRows.map((c) => (
-                  <span
-                    key={c.id}
-                    style={{
-                      display: "inline-flex", alignItems: "center",
-                      padding: "6px 12px", borderRadius: 999,
-                      border: `1px solid ${COLORS.border}`, fontFamily: FONT, fontSize: 13.5,
-                      color: COLORS.text,
-                    }}
-                  >
-                    {c.name}
-                  </span>
-                ))}
-              </div>
-            )}
+              )}
+            </div>
           </Card>
+
+          {/* Pricing on the left, where it is, beside the venue on the right;
+              one column on a narrow screen. */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 380px), 1fr))", gap: 16 }}>
+            <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <SectionTitle>{t("registrationPricing")}</SectionTitle>
+              {editing ? (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 13 }}>
+                  {pricingFields.map(renderDraftField)}
+                </div>
+              ) : (
+                <InfoGrid
+                  rows={[
+                    { label: t("registrationCloses"), value: tournament.registrationDeadline || "—" },
+                    { label: t("entryFee"), value: tournament.entryFeeMember },
+                    { label: t("earlyBirdFee"), value: tournament.earlyBirdFeeMember || "—" },
+                    { label: t("earlyBirdUntil"), value: tournament.earlyBirdEnd || "—" },
+                    { label: t("discountLabel"), value: String(tournament.studentDiscountPct) },
+                  ]}
+                />
+              )}
+            </Card>
+            <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <SectionTitle>{t("venueLocation")}</SectionTitle>
+              {editing ? (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 13 }}>
+                  <div>
+                    <label style={labelStyle} htmlFor="td-venue-name">{t("fieldVenue")}</label>
+                    <input
+                      id="td-venue-name"
+                      style={fieldStyle}
+                      value={draft.venue_name ?? ""}
+                      onChange={(e) => setDraft({ ...draft, venue_name: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle} htmlFor="td-venue-address">{t("address")}</label>
+                    <input
+                      id="td-venue-address"
+                      style={fieldStyle}
+                      value={draft.venue_address ?? ""}
+                      onChange={(e) => setDraft({ ...draft, venue_address: e.target.value })}
+                    />
+                  </div>
+                  {(draft.venue_name ?? "").trim() && (
+                    <iframe
+                      title={t("mapPreviewTitle")}
+                      src={mapEmbedUrl(draft.venue_name)}
+                      style={{ minHeight: 140, width: "100%", border: `1px solid ${COLORS.border}`, borderRadius: 10 }}
+                      loading="lazy"
+                    />
+                  )}
+                </div>
+              ) : (
+                <>
+                  <InfoGrid
+                    rows={[
+                      { label: t("fieldVenue"), value: tournament.venue || "—" },
+                      { label: t("address"), value: tournament.address || "—" },
+                    ]}
+                  />
+                  {/* The map is the link: Google's embed opens the venue in
+                      Maps when it is clicked. */}
+                  {tournament.venue && (
+                    <iframe
+                      title={t("mapPreviewTitle")}
+                      src={mapEmbedUrl(tournament.venue)}
+                      style={{ minHeight: 160, width: "100%", border: `1px solid ${COLORS.border}`, borderRadius: 10 }}
+                      loading="lazy"
+                    />
+                  )}
+                </>
+              )}
+            </Card>
+          </div>
+
 
         </>
       ) : tab === "participants" ? (
@@ -1204,14 +889,16 @@ function TournamentDetail({
             </div>
           ) : (
           <Table
-            /* No payment column — registration fees are tracked on the
-               Payment page, not per participant row. */
             /* "No.", not "Rank": this is the order entries came in. Placings are
                the Results tab's, from chess-results — the first three sign-ups
-               used to be labelled Champion, Runner-up and 2nd Runner-up. */
-            columns={[t("entryNo"), t("player"), t("rating"), t("category"), t("score"), tCommon("action")]}
+               used to be labelled Champion, Runner-up and 2nd Runner-up.
+               Age sits beside the category, with a flag when the two do not
+               fit, so the desk can check an entry the ID scan may have
+               misread. Payment shows who still owes: an unpaid place is
+               released when registration closes. */
+            columns={[t("entryNo"), t("player"), t("age"), t("category"), t("amount"), t("payment"), t("arrivalStatus"), tCommon("action")]}
             template={PARTICIPANT_TEMPLATE}
-            minWidth={780}
+            minWidth={880}
           >
             {pageRows.length === 0 && <EmptyRow>{t("noParticipants")}</EmptyRow>}
             {pageRows.map((p) => {
@@ -1224,14 +911,51 @@ function TournamentDetail({
                       <span style={{ display: "block", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {p.name}
                       </span>
+                      {p.nameTh && (
+                        <span lang="th" style={{ display: "block", fontSize: 12, color: COLORS.textSecondary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {p.nameTh}
+                        </span>
+                      )}
                     </span>
                   </span>
-                  <span style={{ color: COLORS.textSecondary }}>{p.rating}</span>
-                  <span style={{ color: COLORS.textSecondary }}>{p.category}</span>
-                  <span style={{ fontWeight: 600 }}>{p.score}</span>
+                  <span style={{ color: COLORS.textSecondary }}>{p.age || "—"}</span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", color: COLORS.textSecondary }}>
+                    {p.category}
+                    {p.ageCheck && (
+                      <span title={t(`ageCheck.${p.ageCheck}`)}>
+                        <Badge
+                          color={p.ageCheck === "tooOld" ? COLORS.danger : COLORS.warning}
+                          bg={p.ageCheck === "tooOld" ? COLORS.dangerBg : COLORS.warningBg}
+                        >
+                          <Icon name="alertTriangle" size={11} /> {t("ageCheckFlag")}
+                        </Badge>
+                      </span>
+                    )}
+                  </span>
+                  {/* What the entry owes — the figure the Payment badge is about. */}
+                  <span style={{ color: (p.feeCharged ?? 0) > 0 ? COLORS.text : COLORS.textSecondary, fontWeight: 600 }}>
+                    {(p.feeCharged ?? 0) > 0 ? fmtTHB(p.feeCharged!) : "—"}
+                  </span>
+                  <span>
+                    {(p.feeCharged ?? 0) <= 0 ? (
+                      <span style={{ color: COLORS.textSecondary }}>—</span>
+                    ) : p.paymentStatus === "Paid" ? (
+                      <Badge color={COLORS.success} bg={COLORS.successBg}>{t("paid")}</Badge>
+                    ) : (
+                      <Badge color={COLORS.warning} bg={COLORS.warningBg}>{t("unpaid")}</Badge>
+                    )}
+                  </span>
+                  <ArrivalBadge state={arrivalState(p.arrival, p.arrivalRemindedAt)} />
                   {p.id ? (
                     <RowActions
                       label={p.name}
+                      /* Only while they have not answered, and before the day. */
+                      onEmail={
+                        (p.arrival ?? "Pending") === "Pending" && !(tournament.startISO && tournament.startISO < todayISO())
+                          ? () => resendArrival(p)
+                          : undefined
+                      }
+                      emailLabel={t("resendConfirmation", { name: p.name })}
                       onEdit={() => openParticipant(p)}
                       onDelete={() => setDeletingParticipant(p)}
                     />
@@ -1245,6 +969,28 @@ function TournamentDetail({
           )}
           <Pagination page={current} totalPages={totalPages} onChange={setPage} />
         </Card>
+        {(tournament.released?.length ?? 0) > 0 && (
+          /* Places the closing-date rule gave back because nobody paid.
+             Restoring one puts it back in the roster, unpaid. */
+          <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <SectionTitle>{t("releasedTitle")}</SectionTitle>
+            <p style={{ margin: 0, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>{t("releasedHint")}</p>
+            {tournament.released!.map((r) => (
+              <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "8px 0", borderTop: `1px solid ${COLORS.border}` }}>
+                <span style={{ flex: "1 1 200px", fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text }}>{r.name}</span>
+                <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>{r.category}</span>
+                <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>{t("releasedOn", { date: r.releasedAt })}</span>
+                <ActionButton
+                  className="jt-btn-ghost"
+                  style={{ ...secondaryButtonStyle, padding: "6px 12px" }}
+                  onClick={() => update("tournament-registrations", r.id, { status: "Approved" })}
+                >
+                  {t("restorePlace")}
+                </ActionButton>
+              </div>
+            ))}
+          </Card>
+        )}
         </>
       ) : (
         <ResultsTab
@@ -1261,97 +1007,20 @@ function TournamentDetail({
           onPublishChange={async (next) => {
             await update("tournaments", tournament.id, { results_public: next });
           }}
+          participants={tournament.participants}
+          onLinkParticipant={linkResults}
         />
       )}
 
-      {shown && (
-        <Drawer title={shown.name} onClose={() => setDrawer(null)}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <Avatar initials={initialsOf(shown.name)} size={52} />
-              <div>
-                <div style={{ fontFamily: FONT, fontSize: 17, fontWeight: 700, color: COLORS.text }}>{shown.name}</div>
-                <div style={{ fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
-{t("ratingLine", { age: shown.age, rating: shown.rating, category: shown.category })}
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-              {[
-                { label: t("wins"), value: shown.wins, color: COLORS.success },
-                { label: t("draws"), value: shown.draws, color: COLORS.warning },
-                { label: t("losses"), value: shown.losses, color: COLORS.danger },
-              ].map((s) => (
-                <div
-                  key={s.label}
-                  style={{
-                    padding: "11px 12px",
-                    borderRadius: 11,
-                    border: `1px solid ${COLORS.border}`,
-                    textAlign: "center",
-                  }}
-                >
-                  <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 700, color: s.color }}>{s.value}</div>
-                  <div style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>{s.label}</div>
-                </div>
-              ))}
-            </div>
-
-            <InfoGrid
-              rows={[
-                { label: t("score"), value: shown.score },
-                { label: t("prize"), value: shown.prize },
-                { label: t("attendance"), value: shown.attendance },
-                { label: t("guardian"), value: shown.guardian },
-                { label: t("contact"), value: shown.contact },
-              ]}
-            />
-
-            {shown.id && (
-              <EntryFeeCard
-                registrationId={shown.id}
-                fee={shown.feeCharged ?? 0}
-                paid={shown.paymentStatus === "Paid"}
-              />
-            )}
-
-            {/* What the family typed on the registration form. Labelled, now
-                that there are two of them and they go to different people: an
-                allergy is for whoever is in the room on the day. */}
-            {[
-              { label: t("medicalNotes"), value: shown.medicalNotes },
-              { label: t("remarks"), value: shown.notes },
-            ].filter((x) => x.value).map((x) => (
-              <div
-                key={x.label}
-                style={{
-                  padding: 12,
-                  borderRadius: 10,
-                  background: COLORS.bg,
-                  border: `1px solid ${COLORS.border}`,
-                  fontFamily: FONT,
-                  fontSize: 13.5,
-                  color: COLORS.textSecondary,
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    letterSpacing: 0.6,
-                    textTransform: "uppercase",
-                    color: COLORS.text,
-                    marginBottom: 4,
-                  }}
-                >
-                  {x.label}
-                </div>
-                {x.value}
-              </div>
-            ))}
-          </div>
-        </Drawer>
+      {/* The same profile the Results tab opens: one participant, one place. */}
+      {drawer?.id && (
+        <ParticipantProfile
+          tournamentId={tournament.id}
+          participants={tournament.participants}
+          target={{ participantId: drawer.id }}
+          onLink={linkResults}
+          onClose={() => setDrawer(null)}
+        />
       )}
 
       {/* Removing an age group somebody is already in. Staged like the rest of
@@ -1448,8 +1117,25 @@ function ChessResultsJump({ id, name, compact }: { id: number; name: string; com
 /* Stable identity: a fresh array each render would re-make the setter. */
 const TAB_PARAM = ["tab"];
 
-const TOURNAMENT_STATUSES = ["Upcoming", "Ongoing", "Completed"];
 
+
+/** What a student's record fills in on the Add participant form. Student
+    records carry no nickname, so their name is the starting point; the email
+    is the parent's, as on the public form, not the child's login. */
+function studentFill(s: { name: string; dateOfBirth?: string; parentPhone?: string; parentEmail?: string } | undefined) {
+  return {
+    participant_name: s?.name ?? "",
+    nickname: s?.name ?? "",
+    participant_date_of_birth: s?.dateOfBirth ?? "",
+    contact_phone: s?.parentPhone ?? "",
+    contact_email: s?.parentEmail ?? "",
+  };
+}
+/* Paying at sign-up, from the Add participant form. The names are the form's
+   own, not columns: they are taken out before the entry is saved. */
+const DESK_METHODS = ["Cash", "PromptPay", "BankTransfer"] as const;
+const PAY_METHOD = "pay_method";
+const PAY_REFERENCE = "pay_reference";
 export function TournamentPage({
   detailId,
   detailTab,
@@ -1464,9 +1150,8 @@ export function TournamentPage({
 }) {
   const t = useTranslations("tournament");
   const tCommon = useTranslations("common");
-  const { showError } = useErrorToast();
   const tStatus = useTranslations("status");
-  const { tournaments, batch, create, remove } = useData();
+  const { tournaments, batch, remove } = useData();
   /* In the address bar, so a refresh, a shared link and the Back button all
      land on the tournament that was open rather than the list. */
   const [selectedId, setSelectedId] = useUrlBackedState<string>("id", detailId ?? "", TAB_PARAM, "push");
@@ -1525,68 +1210,18 @@ export function TournamentPage({
     return tournaments.filter((t) => t.name.toLowerCase().includes(q) || t.venue.toLowerCase().includes(q));
   }, [tournaments, search]);
 
-  const ongoing = filtered.filter((t) => t.status === "Ongoing");
-  const past = filtered.filter((t) => t.status !== "Ongoing");
+  /* Running now or still to come; Completed is past. */
+  const ongoing = filtered.filter((t) => t.status !== "Completed");
+  const past = filtered.filter((t) => t.status === "Completed");
 
   if (wizardOpen) {
     return (
       <CreateWizard
         onCancel={() => setWizardOpen(false)}
-        onPublish={async (t, regulation) => {
-          const iso = (v: string) => {
-            const d = new Date(v);
-            return isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
-          };
-          const money = (v: string | undefined) => {
-            const digits = (v ?? "").replace(/[^0-9.]/g, "");
-            return digits ? Number(digits) : null;
-          };
-          try {
-            const created = await create("tournaments", {
-              name: t.name,
-              tournament_status: "Upcoming",
-              start_date: iso(t.date),
-              end_date: t.endDate ? iso(t.endDate) : null,
-              venue_name: t.venue,
-              venue_address: t.address,
-              venue_map_url: t.venueMapUrl || null,
-              organizer_name: t.organizer,
-              registration_deadline: iso(t.registrationDeadline),
-              early_bird_fee: money(t.earlyBirdFeeMember),
-              /* Without a deadline the early price can never be charged, so
-                 the two are written together or not at all. */
-              early_bird_deadline: t.earlyBirdFeeMember ? iso(t.earlyBirdEnd ?? "") : null,
-              regular_fee: money(t.entryFeeMember),
-              max_participants: t.maxParticipants || null,
-              /* Clamped rather than trusted: the field is a number input, and
-                 a number input accepts -5 and 300 perfectly happily. The
-                 backend refuses anything outside 0–100, so an unclamped value
-                 would lose the whole tournament to a validation error at the
-                 last step of the wizard. */
-              student_discount_pct: Math.min(100, Math.max(0, Math.round(t.studentDiscountPct))),
-              student_gets_discount: t.studentGetsDiscount ?? true,
-              student_gets_early_bird: t.studentGetsEarlyBird ?? false,
-            });
-            for (const name of t.categories) {
-              await create("tournament-categories", { tournament_id: created.tournament_id, name });
-            }
-            /* The regulation needs the id, so it goes up last. A failure here
-               must not lose the tournament that was just created — it is
-               reported, and the file can be attached again from the detail. */
-            if (regulation) {
-              const form = new FormData();
-              form.append("file", regulation);
-              try {
-                await api.upload(`tournaments/${created.tournament_id}/regulation`, form);
-              } catch (e) {
-                showError(tCommon("regulationUploadFailed"), e);
-              }
-            }
-            setSelectedId(String(created.tournament_id));
-          } catch (e) {
-            showError(tCommon("publishFailed"), e);
-          }
+        onDone={(id) => {
           setWizardOpen(false);
+          setSelectedId(id);
+          setEditFromList(false);
         }}
       />
     );
@@ -1685,7 +1320,14 @@ export function TournamentPage({
                   style={{ display: "flex", flexDirection: "column", gap: 11, cursor: "pointer" }}
                   onClick={() => { setSelectedId(item.id); setEditFromList(false); }}
                 >
-                  <TournamentArt name={item.name} />
+                  <TournamentBanner
+                    name={item.name}
+                    when={item.date}
+                    venue={item.venue}
+                    imageUrl={item.hasBanner ? `/api/tournaments/${item.id}/banner` : undefined}
+                    height={124}
+                    radius={11}
+                  />
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 9 }}>
                     <span style={{ fontFamily: FONT, fontSize: 15.5, fontWeight: 700, color: COLORS.text }}>
                       {item.name}
@@ -1782,7 +1424,7 @@ export function TournamentPage({
         />
       )}
 
-      {view === "active" && section(t("ongoing"), ongoing)}
+      {view === "active" && section(t("activeTitle"), ongoing)}
       {view === "past" && section(t("past"), past)}
       {/* Other people's tournaments, read from chess-results.com. */}
       {view === "external" && <ExternalTournaments />}

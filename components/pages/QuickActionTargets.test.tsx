@@ -36,6 +36,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/components/DataProvider", () => ({
   useData: () => ({
     raw,
+    creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certSessions: 50, maxNegativeCredit: 0, checkoutRoundMinutes: 15 },
     students: [],
     payments: [],
     announcements: [],

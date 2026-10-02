@@ -31,8 +31,13 @@ import { standingsRace } from "@/lib/standings-race";
 import { useShown } from "@/lib/shown-pref";
 import { ExportButton, SearchInput, secondaryButtonStyle } from "../page-kit";
 import { Badge, Card } from "../ui";
-import { PlayerPanel } from "./PlayerPanel";
 import { RoundCard, type PlayerMeta } from "./RoundCard";
+import { COLUMN_FOLD, RoundColumns } from "./RoundColumns";
+import { useViewMode } from "@/lib/view-mode";
+import { ViewToggle } from "../view-mode";
+
+/** The stacked list first: it is the view the office asked for. */
+const ROUND_MODES = ["list", "columns"] as const;
 import { StandingsRace } from "./StandingsRace";
 
 export function ResultsTable({
@@ -43,6 +48,10 @@ export function ResultsTable({
   /** The age group on show, when the tab strip is on one. Named on the filter
       bar so a filtered screen still says which event it is filtering. */
   categoryName,
+  /** Extra controls shown on the search row, such as the JCA-only filter. */
+  filters,
+  /** Opens the participant's profile when a name is clicked. */
+  onOpenPlayer,
 }: {
   rounds: LinkedRound[];
   standings: ExternalStanding[];
@@ -51,10 +60,17 @@ export function ResultsTable({
   totalRounds: number;
   eventName: string;
   categoryName?: string;
+  filters?: React.ReactNode;
+  onOpenPlayer?: (name: string) => void;
 }) {
   const t = useTranslations("results");
 
   const [query, setQuery] = useState("");
+  /* Two ways to read the rounds: stacked, one at a time, or every round side
+     by side. Remembered like every other view switch on the console. */
+  const [mode, setMode] = useViewMode("results-rounds", ROUND_MODES);
+  /* Columns fold to eight boards each; one switch opens them all. */
+  const [allGames, setAllGames] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const views = useMemo(() => roundViews(rounds, totalRounds), [rounds, totalRounds]);
 
@@ -69,14 +85,10 @@ export function ResultsTable({
   const canRace = race.rounds.length >= 2;
   const [raceShown, setRaceShown] = useShown("results.race");
 
-  /* Which rounds are open. The default is the round the event is at — the
-     latest completed one and the one already paired — because opening all of
-     them makes a five-round event a page nobody reads, and opening none makes
-     the screen a list of headings. */
-  const atTheEvent = useMemo(
-    () => () => new Set(views.filter((v) => v.latest || v.state === "pairings").map((v) => v.round)),
-    [views],
-  );
+  /* Which rounds are open. None by default — the office asked for a list of
+     rounds to open, not a page already scrolled through; Expand all is beside
+     the search for the other case. */
+  const noneOpen = () => new Set<number>();
   /* Narrowed to one player, the rounds worth opening are the ones they are
      actually on a board in — which is most of them, and never the same set as
      the default. Leaving the default in place was the bug this replaced: a
@@ -85,7 +97,7 @@ export function ResultsTable({
   const withPlayer = (name: string) =>
     new Set(roundsForPlayer(name, views).filter((r) => r.pairings.length > 0).map((r) => r.round));
 
-  const [open, setOpen] = useState<Set<number>>(atTheEvent);
+  const [open, setOpen] = useState<Set<number>>(noneOpen);
 
   /* Names for the typed text. One match selects itself: typing a full name and
      then having to click it is a step that exists only because the code could
@@ -114,14 +126,18 @@ export function ResultsTable({
      Games Finished" stays true of the round, not of what is left after the
      filter. Only the boards below are narrowed. */
   const shown: RoundView[] = player ? roundsForPlayer(player, views) : views;
+  const allOpen = shown.length > 0 && shown.every((v) => open.has(v.round));
   const matchCount = shown.reduce((n, r) => n + r.pairings.length, 0);
   const completed = views.filter((v) => v.state === "completed").length;
   const upcoming = views.length - completed;
+
+  const selectedRow = player ? standingBy(player, standings) : undefined;
 
   function pick(name: string) {
     setSelected(name);
     setQuery(name);
     setOpen(withPlayer(name));
+    onOpenPlayer?.(name);
   }
 
   /**
@@ -139,16 +155,14 @@ export function ResultsTable({
        the old pick would leave their card up beside somebody else's boards. */
     setSelected(null);
     const hits = matchPlayers(value, views);
-    setOpen(hits.length === 1 ? withPlayer(hits[0]) : atTheEvent());
+    setOpen(hits.length === 1 ? withPlayer(hits[0]) : noneOpen());
   }
 
   function reset() {
     setSelected(null);
     setQuery("");
-    setOpen(atTheEvent());
+    setOpen(noneOpen());
   }
-
-  const selectedRow = player ? standingBy(player, standings) : undefined;
 
   const list = (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -175,63 +189,8 @@ export function ResultsTable({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <Card style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <span
-          aria-hidden
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 40,
-            height: 40,
-            borderRadius: 11,
-            background: COLORS.light,
-            flexShrink: 0,
-          }}
-        >
-          <Icon name="list" size={19} color={COLORS.blue} />
-        </span>
-        <div style={{ flex: 1, minWidth: 140 }}>
-          <strong style={{ display: "block", fontFamily: FONT, fontSize: 15, color: COLORS.text }}>
-            {t("tableTitle")}
-          </strong>
-          <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-            {t("tableSub")}
-          </span>
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {/* The one place the chart is switched on and off. Remembered in this
-              browser, like the list / grid choice on other screens. */}
-          {canRace && (
-            <button
-              type="button"
-              className="jt-btn-ghost"
-              style={secondaryButtonStyle}
-              aria-pressed={raceShown}
-              onClick={() => setRaceShown(!raceShown)}
-            >
-              <Icon name="trendingUp" size={15} /> {raceShown ? t("raceHide") : t("raceShow")}
-            </button>
-          )}
-          <button
-            type="button"
-            className="jt-btn-ghost"
-            style={secondaryButtonStyle}
-            onClick={() => setOpen(new Set(views.map((v) => v.round)))}
-          >
-            {t("expandAll")}
-          </button>
-          <button
-            type="button"
-            className="jt-btn-ghost"
-            style={secondaryButtonStyle}
-            onClick={() => setOpen(new Set())}
-          >
-            {t("collapseAll")}
-          </button>
-        </div>
-      </Card>
-
+      {/* The standings race (optional): above the rounds, switched on and off
+          from the toolbar below. */}
       {canRace && raceShown && <StandingsRace race={race} selected={player} onSelect={pick} />}
 
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
@@ -241,9 +200,51 @@ export function ResultsTable({
             onChange={typeQuery}
             placeholder={t("searchPlayer")}
             label={t("searchPlayer")}
-            style={player ? { borderColor: COLORS.blue } : undefined}
+            /* The whole border, not borderColor: the field sets `border`, and React
+               warns when a longhand is dropped beside its shorthand. */
+            style={{ border: `1px solid ${player ? COLORS.blue : COLORS.border}` }}
           />
         </div>
+        {filters}
+        {/* Beside the search, so everything that changes the list below is on
+            one row. One button: it opens every round, or closes them all once
+            they are open. */}
+        <ViewToggle value={mode} onChange={setMode} options={ROUND_MODES} style={{ marginLeft: "auto" }} />
+        {/* The one place the standings race is switched on and off.
+            Remembered in this browser, like the list / columns choice. */}
+        {canRace && (
+          <button
+            type="button"
+            className="jt-btn-ghost"
+            style={secondaryButtonStyle}
+            aria-pressed={raceShown}
+            onClick={() => setRaceShown(!raceShown)}
+          >
+            <Icon name="trendingUp" size={15} /> {raceShown ? t("raceHide") : t("raceShow")}
+          </button>
+        )}
+        {mode === "list" && (
+          <button
+            type="button"
+            className="jt-btn-ghost"
+            style={secondaryButtonStyle}
+            aria-expanded={allOpen}
+            onClick={() => setOpen(allOpen ? new Set() : new Set(views.map((v) => v.round)))}
+          >
+            {allOpen ? t("collapseAll") : t("expandAll")}
+          </button>
+        )}
+        {mode === "columns" && views.some((v) => v.pairings.length > COLUMN_FOLD) && (
+          <button
+            type="button"
+            className="jt-btn-ghost"
+            style={secondaryButtonStyle}
+            aria-expanded={allGames}
+            onClick={() => setAllGames((v) => !v)}
+          >
+            {allGames ? t("colShowFewer") : t("colShowAllGames")}
+          </button>
+        )}
         <ExportButton
           filename={`${eventName}-rounds`}
           columns={[t("roundCol"), t("boardNo"), t("whitePlayer"), t("rating"), t("result"), t("blackPlayer"), t("rating")]}
@@ -309,23 +310,7 @@ export function ResultsTable({
         </p>
       )}
 
-      {player ? (
-        <div className="jt-results-split">
-          {list}
-          <PlayerPanel
-            name={player}
-            rounds={views}
-            rating={selectedRow?.rating}
-            club={selectedRow?.club}
-            rank={selectedRow?.rank}
-            category={categoryName}
-            studentId={selectedRow?.studentId}
-            onClose={reset}
-          />
-        </div>
-      ) : (
-        list
-      )}
+      {mode === "columns" ? <RoundColumns views={views} selected={player} onSelect={pick} showAll={allGames} onShowAll={() => setAllGames(true)} /> : list}
     </div>
   );
 }
