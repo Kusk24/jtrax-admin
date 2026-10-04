@@ -15,6 +15,7 @@ import { Card, SectionTitle } from "../ui";
 /* Each course tier gets its chess piece. */
 const CATEGORY_ICON: Record<string, IconName> = {
   Master: "trophy",
+  Advanced: "trophy",
   Intermediate: "king",
   Beginner: "queen",
   Weekend: "pawn",
@@ -104,8 +105,8 @@ function ClassCard({ def, now, onView }: { def: ClassDef; now: Date; onView: (de
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
-        gap: 14,
-        padding: 14,
+        padding: 0,
+        overflow: "hidden",
         borderRadius: 13,
         border: `1px solid ${COLORS.border}`,
         background: COLORS.surface,
@@ -113,6 +114,18 @@ function ClassCard({ def, now, onView }: { def: ClassDef; now: Date; onView: (de
         textAlign: "left",
       }}
     >
+      {/* The top in the class's level colour, fading across; the students
+          below on white. */}
+      <span
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 14,
+          flex: 1,
+          padding: 14,
+          background: `linear-gradient(110deg, color-mix(in srgb, ${accent} 7%, ${COLORS.surface}), color-mix(in srgb, ${accent} 18%, ${COLORS.surface}))`,
+        }}
+      >
       <span>
         {/* The icon sits beside the name, not above it, so the card is a line
             shorter. The status sits in the top corner, with the ending-soon
@@ -127,7 +140,7 @@ function ClassCard({ def, now, onView }: { def: ClassDef; now: Date; onView: (de
                 width: 26,
                 height: 26,
                 borderRadius: 8,
-                background: `${accent}1A`,
+                background: COLORS.surface,
                 flexShrink: 0,
               }}
             >
@@ -193,8 +206,18 @@ function ClassCard({ def, now, onView }: { def: ClassDef; now: Date; onView: (de
           reads Finished above regardless of session_status, and a full bar on
           every past lesson would be noise. */}
       {shownStatus === "Ongoing" && <TimePassed time={def.time} now={now} />}
+      </span>
 
-      <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <span
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "10px 14px",
+          borderTop: `1px solid ${COLORS.border}`,
+          background: COLORS.surface,
+        }}
+      >
         <span style={{ display: "flex", alignItems: "center" }}>
           {def.students.slice(0, 2).map((name, i) => (
             <span
@@ -206,8 +229,8 @@ function ClassCard({ def, now, onView }: { def: ClassDef; now: Date; onView: (de
                 width: 26,
                 height: 26,
                 borderRadius: "50%",
-                background: COLORS.light,
-                color: COLORS.blue,
+                background: `color-mix(in srgb, ${accent} 14%, ${COLORS.surface})`,
+                color: accent,
                 border: `2px solid ${COLORS.surface}`,
                 fontFamily: FONT,
                 fontSize: 10.5,
@@ -249,7 +272,7 @@ function ClassCard({ def, now, onView }: { def: ClassDef; now: Date; onView: (de
 }
 
 /** The three views of the day, in the order the reference shows them. */
-const FILTERS = ["all", "Upcoming", "Ongoing", "Finished", "Cancelled"] as const;
+const FILTERS = ["all", "Scheduled", "Ongoing", "Finished", "Cancelled"] as const;
 
 type ClassFilter = (typeof FILTERS)[number];
 
@@ -298,9 +321,9 @@ export function TodaysClasses({ onViewClass }: { onViewClass: (def: ClassDef) =>
           three pills would all read zero and filter nothing. */}
       {todaysClasses.length > 0 && (
         <div className="jt-class-filters" role="radiogroup" aria-label={t("classFilterLabel")}>
-          {/* Upcoming only exists on a later day; elsewhere it would be a pill
-              that always reads zero. */}
-          {FILTERS.filter((o) => o !== "Upcoming" || countFor(o) > 0).map((option) => {
+          {/* Scheduled is shown only when something is: a class that has not
+              started yet, today or on a later day. */}
+          {FILTERS.filter((o) => o !== "Scheduled" || countFor(o) > 0).map((option) => {
             const label = option === "all" ? t("classFilterAll") : tStatus(option);
             const count = countFor(option);
             return (

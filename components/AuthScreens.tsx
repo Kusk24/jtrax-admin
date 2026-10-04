@@ -4,7 +4,7 @@
    brand panel left, card right — so the three read as one flow rather than
    three pages that happen to be about passwords. */
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useTranslations } from "next-intl";
 import { BrandPanel } from "./LoginScreen";
 import { LanguageToggle } from "./LanguageToggle";
@@ -137,6 +137,43 @@ export function ForgotPasswordScreen() {
   );
 }
 
+/** A new-password box with the same Show / Hide the sign-in screen has, so a
+    password can be checked before it is saved. */
+function PasswordField({ id }: { id: string }) {
+  const t = useTranslations("auth");
+  const [shown, setShown] = useState(false);
+  return (
+    <span style={inputWrapStyle}>
+      <Icon name="lock" size={16} color={COLORS.textSecondary} />
+      <input
+        id={id}
+        name={id}
+        type={shown ? "text" : "password"}
+        autoComplete="new-password"
+        minLength={8}
+        style={bareInputStyle}
+      />
+      <button
+        type="button"
+        onClick={() => setShown((v) => !v)}
+        aria-pressed={shown}
+        style={{
+          border: "none",
+          background: "transparent",
+          padding: 0,
+          fontFamily: FONT,
+          fontSize: 13,
+          fontWeight: 600,
+          color: COLORS.blue,
+          cursor: "pointer",
+        }}
+      >
+        {t(shown ? "hide" : "show")}
+      </button>
+    </span>
+  );
+}
+
 export function ResetPasswordScreen({ token }: { token: string }) {
   const t = useTranslations("reset");
   const [state, formAction, pending] = useActionState<ResetState, FormData>(resetPassword, {});
@@ -172,17 +209,11 @@ export function ResetPasswordScreen({ token }: { token: string }) {
         {state.error && <Alert>{t(errorKey)}</Alert>}
         <div>
           <label htmlFor="password" style={labelStyle}>{t("newPassword")}</label>
-          <span style={inputWrapStyle}>
-            <Icon name="lock" size={16} color={COLORS.textSecondary} />
-            <input id="password" name="password" type="password" autoComplete="new-password" minLength={8} style={bareInputStyle} />
-          </span>
+          <PasswordField id="password" />
         </div>
         <div>
           <label htmlFor="confirm" style={labelStyle}>{t("confirmPassword")}</label>
-          <span style={inputWrapStyle}>
-            <Icon name="lock" size={16} color={COLORS.textSecondary} />
-            <input id="confirm" name="confirm" type="password" autoComplete="new-password" minLength={8} style={bareInputStyle} />
-          </span>
+          <PasswordField id="confirm" />
         </div>
         <button type="submit" disabled={pending} className="jt-btn-primary">
           {t(pending ? "saving" : "setPassword")}

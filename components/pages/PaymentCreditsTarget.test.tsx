@@ -98,7 +98,7 @@ describe("crediting the class the package was actually for", () => {
 
     /* The form opens priced for Mini's roster class (King Slayer). Switching
        the package to Master is the whole point of the test. */
-    await user.selectOptions(screen.getByLabelText("Credit Package"), "pkg_master");
+    await user.selectOptions(screen.getByLabelText(/^Credit Package( \*)?$/), "pkg_master");
     await user.click(screen.getByRole("button", { name: "Save Payment" }));
 
     expect(create).not.toHaveBeenCalledWith("enrollments", expect.anything());
@@ -110,7 +110,7 @@ describe("crediting the class the package was actually for", () => {
   it("still lands correctly the other way round — the first class, second package", async () => {
     const user = renderPaymentFor("mini");
 
-    await user.selectOptions(screen.getByLabelText("Credit Package"), "pkg_king");
+    await user.selectOptions(screen.getByLabelText(/^Credit Package( \*)?$/), "pkg_king");
     await user.click(screen.getByRole("button", { name: "Save Payment" }));
 
     expect(bodyOf("payments").enrollment_id).toBe("enr_king");
@@ -120,7 +120,7 @@ describe("crediting the class the package was actually for", () => {
   it("names the paid-for course on the receipt, not the roster's primary one", async () => {
     const user = renderPaymentFor("mini");
 
-    await user.selectOptions(screen.getByLabelText("Credit Package"), "pkg_master");
+    await user.selectOptions(screen.getByLabelText(/^Credit Package( \*)?$/), "pkg_master");
     await user.click(screen.getByRole("button", { name: "Save Payment" }));
 
     /* Mini's own className is "King Slayer" — the receipt must say what was
@@ -140,7 +140,7 @@ describe("crediting the class the package was actually for", () => {
     raw.enrollments = [{ enrollment_id: "enr_king", student_id: "mini", class_id: "king", status: "Active" }];
     const user = renderPaymentFor("mini");
 
-    await user.selectOptions(screen.getByLabelText("Credit Package"), "pkg_master");
+    await user.selectOptions(screen.getByLabelText(/^Credit Package( \*)?$/), "pkg_master");
     await user.click(screen.getByRole("button", { name: "Save Payment" }));
 
     expect(bodyOf("enrollments")).toEqual(
@@ -155,12 +155,12 @@ describe("crediting the class the package was actually for", () => {
 describe("topping up one course", () => {
   it("opens with that course's package chosen", () => {
     renderPaymentFor("mini", "master");
-    expect((screen.getByLabelText("Credit Package") as HTMLSelectElement).value).toBe("pkg_master");
+    expect((screen.getByLabelText(/^Credit Package( \*)?$/) as HTMLSelectElement).value).toBe("pkg_master");
   });
 
   it("falls back to the child's own class when none is given", () => {
     renderPaymentFor("mini");
-    expect((screen.getByLabelText("Credit Package") as HTMLSelectElement).value).toBe("pkg_king");
+    expect((screen.getByLabelText(/^Credit Package( \*)?$/) as HTMLSelectElement).value).toBe("pkg_king");
   });
 });
 
@@ -169,9 +169,9 @@ describe("topping up one course", () => {
 describe("custom credits", () => {
   it("writes the typed credits to the chosen course, with no package", async () => {
     const user = renderPaymentFor("mini");
-    await user.selectOptions(screen.getByLabelText("Credit Package"), "Custom credits");
-    await user.selectOptions(screen.getByLabelText("Course"), "master");
-    await user.type(screen.getByLabelText("Credits"), "7");
+    await user.selectOptions(screen.getByLabelText(/^Credit Package( \*)?$/), "Custom credits");
+    await user.selectOptions(screen.getByLabelText(/^Course( \*)?$/), "master");
+    await user.type(screen.getByLabelText(/^Credits( \*)?$/), "7");
     const amount = screen.getByLabelText("Amount (THB)");
     await user.clear(amount);
     await user.type(amount, "5000");
@@ -189,7 +189,7 @@ describe("custom credits", () => {
 
   it("cannot be saved without a number of credits", async () => {
     const user = renderPaymentFor("mini");
-    await user.selectOptions(screen.getByLabelText("Credit Package"), "Custom credits");
+    await user.selectOptions(screen.getByLabelText(/^Credit Package( \*)?$/), "Custom credits");
     expect((screen.getByRole("button", { name: "Save Payment" }) as HTMLButtonElement).disabled).toBe(true);
   });
 });
@@ -197,7 +197,7 @@ describe("custom credits", () => {
 describe("discount", () => {
   it("is a percentage, saved as the baht it takes off", async () => {
     const user = renderPaymentFor("mini");
-    await user.selectOptions(screen.getByLabelText("Credit Package"), "pkg_king"); // 12,000
+    await user.selectOptions(screen.getByLabelText(/^Credit Package( \*)?$/), "pkg_king"); // 12,000
     const pct = screen.getByLabelText("Discount (%)");
     await user.clear(pct);
     await user.type(pct, "10");
@@ -212,7 +212,7 @@ describe("discount", () => {
 describe("the package list", () => {
   it("offers custom credits first", () => {
     renderPaymentFor("mini");
-    const options = (screen.getByLabelText("Credit Package") as HTMLSelectElement).options;
+    const options = (screen.getByLabelText(/^Credit Package( \*)?$/) as HTMLSelectElement).options;
     expect(options[0].textContent).toBe("Custom credits");
   });
 });

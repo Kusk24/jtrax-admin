@@ -75,9 +75,9 @@ describe("class history actions", () => {
   it("adds a class on the dashboard's panel, with a date from today on", async () => {
     const user = renderPage();
     await user.click(screen.getByRole("button", { name: en.classHistory.addSession }));
-    const date = screen.getByLabelText("Date") as HTMLInputElement;
+    const date = screen.getByLabelText(/^Date( \*)?$/) as HTMLInputElement;
     expect(date.min).toBe(date.value);
-    expect(screen.getByLabelText("Course")).toBeTruthy();
+    expect(screen.getByLabelText(/^Course( \*)?$/)).toBeTruthy();
     expect(within(document.body).getAllByRole("button", { name: "Create Class" }).length).toBeGreaterThan(0);
   });
 });

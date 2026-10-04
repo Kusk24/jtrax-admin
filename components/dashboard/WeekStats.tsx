@@ -3,16 +3,18 @@
 /**
  * Four small cards for the week, beside the overview: classes (against last
  * week), students who came, games the office opened, and students playing
- * consistently. Read when the dashboard opens, not live.
+ * consistently. They follow the date picked in the top bar: its week, and
+ * the window ending on it.
  */
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useTranslations } from "next-intl";
 import { getDashboardActivity, type DashboardActivity } from "@/lib/game-activity";
 import { todayISO } from "@/lib/live";
-import { classesThisWeek, studentsAttendedThisWeek } from "@/lib/week-stats";
+import { classesThisWeek, studentsAttendedThisWeek, weekOf } from "@/lib/week-stats";
 import { Icon, type IconName } from "@/lib/icons";
 import { ACCENT_TINTS, ACCENTS, FONT, FONT_DISPLAY } from "@/lib/theme";
 import { useData } from "../DataProvider";
+import { useDashboardDate } from "../DashboardDate";
 
 type Accent = keyof typeof ACCENTS;
 
@@ -53,21 +55,30 @@ function StatCard({
 export function WeekStats({ className }: { className?: string }) {
   const t = useTranslations("dashboard");
   const { raw } = useData();
+  const { day, isToday } = useDashboardDate();
   const today = todayISO();
-  const classes = useMemo(() => classesThisWeek(raw, today), [raw, today]);
-  const attended = useMemo(() => studentsAttendedThisWeek(raw, today), [raw, today]);
+  const classes = useMemo(() => classesThisWeek(raw, day), [raw, day]);
+  const attended = useMemo(() => studentsAttendedThisWeek(raw, day), [raw, day]);
+  /* Another week than this one: the pills name its dates instead. */
+  const week = weekOf(day);
+  const thisWeek = week.start === weekOf(today).start;
+  const weekPill = thisWeek ? t("thisWeek") : `${shortDay(week.start)} – ${shortDay(week.end)}`;
 
-  const [activity, setActivity] = useState<DashboardActivity | null>(null);
-  const [failed, setFailed] = useState(false);
+  /* Kept with the day it was read for: a result for another day is not
+     shown, so moving the picker reads "…" until the new week arrives. */
+  const [read, setRead] = useState<{ day: string; activity?: DashboardActivity; failed?: boolean } | null>(null);
   useEffect(() => {
     let cancelled = false;
-    getDashboardActivity()
-      .then((a) => !cancelled && setActivity(a))
-      .catch(() => !cancelled && setFailed(true));
+    getDashboardActivity(isToday ? undefined : day)
+      .then((a) => !cancelled && setRead({ day, activity: a }))
+      .catch(() => !cancelled && setRead({ day, failed: true }));
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [day, isToday]);
+  const current = read?.day === day ? read : null;
+  const activity = current?.activity ?? null;
+  const failed = Boolean(current?.failed);
   const serverValue = (n: number | undefined) => (activity ? String(n) : failed ? "—" : "…");
 
   const change = classes.changePct;
@@ -82,13 +93,13 @@ export function WeekStats({ className }: { className?: string }) {
       <StatCard
         icon="calendar"
         accent="blue"
-        label={t("classesThisWeek")}
+        label={thisWeek ? t("classesThisWeek") : t("classesThatWeek")}
         value={String(classes.count)}
         pill={changePill}
         pillTone={changeTone}
       />
-      <StatCard icon="userCheck" accent="green" label={t("studentsAttended")} value={String(attended)} pill={t("thisWeek")} />
-      <StatCard icon="knight" accent="plum" label={t("gamesOpened")} value={serverValue(activity?.gamesOpened)} pill={t("thisWeek")} />
+      <StatCard icon="userCheck" accent="green" label={t("studentsAttended")} value={String(attended)} pill={weekPill} />
+      <StatCard icon="knight" accent="plum" label={t("gamesOpened")} value={serverValue(activity?.gamesOpened)} pill={weekPill} />
       <StatCard
         icon="flame"
         accent="amber"
@@ -98,4 +109,10 @@ export function WeekStats({ className }: { className?: string }) {
       />
     </div>
   );
+}
+
+/** "29 Sep" from YYYY-MM-DD. */
+function shortDay(iso: string): string {
+  const d = new Date(`${iso}T00:00:00`);
+  return Number.isNaN(d.getTime()) ? iso : new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(d);
 }

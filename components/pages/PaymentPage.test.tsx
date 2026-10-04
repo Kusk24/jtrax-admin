@@ -60,7 +60,7 @@ function renderForm() {
     </NextIntlClientProvider>,
   );
   return {
-    student: screen.getByLabelText("Student") as HTMLInputElement,
+    student: screen.getByLabelText(/^Student( \*)?$/) as HTMLInputElement,
     payer: screen.getByLabelText("Paid by") as HTMLSelectElement,
     amount: screen.getByLabelText("Amount (THB)") as HTMLInputElement,
   };

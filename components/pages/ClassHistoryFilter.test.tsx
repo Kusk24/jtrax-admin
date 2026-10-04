@@ -15,6 +15,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
+import { starred } from "@/lib/starred-label";
 
 const today = "2026-08-20";
 
@@ -82,7 +83,7 @@ function renderPage(classes = raw.classes) {
   return user;
 }
 
-const filter = () => screen.getByLabelText(en.classHistory.filterByClass) as HTMLSelectElement;
+const filter = () => screen.getByLabelText(starred(en.classHistory.filterByClass)) as HTMLSelectElement;
 const optionLabels = () => Array.from(filter().options).map((o) => o.textContent);
 
 /** The value behind an option, found by the label the office reads. */

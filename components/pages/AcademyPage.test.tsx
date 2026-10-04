@@ -59,9 +59,9 @@ function renderAcademy() {
 async function openAddClass(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: "Add Course" }));
   return {
-    name: screen.getByLabelText("Course Name") as HTMLInputElement,
-    credits: screen.getByLabelText("Credits") as HTMLInputElement,
-    price: screen.getByLabelText("Price") as HTMLInputElement,
+    name: screen.getByLabelText(/^Course Name( \*)?$/) as HTMLInputElement,
+    credits: screen.getByLabelText(/^Credits( \*)?$/) as HTMLInputElement,
+    price: screen.getByLabelText(/^Price( \*)?$/) as HTMLInputElement,
     days: screen.getByLabelText("Validity (days)") as HTMLInputElement,
     save: screen.getByRole("button", { name: "Save" }) as HTMLButtonElement,
   };
@@ -152,7 +152,9 @@ describe("the Add Course card", () => {
   /* 0 is not the same failure zero credits is: it is the same answer as
      leaving the field blank, so it must not block the save the way it used
      to when validity was required. */
-  it("still saves with validity typed as exactly 0", async () => {
+  /* Blank is the one way to say "never expires"; 0 read as "expires at
+     once", so it is refused rather than saved. */
+  it("refuses validity typed as 0", async () => {
     const user = userEvent.setup();
     renderAcademy();
     const f = await openAddClass(user);
@@ -160,10 +162,8 @@ describe("the Add Course card", () => {
     await user.clear(f.days);
     await user.type(f.days, "0");
 
-    expect(f.save.disabled).toBe(false);
-    await user.click(f.save);
-    const [, pkg] = create.mock.calls[1] as unknown as [string, Record<string, unknown>];
-    expect(pkg.validity_days).toBe(0);
+    expect(f.save.disabled).toBe(true);
+    expect(screen.getByText(en.academy.validityMin)).toBeTruthy();
   });
 
   /* An academy does run free trial classes. */
@@ -189,7 +189,7 @@ describe("editing an existing class", () => {
 
     /* The card's own edit button; RowActions labels it "Edit <thing>". */
     await user.click(screen.getAllByRole("button", { name: /^Edit/ })[0]);
-    expect(screen.queryByLabelText("Credits")).toBeNull();
+    expect(screen.queryByLabelText(/^Credits( \*)?$/)).toBeNull();
 
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(create).not.toHaveBeenCalled();
@@ -261,7 +261,7 @@ describe("saving a class", () => {
     renderAcademy();
 
     await user.click(screen.getAllByRole("button", { name: /^Edit/ })[0]);
-    const name = screen.getByLabelText("Course Name") as HTMLInputElement;
+    const name = screen.getByLabelText(/^Course Name( \*)?$/) as HTMLInputElement;
     await user.clear(name);
     await user.type(name, "Group Class II");
     await user.click(screen.getByRole("button", { name: "Save" }));

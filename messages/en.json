@@ -121,7 +121,8 @@
     "checkInFailed": "Could not add the student to this class.",
     "regulationUploadFailed": "Tournament created, but the regulation could not be attached.",
     "saveChanges": "Save Changes",
-    "removeThing": "Remove {what}"
+    "removeThing": "Remove {what}",
+    "removed": "Removed"
   },
   "participantProfile": {
     "entryFee": "Entry fee",
@@ -253,11 +254,13 @@
     "submit": "Sign in",
     "signingIn": "Signing in…",
     "errorMissing": "Enter your email and password.",
-    "errorInvalid": "That email and password don't match an admin account.",
+    "errorInvalid": "Email/username or password is incorrect.",
     "footer": "JCA Chess School · Admin console",
     "errorUnreachable": "Cannot reach the JTrax backend — is it running?",
     "resetDone": "Password changed. Sign in with your new one.",
-    "errorTooMany": "Too many sign-in attempts for this account. Please wait a minute and try again — your password may well be correct."
+    "errorTooMany": "Too many sign-in attempts for this account. Please wait a minute and try again — your password may well be correct.",
+    "errorNoAccess": "This account cannot access the Admin Console. Please sign in through the JTrax Portal.",
+    "errorNoAccessTitle": "Parent or Student account — use the JTrax Portal"
   },
   "reset": {
     "requestTitle": "Reset your password",
@@ -300,7 +303,12 @@
     "lastSixMonths": "Last 6 months",
     "revenueChartLabel": "Revenue over the last 6 months, from {from} to {to} THB",
     "overview": "Overview",
-    "revenueThisMonth": "Revenue This Month",
+    "revenueHeadline": {
+      "7D": "Revenue This Week",
+      "30D": "Revenue This Month",
+      "Year": "Revenue This Year"
+    },
+    "lastWeek": "last week",
     "fromPayments": "From {count} payments",
     "totalStudents": "Total Students",
     "enrolledAcross": "Enrolled across all courses",
@@ -358,7 +366,7 @@
     "howTheyPaidSub": "This month's takings by method",
     "plusMoreMethods": "Top 5 · {count} more not shown",
     "noPaymentsThisMonth": "No payments this month",
-    "vsSamePoint": "vs {month} at the same point",
+    "vsSamePoint": "vs {period} at the same point",
     "classCount": "{count, plural, one {# class} other {# classes}}",
     "classListLabel": "Today's class list",
     "noClassesToday": "No classes today",
@@ -394,7 +402,8 @@
     "gamesOpened": "Games opened",
     "playingConsistently": "Playing consistently",
     "consistentRule": "{days}+ of {window} days",
-    "filterByCourse": "Filter by course"
+    "filterByCourse": "Filter by course",
+    "classesThatWeek": "Classes that week"
   },
   "find": {
     "title": "Find a Student",
@@ -487,7 +496,10 @@
     "durationWholeNumber": "Type a whole number.",
     "durationTypeLabel": "Type {part}",
     "durationSegmentTitle": "Click for presets, double-click to type any value",
-    "durationMinutesRange": "Minutes go from 0 to 59."
+    "durationMinutesRange": "Minutes go from 0 to 59.",
+    "bookedCount": "Booked ({count})",
+    "bookedHelp": "Not checked in yet. They're checked in, and their credits used, when the class starts.",
+    "bookingProblem": "Not checked in at the start: {reason}"
   },
   "earlyCheckout": {
     "titleOne": "Check out {name} early?",
@@ -567,8 +579,8 @@
     "loginsTitle": "Accounts created",
     "loginsHint": "Copy the student's password now — it isn't shown again. The parent chooses their own from the invite email.",
     "studentLogin": "Student login",
-    "loginId": "Login ID",
-    "studentLoginIdHint": "A child signs in with this ID, not an email address — it is the one they type into the first box. Nothing can be sent to it, so hand the password over in person; the office resets it if they forget.",
+    "loginId": "Login Username",
+    "studentLoginIdHint": "A child signs in with this username, not an email address — it is the one they type into the first box. Nothing can be sent to it, so hand the password over in person; the office resets it if they forget.",
     "parentLogin": "Parent login",
     "tempPassword": "Temporary password",
     "tabCredits": "Credits",
@@ -675,11 +687,14 @@
     "topUp": "Add credits",
     "topUpCourse": "Add credits for {className}",
     "adjustCredits": "Adjust Credits",
-    "notInACourse": "Not in a course",
+    "notInACourse": "Removed from student",
     "guardianEmailIsParent": "This email already belongs to {name}, who is a guardian here.",
     "guardianEmailTaken": "This email is already used by another account. Use a different email.",
     "useExistingGuardian": "Link {name} as the guardian instead",
-    "colClassesJoined": "Classes joined"
+    "colClassesJoined": "Classes joined",
+    "studentIdLabel": "Student ID",
+    "copyId": "Copy",
+    "copiedId": "Copied"
   },
   "parents": {
     "title": "Parents",
@@ -867,6 +882,7 @@
     "noParticipants": "No participants yet.",
     "rank": "Rank",
     "entryNo": "No.",
+    "registered": "Registered",
     "player": "Player",
     "rating": "Rating",
     "category": "Category",
@@ -1153,7 +1169,8 @@
     "firstPackageHelp": "A course cannot be sold, paid for or attended until it has one. Change it or add more on the Credit Packages card below.",
     "firstPackageIncomplete": "Credits must be more than zero. A free course is fine — leave the price at 0.",
     "validityForever": "Never expires",
-    "validityHelp": "Leave blank for credits that never expire."
+    "validityHelp": "Leave blank for credits that never expire.",
+    "validityMin": "Validity must be at least 1 day. Leave it blank for credits that never expire."
   },
   "settings": {
     "title": "Academy Rules",
@@ -1632,6 +1649,8 @@
     "studentUnverified": "Claimed JCA student, no match",
     "signupsTitle": "Public sign-ups",
     "signupCount": "{count} signed up",
+    "newSignupCount": "{count} new",
+    "moreSignups": "+{count} more — see the table below",
     "pricingBoth": "Early bird fee, then {pct}% off",
     "pricingEarly": "Early bird fee while it lasts"
   },

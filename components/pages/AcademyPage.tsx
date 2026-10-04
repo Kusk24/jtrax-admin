@@ -21,6 +21,7 @@ import {
   fieldStyle,
   InfoGrid,
   labelStyle,
+  Req,
   Modal,
   dangerSolidButtonStyle,
   EmptyRow,
@@ -185,13 +186,11 @@ export function AcademyPage() {
     },
     { name: "credit_amount", label: t("creditAmount"), kind: "number", required: true, half: true, min: 0 },
     { name: "standard_price", label: t("price"), kind: "number", required: true, half: true, min: 0 },
-    /* Not required: a package the office never wants to expire — a founding
-       rate, a free trial — has nothing truthful to put here. Blank and 0 both
-       read as "never" downstream (the backend's grant path and the console's
-       own expiryFrom have coalesced a missing validity to 0 since before this
-       could be left blank), so leaving it out costs nothing today and stops
-       the office typing a lie to get past a required field. */
-    { name: "validity_days", label: t("validity"), kind: "number", half: true, min: 0, help: t("validityHelp") },
+    /* Optional: blank is "never expires" — a founding rate, a free trial has
+       nothing truthful to put here. At least one day otherwise: 0 used to be a
+       second way of writing "never" and read as "expires at once", so the
+       backend refuses it (checkPackageValidity). */
+    { name: "validity_days", label: t("validity"), kind: "number", half: true, min: 1, help: t("validityHelp") },
   ];
 
   function openPackageModal(p: CreditPackage | "new") {
@@ -233,15 +232,16 @@ export function AcademyPage() {
      at all, not un-notice a number that was already sitting in the field. */
   const [firstPackage, setFirstPackage] = useState({ credits: "20", price: "12000", days: "" });
   /* Credits must be a real, positive number. Price may be nothing — a free
-     trial class is a real thing an academy runs. Validity may also be
-     nothing: blank and 0 both mean the package never expires, the same
-     convention the main Add/Edit Package form and everything downstream
-     (grantPurchasedCredits, expiryFrom) already use. */
+     trial class is a real thing an academy runs. Validity is blank for never
+     expires, or a whole number of days from 1 — the same rule as the main
+     Add/Edit Package form. */
+  const firstPackageDaysOk =
+    firstPackage.days.trim() === "" || (Number.isInteger(Number(firstPackage.days)) && Number(firstPackage.days) >= 1);
   const firstPackageComplete =
     Number(firstPackage.credits) > 0 &&
     firstPackage.price.trim() !== "" &&
     Number(firstPackage.price) >= 0 &&
-    (firstPackage.days.trim() === "" || Number(firstPackage.days) >= 0);
+    firstPackageDaysOk;
   const [teacherDraft, setTeacherDraft] = useState<Omit<Teacher, "id">>({
     name: "",
     email: "",
@@ -747,7 +747,7 @@ export function AcademyPage() {
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
             <div>
-              <label style={labelStyle} htmlFor="co-name">{t("courseName")}</label>
+              <label style={labelStyle} htmlFor="co-name">{t("courseName")}<Req /></label>
               <input id="co-name" value={courseDraft.name} onChange={(e) => setCourseDraft({ ...courseDraft, name: e.target.value })} style={fieldStyle} />
             </div>
             <div>
@@ -801,7 +801,7 @@ export function AcademyPage() {
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}>
                   <div>
-                    <label style={labelStyle} htmlFor="co-credits">{t("creditAmount")}</label>
+                    <label style={labelStyle} htmlFor="co-credits">{t("creditAmount")}<Req /></label>
                     <input
                       id="co-credits"
                       type="number"
@@ -813,7 +813,7 @@ export function AcademyPage() {
                     />
                   </div>
                   <div>
-                    <label style={labelStyle} htmlFor="co-price">{t("price")}</label>
+                    <label style={labelStyle} htmlFor="co-price">{t("price")}<Req /></label>
                     <input
                       id="co-price"
                       type="number"
@@ -828,7 +828,8 @@ export function AcademyPage() {
                     <input
                       id="co-days"
                       type="number"
-                      min={0}
+                      min={1}
+                      step={1}
                       placeholder={t("validityForever")}
                       value={firstPackage.days}
                       onChange={(e) => setFirstPackage({ ...firstPackage, days: e.target.value })}
@@ -838,7 +839,7 @@ export function AcademyPage() {
                 </div>
                 {!firstPackageComplete && (
                   <p style={{ margin: 0, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-                    {t("firstPackageIncomplete")}
+                    {firstPackageDaysOk ? t("firstPackageIncomplete") : t("validityMin")}
                   </p>
                 )}
               </>
@@ -904,7 +905,7 @@ export function AcademyPage() {
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
             <div>
-              <label style={labelStyle} htmlFor="te-name">{tCommon("name")}</label>
+              <label style={labelStyle} htmlFor="te-name">{tCommon("name")}<Req /></label>
               <input id="te-name" value={teacherDraft.name} onChange={(e) => setTeacherDraft({ ...teacherDraft, name: e.target.value })} style={fieldStyle} />
             </div>
             <div>

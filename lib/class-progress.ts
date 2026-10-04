@@ -93,6 +93,18 @@ export function hasClassEnded(time: string, now = new Date()): boolean {
 }
 
 /**
+ * Whether a class's start has been reached, by the wall clock. A class made
+ * for later today sat as `Ongoing` from the moment it was created, so a
+ * 1:00 AM class read as running at half past midnight. True on unparseable
+ * input, which keeps the old reading rather than hiding a running class.
+ */
+export function hasClassStarted(time: string, now = new Date()): boolean {
+  const start = parseClockTime(time.split(/\s*[–—-]\s*/)[0] ?? "");
+  if (start === null) return true;
+  return now.getHours() * 60 + now.getMinutes() >= start;
+}
+
+/**
  * Whether a stored session is over: an earlier day, a Completed status, or
  * today with its "HH:MM" end already passed. What Class History uses to stop
  * a finished class being edited, the same line the dashboard draws.
@@ -146,14 +158,16 @@ export function useMinuteClock(): Date {
  * the panel's edit gate) goes through this, so they cannot disagree.
  */
 export function classStatusNow(
-  def: { status: "Ongoing" | "Finished" | "Upcoming" | "Cancelled"; time: string; date?: string },
+  def: { status: "Ongoing" | "Finished" | "Scheduled" | "Cancelled"; time: string; date?: string },
   now: Date,
   today: string,
-): "Ongoing" | "Finished" | "Upcoming" | "Cancelled" {
+): "Ongoing" | "Finished" | "Scheduled" | "Cancelled" {
   /* Called off stays called off, whatever the clock says. */
   if (def.status === "Cancelled") return "Cancelled";
   if (def.status === "Finished") return "Finished";
   if (def.date && def.date < today) return "Finished";
-  if (def.date && def.date > today) return "Upcoming";
-  return hasClassEnded(def.time, now) ? "Finished" : def.status;
+  if (def.date && def.date > today) return "Scheduled";
+  if (hasClassEnded(def.time, now)) return "Finished";
+  /* Before its start a class is Scheduled, whenever it was created. */
+  return hasClassStarted(def.time, now) ? "Ongoing" : "Scheduled";
 }

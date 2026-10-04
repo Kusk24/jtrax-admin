@@ -143,6 +143,12 @@ export const secondaryButtonStyle: CSSProperties = {
  * The page's own title block. This is the *only* title on a section screen —
  * the shell used to repeat it above, which read as a duplicate.
  */
+/** The mark after a required field's label — the same red star the shared
+    form (crud.tsx) puts on its required fields, so every form reads alike. */
+export function Req() {
+  return <span style={{ color: COLORS.danger }}> *</span>;
+}
+
 export function PageHeader({
   title,
   sub,

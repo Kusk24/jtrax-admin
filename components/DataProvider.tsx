@@ -21,7 +21,7 @@ import { RULE_KEYS, type CreditRules } from "@/lib/derive";
 
 const EMPTY: LiveCollections = {
   students: [], parents: [], parentContacts: [], studentParents: [], classes: [],
-  classSessions: [], attendance: [], enrollments: [], creditTransactions: [],
+  classSessions: [], attendance: [], sessionBookings: [], enrollments: [], creditTransactions: [],
   creditPackages: [], payments: [], teachers: [], admins: [], accounts: [],
   announcements: [], tournaments: [], tournamentCategories: [],
   tournamentRegistrations: [], practiceActivities: [], systemConfig: [],
@@ -30,7 +30,7 @@ const EMPTY: LiveCollections = {
 const PATHS: Record<Exclude<keyof LiveCollections, "deletedEnrollments" | "cancelledSessions">, string> = {
   students: "students", parents: "parents", parentContacts: "parent-contacts",
   studentParents: "student-parents", classes: "classes", classSessions: "class-sessions",
-  attendance: "attendance", enrollments: "enrollments",
+  attendance: "attendance", sessionBookings: "session-bookings", enrollments: "enrollments",
   creditTransactions: "credit-transactions", creditPackages: "credit-packages",
   payments: "payments", teachers: "teachers", admins: "admins", accounts: "user-accounts",
   announcements: "announcements", tournaments: "tournaments",

@@ -127,7 +127,7 @@ describe("a section arrived at any other way", () => {
 describe("the name typed into the dashboard search", () => {
   it("arrives in the registration form", () => {
     show(<StudentsPage startWizard="Anong Suk" />);
-    expect((screen.getByLabelText("Full Name") as HTMLInputElement).value).toBe("Anong Suk");
+    expect((screen.getByLabelText(/^Full Name( \*)?$/) as HTMLInputElement).value).toBe("Anong Suk");
   });
 });
 

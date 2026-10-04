@@ -91,6 +91,8 @@ export type Payment = {
   /** True once the student this was for has been deleted: the names on the
       row are all that is left of who it was about. */
   detached?: boolean;
+  /** The course this paid for was deleted from the student. */
+  courseDeleted?: boolean;
   status: 'Paid' | 'Pending' | 'Refunded';
   /** A tournament entry fee, or credits for a course. */
   kind?: 'tournament' | 'course';
@@ -118,9 +120,9 @@ export type ClassDef = {
   category: string;
   name: string;
   time: string;
-  /* Upcoming only ever comes from the dashboard's own reading of a class on a
-     later day; the database has Ongoing and Completed. */
-  status: 'Ongoing' | 'Finished' | 'Upcoming' | 'Cancelled';
+  /* Scheduled comes from the dashboard's own reading of the clock: before its
+     start a class is Scheduled, whatever the database's status says. */
+  status: 'Ongoing' | 'Finished' | 'Scheduled' | 'Cancelled';
   /** The session's day, `YYYY-MM-DD`, and its start, `HH:MM` — live rows only. */
   date?: string;
   start?: string;
@@ -129,6 +131,8 @@ export type ClassDef = {
   teacher: string;
   room: string;
   roster: string[];
+  /** Booked on a class that has not started — not checked in, not charged. */
+  booked?: string[];
 };
 
 export type AdminPerson = {
@@ -179,6 +183,9 @@ export type Participant = {
   category: string;
   score: string;
   rank: number;
+  /** When the entry was made, ISO — ascending is the table's own order
+      (`rank`), this is just the timestamp to show it by. */
+  registeredAt: string;
   prize: string;
   paymentStatus: string;
   age: number;

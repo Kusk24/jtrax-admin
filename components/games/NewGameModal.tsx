@@ -15,7 +15,7 @@ import { COLORS, FONT } from "@/lib/theme";
 import { RATED_CLOCKS, openRoom, type GameRoom } from "@/lib/games";
 import { useData } from "../DataProvider";
 import { ActionButton, errorText } from "../crud";
-import { labelStyle, Modal, primaryButtonStyle, secondaryButtonStyle, selectStyle, fieldStyle } from "../page-kit";
+import { labelStyle, Modal, Req, primaryButtonStyle, secondaryButtonStyle, selectStyle, fieldStyle } from "../page-kit";
 
 type Mode = "players" | "code";
 
@@ -104,6 +104,7 @@ export function NewGameModal({
           }}
         />
         {tc(side)}
+        <Req />
       </label>
       <select id={`new-game-${side}`} value={value} onChange={(e) => set(e.target.value)} style={selectStyle}>
         <option value="">{tc("choose")}</option>

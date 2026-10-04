@@ -5,7 +5,8 @@ import { useTranslations } from "next-intl";
 import { useData } from "@/components/DataProvider";
 import { useErrorToast } from "@/components/ErrorToast";
 import { type ClassDef, type Student } from "@/lib/data";
-import { clockOf, fmtDate, liveClasses, todayISO, toTodaysClasses } from "@/lib/live";
+import { clockOf, fmtDate, isArchivedClass, liveClasses, todayISO, toTodaysClasses } from "@/lib/live";
+import { CourseName } from "@/components/CourseName";
 import { sessionFinished, useMinuteClock } from "@/lib/class-progress";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
@@ -24,6 +25,7 @@ import {
   FilterBar,
   InfoGrid,
   labelStyle,
+  Req,
   Modal,
   PageHeader,
   primaryButtonStyle,
@@ -77,6 +79,8 @@ type HistoryRow = {
   iso: string;
   date: string;
   className: string;
+  /** The academy archived this course. */
+  removed: boolean;
   time: string;
   startTime: string;
   endTime: string;
@@ -293,11 +297,12 @@ function SessionCard({
 }) {
   const t = useTranslations("classHistory");
   const tStatus = useTranslations("status");
+  const tCommon = useTranslations("common");
   const chip = statusChipColors(row.status);
   return (
     <EntityCard
       onClick={onOpen}
-      title={row.className}
+      title={row.removed ? `${row.className} · ${tCommon("removed")}` : row.className}
       subtitle={`${row.date} · ${row.time}`}
       badges={
         <>
@@ -368,7 +373,7 @@ function SessionDetail({
               <Icon name="history" size={22} color={classDotColor(row.className)} />
             </span>
           }
-          title={row.className}
+          title={row.removed ? `${row.className} · ${tCommon("removed")}` : row.className}
           subtitle={`${row.date} · ${row.time}`}
           badges={
             <>
@@ -583,6 +588,7 @@ export function ClassHistoryPage() {
           iso: date,
           date: fmtDate(date),
           className: cls ? String(cls["name"] ?? "") : "—",
+          removed: isArchivedClass(cls),
           time: start && end ? `${start} – ${end}` : start,
           startTime: start,
           endTime: end,
@@ -891,7 +897,7 @@ export function ClassHistoryPage() {
               <span style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 600, minWidth: 0 }}>
                 <span style={{ display: "flex", alignItems: "center", ...fade }}>
                   <ClassDot color={classDotColor(row.className)} />
-                  {row.className}
+                  <CourseName name={row.className} deleted={row.removed} />
                 </span>
                 {cancelled && (
                   <Badge color={COLORS.danger} bg={COLORS.dangerBg}>{tStatus("Cancelled")}</Badge>
@@ -979,6 +985,7 @@ export function ClassHistoryPage() {
         >
           <label htmlFor="ch-add-student" style={labelStyle}>
             {tCommon("student")}
+            <Req />
           </label>
           <select
             id="ch-add-student"

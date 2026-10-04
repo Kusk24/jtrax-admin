@@ -16,6 +16,7 @@ import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
 import type { AdminPerson, Tournament } from "@/lib/data";
+import { starred } from "@/lib/starred-label";
 
 const TOURNAMENT_ID = "trn_1";
 
@@ -146,16 +147,16 @@ describe("editing a tournament in place", () => {
     expect(screen.getAllByText("JCA Open").length).toBeGreaterThan(0);
     // The venue's map, which opens Google Maps when clicked.
     expect(screen.getByTitle(en.tournament.mapPreviewTitle)).toBeTruthy();
-    expect(screen.queryByLabelText(en.tournament.fieldName)).toBeNull();
+    expect(screen.queryByLabelText(starred(en.tournament.fieldName))).toBeNull();
 
     await user.click(screen.getByText(en.common.edit));
 
     // The existing values, not blanks — this is what "convert the displayed
     // values into editable fields" means; a form that resets to empty is not
     // the same feature.
-    const nameInput = screen.getByLabelText(en.tournament.fieldName) as HTMLInputElement;
+    const nameInput = screen.getByLabelText(starred(en.tournament.fieldName)) as HTMLInputElement;
     expect(nameInput.value).toBe("JCA Open");
-    const venueInput = screen.getByLabelText(en.tournament.fieldVenue) as HTMLInputElement;
+    const venueInput = screen.getByLabelText(starred(en.tournament.fieldVenue)) as HTMLInputElement;
     expect(venueInput.value).toBe("Wellington College");
     expect(screen.getByText("U8 Boys")).toBeTruthy();
 
@@ -165,7 +166,7 @@ describe("editing a tournament in place", () => {
     // Stage a category change: drop the existing one, add a new one. Neither
     // should touch the API until Save.
     await user.click(screen.getByLabelText(en.common.deleteThing.replace("{what}", "U8 Boys")));
-    const catInput = screen.getByLabelText(en.tournament.categoryPlaceholder);
+    const catInput = screen.getByLabelText(starred(en.tournament.categoryPlaceholder));
     await user.type(catInput, "U10 Boys{Enter}");
     expect(create).not.toHaveBeenCalled();
     expect(remove).not.toHaveBeenCalled();
@@ -180,7 +181,7 @@ describe("editing a tournament in place", () => {
     expect(categoryWrites()).toEqual(["U10 Boys"]);
 
     // Back to a read-only page — the edit surface is gone, not just disabled.
-    await waitFor(() => expect(screen.queryByLabelText(en.tournament.fieldName)).toBeNull());
+    await waitFor(() => expect(screen.queryByLabelText(starred(en.tournament.fieldName))).toBeNull());
   });
 
   it("Cancel discards every staged change, category edits included", async () => {
@@ -189,7 +190,7 @@ describe("editing a tournament in place", () => {
     const user = openDetail();
 
     await user.click(screen.getByText(en.common.edit));
-    const nameInput = screen.getByLabelText(en.tournament.fieldName) as HTMLInputElement;
+    const nameInput = screen.getByLabelText(starred(en.tournament.fieldName)) as HTMLInputElement;
     await user.clear(nameInput);
     await user.type(nameInput, "Something Else Entirely");
     await user.click(screen.getByLabelText(en.common.deleteThing.replace("{what}", "U8 Boys")));
@@ -220,7 +221,7 @@ describe("editing a tournament in place", () => {
 
     // Landed on the detail page, already editing — not a modal, and not the
     // read-only view first.
-    const nameInput = await screen.findByLabelText(en.tournament.fieldName) as HTMLInputElement;
+    const nameInput = await screen.findByLabelText(starred(en.tournament.fieldName)) as HTMLInputElement;
     expect(nameInput.value).toBe("JCA Open");
     expect(screen.getByText(en.common.saveChanges)).toBeTruthy();
   });

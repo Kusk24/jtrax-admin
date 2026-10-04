@@ -28,7 +28,7 @@ import { COLORS, FONT } from "@/lib/theme";
 import { useData } from "../DataProvider";
 import { useErrorToast } from "../ErrorToast";
 import { ActionButton } from "../crud";
-import { fieldStyle, labelStyle, PageHeader, primaryButtonStyle, secondaryButtonStyle } from "../page-kit";
+import { fieldStyle, labelStyle, PageHeader, Req, primaryButtonStyle, secondaryButtonStyle } from "../page-kit";
 import { Card, SectionTitle } from "../ui";
 import { ShareLink } from "./ShareLink";
 import { StudentPricingChoice } from "./StudentPricingChoice";
@@ -310,7 +310,7 @@ export function CreateWizard({
 
   const renderField = (f: (typeof fields)[number]) => (
     <div key={f.key}>
-      <label style={labelStyle} htmlFor={`tw-${f.key}`}>{t(f.labelKey)}</label>
+      <label style={labelStyle} htmlFor={`tw-${f.key}`}>{t(f.labelKey)}{f.key === "name" && <Req />}</label>
       <input
         id={`tw-${f.key}`}
         type={f.kind ?? "text"}

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { byRegisterOrder, fmtCredits, fmtDate, toCheckins } from "@/lib/live";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
@@ -25,6 +26,7 @@ function creditColors(credit: number) {
 }
 
 export function CheckinTable() {
+  const router = useRouter();
   const t = useTranslations("dashboard");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
@@ -262,8 +264,14 @@ export function CheckinTable() {
           const canCheckOut = isToday && row.status === "In class" && Boolean(row.attendanceId);
           const ticked = Boolean(row.attendanceId) && chosen.includes(row.attendanceId!);
           return (
-            <TableRow key={row.attendanceId} template={GRID}>
-              <span>
+            <TableRow
+              key={row.attendanceId}
+              template={GRID}
+              /* The row opens the student; the tick box and Dismiss below
+                 keep their own clicks. */
+              onClick={row.studentId ? () => router.push(`/students?id=${encodeURIComponent(row.studentId!)}`) : undefined}
+            >
+              <span onClick={(e) => e.stopPropagation()}>
                 {/* Nothing to tick for a child already sent home: the row is
                     the record of a finished afternoon, not a pending act. */}
                 {canCheckOut && (
@@ -308,7 +316,7 @@ export function CheckinTable() {
                 {tStatus(row.status)}
               </Badge>
 
-              <span>
+              <span onClick={(e) => e.stopPropagation()}>
                 {canCheckOut && (
                   <ActionButton
                     className="jt-chip"

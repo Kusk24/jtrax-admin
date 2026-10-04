@@ -6,7 +6,7 @@ import { ResultsTab } from "../tournament/ResultsTab";
 import { ExternalTournaments } from "../tournament/ExternalTournaments";
 import { ParticipantProfile, type ResultsLink } from "../tournament/ParticipantProfile";
 import { api } from "@/lib/api";
-import { fmtDate, fmtTHB, todayISO } from "@/lib/live";
+import { fmtDate, fmtDateTime, fmtTHB, todayISO } from "@/lib/live";
 import { RegistrationCard } from "../tournament/RegistrationCard";
 import { RegistrationQueue } from "../tournament/RegistrationQueue";
 import { RegulationCard } from "../tournament/RegulationCard";
@@ -38,6 +38,7 @@ import {
   fieldStyle,
   InfoGrid,
   labelStyle,
+  Req,
   ExportButton,
   equalTemplate,
   PageHeader,
@@ -59,7 +60,9 @@ import { useUrlBackedState } from "@/lib/url-state";
 import { ApiError } from "@/lib/api";
 import { refreshLinkedResults } from "@/lib/chess-results";
 
-const PARTICIPANT_TEMPLATE = "0.45fr 1.6fr 0.5fr 1.25fr 0.8fr 0.8fr 0.9fr 70px";
+/* Every column the same width, the office's own request — a grid that reads
+   as a grid rather than a layout that happens to use one. */
+const PARTICIPANT_TEMPLATE = "repeat(9, 1fr)";
 
 /* Answers to the arrival reminder, in the order the desk reads them. */
 const ARRIVAL = ["Pending", "Confirmed", "NotAttending"] as const;
@@ -408,7 +411,7 @@ function TournamentDetail({
   const renderDraftField = (f: (typeof infoFields)[number] & { hintKey?: string }) => (
     /* The arrival reminder spans the whole row, as it does on the create form. */
     <div key={f.key} style={f.key === "arrival_reminder_days" ? { gridColumn: "1 / -1" } : undefined}>
-      <label style={labelStyle} htmlFor={`td-${f.key}`}>{t(f.labelKey)}</label>
+      <label style={labelStyle} htmlFor={`td-${f.key}`}>{t(f.labelKey)}{f.key === "name" && <Req />}</label>
       <input
         id={`td-${f.key}`}
         type={f.kind ?? "text"}
@@ -896,15 +899,16 @@ function TournamentDetail({
                fit, so the desk can check an entry the ID scan may have
                misread. Payment shows who still owes: an unpaid place is
                released when registration closes. */
-            columns={[t("entryNo"), t("player"), t("age"), t("category"), t("amount"), t("payment"), t("arrivalStatus"), tCommon("action")]}
+            columns={[t("entryNo"), t("registered"), t("player"), t("age"), t("category"), t("amount"), t("payment"), t("arrivalStatus"), tCommon("action")]}
             template={PARTICIPANT_TEMPLATE}
-            minWidth={880}
+            minWidth={1080}
           >
             {pageRows.length === 0 && <EmptyRow>{t("noParticipants")}</EmptyRow>}
             {pageRows.map((p) => {
               return (
                 <TableRow key={p.name} template={PARTICIPANT_TEMPLATE} onClick={() => setDrawer(p)}>
                   <span style={{ fontWeight: 700, color: COLORS.textSecondary }}>#{p.rank}</span>
+                  <span style={{ color: COLORS.textSecondary }}>{p.registeredAt ? fmtDateTime(p.registeredAt) : "—"}</span>
                   <span style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
                     <Avatar initials={initialsOf(p.name)} size={28} />
                     <span style={{ minWidth: 0 }}>

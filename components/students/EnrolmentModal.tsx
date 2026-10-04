@@ -14,7 +14,7 @@ import { fmtDate, todayISO } from "@/lib/live";
 import { COLORS, FONT, statusChipColors } from "@/lib/theme";
 import type { Student } from "@/lib/data";
 import { ActionButton, ErrorNote, errorText } from "../crud";
-import { fieldStyle, InfoGrid, labelStyle, Modal, primaryButtonStyle, secondaryButtonStyle } from "../page-kit";
+import { fieldStyle, InfoGrid, labelStyle, Modal, Req, primaryButtonStyle, secondaryButtonStyle } from "../page-kit";
 import { Badge } from "../ui";
 
 export type EnrolmentSummary = {
@@ -182,7 +182,7 @@ export function EnrolmentModal({
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
               <label>
-                <span style={labelStyle}>{t("enrolledDate")}</span>
+                <span style={labelStyle}>{t("enrolledDate")}<Req /></span>
                 <input
                   type="date"
                   required

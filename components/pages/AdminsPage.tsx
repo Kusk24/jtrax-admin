@@ -15,6 +15,7 @@ import {
   fieldStyle,
   InfoGrid,
   labelStyle,
+  Req,
   Modal,
   dangerSolidButtonStyle,
   ExportButton,
@@ -395,11 +396,11 @@ export function AdminsPage({ level = 1 }: { level?: 1 | 2 }) {
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div>
-              <label style={labelStyle} htmlFor="ca-name">{tCommon("name")}</label>
+              <label style={labelStyle} htmlFor="ca-name">{tCommon("name")}<Req /></label>
               <input id="ca-name" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} style={fieldStyle} />
             </div>
             <div>
-              <label style={labelStyle} htmlFor="ca-email">{tCommon("email")}</label>
+              <label style={labelStyle} htmlFor="ca-email">{tCommon("email")}<Req /></label>
               <input id="ca-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} style={fieldStyle} />
             </div>
             <div>

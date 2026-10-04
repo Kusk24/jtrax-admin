@@ -25,6 +25,9 @@ export type LiveCollections = {
   classes: Row[];
   classSessions: Row[];
   attendance: Row[];
+  /** Students booked on a class that has not started (migration 0060).
+      Free until the start, when the server checks each one in and charges. */
+  sessionBookings?: Row[];
   enrollments: Row[];
   /** Enrolments the office deleted (migration 0044). Kept apart so nothing
       that reads `enrollments` has to know to skip them; only the student's
@@ -53,6 +56,17 @@ export function fmtDate(iso: string): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
   return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(d);
+}
+
+/** `fmtDate` plus the time of day — for a timestamp where the order several
+    rows arrived in the same day is the point, not just which day it was. */
+export function fmtDateTime(iso: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+  }).format(d);
 }
 
 export function fmtTHB(amount: number): string {
@@ -263,14 +277,33 @@ export function toParents(c: LiveCollections): ParentPerson[] {
   });
 }
 
+/** A course the academy no longer runs: archived (migration 0021). Its row
+    stays so old payments and history can still name it. */
+export function isArchivedClass(cls: Row | undefined): boolean {
+  return Boolean(cls && cls["archived_at"]);
+}
+
 export function toPayments(c: LiveCollections): Payment[] {
   return [...c.payments]
     .sort((a, b) => s(b, "payment_date").localeCompare(s(a, "payment_date")))
     .map((p) => {
       const st = c.students.find((x) => s(x, "student_id") === s(p, "student_id"));
       const enr = c.enrollments.find((e) => s(e, "enrollment_id") === s(p, "enrollment_id"));
-      const cls = enr ? c.classes.find((k) => s(k, "class_id") === s(enr, "class_id")) : undefined;
+      /* A course deleted from the student keeps its enrolment apart, in
+         deletedEnrollments — looked up there too, so the payment still
+         names the course and says it was deleted rather than showing "—". */
+      const gone = enr
+        ? undefined
+        : (c.deletedEnrollments ?? []).find((e) => s(e, "enrollment_id") === s(p, "enrollment_id"));
       const pkg = c.creditPackages.find((k) => s(k, "credit_package_id") === s(p, "credit_package_id"));
+      /* The course: through the enrolment, else through the package bought
+         — every package belongs to a course, and older payments recorded no
+         enrolment and no course name, so the item read "—". */
+      const classId = (enr ?? gone) ? s((enr ?? gone)!, "class_id") : pkg ? s(pkg, "class_id") : "";
+      const cls = classId ? c.classes.find((k) => s(k, "class_id") === classId) : undefined;
+      /* Who paid, when the till did not write it down: the student's parent. */
+      const link = (c.studentParents ?? []).find((sp) => s(sp, "student_id") === s(p, "student_id"));
+      const guardian = link ? (c.parents ?? []).find((x) => s(x, "parent_id") === s(link, "parent_id")) : undefined;
       /* The snapshot on the row wins over the join. A payment outlives the
          student it was for, so a detached one has only these names — and even
          while the student exists, the snapshot is what the till recorded. */
@@ -278,8 +311,10 @@ export function toPayments(c: LiveCollections): Payment[] {
         id: s(p, "payment_id"),
         kind: s(p, "tournament_registration_id") ? ("tournament" as const) : ("course" as const),
         name: s(p, "student_name") || (st ? s(st, "name") : s(p, "student_id")),
-        className: s(p, "class_name") || (cls ? s(cls, "name") : "—"),
-        payer: s(p, "parent_name"),
+        className: s(p, "class_name") || (cls ? s(cls, "name") : gone ? "" : "—"),
+        /* Removed from the student, or archived by the academy. */
+        courseDeleted: Boolean(gone) || isArchivedClass(cls),
+        payer: s(p, "parent_name") || (guardian ? s(guardian, "name") : ""),
         detached: !s(p, "student_id"),
         /* The payment's own count (a custom sale has no package), else the package's. */
         credits: n(p, "credit_amount") > 0 ? `+${n(p, "credit_amount")}` : pkg ? `+${n(pkg, "credit_amount")}` : "—",
@@ -361,9 +396,14 @@ export function toTournaments(c: LiveCollections): Tournament[] {
        desk has not let in, and might yet turn away. They are shown separately,
        in the approval queue. Rows predating public registration have no status
        at all, so a missing one reads as in. */
-    const regs = c.tournamentRegistrations.filter(
-      (k) => s(k, "tournament_id") === tid && (s(k, "status") || "Approved") === "Approved",
-    );
+    const regs = c.tournamentRegistrations
+      .filter((k) => s(k, "tournament_id") === tid && (s(k, "status") || "Approved") === "Approved")
+      /* The order entries came in, not whatever order the API happened to
+         return them — `rank` below is built from this index and is read as
+         entry order (see the "No., not Rank" comment on the table), so the
+         sort has to actually hold that promise rather than assume the source
+         rows already do. */
+      .sort((a, b) => s(a, "registered_at").localeCompare(s(b, "registered_at")));
     const startISO = s(t, "start_date");
     const catName = (r: Row) =>
       s(cats.find((k) => s(k, "tournament_category_id") === s(r, "tournament_category_id")) ?? {}, "name");
@@ -385,6 +425,7 @@ export function toTournaments(c: LiveCollections): Tournament[] {
       /* Entry order, not a placing: nobody has played yet. Real standings
          come from chess-results on the Results tab. */
       rank: i + 1,
+      registeredAt: s(r, "registered_at"),
       prize: "—",
       /* The real thing since 0032: a payment row against the registration,
          marked Paid by the Stripe webhook for a card or by "Mark paid at desk"
@@ -520,7 +561,7 @@ export function fmtSessionTime(start: string, end: string): string {
 /* The dashboard colours and picks an icon by category, which the ER model
    spells as class_type. */
 function categoryOf(className: string, classType: string): string {
-  for (const word of ["Master", "Intermediate", "Beginner", "Weekend"]) {
+  for (const word of ["Master", "Advanced", "Intermediate", "Beginner", "Weekend"]) {
     if (className.includes(word)) return word;
   }
   return classType === "Master" ? "Master" : "Beginner";
@@ -544,6 +585,14 @@ export function toTodaysClasses(c: LiveCollections, day = todayISO()): ClassDef[
           const student = c.students.find((st) => s(st, "student_id") === s(a, "student_id"));
           return student ? s(student, "name") : s(a, "student_id");
         });
+      /* A class that has not started holds bookings, not attendance. */
+      const booked = (c.sessionBookings ?? [])
+        .filter((b) => s(b, "session_id") === id)
+        .map((b) => {
+          const student = c.students.find((st) => s(st, "student_id") === s(b, "student_id"));
+          return student ? s(student, "name") : s(b, "student_id");
+        });
+      const shownNames = roster.length > 0 ? roster : booked;
       const start = s(session, "start_time");
       const end = s(session, "end_time");
       return {
@@ -557,11 +606,12 @@ export function toTodaysClasses(c: LiveCollections, day = todayISO()): ClassDef[
         /* The design's card has two states; a session not yet started reads as
            upcoming, which its own chip already says. */
         status: s(session, "session_status") === "Completed" || everyoneLeft ? "Finished" : "Ongoing",
-        students: roster.slice(0, 2),
-        more: Math.max(0, roster.length - 2),
+        students: shownNames.slice(0, 2),
+        more: Math.max(0, shownNames.length - 2),
         teacher: "—",
         room: "—",
         roster,
+        booked,
       } satisfies ClassDef;
     })
     /* Latest first, by the clock — not by the display string, where

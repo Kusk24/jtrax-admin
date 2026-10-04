@@ -11,6 +11,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
 import type { ScanSettings, ScanTestResult } from "@/lib/ocr";
+import { starred } from "@/lib/starred-label";
 
 const state: ScanSettings = { configured: true, model: "gemini-2.5-flash", defaultModel: "gemini-2.5-flash", savedModel: "" };
 const getScanSettings = vi.fn(async (): Promise<ScanSettings> => state);
@@ -43,7 +44,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-const picker = () => screen.getByLabelText(en.settings.scanModelLabel) as HTMLSelectElement;
+const picker = () => screen.getByLabelText(starred(en.settings.scanModelLabel)) as HTMLSelectElement;
 
 describe("the scanning card", () => {
   it("says which model is failing, and why", async () => {
@@ -83,7 +84,7 @@ describe("the scanning card", () => {
     renderCard();
     await waitFor(() => expect(picker().disabled).toBe(false));
     fireEvent.change(picker(), { target: { value: "__other__" } });
-    fireEvent.change(screen.getByLabelText(en.settings.scanOtherLabel), { target: { value: "../files" } });
+    fireEvent.change(screen.getByLabelText(starred(en.settings.scanOtherLabel)), { target: { value: "../files" } });
     expect(screen.getByText(en.settings.scanBadName)).toBeDefined();
     expect((screen.getByRole("button", { name: en.settings.scanSave }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole("button", { name: en.settings.scanTest }) as HTMLButtonElement).disabled).toBe(true);

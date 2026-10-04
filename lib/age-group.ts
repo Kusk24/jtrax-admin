@@ -5,9 +5,10 @@
    desk should look at, because OCR can misread a date and a parent can type
    one wrong. */
 
-/** The age in a category's name — "U8 Boys" is 8. 0 means no age limit. */
+/** The age in a category's name — "U8 Boys", "U08" and "Under 8" are 8. 0
+    means no age limit. */
 export function categoryAgeLimit(name: string): number {
-  const m = /\bU\s?(\d{1,2})\b/i.exec(name);
+  const m = /\bU(?:nder)?[\s-]?(\d{1,2})\b/i.exec(name);
   return m ? Number(m[1]) : 0;
 }
 

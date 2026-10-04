@@ -12,4 +12,6 @@ export type DashboardActivity = {
   windowDays: number;
 };
 
-export const getDashboardActivity = () => api.get<DashboardActivity>("dashboard/activity");
+/** The week of `day` (YYYY-MM-DD), or of today when it is left out. */
+export const getDashboardActivity = (day?: string) =>
+  api.get<DashboardActivity>(day ? `dashboard/activity?date=${encodeURIComponent(day)}` : "dashboard/activity");

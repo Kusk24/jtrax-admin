@@ -74,8 +74,19 @@ describe("classStatusNow", () => {
   it("reads a class on an earlier day as Finished", () => {
     expect(classStatusNow(def("2026-09-26"), now, today)).toBe("Finished");
   });
-  it("reads a class on a later day as Upcoming", () => {
-    expect(classStatusNow(def("2026-09-28"), now, today)).toBe("Upcoming");
+  it("reads a class on a later day as Scheduled", () => {
+    expect(classStatusNow(def("2026-09-28"), now, today)).toBe("Scheduled");
+  });
+  /* The King Slayer case: made earlier, stored as Ongoing, not started yet. */
+  it("reads a class today that has not started as Scheduled, whatever is stored", () => {
+    expect(classStatusNow(def(today, "1:00 PM – 3:00 PM"), now, today)).toBe("Scheduled");
+    expect(classStatusNow(def(today, "10:16 AM – 11:00 AM"), now, today)).toBe("Scheduled");
+  });
+  it("turns Ongoing the minute the start is reached", () => {
+    expect(classStatusNow(def(today, "10:15 AM – 11:00 AM"), now, today)).toBe("Ongoing");
+  });
+  it("keeps a cancelled class cancelled before its start", () => {
+    expect(classStatusNow({ ...def(today, "1:00 PM – 3:00 PM"), status: "Cancelled" }, now, today)).toBe("Cancelled");
   });
   it("follows the clock today", () => {
     expect(classStatusNow(def(today), now, today)).toBe("Ongoing");

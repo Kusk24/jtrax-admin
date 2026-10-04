@@ -24,7 +24,7 @@ import {
 } from "@/lib/ocr";
 import { COLORS, FONT } from "@/lib/theme";
 import { ErrorNote, errorText } from "../crud";
-import { fieldStyle, labelStyle, primaryButtonStyle, secondaryButtonStyle, selectStyle } from "../page-kit";
+import { fieldStyle, labelStyle, primaryButtonStyle, Req, secondaryButtonStyle, selectStyle } from "../page-kit";
 import { Badge, Card } from "../ui";
 
 /* The select's value for "use the server's default", and for "type a name". */
@@ -219,6 +219,7 @@ export function ScanModelCard() {
           <div style={{ flex: "1 1 260px", minWidth: 0 }}>
             <label htmlFor="jtrax-scan-model-name" style={labelStyle}>
               {t("scanOtherLabel")}
+              <Req />
             </label>
             <input
               id="jtrax-scan-model-name"

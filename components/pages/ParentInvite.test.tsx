@@ -43,6 +43,7 @@ vi.mock("@/components/DataProvider", () => ({
 }));
 
 const { ParentsPage } = await import("./ParentsPage");
+const { ErrorToastProvider } = await import("../ErrorToast");
 
 beforeEach(() => {
   post.mockReset();
@@ -52,9 +53,11 @@ beforeEach(() => {
 function renderPage(detailId?: string) {
   render(
     <NextIntlClientProvider locale="en" messages={en}>
-      <SignedInAs>
-        <ParentsPage detailId={detailId} />
-      </SignedInAs>
+      <ErrorToastProvider>
+        <SignedInAs>
+          <ParentsPage detailId={detailId} />
+        </SignedInAs>
+      </ErrorToastProvider>
     </NextIntlClientProvider>,
   );
   return userEvent.setup();
@@ -89,10 +92,12 @@ describe("creating a parent", () => {
 });
 
 describe("a parent who lost their password", () => {
-  it("is sent a link from their page, never given a password by the office", async () => {
+  /* Both ways back in are offered: a link they use themselves, or a password
+     the office sets and reads out, for an address that never receives mail. */
+  it("can be sent a link from their page, beside the office's own reset", async () => {
     post.mockResolvedValue({ email: "malee@example.com", delivered: true });
     const user = renderPage("par_malee");
-    expect(screen.queryByRole("button", { name: /Reset password/ })).toBeNull();
+    expect(screen.getByRole("button", { name: /Reset password/ })).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Send password link" }));
     expect(post).toHaveBeenCalledWith("user-accounts/usr_malee/invite", {});
     expect(await screen.findByText(/Password link sent to malee@example.com/)).toBeDefined();

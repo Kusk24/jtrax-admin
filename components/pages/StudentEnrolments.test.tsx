@@ -531,7 +531,7 @@ describe("enrolling", () => {
 });
 
 describe("filtering the roster by class", () => {
-  const filter = () => screen.getByLabelText("Course") as HTMLSelectElement;
+  const filter = () => screen.getByLabelText(/^Course( \*)?$/) as HTMLSelectElement;
   const namesOnScreen = () =>
     STUDENTS.filter((s) => screen.queryByText(s.name) !== null).map(
       (s) => s.name,
@@ -609,7 +609,7 @@ describe("changing course", () => {
       name: `Change ${className} to another course`,
     });
   const amountField = () =>
-    screen.getByLabelText("Credits to add") as HTMLInputElement;
+    screen.getByLabelText(/^Credits\ to\ add( \*)?$/) as HTMLInputElement;
   const expiryField = () =>
     screen.getByLabelText("Expires") as HTMLInputElement;
   const confirmChange = () =>
@@ -635,7 +635,7 @@ describe("changing course", () => {
     const user = renderList();
     await openChange(user);
     const options = Array.from(
-      (screen.getByLabelText("Move them to") as HTMLSelectElement).options,
+      (screen.getByLabelText(/^Move\ them\ to( \*)?$/) as HTMLSelectElement).options,
     ).map((o) => o.textContent);
     expect(options).toEqual(["Advanced"]);
   });
@@ -921,7 +921,7 @@ describe("deleting an enrolment", () => {
  */
 describe("what a change converts against", () => {
   const amountField = () =>
-    screen.getByLabelText("Credits to add") as HTMLInputElement;
+    screen.getByLabelText(/^Credits\ to\ add( \*)?$/) as HTMLInputElement;
 
   async function openChangeFrom(
     user: ReturnType<typeof userEvent.setup>,
@@ -960,7 +960,7 @@ describe("what a change converts against", () => {
     try {
       const user = renderList();
       await openChangeFrom(user, "Chai", "Intermediate");
-      await user.selectOptions(screen.getByLabelText("Move them to"), "beg");
+      await user.selectOptions(screen.getByLabelText(/^Move\ them\ to( \*)?$/), "beg");
       expect(amountField().value).toBe("6.5");
     } finally {
       raw.creditTransactions.pop();
@@ -999,7 +999,7 @@ describe("what a change converts against", () => {
     try {
       const user = renderList();
       await openChangeFrom(user, "Chai", "Intermediate");
-      await user.selectOptions(screen.getByLabelText("Move them to"), "beg");
+      await user.selectOptions(screen.getByLabelText(/^Move\ them\ to( \*)?$/), "beg");
       /* Beginner's own package, not the orphan's. Reading the orphan would
          price Beginner at 1,000 an hour and hand back 4 credits instead of
          6.5 — the "moving to a cheaper course gave fewer credits" the office
@@ -1097,7 +1097,7 @@ describe("credits with no course", () => {
         screen.getByRole("button", { name: "Move into a course" }),
       );
       expect(
-        (screen.getByLabelText("Credits to add") as HTMLInputElement).value,
+        (screen.getByLabelText(/^Credits\ to\ add( \*)?$/) as HTMLInputElement).value,
       ).toBe("21.5");
       /* And the expiry comes across from the balance being moved. */
       expect((screen.getByLabelText("Expires") as HTMLInputElement).value).toBe(
@@ -1167,7 +1167,7 @@ describe("credits with no course", () => {
         screen.getByRole("button", { name: "Move into a course" }),
       );
       expect(
-        (screen.getByLabelText("Credits to add") as HTMLInputElement).value,
+        (screen.getByLabelText(/^Credits\ to\ add( \*)?$/) as HTMLInputElement).value,
       ).toBe("13");
     } finally {
       restore();
@@ -1269,7 +1269,7 @@ describe("credits that came from more than one course", () => {
         screen.getByRole("button", { name: "Move into a course" }),
       );
       const amount = (
-        screen.getByLabelText("Credits to add") as HTMLInputElement
+        screen.getByLabelText(/^Credits\ to\ add( \*)?$/) as HTMLInputElement
       ).value;
       expect(amount).toBe("27.5");
       /* 16.5 is what pricing Intermediate hours as Beginner ones gives back —
@@ -1301,7 +1301,7 @@ describe("credits that came from more than one course", () => {
           screen.getByRole("button", { name: "Move into a course" }),
         );
         expect(
-          (screen.getByLabelText("Credits to add") as HTMLInputElement).value,
+          (screen.getByLabelText(/^Credits\ to\ add( \*)?$/) as HTMLInputElement).value,
         ).toBe("27.5");
       } finally {
         restore();
@@ -1679,8 +1679,8 @@ describe("the credits tab", () => {
       const byText = (s: string) => rows.find((r) => r.textContent?.includes(s))!;
       expect(byText("+20").textContent).toContain("Beginner");
       expect(byText("+5").textContent).toContain("Intermediate");
-      expect(byText("+5").textContent).toContain("Not in a course");
-      expect(byText("+20").textContent).not.toContain("Not in a course");
+      expect(byText("+5").textContent).toContain(en.common.removed);
+      expect(byText("+20").textContent).not.toContain(en.common.removed);
     } finally {
       raw.enrollments = saved.e;
       raw.creditTransactions = saved.c;

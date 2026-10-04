@@ -108,24 +108,28 @@ export const ROLE_COLORS: Record<JtraxRole, { color: string; bg: string }> = {
   Receptionist: { color: ACCENTS.amber, bg: ACCENT_TINTS.amber },
 };
 
+/* A class reads in its level's colour — the same code a student's level
+   uses: Beginner green, Intermediate blue, Advanced (and Master) purple. */
 export const CLASS_CATEGORY_COLORS: Record<string, string> = {
-  Master: ACCENTS.navy,
-  Intermediate: ACCENTS.amber,
+  Master: ACCENTS.plum,
+  Advanced: ACCENTS.plum,
+  Intermediate: ACCENTS.blue,
   Beginner: ACCENTS.green,
-  Weekend: ACCENTS.plum,
+  Weekend: ACCENTS.amber,
 };
 
 /** The tint that goes with a class category, for icon wells and chips. */
 export function classCategoryTint(category: string | undefined): string {
   switch (category) {
     case "Master":
-      return ACCENT_TINTS.navy;
+    case "Advanced":
+      return ACCENT_TINTS.plum;
     case "Intermediate":
-      return ACCENT_TINTS.amber;
+      return ACCENT_TINTS.blue;
     case "Beginner":
       return ACCENT_TINTS.green;
     case "Weekend":
-      return ACCENT_TINTS.plum;
+      return ACCENT_TINTS.amber;
     default:
       return COLORS.light;
   }
@@ -178,6 +182,7 @@ export function statusChipColors(status: string): { color: string; bg: string } 
     case "Expiring":
     case "Pending":
     case "Upcoming":
+    case "Scheduled":
       return { color: COLORS.warning, bg: COLORS.warningBg };
     case "Expired":
     case "Refunded":

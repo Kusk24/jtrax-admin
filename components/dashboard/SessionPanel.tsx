@@ -30,7 +30,7 @@ import { COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
    this file used to carry its own near-identical copies. */
 import { ActionButton } from "../crud";
 import { useData } from "../DataProvider";
-import { fieldStyle, labelStyle, selectStyle } from "../page-kit";
+import { fieldStyle, labelStyle, Req, selectStyle } from "../page-kit";
 import { Avatar } from "../ui";
 import { useErrorToast } from "../ErrorToast";
 import { DurationField } from "./DurationField";
@@ -419,20 +419,28 @@ function CreateSession({
       /* The session and everyone already in the room, as one unit — and the
          credits follow the attendance rows on the server, one hour to one
          credit, so nothing here has to work the price out twice. */
+      /* A class that starts later is Scheduled, and its students are booked
+         rather than checked in: nothing is charged until it starts, when the
+         server checks them in (classstart.go in the backend). */
+      const startsLater = !isToday || start > nowClock(new Date());
       await batch(async () => {
         const session = await create("class-sessions", {
           class_id: classId,
           session_date: day,
           start_time: start,
           end_time: end,
-          session_status: "Ongoing",
+          session_status: startsLater ? "Scheduled" : "Ongoing",
         });
-        for (const studentId of isToday ? picked : []) {
-          await create("attendance", {
-            student_id: studentId,
-            session_id: session.session_id,
-            check_in_time: new Date().toISOString(),
-          });
+        for (const studentId of picked) {
+          if (startsLater) {
+            await create("session-bookings", { student_id: studentId, session_id: session.session_id });
+          } else {
+            await create("attendance", {
+              student_id: studentId,
+              session_id: session.session_id,
+              check_in_time: new Date().toISOString(),
+            });
+          }
         }
       });
       onClose();
@@ -481,7 +489,7 @@ function CreateSession({
 
           {pickDay && (
             <div style={{ marginBottom: 14 }}>
-              <label style={labelStyle} htmlFor="jtrax-class-day">{tCommon("date")}</label>
+              <label style={labelStyle} htmlFor="jtrax-class-day">{tCommon("date")}<Req /></label>
               <input
                 id="jtrax-class-day"
                 type="date"
@@ -496,7 +504,7 @@ function CreateSession({
           )}
 
           <div style={{ marginBottom: 14 }}>
-            <label style={labelStyle} htmlFor="jtrax-class-name">{t("className")}</label>
+            <label style={labelStyle} htmlFor="jtrax-class-name">{t("className")}<Req /></label>
             <select
               id="jtrax-class-name"
               value={classId}
@@ -514,7 +522,7 @@ function CreateSession({
 
           <div style={{ display: "flex", gap: 12, marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
-              <span style={labelStyle}>{t("startTime")}</span>
+              <span style={labelStyle}>{t("startTime")}<Req /></span>
               <ClockPicker
                 idPrefix="jtrax-start"
                 hourLabel={t("startHour")}
@@ -526,7 +534,7 @@ function CreateSession({
               />
             </div>
             <div style={{ flex: 1 }}>
-              <span style={labelStyle}>{t("length")}</span>
+              <span style={labelStyle}>{t("length")}<Req /></span>
               {/* A length, not a second clock time. The office decides a class
                   runs for an hour and a half from four — not that it ends at
                   17:30. */}
@@ -550,7 +558,6 @@ function CreateSession({
               : t("atLeastHalfAnHour")}
           </p>
 
-          {isToday && (
           <>
           <div style={{ height: 1, background: COLORS.border, margin: "4px 0 16px" }} />
 
@@ -603,12 +610,10 @@ function CreateSession({
             })}
           </div>
           </>
-          )}
         </div>
 
-        {/* Ticking students checks them in, which only means anything today —
-            a class scheduled for a later day starts with an empty roster. */}
-        {isToday && (
+        {/* Ticking students checks them in when the class is running now, or
+            books them on a class that starts later — free until it starts. */}
         <div>
           <h3 style={{ margin: "0 0 4px", fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text }}>
             {t("addStudents")}
@@ -705,7 +710,6 @@ function CreateSession({
             })}
           </div>
         </div>
-        )}
       </div>
     </PanelFrame>
   );
@@ -748,7 +752,10 @@ function ViewClass({ def: opened, onClose }: { def: ClassDef; onClose: () => voi
      a check-in, so it is only for a class running now. */
   const shownStatus = classStatusNow(def, now, todayISO());
   const editable = shownStatus !== "Finished" && shownStatus !== "Cancelled";
-  const canAddStudents = shownStatus === "Ongoing";
+  /* Running now: a check-in, charged. Not started yet: a booking, free until
+     the start. */
+  const canAddStudents = shownStatus === "Ongoing" || shownStatus === "Scheduled";
+  const booking = shownStatus === "Scheduled";
   const [busy, setBusy] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
 
@@ -842,6 +849,7 @@ function ViewClass({ def: opened, onClose }: { def: ClassDef; onClose: () => voi
     (student) =>
       enrolledHere.has(student.id) &&
       !roster.includes(student.name) &&
+      !(def.booked ?? []).includes(student.name) &&
       (!addQuery || student.name.toLowerCase().includes(addQuery)),
   );
 
@@ -922,7 +930,7 @@ function ViewClass({ def: opened, onClose }: { def: ClassDef; onClose: () => voi
           {confirmCancel ? (
             <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
-                {t("cancelConfirm", { count: roster.length })}
+                {t("cancelConfirm", { count: roster.length + (def.booked?.length ?? 0) })}
               </span>
               <button type="button" style={ghostBtn} disabled={busy} onClick={() => setConfirmCancel(false)}>
                 {tCommon("close")}
@@ -982,6 +990,14 @@ function ViewClass({ def: opened, onClose }: { def: ClassDef; onClose: () => voi
           </div>
         ))}
       </div>
+
+      {(def.booked?.length ?? 0) > 0 && (
+        <BookedList
+          booked={def.booked ?? []}
+          sessionId={def.id ?? ""}
+          editable={editable}
+        />
+      )}
 
       {canAddStudents && (
         <div style={{ marginTop: 18 }}>
@@ -1047,11 +1063,15 @@ function ViewClass({ def: opened, onClose }: { def: ClassDef; onClose: () => voi
                       }
                       onClick={async () => {
                         try {
-                          await create("attendance", {
-                            student_id: student.id,
-                            session_id: def.id,
-                            check_in_time: new Date().toISOString(),
-                          });
+                          if (booking) {
+                            await create("session-bookings", { student_id: student.id, session_id: def.id });
+                          } else {
+                            await create("attendance", {
+                              student_id: student.id,
+                              session_id: def.id,
+                              check_in_time: new Date().toISOString(),
+                            });
+                          }
                         } catch (e) {
                           /* The server itself refuses an expired or
                              over-the-limit check-in now (chargeAttendance()
@@ -1111,4 +1131,75 @@ export function SessionPanel({ state, onClose }: { state: PanelState; onClose: (
   if (!state) return null;
   if (state.mode === "create") return <CreateSession day={state.day} pickDay={state.pickDay} onClose={onClose} />;
   return <ViewClass def={state.def} onClose={onClose} />;
+}
+
+
+/**
+ * Who is booked on a class that has not started. Not checked in and not
+ * charged: the server checks each one in at the start. A booking it could not
+ * check in — the credits had expired, say — stays here with the reason.
+ */
+function BookedList({ booked, sessionId, editable }: { booked: string[]; sessionId: string; editable: boolean }) {
+  const t = useTranslations("session");
+  const { students, raw, remove } = useData();
+  return (
+    <div style={{ marginTop: 18 }}>
+      <h3 style={{ margin: "0 0 4px", fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text }}>
+        {t("bookedCount", { count: booked.length })}
+      </h3>
+      <p style={{ margin: "0 0 12px", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+        {t("bookedHelp")}
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 9 }}>
+        {booked.map((name) => {
+          const student = students.find((s) => s.name === name);
+          const row = (raw.sessionBookings ?? []).find(
+            (b) => String(b.session_id) === sessionId && String(b.student_id) === student?.id,
+          );
+          const problem = row?.failed_reason ? String(row.failed_reason) : "";
+          return (
+            <div
+              key={name}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 9,
+                padding: "9px 11px",
+                borderRadius: 10,
+                border: `1px dashed ${problem ? COLORS.danger : COLORS.border}`,
+              }}
+            >
+              <Avatar initials={initialsOf(name)} size={28} />
+              <span style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 14, color: COLORS.text }}>
+                {name}
+                {problem && (
+                  <span style={{ display: "block", fontSize: 12, fontWeight: 600, color: COLORS.danger }}>
+                    {t("bookingProblem", { reason: problem })}
+                  </span>
+                )}
+              </span>
+              {editable && row && (
+                <ActionButton
+                  onClick={async () => {
+                    await remove("session-bookings", String(row.booking_id)).catch(() => {});
+                  }}
+                  ariaLabel={t("removeFromRoster", { name })}
+                  style={{
+                    display: "inline-flex",
+                    border: "none",
+                    background: "transparent",
+                    cursor: "pointer",
+                    padding: 0,
+                    color: COLORS.textSecondary,
+                  }}
+                >
+                  <Icon name="x" size={14} />
+                </ActionButton>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }

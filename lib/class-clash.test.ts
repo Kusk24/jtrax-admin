@@ -32,6 +32,10 @@ describe("busyStudents", () => {
     const left = { ...raw, attendance: [{ student_id: "mini", session_id: "s1", check_out_time: "2026-09-28T04:00:00Z" }] };
     expect(busyStudents(left, "2026-09-28", "11:00", "12:00").has("mini")).toBe(false);
   });
+  it("counts a booking on a class that has not started", () => {
+    const booked = { ...raw, attendance: [], sessionBookings: [{ student_id: "nina", session_id: "s1" }] };
+    expect(busyStudents(booked, "2026-09-28", "11:00", "12:00").get("nina")).toBe("King Slayer");
+  });
   it("never clashes a session with itself", () => {
     expect(busyStudents(raw, "2026-09-28", "10:00", "12:00", "s1").has("mini")).toBe(false);
   });

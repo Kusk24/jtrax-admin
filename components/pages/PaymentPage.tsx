@@ -14,6 +14,7 @@ import {
 } from "@/lib/payment-pairing";
 import { liveClasses, livePackages } from "@/lib/live";
 import { useData } from "@/components/DataProvider";
+import { CourseName } from "@/components/CourseName";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf } from "@/lib/theme";
 import {
@@ -32,6 +33,7 @@ import {
   FilterBar,
   InfoGrid,
   labelStyle,
+  Req,
   Modal,
   PageHeader,
   paginate,
@@ -289,7 +291,7 @@ export function RecordPaymentForm({
         <SectionTitle>{t("details")}</SectionTitle>
 
         <div style={{ position: "relative" }}>
-          <label style={labelStyle} htmlFor="pay-student">{tCommon("student")}</label>
+          <label style={labelStyle} htmlFor="pay-student">{tCommon("student")}<Req /></label>
           {/* A combobox, not a bare search box: the caret says there is a list
               behind it, and clicking opens the whole list rather than waiting
               for the right guess. */}
@@ -450,7 +452,7 @@ export function RecordPaymentForm({
 
         <div className="jt-duo">
           <div>
-            <label style={labelStyle} htmlFor="pay-package">{t("creditPackage")}</label>
+            <label style={labelStyle} htmlFor="pay-package">{t("creditPackage")}<Req /></label>
             <select
               id="pay-package"
               value={packageId}
@@ -472,7 +474,7 @@ export function RecordPaymentForm({
           {custom && (
             <>
               <div>
-                <label style={labelStyle} htmlFor="pay-course">{tCommon("class")}</label>
+                <label style={labelStyle} htmlFor="pay-course">{tCommon("class")}<Req /></label>
                 <select
                   id="pay-course"
                   value={customClassId}
@@ -485,7 +487,7 @@ export function RecordPaymentForm({
                 </select>
               </div>
               <div>
-                <label style={labelStyle} htmlFor="pay-credits">{t("credits")}</label>
+                <label style={labelStyle} htmlFor="pay-credits">{t("credits")}<Req /></label>
                 <input
                   id="pay-credits"
                   type="number"
@@ -648,7 +650,7 @@ export function PaymentDetail({
           subtitle={
             <span style={{ display: "inline-flex", alignItems: "center" }}>
               <ClassDot color={classDotColor(payment.className)} />
-              {payment.className}
+              <CourseName name={payment.className} deleted={payment.courseDeleted} />
             </span>
           }
           badges={
@@ -683,7 +685,7 @@ export function PaymentDetail({
         <InfoGrid
           rows={[
             { label: t("colPaidBy"), value: payment.payer || "—" },
-            { label: tCommon("class"), value: payment.className },
+            { label: tCommon("class"), value: <CourseName name={payment.className} deleted={payment.courseDeleted} /> },
             { label: t("credits"), value: payment.credits },
             { label: t("amount"), value: payment.gross ?? payment.amount },
             { label: t("discount"), value: payment.discount ?? "—" },
@@ -1080,7 +1082,7 @@ export function PaymentPage({
             <ExportButton
               filename="payments"
               columns={[tCommon("student"), t("colPaidBy"), t("colItem"), t("credits"), tCommon("amount"), tCommon("date"), tCommon("method")]}
-              rows={() => filtered.map((p) => [p.name, p.payer ?? "", p.className, p.credits, p.amount, p.date, p.method])}
+              rows={() => filtered.map((p) => [p.name, p.payer ?? "", p.courseDeleted ? [p.className, tCommon("removed")].filter(Boolean).join(" · ") : p.className, p.credits, p.amount, p.date, p.method])}
             />
             <button type="button" className="jt-btn-primary" style={primaryButtonStyle} onClick={() => setFormOpen(true)}>
               <Icon name="wallet" size={15} color={COLORS.surface} />
@@ -1154,7 +1156,7 @@ export function PaymentPage({
                 subtitle={
                   <span style={{ display: "inline-flex", alignItems: "center" }}>
                     <ClassDot color={classDotColor(p.className)} />
-                    {p.className}
+                    <CourseName name={p.className} deleted={p.courseDeleted} />
                     {p.detached && ` · ${t("studentRemoved")}`}
                   </span>
                 }
@@ -1221,7 +1223,7 @@ export function PaymentPage({
                 </span>
                 <span style={{ display: "flex", alignItems: "center", color: COLORS.textSecondary }}>
                   <ClassDot color={classDotColor(p.className)} />
-                  {p.className}
+                  <CourseName name={p.className} deleted={p.courseDeleted} />
                 </span>
                 <span style={{ color: COLORS.success, fontWeight: 600 }}>{p.credits}</span>
                 <span style={{ fontWeight: 600 }}>{p.amount}</span>
