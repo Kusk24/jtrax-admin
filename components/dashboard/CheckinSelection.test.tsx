@@ -11,7 +11,7 @@
  * in-memory API, because what is being checked is that a tick, a press and a
  * refetch end with the right rows stamped and the right names on screen.
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
@@ -20,6 +20,18 @@ import { todayISO } from "@/lib/live";
 import { starred } from "@/lib/starred-label";
 
 const today = todayISO();
+
+/* The class runs 09:00–10:00 today and these check-outs come after it. Without
+   a fixed clock, a run before 10:00 Bangkok reaches the early check-out
+   confirmation instead, and every assertion here misses. Only Date is faked,
+   so the waits in these tests still run on real timers. */
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(`${today}T18:00:00+07:00`));
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 const db: Record<string, Record<string, unknown>[]> = {};
 

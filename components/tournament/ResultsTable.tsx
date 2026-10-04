@@ -27,6 +27,8 @@ import {
   standingBy,
   type RoundView,
 } from "@/lib/tournament-rounds";
+import { standingsRace } from "@/lib/standings-race";
+import { useShown } from "@/lib/shown-pref";
 import { ExportButton, SearchInput, secondaryButtonStyle } from "../page-kit";
 import { Badge, Card } from "../ui";
 import { RoundCard, type PlayerMeta } from "./RoundCard";
@@ -36,6 +38,7 @@ import { ViewToggle } from "../view-mode";
 
 /** The stacked list first: it is the view the office asked for. */
 const ROUND_MODES = ["list", "columns"] as const;
+import { StandingsRace } from "./StandingsRace";
 
 export function ResultsTable({
   rounds,
@@ -70,6 +73,17 @@ export function ResultsTable({
   const [allGames, setAllGames] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const views = useMemo(() => roundViews(rounds, totalRounds), [rounds, totalRounds]);
+
+  /* The standings race, an optional picture above the rounds. On one age
+     group's tab only that group is ranked; opponents from other groups still
+     score against them. It needs two played rounds before a line means
+     anything, and until then neither the chart nor its switch is shown. */
+  const race = useMemo(
+    () => standingsRace(views, categoryName ? standings.map((row) => row.name) : undefined),
+    [views, standings, categoryName],
+  );
+  const canRace = race.rounds.length >= 2;
+  const [raceShown, setRaceShown] = useShown("results.race");
 
   /* Which rounds are open. None by default — the office asked for a list of
      rounds to open, not a page already scrolled through; Expand all is beside
@@ -175,6 +189,10 @@ export function ResultsTable({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* The standings race (optional): above the rounds, switched on and off
+          from the toolbar below. */}
+      {canRace && raceShown && <StandingsRace race={race} selected={player} onSelect={pick} />}
+
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <div style={{ position: "relative", flex: "1 1 260px", minWidth: 0, maxWidth: 360 }}>
           <SearchInput
@@ -192,6 +210,19 @@ export function ResultsTable({
             one row. One button: it opens every round, or closes them all once
             they are open. */}
         <ViewToggle value={mode} onChange={setMode} options={ROUND_MODES} style={{ marginLeft: "auto" }} />
+        {/* The one place the standings race is switched on and off.
+            Remembered in this browser, like the list / columns choice. */}
+        {canRace && (
+          <button
+            type="button"
+            className="jt-btn-ghost"
+            style={secondaryButtonStyle}
+            aria-pressed={raceShown}
+            onClick={() => setRaceShown(!raceShown)}
+          >
+            <Icon name="trendingUp" size={15} /> {raceShown ? t("raceHide") : t("raceShow")}
+          </button>
+        )}
         {mode === "list" && (
           <button
             type="button"
