@@ -1,13 +1,13 @@
 "use client";
 
-/* How Attendance Rounding works, drawn on two clocks.
+/* How Attendance Rounding works, as one infographic.
  *
- * A 10:00–12:00 class: one child leaves early, one arrives late. Each clock
- * shows the class as an arc, the time the child was there in blue, and the
- * time missed in amber; underneath, the time present, what it rounds to at
- * the step being set, and the credits. The numbers follow the value in the
- * field, so changing 15 to 30 shows what 30 would do before it is saved.
- * The rule is the backend's (credits.go attendedHours).
+ * One ring for a 2-hour class (10:00–12:00), split into the ranges of time
+ * missed — arriving late or leaving early, it is the same — each with what
+ * the visit is charged at; a colour-coded legend beside it; the rule in a
+ * sentence; and two examples, one late and one early, worked the same way.
+ * Everything follows the step in the field, saved or not. The rule is the
+ * backend's (credits.go attendedHours).
  */
 import { useTranslations } from "next-intl";
 import { COLORS, FONT } from "@/lib/theme";
@@ -16,6 +16,10 @@ import { Modal } from "../page-kit";
 
 const START = 10 * 60; // 10:00
 const END = 12 * 60; // 12:00
+const CLASS = END - START;
+
+/* Subtle range colours, in order: full class, then each step off. */
+const BAND_COLORS = ["#6BBF8A", "#7AA9E6", "#E9C85C", "#E9A066", "#E28A8A"];
 
 /** Minutes charged for a visit of `present` minutes, at a step. */
 export function roundedMinutes(present: number, classMinutes: number, step: number): number {
@@ -28,176 +32,144 @@ function clock(min: number): string {
   return `${Math.floor(min / 60)}:${String(min % 60).padStart(2, "0")}`;
 }
 
+/** Credits for minutes charged: "2", "1.75". */
 function credits(min: number): string {
   return String(Math.round((min / 60) * 100) / 100);
 }
 
-/* ---- the clock ---- */
+export type Band = { from: number; to: number; charged: number; color: string };
 
-const C = 110; // centre
-const R = 86; // the class's ring, just outside the face
+/** The ranges of minutes missed that round to the same charge: 0–7, 8–22, … at 15. */
+export function bandsFor(step: number, count = 5): Band[] {
+  if (step <= 0) return [];
+  return Array.from({ length: count }, (_, k) => ({
+    from: k === 0 ? 0 : Math.floor(step * (k - 0.5)) + 1,
+    to: Math.floor(step * (k + 0.5)),
+    charged: Math.max(0, CLASS - k * step),
+    color: BAND_COLORS[k % BAND_COLORS.length],
+  }));
+}
 
-function point(minuteOfDay: number, r: number): [number, number] {
-  const a = (((minuteOfDay / 60) % 12) / 12) * 2 * Math.PI;
+/* ---- the ring ---- */
+
+const C = 130;
+const R = 92;
+const W = 34;
+
+function polar(deg: number, r: number): [number, number] {
+  const a = (deg * Math.PI) / 180;
   return [C + r * Math.sin(a), C - r * Math.cos(a)];
 }
 
-function arc(from: number, to: number, r: number): string {
-  const [x1, y1] = point(from, r);
-  const [x2, y2] = point(to, r);
-  const large = to - from > 360 ? 1 : 0;
-  return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
+function slice(fromDeg: number, toDeg: number): string {
+  const [x1, y1] = polar(fromDeg, R);
+  const [x2, y2] = polar(toDeg, R);
+  return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${R} ${R} 0 ${toDeg - fromDeg > 180 ? 1 : 0} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
 }
 
-/** `at` is the moment the hands show: when they left early, or arrived late. */
-function Clock({ inAt, outAt, at, label }: { inAt: number; outAt: number; at: number; label: string }) {
-  const marker = (m: number, text: string) => {
-    const [x, y] = point(m, R);
-    const [lx, ly] = point(m, R + 21);
-    return (
-      <g>
-        <circle cx={x} cy={y} r={4.5} fill={COLORS.surface} stroke={COLORS.text} strokeWidth={2} />
-        <text x={lx} y={ly + 4} textAnchor="middle" fontSize={12} fontWeight={700} fill={COLORS.text} fontFamily={FONT}>
-          {text}
-        </text>
-      </g>
-    );
-  };
+function Ring({ bands, label, centre, centreSub }: { bands: Band[]; label: string; centre: string; centreSub: string }) {
+  /* The ring is the missed minutes from 0 to the end of the last band. */
+  const total = bands[bands.length - 1].to + 0.5;
+  const deg = (min: number) => (min / total) * 360;
   return (
-    <svg viewBox="-6 -6 232 232" width={200} height={200} role="img" aria-label={label}>
-      <circle cx={C} cy={C} r={76} fill={COLORS.surface} stroke={COLORS.border} strokeWidth={1.5} />
-      {Array.from({ length: 12 }, (_, i) => {
-        const [x1, y1] = point(i * 60, 73);
-        const [x2, y2] = point(i * 60, i % 3 === 0 ? 64 : 68);
-        return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={COLORS.textSecondary} strokeWidth={i % 3 === 0 ? 2 : 1} />;
+    <svg viewBox="-12 -12 284 284" width={260} height={260} role="img" aria-label={label} style={{ flexShrink: 0 }}>
+      {bands.map((b, i) => {
+        const from = i === 0 ? 0 : b.from - 0.5;
+        const to = i === bands.length - 1 ? total : b.to + 0.5;
+        return <path key={i} d={slice(deg(from), deg(to) - 0.6)} fill="none" stroke={b.color} strokeWidth={W} />;
       })}
-      {[12, 3, 6, 9].map((h) => {
-        const [x, y] = point(h * 60, 54);
+      {/* Where each range ends, in minutes missed. */}
+      {bands.slice(0, -1).map((b, i) => {
+        const [x, y] = polar(deg(b.to + 0.5), R + W / 2 + 13);
         return (
-          <text key={h} x={x} y={y + 4} textAnchor="middle" fontSize={11} fill={COLORS.textSecondary} fontFamily={FONT}>
-            {h}
+          <text key={i} x={x} y={y + 4} textAnchor="middle" fontSize={11.5} fontWeight={700} fill={COLORS.text} fontFamily={FONT}>
+            {b.to}′
           </text>
         );
       })}
-      {/* The whole class, then what was missed, then the time there. */}
-      <path d={arc(START, END, R)} fill="none" stroke={COLORS.border} strokeWidth={12} />
-      {inAt > START && <path d={arc(START, inAt, R)} fill="none" stroke={COLORS.warning} strokeWidth={12} opacity={0.55} />}
-      {outAt < END && <path d={arc(outAt, END, R)} fill="none" stroke={COLORS.warning} strokeWidth={12} opacity={0.55} />}
-      <path d={arc(inAt, outAt, R)} fill="none" stroke={COLORS.blue} strokeWidth={12} />
-      {marker(inAt, clock(inAt))}
-      {marker(outAt, clock(outAt))}
-      {/* The hands at the moment that cut the class short. */}
-      {(() => {
-        const [hx, hy] = point(at, 30);
-        const minuteAngle = (at % 60) * 12; // the minute hand's place, as a minute of the 12-hour dial
-        const [mx, my] = point(minuteAngle, 44);
-        return (
-          <g stroke={COLORS.text} strokeLinecap="round">
-            <line x1={C} y1={C} x2={hx} y2={hy} strokeWidth={3.5} />
-            <line x1={C} y1={C} x2={mx} y2={my} strokeWidth={2} />
-          </g>
-        );
-      })()}
-      <circle cx={C} cy={C} r={3.5} fill={COLORS.text} />
+      <circle cx={C} cy={C} r={R - W / 2 - 6} fill={COLORS.surface} />
+      <text x={C} y={C - 8} textAnchor="middle" fontSize={15} fontWeight={800} fill={COLORS.text} fontFamily={FONT}>
+        {centre}
+      </text>
+      <text x={C} y={C + 12} textAnchor="middle" fontSize={11.5} fill={COLORS.textSecondary} fontFamily={FONT}>
+        {centreSub}
+      </text>
     </svg>
-  );
-}
-
-function Example({ title, inAt, outAt, step }: { title: string; inAt: number; outAt: number; step: number }) {
-  const at = inAt > START ? inAt : outAt;
-  const t = useTranslations("settings");
-  const present = outAt - inAt;
-  const charged = roundedMinutes(present, END - START, step);
-  return (
-    <div style={{ flex: "1 1 220px", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-      <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text }}>{title}</span>
-      <Clock inAt={inAt} outAt={outAt} at={at} label={t("roundClockLabel", { from: clock(inAt), to: clock(outAt) })} />
-      <div style={{ fontFamily: FONT, fontSize: 13, lineHeight: 1.6, color: COLORS.text, textAlign: "center" }}>
-        <div>{t("roundIn", { time: clock(inAt) })} · {t("roundOut", { time: clock(outAt) })}</div>
-        <div>{t("roundPresent", { time: fmtMinutes(present) })}</div>
-        <div style={{ color: COLORS.textSecondary }}>
-          {step > 0 ? t("roundTo", { step, time: fmtMinutes(charged) }) : t("roundExact")}
-        </div>
-        <div style={{ fontWeight: 700, color: COLORS.blue }}>{t("roundCharged", { credits: credits(charged) })}</div>
-      </div>
-    </div>
   );
 }
 
 export function RoundingExplainer({ step, onClose }: { step: number; onClose: () => void }) {
   const t = useTranslations("settings");
-  /* Five ways a 2-hour class can be cut short, worked at this step. */
-  const rows = [5, 10, 15, 20, 25].map((missed) => {
-    const attended = END - START - missed;
-    const charged = roundedMinutes(attended, END - START, step);
-    return { missed, attended, charged };
-  });
+  const bands = bandsFor(step);
+  const examples = [
+    { key: "late", inAt: 10 * 60 + 25, outAt: END },
+    { key: "early", inAt: START, outAt: 11 * 60 + 35 },
+  ];
   return (
-    <Modal title={t("roundHowTitle")} onClose={onClose} width={620}>
+    <Modal title={t("roundHowTitle")} onClose={onClose} width={680}>
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-        <p style={{ margin: 0, fontFamily: FONT, fontSize: 14, lineHeight: 1.6, color: COLORS.text }}>
-          {t("roundHowIntro")}
-        </p>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 16, justifyContent: "center" }}>
-          <Example title={t("roundExampleEarly")} inAt={START} outAt={11 * 60 + 35} step={step} />
-          <Example title={t("roundExampleLate")} inAt={10 * 60 + 25} outAt={END} step={step} />
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.textSecondary }}>{t("roundClass")}</span>
+          <p style={{ margin: 0, fontFamily: FONT, fontSize: 14, lineHeight: 1.6, color: COLORS.text }}>
+            {step > 0 ? t("roundRule", { step }) : t("roundRuleExact")}
+          </p>
         </div>
-        <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-          <span><Swatch color={COLORS.blue} /> {t("roundLegendThere")}</span>
-          <span><Swatch color={COLORS.warning} faded /> {t("roundLegendMissed")}</span>
+
+        {bands.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 18, alignItems: "center", justifyContent: "center" }}>
+            <Ring bands={bands} label={t("roundRingLabel")} centre={t("roundRingCentre")} centreSub={t("roundRingCentreSub")} />
+            <ul style={{ listStyle: "none", margin: 0, padding: 0, flex: "1 1 240px", display: "flex", flexDirection: "column", gap: 8 }}>
+              {bands.map((b) => (
+                <li
+                  key={b.from}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 12, padding: "9px 12px",
+                    border: `1px solid ${COLORS.border}`, borderRadius: 10, fontFamily: FONT,
+                  }}
+                >
+                  <span aria-hidden style={{ width: 14, height: 14, borderRadius: "50%", background: b.color, flexShrink: 0 }} />
+                  <span style={{ flex: 1, fontSize: 13.5, fontWeight: 700, color: COLORS.text }}>
+                    {t("roundBandMissed", { from: b.from, to: b.to })}
+                  </span>
+                  <span style={{ fontSize: 13, color: COLORS.textSecondary }}>
+                    {b.charged === CLASS ? t("roundFullClass") : fmtMinutes(b.charged)}
+                  </span>
+                  <span style={{ minWidth: 76, textAlign: "right", fontSize: 13.5, fontWeight: 700, color: COLORS.blue }}>
+                    {t("roundCredits", { credits: credits(b.charged) })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* The two examples in one box: the same rule, late and early. */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "14px 16px", borderRadius: 12, background: COLORS.light }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: FONT, fontSize: 13.5, fontWeight: 700, color: COLORS.text }}>
+            {t("roundExamples")}
+            <span style={{ padding: "1px 8px", borderRadius: 999, background: COLORS.surface, color: COLORS.blue, fontSize: 11.5 }}>
+              {t("roundSameRule")}
+            </span>
+          </span>
+          {examples.map((e) => {
+            const present = e.outAt - e.inAt;
+            const charged = roundedMinutes(present, CLASS, step);
+            return (
+              <div
+                key={e.key}
+                style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8, fontFamily: FONT, fontSize: 13.5, color: COLORS.text }}
+              >
+                <span style={{ fontWeight: 600 }}>
+                  {e.key === "late" ? t("roundArrived", { time: clock(e.inAt) }) : t("roundLeft", { time: clock(e.outAt) })}
+                </span>
+                <span>→ {t("roundPresent", { time: fmtMinutes(present) })}</span>
+                <span>→ {fmtMinutes(charged)}</span>
+                <span style={{ fontWeight: 700, color: COLORS.blue }}>→ {t("roundCredits", { credits: credits(charged) })}</span>
+              </div>
+            );
+          })}
         </div>
-        <table style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse", fontFamily: FONT, fontSize: 13.5, fontVariantNumeric: "tabular-nums" }}>
-          {/* Four equal columns. */}
-          <colgroup>
-            {[0, 1, 2, 3].map((i) => <col key={i} style={{ width: "25%" }} />)}
-          </colgroup>
-          <thead>
-            <tr style={{ color: COLORS.textSecondary }}>
-              <th style={{ ...cell, ...first, fontWeight: 600 }}>{t("roundColMissed")}</th>
-              <th style={{ ...cell, textAlign: "right", fontWeight: 600 }}>{t("roundColAttended")}</th>
-              <th style={{ ...cell, textAlign: "right", fontWeight: 600 }}>{t("roundColRounded")}</th>
-              <th style={{ ...cell, textAlign: "right", fontWeight: 600 }}>{t("roundColCharged")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.missed} style={{ borderTop: `1px solid ${COLORS.border}` }}>
-                <td style={{ ...cell, ...first }}>{t("roundMinutes", { minutes: r.missed })}</td>
-                <td style={{ ...cell, textAlign: "right" }}>{short(r.attended)}</td>
-                <td style={{ ...cell, textAlign: "right" }}>{short(r.charged)}</td>
-                <td style={{ ...cell, textAlign: "right", fontWeight: 700 }}>{oneDecimal(r.charged)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <p style={{ margin: 0, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>{t("roundBoth")}</p>
       </div>
     </Modal>
   );
 }
-
-function Swatch({ color, faded = false }: { color: string; faded?: boolean }) {
-  return (
-    <span
-      aria-hidden
-      style={{ display: "inline-block", width: 12, height: 12, borderRadius: 3, background: color, opacity: faded ? 0.55 : 1, verticalAlign: "-1px" }}
-    />
-  );
-}
-
-const cell = { padding: "7px 10px" } as const;
-/* The first column starts flush with the text above it. */
-const first = { textAlign: "left", paddingLeft: 0 } as const;
-
-/** "1h55", "2h" — the table's compact time. */
-function short(min: number): string {
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return m ? `${h}h${String(m).padStart(2, "0")}` : `${h}h`;
-}
-
-/** Credits with at least one decimal: "2.0", "1.75". */
-function oneDecimal(min: number): string {
-  return (min / 60).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 });
-}
-
