@@ -420,11 +420,14 @@ export function AcademyPage() {
                   {c.desc}
                 </p>
               </div>
-              <RowActions
-                label={c.name}
-                onEdit={() => openCourseModal(c)}
-                onDelete={() => setDeletingCourse(c)}
-              />
+              {/* Bottom right, pinned there however long the description. */}
+              <div style={{ marginTop: "auto", display: "flex", justifyContent: "flex-end" }}>
+                <RowActions
+                  label={c.name}
+                  onEdit={() => openCourseModal(c)}
+                  onDelete={() => setDeletingCourse(c)}
+                />
+              </div>
             </Card>
           ))}
         </CardGrid>
