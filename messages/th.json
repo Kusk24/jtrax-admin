@@ -1278,7 +1278,8 @@
     "contactAddressN": "ที่อยู่ {n}",
     "contactRemoveAddress": "ลบที่อยู่ {n}",
     "contactAddAddress": "เพิ่มที่อยู่",
-    "contactSaved": "บันทึกแล้ว"
+    "contactSaved": "บันทึกแล้ว",
+    "contactEdit": "แก้ไข"
   },
   "games": {
     "title": "เกม",

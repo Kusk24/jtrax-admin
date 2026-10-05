@@ -31,6 +31,13 @@ describe("Academy Contact", () => {
     expect(phone.value).toBe("02-853-9836 / 099-0156-156");
     expect((screen.getByLabelText("Address 1") as HTMLTextAreaElement).value).toBe("Paradise Park Mall, Bangkok");
 
+    /* Read-only until Edit: nothing to type in, no Add address, no Save. */
+    expect(phone.readOnly).toBe(true);
+    expect(screen.queryByRole("button", { name: /Add address/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: /Edit/ }));
+    expect(phone.readOnly).toBe(false);
+
     await user.clear(phone);
     await user.type(phone, "02-111-2222");
     await user.click(screen.getByRole("button", { name: /Add address/ }));
@@ -40,5 +47,23 @@ describe("Academy Contact", () => {
     expect(setConfig).toHaveBeenCalledWith("academy_phone", "02-111-2222");
     expect(setConfig).toHaveBeenCalledWith("academy_address", "Paradise Park Mall, Bangkok\nSecond Branch, Bangkok");
     expect(setConfig).toHaveBeenCalledTimes(2);
+  });
+
+  it("puts back what is saved on Cancel", async () => {
+    setConfig.mockClear();
+    const user = userEvent.setup();
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <AcademyContactCard />
+      </NextIntlClientProvider>,
+    );
+    await user.click(screen.getByRole("button", { name: /Edit/ }));
+    const phone = screen.getByLabelText(/^Phone/) as HTMLInputElement;
+    await user.clear(phone);
+    await user.type(phone, "000");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(phone.value).toBe("02-853-9836 / 099-0156-156");
+    expect(phone.readOnly).toBe(true);
+    expect(setConfig).not.toHaveBeenCalled();
   });
 });

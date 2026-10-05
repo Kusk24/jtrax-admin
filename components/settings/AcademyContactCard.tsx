@@ -5,6 +5,9 @@
  * public pages' footer, the registration form, the payment pages and every
  * email's footer show (academy_* in system_configuration). A field left empty
  * is left out of the public footer; the emails fall back to the website's.
+ *
+ * Read-only until the pencil is pressed, so a stray tap cannot change what
+ * every family sees; Cancel puts back what is saved.
  */
 import { useState } from "react";
 import { useTranslations } from "next-intl";
@@ -39,6 +42,7 @@ export function AcademyContactCard() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const value = (key: string) => edits[key] ?? saved(key);
   const shownAddresses = addresses ?? (saved(ADDRESS) ? saved(ADDRESS).split("\n") : [""]);
@@ -58,6 +62,7 @@ export function AcademyContactCard() {
       if (addressValue !== saved(ADDRESS)) await setConfig(ADDRESS, addressValue);
       setEdits({});
       setAddresses(null);
+      setEditing(false);
       setDone(true);
       setTimeout(() => setDone(false), 2200);
     } catch (e) {
@@ -68,10 +73,33 @@ export function AcademyContactCard() {
   }
 
   const hint = { fontFamily: FONT, fontSize: 12, color: COLORS.textSecondary, marginTop: 4 } as const;
+  /* Read-only fields look like text in a box, not like something to type in. */
+  const field = editing ? fieldStyle : { ...fieldStyle, background: COLORS.neutralBg, color: COLORS.text, cursor: "default" };
+
+  function cancel() {
+    setEdits({});
+    setAddresses(null);
+    setError(null);
+    setEditing(false);
+  }
 
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>{t("contactDesc")}</p>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+        <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>{t("contactDesc")}</p>
+        {!editing && (
+          <button
+            type="button"
+            onClick={() => {
+              setDone(false);
+              setEditing(true);
+            }}
+            style={{ ...secondaryButtonStyle, display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0 }}
+          >
+            <Icon name="edit" size={14} /> {t("contactEdit")}
+          </button>
+        )}
+      </div>
       {error && <ErrorNote>{error}</ErrorNote>}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
@@ -81,10 +109,12 @@ export function AcademyContactCard() {
             <input
               type={f.type}
               value={value(f.key)}
+              readOnly={!editing}
+              placeholder={editing ? undefined : "—"}
               onChange={(e) => setEdits({ ...edits, [f.key]: e.target.value })}
-              style={fieldStyle}
+              style={field}
             />
-            {"hint" in f && f.hint && <span style={{ ...hint, display: "block" }}>{t(f.hint)}</span>}
+            {editing && "hint" in f && f.hint && <span style={{ ...hint, display: "block" }}>{t(f.hint)}</span>}
           </label>
         ))}
       </div>
@@ -97,14 +127,15 @@ export function AcademyContactCard() {
               rows={2}
               value={a}
               aria-label={t("contactAddressN", { n: i + 1 })}
+              readOnly={!editing}
               onChange={(e) => {
                 const next = [...shownAddresses];
                 next[i] = e.target.value.replace(/\n/g, " ");
                 setAddresses(next);
               }}
-              style={{ ...fieldStyle, flex: 1, resize: "vertical", minHeight: 52 }}
+              style={{ ...field, flex: 1, resize: editing ? "vertical" : "none", minHeight: 52 }}
             />
-            {shownAddresses.length > 1 && (
+            {editing && shownAddresses.length > 1 && (
               <button
                 type="button"
                 aria-label={t("contactRemoveAddress", { n: i + 1 })}
@@ -116,21 +147,32 @@ export function AcademyContactCard() {
             )}
           </div>
         ))}
-        <button
-          type="button"
-          onClick={() => setAddresses([...shownAddresses, ""])}
-          style={{ ...secondaryButtonStyle, alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6 }}
-        >
-          <Icon name="plus" size={14} /> {t("contactAddAddress")}
-        </button>
+        {editing && (
+          <button
+            type="button"
+            onClick={() => setAddresses([...shownAddresses, ""])}
+            style={{ ...secondaryButtonStyle, alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6 }}
+          >
+            <Icon name="plus" size={14} /> {t("contactAddAddress")}
+          </button>
+        )}
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 12, justifyContent: "flex-end" }}>
-        {done && <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.success }}>{t("contactSaved")}</span>}
-        <button type="button" className="jt-btn-primary" style={primaryButtonStyle} disabled={!changed || busy} onClick={save}>
-          {busy ? tCommon("saving") : tCommon("save")}
-        </button>
-      </div>
+      {done && !editing && (
+        <span role="status" style={{ fontFamily: FONT, fontSize: 13, color: COLORS.success, alignSelf: "flex-end" }}>
+          {t("contactSaved")}
+        </span>
+      )}
+      {editing && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "flex-end" }}>
+          <button type="button" className="jt-btn-ghost" style={secondaryButtonStyle} disabled={busy} onClick={cancel}>
+            {tCommon("cancel")}
+          </button>
+          <button type="button" className="jt-btn-primary" style={primaryButtonStyle} disabled={!changed || busy} onClick={save}>
+            {busy ? tCommon("saving") : tCommon("save")}
+          </button>
+        </div>
+      )}
     </Card>
   );
 }

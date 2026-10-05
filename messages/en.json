@@ -1278,7 +1278,8 @@
     "contactAddressN": "Address {n}",
     "contactRemoveAddress": "Remove address {n}",
     "contactAddAddress": "Add address",
-    "contactSaved": "Saved"
+    "contactSaved": "Saved",
+    "contactEdit": "Edit"
   },
   "games": {
     "title": "Games",
