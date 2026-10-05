@@ -146,7 +146,11 @@ export function RoundingExplainer({ step, onClose }: { step: number; onClose: ()
           <span><Swatch color={COLORS.blue} /> {t("roundLegendThere")}</span>
           <span><Swatch color={COLORS.warning} faded /> {t("roundLegendMissed")}</span>
         </div>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: FONT, fontSize: 13.5, fontVariantNumeric: "tabular-nums" }}>
+        <table style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse", fontFamily: FONT, fontSize: 13.5, fontVariantNumeric: "tabular-nums" }}>
+          {/* Four equal columns. */}
+          <colgroup>
+            {[0, 1, 2, 3].map((i) => <col key={i} style={{ width: "25%" }} />)}
+          </colgroup>
           <thead>
             <tr style={{ color: COLORS.textSecondary }}>
               <th style={{ ...cell, ...first, fontWeight: 600 }}>{t("roundColMissed")}</th>
