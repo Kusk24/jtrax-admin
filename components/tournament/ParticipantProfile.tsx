@@ -242,14 +242,14 @@ export function ParticipantProfile({
               <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>{t("onChessResults", { name: standing.name })}</span>
             )}
           </div>
+          {/* The same actions as the participant's row in the table. */}
+          {participant && (onEdit || onDelete) && (
+            <div style={{ marginLeft: "auto", display: "flex", gap: 8, flexShrink: 0 }}>
+              {onEdit && <EditButton onClick={() => onEdit(participant)} />}
+              {onDelete && <DeleteButton onClick={() => onDelete(participant)} />}
+            </div>
+          )}
         </div>
-        {/* The same actions as the participant's row in the table. */}
-        {participant && (onEdit || onDelete) && (
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {onEdit && <EditButton onClick={() => onEdit(participant)} />}
-            {onDelete && <DeleteButton onClick={() => onDelete(participant)} />}
-          </div>
-        )}
         {student && (
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <Badge color={COLORS.blue} bg={COLORS.light}>
