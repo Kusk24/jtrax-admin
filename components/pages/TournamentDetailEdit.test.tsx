@@ -510,6 +510,20 @@ describe("adding a participant", () => {
     tearDown();
   });
 
+  it("warns, but does not stop, when the tournament is full", async () => {
+    setUp();
+    tournaments = [{ ...tournaments[0], maxParticipants: 1 }];
+    registrations = [{ tournament_registration_id: "treg_1", tournament_id: TOURNAMENT_ID, participant_name: "Alice", status: "Approved" }];
+    const user = openDetail();
+    await user.click(screen.getByRole("button", { name: /^participants/i }));
+    await user.click(screen.getByRole("button", { name: new RegExp(`^${en.tournament.addParticipant}`) }));
+    const dialog = within(screen.getByRole("dialog"));
+    expect(dialog.getByText("This tournament is full (1 / 1). Adding goes over the limit.")).toBeDefined();
+    expect((dialog.getByRole("button", { name: /^Save/ }) as HTMLButtonElement).disabled).toBe(false);
+    registrations = [];
+    tearDown();
+  });
+
   it("keeps a fee typed by hand", async () => {
     setUp();
     const user = openDetail();

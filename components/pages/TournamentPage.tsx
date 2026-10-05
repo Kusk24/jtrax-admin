@@ -542,6 +542,32 @@ function TournamentDetail({
           isEdit={participantModal !== "new"}
           fields={participantFields}
           values={participantValues}
+          /* The public form and the parent portal close when the tournament is
+             full; the desk may still add one more, but knowingly. Counted as
+             the server counts: entries approved or awaiting approval. */
+          extra={(() => {
+            if (participantModal !== "new" || !tournament.maxParticipants) return undefined;
+            const taken = raw.tournamentRegistrations.filter(
+              (r) => String(r["tournament_id"]) === tournament.id && ["Pending", "Approved", ""].includes(String(r["status"] ?? "")),
+            ).length;
+            if (taken < tournament.maxParticipants) return undefined;
+            return (
+              <div
+                role="note"
+                style={{
+                  padding: "9px 12px",
+                  borderRadius: 9,
+                  background: COLORS.warningBg,
+                  color: COLORS.warning,
+                  fontFamily: FONT,
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                }}
+              >
+                {t("fullWarning", { taken, max: tournament.maxParticipants })}
+              </div>
+            );
+          })()}
           onChange={(next) => {
             /* Picking a JCA student fills what their record already knows.
                Changing to another student replaces what the first one filled

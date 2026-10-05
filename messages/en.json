@@ -1069,7 +1069,8 @@
     "feeReason_student": "JCA student fee ({pct}% off)",
     "feeReason_studentEarlyBird": "JCA student, early-bird fee",
     "feeReason_studentEarlyBirdDiscount": "JCA student, early-bird fee with {pct}% off",
-    "cancelReleases": "Moves them to Released places"
+    "cancelReleases": "Moves them to Released places",
+    "fullWarning": "This tournament is full ({taken} / {max}). Adding goes over the limit."
   },
   "announcement": {
     "title": "Announcement",
