@@ -388,11 +388,11 @@ describe("editing a participant", () => {
     expect(labels).not.toContain(en.tournament.rating);
   });
 
-  it("says in words when the email is already another entry's, and saves nothing", async () => {
+  it("lets one email enter another child, but says so for the same player and saves nothing", async () => {
     tournaments = [withEntry()];
     registrations = [
-      { tournament_registration_id: "treg_1", tournament_id: TOURNAMENT_ID, contact_email: "alice@example.com", participant_name: "Alice", status: "Approved" },
-      { tournament_registration_id: "treg_2", tournament_id: TOURNAMENT_ID, contact_email: "bob@example.com", participant_name: "Bob", status: "Approved" },
+      { tournament_registration_id: "treg_1", tournament_id: TOURNAMENT_ID, contact_email: "alice@example.com", participant_name: "Alice", participant_date_of_birth: "2019-03-01", status: "Approved" },
+      { tournament_registration_id: "treg_2", tournament_id: TOURNAMENT_ID, contact_email: "bob@example.com", participant_name: "Bob", participant_date_of_birth: "2019-03-01", status: "Approved" },
     ];
     update.mockClear();
     const user = openDetail();
@@ -400,12 +400,21 @@ describe("editing a participant", () => {
     await user.click(screen.getByRole("button", { name: /^Edit Alice/ }));
     const dialog = within(screen.getByRole("dialog"));
     const email = dialog.getByLabelText(/^Parent email/) as HTMLInputElement;
+    const name = dialog.getByLabelText(/^Name \(English\)/) as HTMLInputElement;
     await user.clear(email);
     await user.type(email, "BOB@example.com");
+    await user.clear(name);
+    await user.type(name, "bob");
     await user.click(dialog.getByRole("button", { name: /^Save/ }));
 
-    expect(await dialog.findByText("This email is already used by Bob's entry in this tournament.")).toBeDefined();
+    expect(await dialog.findByText("Bob is already entered in this tournament.")).toBeDefined();
     expect(update.mock.calls.some((c) => c[0] === "tournament-registrations")).toBe(false);
+
+    /* The same email for a different child is fine. */
+    await user.clear(name);
+    await user.type(name, "Alice");
+    await user.click(dialog.getByRole("button", { name: /^Save/ }));
+    await waitFor(() => expect(update.mock.calls.some((c) => c[0] === "tournament-registrations")).toBe(true));
     registrations = [];
   });
 

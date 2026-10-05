@@ -582,16 +582,18 @@ function TournamentDetail({
           }}
           onClose={() => setParticipantModal(null)}
           onSubmit={async (payload) => {
-            /* One entry per child and per email: said in words, before the
-               server refuses it. */
+            /* One entry per player — one email may enter several children —
+               said in words, before the server refuses it. */
             const dup = duplicateEntry(raw.tournamentRegistrations, {
               tournamentId: tournament.id,
               studentId: String(payload.student_id ?? ""),
               email: String(payload.contact_email ?? ""),
+              name: String(payload.participant_name ?? ""),
+              dateOfBirth: String(payload.participant_date_of_birth ?? ""),
               id: participantModal === "new" ? undefined : participantModal.id,
             });
             if (dup) {
-              const key = `dup${dup.by === "student" ? "Student" : "Email"}${dup.state[0].toUpperCase()}${dup.state.slice(1)}`;
+              const key = `dupStudent${dup.state[0].toUpperCase()}${dup.state.slice(1)}`;
               throw new Error(t(key, { name: dup.name || t("thisPlayer") }));
             }
             if (participantModal === "new") {
