@@ -9,6 +9,7 @@ import type {
 } from "./data";
 import { MONTH_SHORT } from "./theme";
 import { ageCheck, ageOn } from "./age-group";
+import { classTypeOf } from "./class-face";
 import { DEFAULT_CREDIT_RULES, RULE_KEYS, type CreditRules, type TrendPoint } from "./derive";
 import type { JtraxRole } from "./theme";
 
@@ -613,6 +614,7 @@ export function toTodaysClasses(c: LiveCollections, day = todayISO()): ClassDef[
         start,
         classId: s(session, "class_id"),
         category: categoryOf(name, cls ? s(cls, "level") : ""),
+        classType: cls ? classTypeOf(s(cls, "class_type")) : undefined,
         name,
         time: start && end ? `${fmtTime(start)} – ${fmtTime(end)}` : fmtTime(start),
         /* The design's card has two states; a session not yet started reads as
@@ -647,6 +649,7 @@ export function toCancelledClasses(c: LiveCollections, day = todayISO()): ClassD
         start,
         classId: s(session, "class_id"),
         category: categoryOf(name, cls ? s(cls, "level") : ""),
+        classType: cls ? classTypeOf(s(cls, "class_type")) : undefined,
         name,
         time: start && end ? `${fmtTime(start)} – ${fmtTime(end)}` : fmtTime(start),
         status: "Cancelled",

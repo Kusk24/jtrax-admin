@@ -91,6 +91,7 @@ function ClassCard({ def, now, onView }: { def: ClassDef; now: Date; onView: (de
   const tStatus = useTranslations("status");
   const tDash = useTranslations("dashboard");
   const accent = CLASS_CATEGORY_COLORS[def.category] ?? COLORS.blue;
+  const tClassType = useTranslations("classType");
   const shownStatus = classStatusNow(def, now, todayISO());
   const status = statusChipColors(shownStatus);
   /* A running class with a quarter of an hour or less to go. */
@@ -158,6 +159,11 @@ function ClassCard({ def, now, onView }: { def: ClassDef; now: Date; onView: (de
               }}
             >
               {def.name}
+              {/* How it is taught, beside the name: Private and Group price very
+                  differently, and the name alone does not say which. */}
+              {def.classType && (
+                <span style={{ fontWeight: 500, color: COLORS.textSecondary }}> · {tClassType(def.classType)}</span>
+              )}
             </span>
           </span>
           <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>

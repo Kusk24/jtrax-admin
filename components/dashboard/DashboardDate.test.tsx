@@ -23,7 +23,7 @@ const empty: Record<string, unknown>[] = [];
 const raw = {
   students: [{ student_id: "mini", name: "Mini" }],
   classes: [
-    { class_id: "master", name: "Master", class_type: "Master" },
+    { class_id: "master", name: "Master", class_type: "Private" },
     { class_id: "slayer", name: "King Slayer", class_type: "Group" },
   ],
   classSessions: [
@@ -75,6 +75,14 @@ describe("the class list on another day", () => {
     );
     expect(names).toEqual(["Master", "King Slayer"]);
     expect(screen.queryByText("Ongoing", { selector: ".jt-class-card *" })).toBeNull();
+  });
+
+  it("names each class with how the course is taught", () => {
+    onDay(PAST, <TodaysClasses onViewClass={() => {}} />);
+    const cards = [...document.querySelectorAll(".jt-class-card")] as HTMLElement[];
+    /* After the name, as plain text: "Master · Private". */
+    expect(cards[0].textContent).toContain("Master · Private");
+    expect(cards[1].textContent).toContain("King Slayer · Group");
   });
 
   it("shows a later day's classes as Scheduled", () => {
