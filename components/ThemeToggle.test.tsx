@@ -21,6 +21,7 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
+import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
@@ -103,3 +104,36 @@ describe("the pill in the browser", () => {
     vi.unstubAllGlobals();
   });
 });
+
+/* Leaving Settings unmounts the pill. Coming back used to start it again
+   from the theme the console loaded with — Light pressed over a dark screen. */
+describe("coming back to Settings", () => {
+  function App() {
+    const [onSettings, setOnSettings] = useState(true);
+    return (
+      <>
+        <button onClick={() => setOnSettings((v) => !v)}>switch page</button>
+        {onSettings && <ThemeToggle />}
+      </>
+    );
+  }
+
+  it("still shows the theme chosen on this visit", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 204 })));
+    const user = userEvent.setup();
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <JtraxProvider person={person} theme="Light">
+          <App />
+        </JtraxProvider>
+      </NextIntlClientProvider>,
+    );
+    const dark = () => screen.getByRole("button", { name: en.nav.themeDark });
+    await user.click(dark());
+    await user.click(screen.getByRole("button", { name: "switch page" }));
+    await user.click(screen.getByRole("button", { name: "switch page" }));
+    expect(dark().getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: en.nav.themeLight }).getAttribute("aria-pressed")).toBe("false");
+  });
+});
+
