@@ -409,7 +409,32 @@ describe("the enrolment card's dates", () => {
     expect(within(dialog).getByText("31 Dec 2026")).toBeTruthy();
     expect(within(dialog).getByText("8 credits")).toBeTruthy();
     expect(within(dialog).queryByRole("textbox")).toBeNull();
-    expect(within(dialog).getByRole("button", { name: "Edit" })).toBeTruthy();
+    /* The row's menu, as buttons: the same four acts in both places. */
+    expect(within(dialog).getAllByRole("button").map((b) => b.getAttribute("aria-label")).filter((l) => l && l !== "Close")).toEqual([
+      "Add credits for Beginner",
+      "Change Beginner to another course",
+      "Edit the Beginner enrolment",
+      "Delete the enrolment in Beginner",
+    ]);
+  });
+
+  it("opens straight into editing from the row's Edit", async () => {
+    const user = renderList();
+    await openStudent(user, "Anong");
+
+    await user.click(actionsOf(enrolmentRow("Beginner")).getByRole("menuitem", { name: "Edit the Beginner enrolment" }));
+    const dialog = screen.getByRole("dialog");
+    expect((within(dialog).getByLabelText("Expires") as HTMLInputElement).value).toBe("2026-12-31");
+  });
+
+  it("leaves the enrolment for Change course", async () => {
+    const user = renderList();
+    await openStudent(user, "Anong");
+
+    const dialog = await openEnrolment(user, "Beginner");
+    await user.click(within(dialog).getByRole("button", { name: "Change Beginner to another course" }));
+    expect(screen.queryByText("Beginner enrolment")).toBeNull();
+    expect(screen.getByRole("dialog")).toBeDefined();
   });
 
   it("opens a never-expiring row too, and says why its expiry cannot be set", async () => {
@@ -419,7 +444,7 @@ describe("the enrolment card's dates", () => {
     const dialog = await openEnrolment(user, "Intermediate");
     expect(within(dialog).getByText("Never expires")).toBeTruthy();
 
-    await user.click(within(dialog).getByRole("button", { name: "Edit" }));
+    await user.click(within(dialog).getByRole("button", { name: /^Edit the / }));
     expect((within(dialog).getByLabelText("Expires") as HTMLInputElement).disabled).toBe(true);
     expect(within(dialog).getByText(/No credits have been bought for this course yet/)).toBeTruthy();
   });
@@ -432,7 +457,7 @@ describe("the enrolment card's dates", () => {
 
     await user.click(within(enrolmentRow("Beginner")).getByRole("button", { name: "View the Beginner enrolment" }));
     const dialog = screen.getByRole("dialog");
-    await user.click(within(dialog).getByRole("button", { name: "Edit" }));
+    await user.click(within(dialog).getByRole("button", { name: /^Edit the / }));
 
     const expires = within(dialog).getByLabelText("Expires") as HTMLInputElement;
     await user.clear(expires);
@@ -450,7 +475,7 @@ describe("the enrolment card's dates", () => {
     await openStudent(user, "Anong");
 
     const dialog = await openEnrolment(user, "Beginner");
-    await user.click(within(dialog).getByRole("button", { name: "Edit" }));
+    await user.click(within(dialog).getByRole("button", { name: /^Edit the / }));
     const expires = within(dialog).getByLabelText("Expires") as HTMLInputElement;
     await user.clear(expires);
     await user.type(expires, "2025-01-01");
