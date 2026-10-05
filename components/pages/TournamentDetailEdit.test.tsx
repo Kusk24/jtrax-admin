@@ -11,7 +11,7 @@
  * reading the code.
  */
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
@@ -84,12 +84,14 @@ const batch = vi.fn(async (job: () => Promise<unknown>) => job());
 
 let tournaments: Tournament[] = [makeTournament()];
 let registrations: Record<string, unknown>[] = [];
+let rawTournaments: Record<string, unknown>[] = [rawTournamentRow];
+let students: Array<Record<string, unknown>> = [];
 
 vi.mock("@/components/DataProvider", () => ({
   useData: () => ({
-    raw: { tournaments: [rawTournamentRow], tournamentCategories: [], tournamentRegistrations: registrations, students: [] },
+    raw: { tournaments: rawTournaments, tournamentCategories: [], tournamentRegistrations: registrations, students: [] },
     tournaments,
-    students: [],
+    students,
     create,
     update,
     remove,
@@ -416,5 +418,61 @@ describe("editing a participant", () => {
     const edits = screen.getAllByRole("button", { name: en.common.edit });
     await user.click(edits[edits.length - 1]);
     expect(screen.getByRole("dialog").textContent).toContain(en.tournament.editParticipant);
+  });
+});
+
+/* The Add form fills the fee and the category in, and says why. */
+describe("adding a participant", () => {
+  const setUp = () => {
+    tournaments = [
+      makeTournament({
+        categoryRows: [{ id: "cat_8", name: "U8" }, { id: "cat_10", name: "U10" }],
+        categories: ["U8", "U10"],
+      }),
+    ];
+    rawTournaments = [{ ...rawTournamentRow, early_bird_deadline: "2099-01-01" }];
+    students = [{ id: "stu_penny", name: "Penny" }];
+  };
+  const tearDown = () => {
+    rawTournaments = [rawTournamentRow];
+    students = [];
+  };
+
+  it("fills the fee for who they are and the category from the date of birth", async () => {
+    setUp();
+    const user = openDetail();
+    await user.click(screen.getByRole("button", { name: /^participants/i }));
+    await user.click(screen.getByRole("button", { name: new RegExp(`^${en.tournament.addParticipant}`) }));
+    const dialog = within(screen.getByRole("dialog"));
+    const fee = dialog.getByLabelText(/^Fee charged/) as HTMLInputElement;
+
+    /* Someone from outside, during the early bird. */
+    expect(fee.value).toBe("250");
+    expect(dialog.getByText(en.tournament.feeReason_earlyBird)).toBeDefined();
+
+    /* A JCA student: 20% off the regular 300. */
+    await user.selectOptions(dialog.getByLabelText(/^JCA student/), "stu_penny");
+    expect(fee.value).toBe("240");
+    expect(dialog.getByText("JCA student fee (20% off)")).toBeDefined();
+
+    /* Born 2019: U8 at an event this year. */
+    fireEvent.change(dialog.getByLabelText(/^Date of birth/), { target: { value: "2019-03-01" } });
+    expect((dialog.getByLabelText(/^Category/) as HTMLSelectElement).value).toBe("cat_8");
+    tearDown();
+  });
+
+  it("keeps a fee typed by hand", async () => {
+    setUp();
+    const user = openDetail();
+    await user.click(screen.getByRole("button", { name: /^participants/i }));
+    await user.click(screen.getByRole("button", { name: new RegExp(`^${en.tournament.addParticipant}`) }));
+    const dialog = within(screen.getByRole("dialog"));
+    const fee = dialog.getByLabelText(/^Fee charged/) as HTMLInputElement;
+    await user.clear(fee);
+    await user.type(fee, "100");
+    await user.selectOptions(dialog.getByLabelText(/^JCA student/), "stu_penny");
+    expect(fee.value).toBe("100");
+    expect(dialog.queryByText("JCA student fee (20% off)")).toBeNull();
+    tearDown();
   });
 });
