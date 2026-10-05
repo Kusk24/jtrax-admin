@@ -1059,7 +1059,14 @@
     "ageFromDob": "From the date of birth",
     "needDeskMethod": "Choose Cash, PromptPay or Bank transfer to mark it paid.",
     "methodCreditCard": "Card",
-    "cancelled": "Cancelled"
+    "cancelled": "Cancelled",
+    "dupStudentEntered": "{name} is already entered in this tournament.",
+    "dupStudentPending": "{name} already has an entry waiting for approval in this tournament.",
+    "dupStudentReleased": "{name}'s place in this tournament was released. Restore it from Released places instead.",
+    "dupEmailEntered": "This email is already used by {name}'s entry in this tournament.",
+    "dupEmailPending": "This email is already used by {name}'s entry, waiting for approval.",
+    "dupEmailReleased": "This email is already used by {name}'s released place. Restore it from Released places instead.",
+    "thisPlayer": "This player"
   },
   "announcement": {
     "title": "Announcement",

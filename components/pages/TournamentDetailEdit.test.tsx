@@ -83,10 +83,11 @@ const remove = vi.fn(async (_collection: string, _id: string) => undefined);
 const batch = vi.fn(async (job: () => Promise<unknown>) => job());
 
 let tournaments: Tournament[] = [makeTournament()];
+let registrations: Record<string, unknown>[] = [];
 
 vi.mock("@/components/DataProvider", () => ({
   useData: () => ({
-    raw: { tournaments: [rawTournamentRow], tournamentCategories: [], tournamentRegistrations: [], students: [] },
+    raw: { tournaments: [rawTournamentRow], tournamentCategories: [], tournamentRegistrations: registrations, students: [] },
     tournaments,
     students: [],
     create,
@@ -383,6 +384,27 @@ describe("editing a participant", () => {
     ];
     expect(order.map(at).every((i, k, all) => i >= 0 && (k === 0 || i > all[k - 1]))).toBe(true);
     expect(labels).not.toContain(en.tournament.rating);
+  });
+
+  it("says in words when the email is already another entry's, and saves nothing", async () => {
+    tournaments = [withEntry()];
+    registrations = [
+      { tournament_registration_id: "treg_1", tournament_id: TOURNAMENT_ID, contact_email: "alice@example.com", participant_name: "Alice", status: "Approved" },
+      { tournament_registration_id: "treg_2", tournament_id: TOURNAMENT_ID, contact_email: "bob@example.com", participant_name: "Bob", status: "Approved" },
+    ];
+    update.mockClear();
+    const user = openDetail();
+    await user.click(screen.getByRole("button", { name: /^participants/i }));
+    await user.click(screen.getByRole("button", { name: /^Edit Alice/ }));
+    const dialog = within(screen.getByRole("dialog"));
+    const email = dialog.getByLabelText(/^Parent email/) as HTMLInputElement;
+    await user.clear(email);
+    await user.type(email, "BOB@example.com");
+    await user.click(dialog.getByRole("button", { name: /^Save/ }));
+
+    expect(await dialog.findByText("This email is already used by Bob's entry in this tournament.")).toBeDefined();
+    expect(update.mock.calls.some((c) => c[0] === "tournament-registrations")).toBe(false);
+    registrations = [];
   });
 
   it("can be started from the slide-in profile", async () => {

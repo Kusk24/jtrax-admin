@@ -16,6 +16,7 @@ import { TournamentBanner } from "../tournament/TournamentBanner";
 import { BannerCard } from "../tournament/BannerCard";
 import { mapEmbedUrl } from "@/lib/maps";
 import { useNewParticipants } from "@/lib/seen-participants";
+import { duplicateEntry } from "@/lib/duplicate-entry";
 import { useTranslations } from "next-intl";
 import { removeIfPresent } from "@/lib/credentials";
 import { type Participant, type Tournament } from "@/lib/data";
@@ -533,6 +534,18 @@ function TournamentDetail({
           }}
           onClose={() => setParticipantModal(null)}
           onSubmit={async (payload) => {
+            /* One entry per child and per email: said in words, before the
+               server refuses it. */
+            const dup = duplicateEntry(raw.tournamentRegistrations, {
+              tournamentId: tournament.id,
+              studentId: String(payload.student_id ?? ""),
+              email: String(payload.contact_email ?? ""),
+              id: participantModal === "new" ? undefined : participantModal.id,
+            });
+            if (dup) {
+              const key = `dup${dup.by === "student" ? "Student" : "Email"}${dup.state[0].toUpperCase()}${dup.state.slice(1)}`;
+              throw new Error(t(key, { name: dup.name || t("thisPlayer") }));
+            }
             if (participantModal === "new") {
               /* The payment fields are not the entry's own columns. */
               const { [PAY_METHOD]: method, [PAY_REFERENCE]: reference, ...entry } = payload;
