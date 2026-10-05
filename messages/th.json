@@ -19,7 +19,8 @@
     "themeLight": "สว่าง",
     "themeDark": "มืด",
     "expandNav": "ขยายเมนูนำทาง",
-    "collapseNav": "ย่อเมนูนำทาง"
+    "collapseNav": "ย่อเมนูนำทาง",
+    "unreadMessages": "ข้อความที่ยังไม่ได้อ่าน {count} ข้อความ"
   },
   "roles": {
     "Admin": "ผู้ดูแล",
