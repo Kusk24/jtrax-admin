@@ -162,7 +162,7 @@ describe("revenueSeries", () => {
       [
         paid("2026-09-18", "1000"),
         { isoDate: "2026-09-18", amount: "5000", status: "Pending" },
-        { isoDate: "2026-09-18", amount: "7000", status: "Refunded" },
+        { isoDate: "2026-09-18", amount: "7000", status: "Expired" },
       ],
       "7D",
       now,
@@ -214,7 +214,7 @@ describe("monthToDate", () => {
     const d = monthToDate([
       paid("2026-09-01", "1000"),
       { isoDate: "2026-09-02", amount: "500", status: "Pending" as const },
-      { isoDate: "2026-09-03", amount: "700", status: "Refunded" as const },
+      { isoDate: "2026-09-03", amount: "700", status: "Expired" as const },
     ], now);
     expect(d.current).toBe(1000);
   });

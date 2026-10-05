@@ -96,7 +96,7 @@ export type Payment = {
   publicEntry?: boolean;
   /** The course this paid for was deleted from the student. */
   courseDeleted?: boolean;
-  status: 'Paid' | 'Pending' | 'Refunded';
+  status: 'Paid' | 'Pending' | 'Expired';
   /** A tournament entry fee, or credits for a course. */
   kind?: 'tournament' | 'course';
 };
@@ -192,7 +192,7 @@ export type Participant = {
   prize: string;
   paymentStatus: string;
   /** The payment row behind the entry, when there is one: its own status
-      (Pending, Paid, Refunded, Expired) and how it was paid. */
+      (Pending, Paid, Expired) and how it was paid. */
   payment?: { id: string; status: string; method: string };
   age: number;
   guardian: string;

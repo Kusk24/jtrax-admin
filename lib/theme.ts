@@ -204,7 +204,6 @@ export function statusChipColors(status: string): { color: string; bg: string } 
     case "Scheduled":
       return { color: COLORS.warning, bg: COLORS.warningBg };
     case "Expired":
-    case "Refunded":
     case "Absent":
     case "Cancelled":
       return { color: COLORS.danger, bg: COLORS.dangerBg };

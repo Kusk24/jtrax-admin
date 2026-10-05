@@ -69,7 +69,7 @@ function expiryFrom(isoDate: string, validityDays: number): string | null {
     them so a pending transfer is never mistaken for a settled one. */
 function statusChip(status: Payment["status"]): { color: string; bg: string } {
   if (status === "Pending") return { color: COLORS.warning, bg: COLORS.warningBg };
-  if (status === "Refunded") return { color: COLORS.danger, bg: COLORS.dangerBg };
+  if (status === "Expired") return { color: COLORS.danger, bg: COLORS.dangerBg };
   return { color: COLORS.success, bg: COLORS.successBg };
 }
 
