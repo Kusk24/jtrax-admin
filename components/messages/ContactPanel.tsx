@@ -14,6 +14,11 @@ import { InfoGrid, secondaryButtonStyle } from "../page-kit";
 import { Badge, SectionTitle } from "../ui";
 import { LinkAccountModal, type LinkTarget } from "./LinkAccountModal";
 
+/** "U24a5be53b…": enough to tell two apart at a glance. */
+export function shortId(id: string): string {
+  return id.length > 10 ? `${id.slice(0, 10)}…` : id;
+}
+
 export function ContactPanel({
   contact,
   conversations,
@@ -83,11 +88,9 @@ export function ContactPanel({
             label: t("lineUserId"),
             value: (
               <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                <code
-                  title={contact.lineUserId}
-                  style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12, color: COLORS.textSecondary }}
-                >
-                  {contact.lineUserId}
+                {/* The first ten characters; the copy button takes the whole. */}
+                <code title={contact.lineUserId} style={{ whiteSpace: "nowrap", fontSize: 12, color: COLORS.textSecondary }}>
+                  {shortId(contact.lineUserId)}
                 </code>
                 <button
                   type="button"

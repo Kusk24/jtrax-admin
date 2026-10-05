@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
-import { stickerImage } from "@/lib/line-stickers";
+import { stickerCdnUrl, stickerImage } from "@/lib/line-stickers";
 import { StickerMessage } from "./StickerMessage";
 
 const sticker = { packageId: "446", stickerId: "1988", resourceType: "STATIC" };
@@ -21,16 +21,25 @@ describe("a LINE sticker", () => {
     expect(screen.getByRole("img", { name: "Sticker" }).getAttribute("src")).toBe("/line-stickers/446-1988.png");
   });
 
-  it("is a placeholder, never [Sticker], when there is no local copy", () => {
+  it("is loaded from LINE's sticker store when there is no local copy", () => {
     show(<StickerMessage sticker={sticker} assets={{}} />);
-    const box = screen.getByRole("img", { name: "Sticker" });
-    expect(box.tagName).toBe("DIV");
+    expect(screen.getByRole("img", { name: "Sticker" }).getAttribute("src")).toBe(stickerCdnUrl("1988"));
+  });
+
+  it("falls back to a placeholder, never [Sticker], when that image will not load", () => {
+    show(<StickerMessage sticker={sticker} assets={{}} />);
+    fireEvent.error(screen.getByRole("img", { name: "Sticker" }));
+    expect(screen.getByRole("img", { name: "Sticker" }).tagName).toBe("DIV");
     expect(screen.queryByText("[Sticker]")).toBeNull();
   });
 
   it("is a placeholder for one saved before its ids were kept", () => {
     show(<StickerMessage assets={{ "446/1988": "/x.png" }} />);
     expect(screen.getByRole("img", { name: "Sticker" }).tagName).toBe("DIV");
+  });
+
+  it("names the image by its sticker id", () => {
+    expect(stickerCdnUrl("1988")).toBe("https://stickershop.line-scdn.net/stickershop/v1/sticker/1988/android/sticker.png");
   });
 
   it("shows a message sticker's own text", () => {

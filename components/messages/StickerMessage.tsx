@@ -1,12 +1,14 @@
 "use client";
 
-/* A LINE sticker in the thread: its image when the academy has it locally
-   (lib/line-stickers.ts), otherwise a placeholder. No bubble either way —
-   LINE draws stickers bare. A message sticker's own text goes underneath. */
+/* A LINE sticker in the thread: the academy's local copy if it has one, else
+   LINE's public image of it (lib/line-stickers.ts), else — no id, or the image
+   would not load — a placeholder. No bubble either way: LINE draws stickers
+   bare. A message sticker's own text goes underneath. */
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Icon } from "@/lib/icons";
 import type { LineSticker } from "@/lib/line";
-import { stickerImage, STICKER_ASSETS } from "@/lib/line-stickers";
+import { stickerCdnUrl, stickerImage, STICKER_ASSETS } from "@/lib/line-stickers";
 import { COLORS, FONT } from "@/lib/theme";
 
 const SIZE = 96;
@@ -21,12 +23,23 @@ export function StickerMessage({
   assets?: Record<string, string>;
 }) {
   const t = useTranslations("messages");
-  const src = stickerImage(sticker, assets);
+  const [failed, setFailed] = useState(false);
+  const src = failed
+    ? null
+    : stickerImage(sticker, assets) ?? (sticker?.stickerId ? stickerCdnUrl(sticker.stickerId) : null);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt={t("kindSticker")} width={SIZE} height={SIZE} style={{ objectFit: "contain" }} />
+        <img
+          src={src}
+          alt={t("kindSticker")}
+          width={SIZE}
+          height={SIZE}
+          referrerPolicy="no-referrer"
+          onError={() => setFailed(true)}
+          style={{ objectFit: "contain" }}
+        />
       ) : (
         <div
           role="img"
