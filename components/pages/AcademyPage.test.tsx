@@ -22,10 +22,10 @@ const batch = vi.fn(async (job: () => Promise<unknown>) => job());
 
 const state = {
   raw: {
-    /* Stored with the rook — the old code drew a queen for any Group class,
-       so a fixture that agreed with the guess would pass either way. */
+    /* Stored with the knight — not what a Group class would fall back to, so
+       a fixture that agreed with the guess cannot pass by accident. */
     classes: [
-      { class_id: "cls_group", name: "Group Class", class_type: "Group", icon: "rook", level: "Intermediate" },
+      { class_id: "cls_group", name: "Group Class", class_type: "Group", icon: "knight", level: "Intermediate", price_per_credit: 500 },
     ],
     creditPackages: [
       { credit_package_id: "pkg_1", class_id: "cls_group", credit_amount: 20, standard_price: 12000, validity_days: 90 },
@@ -207,12 +207,12 @@ describe("saving a class", () => {
     renderAcademy();
 
     await user.click(screen.getAllByRole("button", { name: /^Edit/ })[0]);
-    await user.click(screen.getByRole("button", { name: "rook" }));
+    await user.click(screen.getByRole("button", { name: "group" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     const [path, id, patch] = update.mock.calls[0] as unknown as [string, string, Record<string, unknown>];
     expect([path, id]).toEqual(["classes", "cls_group"]);
-    expect(patch.icon).toBe("rook");
+    expect(patch.icon).toBe("group");
   });
 
   it("opens on the stored level and sends a new one", async () => {
@@ -246,11 +246,11 @@ describe("saving a class", () => {
     const f = await openAddClass(user);
 
     await user.type(f.name, "Endgame Lab");
-    await user.click(screen.getByRole("button", { name: "bishop" }));
+    await user.click(screen.getByRole("button", { name: "knight" }));
     await user.click(f.save);
 
     const [, cls] = create.mock.calls[0] as unknown as [string, Record<string, unknown>];
-    expect(cls.icon).toBe("bishop");
+    expect(cls.icon).toBe("knight");
     expect(cls.level).toBe("Beginner");
     expect("badge" in cls).toBe(false);
     expect(screen.queryByLabelText("Badge")).toBeNull();
@@ -268,16 +268,46 @@ describe("saving a class", () => {
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     const [, , patch] = update.mock.calls[0] as unknown as [string, string, Record<string, unknown>];
-    expect(patch.icon).toBe("rook");
+    expect(patch.icon).toBe("knight");
     expect(patch.level).toBe("Intermediate");
+    expect(patch.price_per_credit).toBe(500);
   });
 });
 
-/* A course card reads name, then level and type. */
+/* A course card: the type as a tag in the corner, the level under the name. */
 describe("a course card", () => {
-  it("shows the level and type under the name", () => {
+  it("shows the type tag and the level", () => {
     renderAcademy();
-    expect(screen.getAllByText("Intermediate · Group").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Group").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Intermediate").length).toBeGreaterThan(0);
+  });
+});
+
+/* The price per credit starts new prices, and never overrides a typed one. */
+describe("the price per credit", () => {
+  it("fills the first package's price, until the price is typed", async () => {
+    const user = userEvent.setup();
+    renderAcademy();
+    const f = await openAddClass(user);
+    await user.type(screen.getByLabelText(/^Price per credit/), "600");
+    expect(f.price.value).toBe("12000"); // 20 credits × 600
+    await user.clear(f.credits);
+    await user.type(f.credits, "10");
+    expect(f.price.value).toBe("6000");
+    await user.clear(f.price);
+    await user.type(f.price, "5500");
+    await user.clear(f.credits);
+    await user.type(f.credits, "12");
+    expect(f.price.value).toBe("5500");
+  });
+
+  it("fills a new package's price from its course", async () => {
+    const user = userEvent.setup();
+    renderAcademy();
+    await user.click(screen.getByRole("button", { name: /Add Package/ }));
+    await user.selectOptions(screen.getByLabelText(/^Course/), "cls_group");
+    await user.type(screen.getByLabelText(/^Credits/), "8");
+    expect((screen.getByLabelText(/^Price/) as HTMLInputElement).value).toBe("4000");
   });
 });
 

@@ -1174,7 +1174,9 @@
     "validityMin": "Validity must be at least 1 day. Leave it blank for credits that never expire.",
     "level": "Level",
     "levelPick": "Choose a level",
-    "levelAndType": "Level · Type"
+    "levelAndType": "Level · Type",
+    "pricePerCredit": "Price per credit (THB)",
+    "pricePerCreditHelp": "Fills in new package and custom sale prices. Can be changed each time."
   },
   "settings": {
     "title": "Academy Rules",

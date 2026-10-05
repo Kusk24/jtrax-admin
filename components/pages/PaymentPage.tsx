@@ -193,13 +193,26 @@ export function RecordPaymentForm({
   /* Custom sale: any number of credits for any course, at any price. */
   const custom = packageId === CUSTOM;
   const courses = useMemo(
-    () => liveClasses({ classes: raw.classes }).map((c) => ({ id: String(c.class_id), name: String(c.name ?? "") })),
+    () =>
+      liveClasses({ classes: raw.classes }).map((c) => ({
+        id: String(c.class_id),
+        name: String(c.name ?? ""),
+        pricePerCredit: Number(c.price_per_credit ?? 0) || 0,
+      })),
     [raw.classes],
   );
   const [customClassId, setCustomClassId] = useState(
     initialClassId ?? courses.find((c) => c.name === prefilled?.className)?.id ?? courses[0]?.id ?? "",
   );
   const [customCredits, setCustomCredits] = useState(0);
+  /* A custom sale's amount starts as credits × the course's price per credit
+     — until somebody types an amount of their own, which then stays. */
+  const [amountTyped, setAmountTyped] = useState(false);
+  function suggestAmount(classId: string, credits: number) {
+    if (amountTyped) return;
+    const per = courses.find((c) => c.id === classId)?.pricePerCredit ?? 0;
+    if (per > 0 && credits > 0) setAmount(Math.round(per * credits * 100) / 100);
+  }
   const [method, setMethod] = useState(METHODS[0]);
   const [ref, setRef] = useState("");
 
@@ -459,7 +472,9 @@ export function RecordPaymentForm({
               onChange={(e) => {
                 setPackageId(e.target.value);
                 const pkg = packages.find((p) => p.id === e.target.value);
+                setAmountTyped(false);
                 if (pkg) setAmount(pkg.price);
+                else suggestAmount(customClassId, customCredits);
               }}
               style={selectStyle}
             >
@@ -478,7 +493,10 @@ export function RecordPaymentForm({
                 <select
                   id="pay-course"
                   value={customClassId}
-                  onChange={(e) => setCustomClassId(e.target.value)}
+                  onChange={(e) => {
+                    setCustomClassId(e.target.value);
+                    suggestAmount(e.target.value, customCredits);
+                  }}
                   style={selectStyle}
                 >
                   {courses.map((c) => (
@@ -494,7 +512,11 @@ export function RecordPaymentForm({
                   min={0}
                   step={0.5}
                   value={customCredits || ""}
-                  onChange={(e) => setCustomCredits(Math.max(0, Number(e.target.value) || 0))}
+                  onChange={(e) => {
+                    const credits = Math.max(0, Number(e.target.value) || 0);
+                    setCustomCredits(credits);
+                    suggestAmount(customClassId, credits);
+                  }}
                   style={fieldStyle}
                 />
               </div>
@@ -507,7 +529,10 @@ export function RecordPaymentForm({
               type="number"
               min={0}
               value={amount}
-              onChange={(e) => setAmount(Math.max(0, Number(e.target.value) || 0))}
+              onChange={(e) => {
+                setAmountTyped(true);
+                setAmount(Math.max(0, Number(e.target.value) || 0));
+              }}
               style={fieldStyle}
             />
           </div>

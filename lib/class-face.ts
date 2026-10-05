@@ -14,8 +14,8 @@
  */
 import type { IconName } from "./icons";
 
-/** What the picker offers: the six pieces, plus the trophy a Master class uses. */
-export const CLASS_ICONS: IconName[] = ["king", "queen", "rook", "knight", "bishop", "pawn", "trophy"];
+/** What the picker offers: four pieces, and three together for a group. */
+export const CLASS_ICONS: IconName[] = ["king", "queen", "knight", "pawn", "group"];
 
 /**
  * How a class is taught: Private (one-to-one) or Group. `class.class_type`.
@@ -63,7 +63,7 @@ export function classTypeOf(stored: unknown): ClassType {
 export function iconOf(stored: unknown, classType: string): IconName {
   const name = String(stored ?? "");
   if ((CLASS_ICONS as string[]).includes(name)) return name as IconName;
-  return classType === "Private" ? "king" : "queen";
+  return classType === "Private" ? "king" : "group";
 }
 
 /** A course's level, apart from how it is taught (backend 0066). */

@@ -6,7 +6,7 @@ import { useData } from "@/components/DataProvider";
 import { fmtTHB, liveClasses, livePackages } from "@/lib/live";
 import { CLASS_ICONS, CLASS_LEVELS, CLASS_TYPES, classTypeOf, iconOf, levelOf, type ClassLevel, type ClassType } from "@/lib/class-face";
 import { Icon, type IconName } from "@/lib/icons";
-import { COLORS, FONT, initialsOf } from "@/lib/theme";
+import { CLASS_CATEGORY_COLORS, classCategoryTint, COLORS, FONT, initialsOf } from "@/lib/theme";
 import {
   ActionButton,
   AddButton,
@@ -56,7 +56,11 @@ const TEACHER_TEMPLATE = equalTemplate(4, 110);
    nobody could tell where it came from: two words for one column, and the
    console's word was not the one in the database. */
 /* A course is a name, a level and a type: JCA NXT · Advanced · Private. */
-type Course = { id: string; name: string; desc: string; level: ClassLevel | ""; icon: IconName; classType: ClassType };
+type Course = {
+  id: string; name: string; desc: string; level: ClassLevel | ""; icon: IconName; classType: ClassType;
+  /** The usual price of one credit, "" when unset — a starting value for new prices. */
+  pricePerCredit: string;
+};
 type Teacher = { id: string; name: string; email: string; phone: string; lineId: string; status: string };
 type CreditPackage = {
   id: string;
@@ -139,6 +143,7 @@ export function AcademyPage() {
     name: String(c.name ?? ""),
     desc: String(c.description ?? ""),
     level: levelOf(c.level),
+    pricePerCredit: c.price_per_credit == null ? "" : String(c.price_per_credit),
     icon: iconOf(c.icon, String(c.class_type ?? "")),
     classType: classTypeOf(c.class_type),
   }));
@@ -176,6 +181,7 @@ export function AcademyPage() {
   const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
   const [packageModal, setPackageModal] = useState<CreditPackage | "new" | null>(null);
   const [packageValues, setPackageValues] = useState<CrudValues>({});
+  const [packagePriceTyped, setPackagePriceTyped] = useState(false);
   const [deletingPackage, setDeletingPackage] = useState<CreditPackage | null>(null);
 
   const packageFields: CrudField[] = [
@@ -197,6 +203,8 @@ export function AcademyPage() {
 
   function openPackageModal(p: CreditPackage | "new") {
     setPackageModal(p);
+    /* An existing package keeps its price unless the office changes it. */
+    setPackagePriceTyped(p !== "new");
     setPackageValues(
       p === "new"
         ? { class_id: "", credit_amount: "", standard_price: "", validity_days: "" }
@@ -222,8 +230,9 @@ export function AcademyPage() {
     name: "",
     desc: "",
     level: "",
-    icon: "pawn",
+    icon: "group",
     classType: "Group",
+    pricePerCredit: "",
   });
   /* A class with no package cannot be sold, cannot be paid for and cannot give
      anyone credits — so its first one is asked for here rather than left as a
@@ -233,6 +242,8 @@ export function AcademyPage() {
      for it: the office should get to decide a course's first package expires
      at all, not un-notice a number that was already sitting in the field. */
   const [firstPackage, setFirstPackage] = useState({ credits: "20", price: "12000", days: "" });
+  /* Typed by hand: the price per credit stops filling it in. */
+  const [firstPriceTyped, setFirstPriceTyped] = useState(false);
   /* Credits must be a real, positive number. Price may be nothing — a free
      trial class is a real thing an academy runs. Validity is blank for never
      expires, or a whole number of days from 1 — the same rule as the main
@@ -254,8 +265,12 @@ export function AcademyPage() {
 
   function openCourseModal(course: Course | "new") {
     setCourseModal(course);
+    if (course === "new") {
+      setFirstPackage({ credits: "20", price: "12000", days: "" });
+      setFirstPriceTyped(false);
+    }
     setCourseDraft(
-      course === "new" ? { name: "", desc: "", level: "", icon: "pawn", classType: "Group" } : { ...course },
+      course === "new" ? { name: "", desc: "", level: "", icon: "group", classType: "Group", pricePerCredit: "" } : { ...course },
     );
   }
 
@@ -287,7 +302,23 @@ export function AcademyPage() {
           isEdit={packageModal !== "new"}
           fields={packageFields}
           values={packageValues}
-          onChange={setPackageValues}
+          onChange={(next) => {
+            /* A typed price stays; until then it follows credits × the
+               course's price per credit. */
+            if (next.standard_price !== packageValues.standard_price) {
+              setPackagePriceTyped(true);
+              setPackageValues(next);
+              return;
+            }
+            const per = Number(raw.classes.find((c) => String(c.class_id) === String(next.class_id))?.price_per_credit ?? 0);
+            const credits = Number(next.credit_amount);
+            const moved = next.class_id !== packageValues.class_id || next.credit_amount !== packageValues.credit_amount;
+            setPackageValues(
+              moved && !packagePriceTyped && per > 0 && credits > 0
+                ? { ...next, standard_price: String(Math.round(per * credits * 100) / 100) }
+                : next,
+            );
+          }}
           onClose={() => setPackageModal(null)}
           onSubmit={async (payload) => {
             if (packageModal === "new") await create("credit-packages", payload);
@@ -369,15 +400,20 @@ export function AcademyPage() {
                       width: 42,
                       height: 42,
                       borderRadius: 12,
-                      background: COLORS.light,
+                      background: levelTint(c.level),
                     }}
                   >
-                    <Icon name={c.icon} size={21} color={COLORS.blue} />
+                    <Icon name={c.icon} size={21} color={levelColor(c.level)} />
                   </span>
+                  <Badge color={COLORS.blue} bg={COLORS.light}>{tClassType(c.classType)}</Badge>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                   <div style={{ fontFamily: FONT, fontSize: 16, fontWeight: 700, color: COLORS.text }}>{c.name}</div>
-                  <CourseFacts level={c.level} classType={c.classType} />
+                  {c.level && (
+                    <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: levelColor(c.level) }}>
+                      {tLevel(c.level)}
+                    </span>
+                  )}
                 </div>
                 <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, lineHeight: 1.55, color: COLORS.textSecondary }}>
                   {c.desc}
@@ -402,7 +438,7 @@ export function AcademyPage() {
             {courses.map((c) => (
               <TableRow key={c.id} template={COURSE_TEMPLATE} onClick={() => setCourseDetail(c)}>
                 <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                  <Icon name={c.icon} size={18} color={COLORS.blue} />
+                  <Icon name={c.icon} size={18} color={levelColor(c.level)} />
                   <span style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {c.name}
                   </span>
@@ -601,10 +637,10 @@ export function AcademyPage() {
                 width: 52,
                 height: 52,
                 borderRadius: 14,
-                background: COLORS.light,
+                background: levelTint(courseDetail.level),
               }}
             >
-              <Icon name={courseDetail.icon} size={25} color={COLORS.blue} />
+              <Icon name={courseDetail.icon} size={25} color={levelColor(courseDetail.level)} />
             </span>
             <p style={{ margin: 0, fontFamily: FONT, fontSize: 14.5, lineHeight: 1.6, color: COLORS.textSecondary }}>
               {courseDetail.desc}
@@ -717,6 +753,7 @@ export function AcademyPage() {
                              sent. Without them the picker is decoration. */
                           icon: courseDraft.icon,
                           level: courseDraft.level,
+                          ...(courseDraft.pricePerCredit.trim() !== "" ? { price_per_credit: Number(courseDraft.pricePerCredit) } : {}),
                         });
                         await create("credit-packages", {
                           class_id: cls.class_id,
@@ -737,6 +774,7 @@ export function AcademyPage() {
                         class_type: courseDraft.classType,
                         icon: courseDraft.icon,
                         level: courseDraft.level,
+                        price_per_credit: courseDraft.pricePerCredit.trim() === "" ? null : Number(courseDraft.pricePerCredit),
                       });
                     }
                   } catch (e) {
@@ -755,34 +793,58 @@ export function AcademyPage() {
               <label style={labelStyle} htmlFor="co-name">{t("courseName")}<Req /></label>
               <input id="co-name" value={courseDraft.name} onChange={(e) => setCourseDraft({ ...courseDraft, name: e.target.value })} style={fieldStyle} />
             </div>
-            <div>
-              <label style={labelStyle} htmlFor="co-level">{t("level")}<Req /></label>
-              <select
-                id="co-level"
-                value={courseDraft.level}
-                onChange={(e) => setCourseDraft({ ...courseDraft, level: e.target.value as ClassLevel })}
-                style={selectStyle}
-              >
-                <option value="" disabled>{t("levelPick")}</option>
-                {CLASS_LEVELS.map((v) => (
-                  <option key={v} value={v}>{tLevel(v)}</option>
-                ))}
-              </select>
+            {/* Level and type side by side: what a course is, and how it is taught. */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12 }}>
+              <div>
+                <label style={labelStyle} htmlFor="co-level">{t("level")}<Req /></label>
+                <select
+                  id="co-level"
+                  value={courseDraft.level}
+                  onChange={(e) => setCourseDraft({ ...courseDraft, level: e.target.value as ClassLevel })}
+                  style={selectStyle}
+                >
+                  <option value="" disabled>{t("levelPick")}</option>
+                  {CLASS_LEVELS.map((v) => (
+                    <option key={v} value={v}>{tLevel(v)}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle} htmlFor="co-type">{t("classType")}<Req /></label>
+                <select
+                  id="co-type"
+                  value={courseDraft.classType}
+                  onChange={(e) => setCourseDraft({ ...courseDraft, classType: e.target.value as ClassType })}
+                  style={selectStyle}
+                >
+                  {CLASS_TYPES.map((v) => (
+                    <option key={v} value={v}>{tClassType(v)}</option>
+                  ))}
+                </select>
+              </div>
             </div>
+            <p style={{ margin: "-6px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+              {t("classTypeHelp")}
+            </p>
             <div>
-              <label style={labelStyle} htmlFor="co-type">{t("classType")}<Req /></label>
-              <select
-                id="co-type"
-                value={courseDraft.classType}
-                onChange={(e) => setCourseDraft({ ...courseDraft, classType: e.target.value as ClassType })}
-                style={selectStyle}
-              >
-                {CLASS_TYPES.map((v) => (
-                  <option key={v} value={v}>{tClassType(v)}</option>
-                ))}
-              </select>
+              <label style={labelStyle} htmlFor="co-ppc">{t("pricePerCredit")}</label>
+              <input
+                id="co-ppc"
+                type="number"
+                min={0}
+                value={courseDraft.pricePerCredit}
+                onChange={(e) => {
+                  const ppc = e.target.value;
+                  setCourseDraft({ ...courseDraft, pricePerCredit: ppc });
+                  /* The first package's price follows, until it is typed over. */
+                  if (courseModal === "new" && !firstPriceTyped && Number(ppc) > 0 && Number(firstPackage.credits) > 0) {
+                    setFirstPackage({ ...firstPackage, price: String(Math.round(Number(ppc) * Number(firstPackage.credits) * 100) / 100) });
+                  }
+                }}
+                style={fieldStyle}
+              />
               <p style={{ margin: "5px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-                {t("classTypeHelp")}
+                {t("pricePerCreditHelp")}
               </p>
             </div>
             <div>
@@ -820,7 +882,17 @@ export function AcademyPage() {
                       min={0}
                       step={0.5}
                       value={firstPackage.credits}
-                      onChange={(e) => setFirstPackage({ ...firstPackage, credits: e.target.value })}
+                      onChange={(e) => {
+                        const credits = e.target.value;
+                        const per = Number(courseDraft.pricePerCredit);
+                        setFirstPackage({
+                          ...firstPackage,
+                          credits,
+                          ...(!firstPriceTyped && per > 0 && Number(credits) > 0
+                            ? { price: String(Math.round(per * Number(credits) * 100) / 100) }
+                            : {}),
+                        });
+                      }}
                       style={fieldStyle}
                     />
                   </div>
@@ -831,7 +903,10 @@ export function AcademyPage() {
                       type="number"
                       min={0}
                       value={firstPackage.price}
-                      onChange={(e) => setFirstPackage({ ...firstPackage, price: e.target.value })}
+                      onChange={(e) => {
+                        setFirstPriceTyped(true);
+                        setFirstPackage({ ...firstPackage, price: e.target.value });
+                      }}
                       style={fieldStyle}
                     />
                   </div>
@@ -961,5 +1036,14 @@ function CourseFacts({ level, classType }: { level: ClassLevel | ""; classType: 
       {[level ? tLevel(level) : "", tClassType(classType)].filter(Boolean).join(" · ")}
     </span>
   );
+}
+
+/* A course's level colour — the same one Today's Classes and a student's
+   level use: Beginner green, Intermediate blue, Advanced purple. */
+function levelColor(level: ClassLevel | ""): string {
+  return level ? CLASS_CATEGORY_COLORS[level] ?? COLORS.blue : COLORS.blue;
+}
+function levelTint(level: ClassLevel | ""): string {
+  return level ? classCategoryTint(level) : COLORS.light;
 }
 

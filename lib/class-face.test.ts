@@ -11,24 +11,24 @@ import { CLASS_ICONS, CLASS_LEVELS, CLASS_TYPES, classTypeOf, iconOf, levelOf } 
 
 describe("the icon", () => {
   it("is whatever was chosen", () => {
-    expect(iconOf("rook", "Group")).toBe("rook");
+    expect(iconOf("knight", "Group")).toBe("knight");
     expect(iconOf("pawn", "Private")).toBe("pawn");
   });
 
   /* The bug, stated as a rule: a stored choice must beat the guess, or the
      picker is decoration. */
   it("beats the guess its type would make", () => {
-    expect(iconOf("bishop", "Private")).not.toBe("king");
-    expect(iconOf("bishop", "Private")).toBe("bishop");
+    expect(iconOf("pawn", "Private")).not.toBe("king");
+    expect(iconOf("pawn", "Private")).toBe("pawn");
   });
 
   it("falls back to what the console used to draw", () => {
     /* Exactly the old three-way derivation, so a class from before the column
        existed looks the way it always has. */
     expect(iconOf(null, "Private")).toBe("king");
-    expect(iconOf(null, "Group")).toBe("queen");
-    expect(iconOf("", "Group")).toBe("queen");
-    expect(iconOf(undefined, "")).toBe("queen");
+    expect(iconOf(null, "Group")).toBe("group");
+    expect(iconOf("", "Group")).toBe("group");
+    expect(iconOf(undefined, "")).toBe("group");
   });
 
   /* The set belongs to the console and moves with the design. A retired name
@@ -40,9 +40,15 @@ describe("the icon", () => {
   });
 
   it("only ever returns something the picker can show", () => {
-    for (const stored of ["rook", "unicorn", "", null, 42]) {
+    for (const stored of ["rook", "bishop", "trophy", "unicorn", "", null, 42]) {
       expect(CLASS_ICONS).toContain(iconOf(stored, "Group"));
     }
+  });
+});
+
+describe("the picker", () => {
+  it("offers four pieces and the group of three — no rook, bishop or trophy", () => {
+    expect(CLASS_ICONS).toEqual(["king", "queen", "knight", "pawn", "group"]);
   });
 });
 

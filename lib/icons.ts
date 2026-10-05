@@ -143,6 +143,16 @@ const ICON_DATA = {
     ["path", { "d": "M9 17c0-3 1.3-5 3-5s3 2 3 5" }],
     ["rect", { "x": 7, "y": 17, "width": 10, "height": 2, "rx": 0.6 }],
   ],
+  /* Three pieces side by side — a group class. */
+  "group": [
+    ["circle", { "cx": 6, "cy": 9.5, "r": 1.7 }],
+    ["path", { "d": "M4.2 16c0-2.2.8-3.8 1.8-3.8s1.8 1.6 1.8 3.8" }],
+    ["circle", { "cx": 18, "cy": 9.5, "r": 1.7 }],
+    ["path", { "d": "M16.2 16c0-2.2.8-3.8 1.8-3.8s1.8 1.6 1.8 3.8" }],
+    ["circle", { "cx": 12, "cy": 7.2, "r": 2.2 }],
+    ["path", { "d": "M9.6 16c0-3 1.1-4.8 2.4-4.8s2.4 1.8 2.4 4.8" }],
+    ["rect", { "x": 3, "y": 16, "width": 18, "height": 2.2, "rx": 0.6 }],
+  ],
   "rook": [
     ["path", { "d": "M7 8V5h2v2h2V5h2v2h2V5h2v3l-1 2H8L7 8Z" }],
     ["path", { "d": "M8 10h8l1 8H7l1-8Z" }],

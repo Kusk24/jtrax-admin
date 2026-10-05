@@ -42,7 +42,7 @@ const raw: { enrollments: Row[]; [key: string]: unknown } = {
   parents: [] as Row[],
   classes: [
     { class_id: "king", name: "King Slayer" },
-    { class_id: "master", name: "Master" },
+    { class_id: "master", name: "Master", price_per_credit: 1500 },
   ],
   creditPackages: [
     { credit_package_id: "pkg_king", class_id: "king", credit_amount: 20, standard_price: 12000 },
@@ -191,6 +191,19 @@ describe("custom credits", () => {
     const user = renderPaymentFor("mini");
     await user.selectOptions(screen.getByLabelText(/^Credit Package( \*)?$/), "Custom credits");
     expect((screen.getByRole("button", { name: "Save Payment" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+  /* The course's price per credit fills the amount — a starting point only. */
+  it("starts the amount at credits × the course's price per credit, until it is typed", async () => {
+    const user = renderPaymentFor("mini");
+    await user.selectOptions(screen.getByLabelText(/^Credit Package( \*)?$/), "Custom credits");
+    await user.selectOptions(screen.getByLabelText(/^Course( \*)?$/), "master");
+    await user.type(screen.getByLabelText(/^Credits( \*)?$/), "4");
+    const amount = screen.getByLabelText("Amount (THB)") as HTMLInputElement;
+    expect(amount.value).toBe("6000");
+    await user.clear(amount);
+    await user.type(amount, "5000");
+    await user.type(screen.getByLabelText(/^Credits( \*)?$/), "0"); // 40 credits
+    expect(amount.value).toBe("5000");
   });
 });
 
