@@ -1,7 +1,7 @@
 "use client";
 
-/* How families reach the academy: phone, email, LINE, social pages, website,
- * opening hours and one or more addresses. What is saved here is what the
+/* How families reach the academy: phone, email, LINE, social pages, website
+ * and one or more addresses. What is saved here is what the
  * public pages' footer, the registration form, the payment pages and every
  * email's footer show (academy_* in system_configuration). A field left empty
  * is left out of the public footer; the emails fall back to the website's.
@@ -25,7 +25,6 @@ const FIELDS = [
   { key: "academy_facebook", label: "contactFacebook", type: "url" },
   { key: "academy_instagram", label: "contactInstagram", type: "url" },
   { key: "academy_website", label: "contactWebsite", type: "url" },
-  { key: "academy_hours", label: "contactHours", hint: "contactHoursHint", type: "text" },
 ] as const;
 
 const ADDRESS = "academy_address";

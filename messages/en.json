@@ -1285,8 +1285,6 @@
     "contactFacebook": "Facebook",
     "contactInstagram": "Instagram",
     "contactWebsite": "Website",
-    "contactHours": "Opening hours",
-    "contactHoursHint": "Optional",
     "contactAddresses": "Address",
     "contactAddressN": "Address {n}",
     "contactRemoveAddress": "Remove address {n}",
