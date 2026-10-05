@@ -11,13 +11,14 @@
  * row — the `line_id` the ER model carries is a display handle and cannot be
  * used to send, so the right-hand panel shows the contact rather than a family.
  */
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { chatTime, dayKey, type LineConversation, type LineMessage } from "@/lib/line";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT, initialsOf } from "@/lib/theme";
-import { InfoGrid, SearchInput } from "../page-kit";
+import { SearchInput } from "../page-kit";
 import { Avatar, Badge, Card, SectionTitle } from "../ui";
+import { ContactPanel } from "../messages/ContactPanel";
 import { StickerMessage } from "../messages/StickerMessage";
 import { useInbox, type SendResult } from "../messages/useInbox";
 
@@ -53,10 +54,16 @@ function ContactAvatar({ contact, size }: { contact: LineConversation; size: num
   );
 }
 
-export function MessagesPage() {
+/** `detailId` opens that chat — how a parent's or student's page sends you here. */
+export function MessagesPage({ detailId }: { detailId?: string } = {}) {
   const t = useTranslations("messages");
   const tCommon = useTranslations("common");
-  const { conversations, selectedId, thread, loading, error, connection, unreadTotal, open, send } = useInbox();
+  const { conversations, selectedId, thread, loading, error, connection, unreadTotal, open, send, relinked } = useInbox();
+
+  /* Arriving with ?id= opens that chat, once. */
+  useEffect(() => {
+    if (detailId) open(detailId);
+  }, [detailId, open]);
 
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
@@ -444,34 +451,7 @@ export function MessagesPage() {
 
       {/* ---- contact panel ---- */}
       <Card style={{ display: "flex", flexDirection: "column", gap: 18, overflowY: "auto", minHeight: 0 }}>
-        {active && (
-          <>
-            <div>
-              <SectionTitle style={{ marginBottom: 11 }}>{t("contact")}</SectionTitle>
-              <InfoGrid
-                rows={[
-                  { label: tCommon("name"), value: active.displayName || t("unnamedContact") },
-                  {
-                    label: tCommon("status"),
-                    /* The short form: this column is ~110px wide in the
-                       narrowest layout, and InfoGrid's label track is fixed, so
-                       "Following the account" is clipped rather than wrapped.
-                       The thread header above says it in full. */
-                    value: (
-                      <Badge
-                        color={active.followed ? COLORS.success : COLORS.textSecondary}
-                        bg={active.followed ? COLORS.successBg : COLORS.neutralBg}
-                      >
-                        {t(active.followed ? "statusFollowingShort" : "statusBlockedShort")}
-                      </Badge>
-                    ),
-                  },
-                  { label: t("lastMessage"), value: chatTime(active.lastMessageAt) },
-                ]}
-              />
-            </div>
-          </>
-        )}
+        {active && <ContactPanel contact={active} conversations={conversations} onRelinked={relinked} />}
       </Card>
     </div>
   );

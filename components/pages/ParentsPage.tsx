@@ -46,6 +46,7 @@ import { InviteButton, InviteOutcomeNote, inviteOutcome, type InviteOutcome } fr
 import { ResetPasswordButton } from "../ResetPassword";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
+import { LineChatLink, useLineChat } from "../messages/LineChatLink";
 
 const TEMPLATE = equalTemplate(5, 90);
 const VIEWS = ["list", "card"] as const;
@@ -91,9 +92,11 @@ function ParentDetail({
   const openChild = (studentId: string) => router.push(`/students?id=${encodeURIComponent(studentId)}`);
   const t = useTranslations("parents");
   const tCommon = useTranslations("common");
+  const tMsg = useTranslations("messages");
   const { update } = useData();
   const { showError } = useErrorToast();
   const [linking, setLinking] = useState(false);
+  const lineChat = useLineChat({ parentId: parent.id });
   const [childId, setChildId] = useState("");
   const [relation, setRelation] = useState("Mother");
   const [busy, setBusy] = useState(false);
@@ -175,6 +178,8 @@ function ParentDetail({
               { label: tCommon("email"), value: parent.loginEmail || parent.email || "—" },
               { label: tCommon("phone"), value: parent.phone || "—" },
               { label: tCommon("lineId"), value: parent.lineId || "—" },
+              /* The chat linked from Messages; it opens there. */
+              ...(lineChat.ready ? [{ label: tMsg("lineChat"), value: <LineChatLink chat={lineChat.chat} /> }] : []),
             ]}
           />
           {/* Registration used to invent an address when the box was left

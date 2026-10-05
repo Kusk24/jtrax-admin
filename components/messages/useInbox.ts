@@ -150,5 +150,12 @@ export function useInbox() {
 
   const unreadTotal = conversations.reduce((n, c) => n + c.unread, 0);
 
-  return { conversations, selectedId, thread, loading, error, connection, unreadTotal, open, send };
+  /* A chat's link changed: put the new header on the list and the open thread
+     at once, ahead of the stream's snapshot. */
+  const relinked = useCallback((c: LineConversation) => {
+    setConversations((prev) => prev.map((x) => (x.lineUserId === c.lineUserId ? { ...x, parentId: c.parentId, studentId: c.studentId, linkedName: c.linkedName } : x)));
+    setThread((t) => (t && t.conversation.lineUserId === c.lineUserId ? { ...t, conversation: { ...t.conversation, parentId: c.parentId, studentId: c.studentId, linkedName: c.linkedName } } : t));
+  }, []);
+
+  return { conversations, selectedId, thread, loading, error, connection, unreadTotal, open, send, relinked };
 }
