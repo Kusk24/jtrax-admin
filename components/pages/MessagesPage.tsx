@@ -63,7 +63,6 @@ export function MessagesPage() {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<SendResult>("");
-  const [copied, setCopied] = useState(false);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -76,10 +75,6 @@ export function MessagesPage() {
 
   const active = thread?.conversation ?? conversations.find((c) => c.lineUserId === selectedId) ?? null;
   const messages = thread?.messages ?? [];
-  /* How many replies in this thread came out of the monthly allowance. The
-     free ones did not, and the difference is the running cost of the feature. */
-  const metered = messages.filter((m) => m.channel === "push" && m.delivery === "Sent").length;
-
   /* Non-text messages arrive with no body; the thread says what was sent
      rather than showing an empty bubble. */
   function bodyOf(m: LineMessage): string {
@@ -97,17 +92,6 @@ export function MessagesPage() {
     setSending(false);
     if (reason) setSendError(reason);
     else setDraft("");
-  }
-
-  async function copyId() {
-    if (!active) return;
-    try {
-      await navigator.clipboard.writeText(active.lineUserId);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      /* Clipboard access can be refused; the id is on screen either way. */
-    }
   }
 
   return (
@@ -485,66 +469,6 @@ export function MessagesPage() {
                   { label: t("lastMessage"), value: chatTime(active.lastMessageAt) },
                 ]}
               />
-            </div>
-
-            <div>
-              <SectionTitle style={{ marginBottom: 9 }}>{t("lineUserId")}</SectionTitle>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <code
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    padding: "7px 10px",
-                    borderRadius: 8,
-                    background: COLORS.neutralBg,
-                    fontSize: 12,
-                    color: COLORS.textSecondary,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {active.lineUserId}
-                </code>
-                <button
-                  type="button"
-                  onClick={() => void copyId()}
-                  aria-label={t("copyId")}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: 32,
-                    height: 32,
-                    borderRadius: 8,
-                    border: `1px solid ${COLORS.border}`,
-                    background: COLORS.surface,
-                    cursor: "pointer",
-                    flexShrink: 0,
-                  }}
-                >
-                  <Icon name={copied ? "check" : "copy"} size={14} color={copied ? COLORS.success : COLORS.textSecondary} />
-                </button>
-              </div>
-            </div>
-
-            {/* Where the monthly allowance is going. Replies sent while the
-                free window is open cost nothing; the rest are billed. */}
-            <div>
-              <SectionTitle style={{ marginBottom: 9 }}>{t("costTitle")}</SectionTitle>
-              <p style={{ margin: 0, fontFamily: FONT, fontSize: 13, lineHeight: 1.55, color: COLORS.textSecondary }}>
-                {t("costBody")}
-              </p>
-              <p style={{ margin: "8px 0 0", fontFamily: FONT, fontSize: 13, color: COLORS.text }}>
-                {t("meteredInThread", { count: metered })}
-              </p>
-            </div>
-
-            <div>
-              <SectionTitle style={{ marginBottom: 9 }}>{t("notLinkedTitle")}</SectionTitle>
-              <p style={{ margin: 0, fontFamily: FONT, fontSize: 13, lineHeight: 1.55, color: COLORS.textSecondary }}>
-                {t("notLinkedBody")}
-              </p>
             </div>
           </>
         )}
