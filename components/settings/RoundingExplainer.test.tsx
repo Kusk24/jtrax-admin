@@ -40,7 +40,7 @@ describe("the Attendance Rounding infographic", () => {
     expect(screen.getByText("Arrived 10:25")).toBeTruthy();
     expect(screen.getByText("Left 11:35")).toBeTruthy();
     expect(screen.getAllByText("→ 1.5 credits")).toHaveLength(2);
-    expect(screen.getByText("Same rule")).toBeTruthy();
+    expect(screen.queryByText("Same rule")).toBeNull();
     if (process.env.DUMP_SVG) writeFileSync(process.env.DUMP_SVG, document.querySelector("svg[role=img]")!.outerHTML);
   });
 

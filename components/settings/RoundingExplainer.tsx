@@ -70,18 +70,22 @@ function slice(fromDeg: number, toDeg: number): string {
 }
 
 function Ring({ bands, label, centre, centreSub }: { bands: Band[]; label: string; centre: string; centreSub: string }) {
-  /* The ring is the missed minutes from 0 to the end of the last band. */
-  const total = bands[bands.length - 1].to + 0.5;
-  const deg = (min: number) => (min / total) * 360;
+  /* The ring reads like the clock inside it: 0 at the 12, one minute per
+     minute mark, so a range sits over the minutes it covers. The last
+     range runs on to the full hour. */
+  const total = 60;
+  const deg = (min: number) => (Math.min(min, total) / total) * 360;
   return (
     <svg viewBox="-12 -12 284 318" width={260} height={292} role="img" aria-label={label} style={{ flexShrink: 0 }}>
       {bands.map((b, i) => {
         const from = i === 0 ? 0 : b.from - 0.5;
-        const to = i === bands.length - 1 ? total : b.to + 0.5;
+        /* A range that starts past the hour is off the dial. */
+        if (from >= total) return null;
+        const to = i === bands.length - 1 || b.to + 0.5 >= total ? total : b.to + 0.5;
         return <path key={i} d={slice(deg(from), deg(to) - 0.6)} fill="none" stroke={b.color} strokeWidth={W} />;
       })}
       {/* Where each range ends, in minutes missed. */}
-      {bands.slice(0, -1).map((b, i) => {
+      {bands.slice(0, -1).filter((b) => b.to + 0.5 < total).map((b, i) => {
         const [x, y] = polar(deg(b.to + 0.5), R + W / 2 + 13);
         return (
           <text key={i} x={x} y={y + 4} textAnchor="middle" fontSize={11.5} fontWeight={700} fill={COLORS.text} fontFamily={FONT}>
@@ -173,9 +177,6 @@ export function RoundingExplainer({ step, onClose }: { step: number; onClose: ()
         <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "14px 16px", borderRadius: 12, background: COLORS.light }}>
           <span style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: FONT, fontSize: 13.5, fontWeight: 700, color: COLORS.text }}>
             {t("roundClass")}
-            <span style={{ padding: "1px 8px", borderRadius: 999, background: COLORS.surface, color: COLORS.blue, fontSize: 11.5 }}>
-              {t("roundSameRule")}
-            </span>
           </span>
           {examples.map((e) => {
             const present = e.outAt - e.inAt;

@@ -1302,7 +1302,6 @@
     "roundBandMissed": "{from} – {to} นาที",
     "roundFullClass": "เต็มคลาส",
     "roundCredits": "{credits} เครดิต",
-    "roundSameRule": "กฎเดียวกัน",
     "roundArrived": "มาถึง {time}",
     "roundLeft": "กลับ {time}"
   },

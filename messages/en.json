@@ -1302,7 +1302,6 @@
     "roundBandMissed": "{from} – {to} min",
     "roundFullClass": "Full class",
     "roundCredits": "{credits, plural, one {# credit} other {# credits}}",
-    "roundSameRule": "Same rule",
     "roundArrived": "Arrived {time}",
     "roundLeft": "Left {time}"
   },
