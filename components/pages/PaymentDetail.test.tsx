@@ -31,7 +31,7 @@ function payment(over: Partial<Payment> = {}): Payment {
 function renderDetail(p: Payment) {
   render(
     <NextIntlClientProvider locale="en" messages={en}>
-      <PaymentDetail payment={p} onClose={() => {}} onEdit={() => {}} onDelete={() => {}} />
+      <PaymentDetail payment={p} onClose={() => {}} onEdit={() => {}} />
     </NextIntlClientProvider>,
   );
 }
@@ -64,5 +64,13 @@ describe("the card payment link", () => {
     await userEvent.click(screen.getByRole("button", { name: /get card payment link/i }));
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain("not set up");
+  });
+});
+
+describe("a payment's actions", () => {
+  it("offers Edit and no Delete — a payment is corrected, never removed", () => {
+    renderDetail(payment({ status: "Paid" }));
+    expect(screen.getByRole("button", { name: /^Edit/ })).toBeDefined();
+    expect(screen.queryByRole("button", { name: /^Delete/ })).toBeNull();
   });
 });
