@@ -48,11 +48,11 @@ export type EnrolmentItem = {
 export type EnrolmentFilter = "active" | "all";
 
 const VIEWS = ["list", "card"] as const;
-/* Every column the same width; only the menu (and, under All, the
+/* Every column the same width; only the Action column (and, under All, the
    timeline rail) stays narrow. */
-const TEMPLATE_ACTIVE = `${equalTemplate(8, 120)} 44px`;
+const TEMPLATE_ACTIVE = `${equalTemplate(7, 120)} 76px`;
 /* All adds the timeline rail and what happened. */
-const TEMPLATE_ALL = `22px ${equalTemplate(9, 120)} 44px`;
+const TEMPLATE_ALL = `22px ${equalTemplate(8, 120)} 76px`;
 
 /** Hours against the milestone — "32.5 / 50 h", and a tick once reached. */
 function HoursFigure({ item }: { item: EnrolmentItem }) {
@@ -328,31 +328,29 @@ export function EnrolmentList({
     ...(all ? [""] : []),
     tc("class"),
     ...(all ? [t("colHappened")] : []),
-    tc("status"),
     t("colCredits"),
     t("colClassesJoined"),
     t("colHours"),
     t("colCreditStatus"),
     t("enrolledDate"),
     t("expires"),
-    "",
+    tc("action"),
   ];
   return (
-    <Table columns={columns} template={template} minWidth={all ? 1180 : 1010}>
+    <Table columns={columns} template={template} minWidth={all ? 1100 : 930}>
       {shown.map((item, i) => (
         <div key={item.id} data-enrolment-row={item.id} style={{ opacity: item.active ? 1 : 0.8 }}>
           <TableRow template={template} onClick={() => onOpen(item.id)}>
             {all && rail(item, i)}
             {name(item)}
             {all && happened(item)}
-            <span>{statusBadge(item)}</span>
             {credits(item, 14)}
             <span style={{ fontVariantNumeric: "tabular-nums" }}>{item.classes}</span>
             <HoursFigure item={item} />
             <span>{condition(item)}</span>
             <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmtDate(item.enrolledDate)}</span>
             {expires(item)}
-            <span style={{ display: "flex", justifyContent: "flex-end" }}>{menu(item)}</span>
+            <span style={{ display: "flex", justifyContent: "flex-start" }}>{menu(item)}</span>
           </TableRow>
         </div>
       ))}

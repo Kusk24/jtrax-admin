@@ -368,6 +368,23 @@ describe("editing a participant", () => {
     expect(Object.keys(entry).some((k) => k.startsWith("pay_") || k.includes("age_shown"))).toBe(false);
   });
 
+  it("lays the form out in the desk's order, with no rating", async () => {
+    tournaments = [withEntry()];
+    const user = openDetail();
+    await user.click(screen.getByRole("button", { name: /^participants/i }));
+    await user.click(screen.getByRole("button", { name: /^Edit Alice/ }));
+    const labels = Array.from(within(screen.getByRole("dialog")).getAllByText((_, el) => el?.tagName === "LABEL"))
+      .map((l) => l.textContent?.replace(/\s*\*$/, "").trim());
+    const at = (label: string) => labels.indexOf(label);
+    const order = [
+      en.tournament.nameEnglish, en.tournament.nameThai, en.tournament.nickname, en.tournament.dateOfBirth,
+      en.tournament.age, en.tournament.category, en.tournament.parentEmail, en.common.phone,
+      en.tournament.feeCharged, en.tournament.paymentMethod, en.tournament.paymentStatus, en.tournament.arrivalStatus,
+    ];
+    expect(order.map(at).every((i, k, all) => i >= 0 && (k === 0 || i > all[k - 1]))).toBe(true);
+    expect(labels).not.toContain(en.tournament.rating);
+  });
+
   it("can be started from the slide-in profile", async () => {
     tournaments = [withEntry()];
     const user = openDetail();

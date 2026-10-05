@@ -55,6 +55,7 @@ import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
 import { BackLink, DangerPanel, DeleteButton, DetailHeader, EditButton } from "../detail";
 import { ResetPasswordButton } from "../ResetPassword";
 import { EnrolmentModal, type EnrolmentEdits } from "../students/EnrolmentModal";
+import type { MoreMenuItem } from "../MoreMenu";
 import { explainCharge, fmtMinutes } from "@/lib/charge-explain";
 import { PracticeTab, useStreak } from "../students/PracticeTab";
 import {
@@ -471,7 +472,8 @@ function StudentDetail({
   const [changing, setChanging] = useState<(typeof enrolments)[number] | null>(null);
   /* The enrolment whose modal is open — by id, so the modal shows the saved
      values the moment a save lands rather than a copy taken on opening. */
-  const [viewingEnrolment, setViewingEnrolment] = useState<string | null>(null);
+  /* The enrolment open in the modal, and whether it opened straight into Edit. */
+  const [viewingEnrolment, setViewingEnrolment] = useState<{ id: string; editing: boolean } | null>(null);
   /* Active by default; All is every course the child has had, as a timeline. */
   const [enrolmentFilter, setEnrolmentFilter] = useState<EnrolmentFilter>("active");
 
@@ -490,6 +492,57 @@ function StudentDetail({
         }
       }
     });
+  }
+
+  /* What can be done to one enrolment — the same in its row's menu and in
+     its own modal. */
+  function enrolmentActions(id: string, active: boolean, balance: number): MoreMenuItem[] {
+    /* A deleted course has nothing left to do to it. */
+    const e = enrolments.find((x) => x.id === id);
+    if (!e) return [];
+    /* Expired credit blocks Change Course, as it blocks check-in. */
+    const expired = e.expires !== "" && e.expires < todayISO();
+    const nowhereToGo = changeTargets(e).length === 0;
+    return [
+      /* Only out of a course they are in. */
+      ...(active
+        ? [
+            {
+              label: t("topUp"),
+              ariaLabel: t("topUpCourse", { className: e.className }),
+              icon: "plus" as const,
+              onSelect: () => openAddEnrolment(e.classId),
+            },
+            {
+              label: t("changeCourse"),
+              ariaLabel: t("changeCourseFrom", { className: e.className }),
+              icon: "refund" as const,
+              disabledReason: expired ? t("changeCourseExpired") : nowhereToGo ? t("changeCourseNowhere") : null,
+              onSelect: () => {
+                setChangeTo(changeTargets(e)[0]?.id ?? "");
+                setChangeCarry(balance > 0);
+                setMoveAmount(null);
+                setMoveExpiry(expiryOf(raw.creditTransactions, e.id));
+                setChanging(e);
+              },
+            },
+          ]
+        : []),
+      /* The enrolled date, expiry and note. */
+      {
+        label: tCommon("edit"),
+        ariaLabel: t("editEnrolmentOf", { className: e.className }),
+        icon: "edit" as const,
+        onSelect: () => setViewingEnrolment({ id: e.id, editing: true }),
+      },
+      {
+        label: tCommon("delete"),
+        ariaLabel: t("deleteEnrolmentFrom", { className: e.className }),
+        icon: "trash" as const,
+        danger: true,
+        onSelect: () => setDeletingEnrolment(e),
+      },
+    ];
   }
 
   /** The entries that brought hours into an enrolment — where its expiry lives. */
@@ -1586,55 +1639,15 @@ function StudentDetail({
                   expired: e.expires !== "" && e.expires < todayISO(),
                 };
               })}
-              onOpen={setViewingEnrolment}
-              actionsFor={(item) => {
-                /* A deleted course has nothing left to do to it. */
-                const e = enrolments.find((x) => x.id === item.id);
-                if (!e) return [];
-                /* Expired credit blocks Change Course, as it blocks check-in. */
-                const expired = e.expires !== "" && e.expires < todayISO();
-                const nowhereToGo = changeTargets(e).length === 0;
-                return [
-                  /* Only out of a course they are in. */
-                  ...(item.active
-                    ? [
-                        {
-                          label: t("topUp"),
-                          ariaLabel: t("topUpCourse", { className: e.className }),
-                          icon: "plus" as const,
-                          onSelect: () => openAddEnrolment(e.classId),
-                        },
-                        {
-                          label: t("changeCourse"),
-                          ariaLabel: t("changeCourseFrom", { className: e.className }),
-                          icon: "refund" as const,
-                          disabledReason: expired ? t("changeCourseExpired") : nowhereToGo ? t("changeCourseNowhere") : null,
-                          onSelect: () => {
-                            setChangeTo(changeTargets(e)[0]?.id ?? "");
-                            setChangeCarry(item.balance > 0);
-                            setMoveAmount(null);
-                            setMoveExpiry(expiryOf(raw.creditTransactions, e.id));
-                            setChanging(e);
-                          },
-                        },
-                      ]
-                    : []),
-                  {
-                    label: tCommon("delete"),
-                    ariaLabel: t("deleteEnrolmentFrom", { className: e.className }),
-                    icon: "trash" as const,
-                    danger: true,
-                    onSelect: () => setDeletingEnrolment(e),
-                  },
-                ];
-              }}
+              onOpen={(id) => setViewingEnrolment({ id, editing: false })}
+              actionsFor={(item) => enrolmentActions(item.id, item.active, item.balance)}
             />
           )}
         </Card>
       )}
 
       {viewingEnrolment && (() => {
-        const e = allEnrolments.find((x) => x.id === viewingEnrolment);
+        const e = allEnrolments.find((x) => x.id === viewingEnrolment.id);
         if (!e) return null;
         const active = isActiveEnrolment({ status: e.status }) && !e.deletedDate;
         return (
@@ -1643,6 +1656,12 @@ function StudentDetail({
             balance={balanceOf(e.id)}
             creditStatus={active ? enrolmentStatus(raw, e.id, creditRules).status : null}
             canSetExpiry={purchasesOf(e.id).length > 0}
+            editing={viewingEnrolment.editing}
+            onEditingChange={(editing) => setViewingEnrolment({ id: e.id, editing })}
+            /* Anything but Edit leaves the modal for its own dialog. */
+            actions={enrolmentActions(e.id, active, balanceOf(e.id)).map((a) =>
+              a.icon === "edit" ? a : { ...a, onSelect: () => { setViewingEnrolment(null); a.onSelect(); } },
+            )}
             onClose={() => setViewingEnrolment(null)}
             onSave={(edits) => saveEnrolment(e.id, e, edits)}
           />

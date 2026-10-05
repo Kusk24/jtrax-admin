@@ -625,6 +625,7 @@
     "movedFromCourse": "Moved from {className}",
     "enrolmentIn": "the enrolment in {className}",
     "deleteEnrolmentFrom": "Delete the enrolment in {className}",
+    "editEnrolmentOf": "Edit the {className} enrolment",
     "changeCourseNowhere": "There is no other course to move them to.",
     "changeCourseExpired": "This enrolment's credits have expired. Correct the expiry date before moving them.",
     "enrolmentDeleteWithLedger": "{credits, plural, =0 {} one {# credit entry stays with the child as credits not in any course, ready to be moved into one.} other {# credit entries stay with the child as credits not in any course, ready to be moved into one.}} {payments, plural, =0 {} one {# payment keeps its receipt but stops pointing at this course.} other {# payments keep their receipts but stop pointing at this course.}}",

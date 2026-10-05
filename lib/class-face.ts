@@ -14,8 +14,8 @@
  */
 import type { IconName } from "./icons";
 
-/** What the picker offers: four pieces, and three together for a group. */
-export const CLASS_ICONS: IconName[] = ["king", "queen", "knight", "pawn", "group"];
+/** What the picker offers: four pieces, and four trios for a group. */
+export const CLASS_ICONS: IconName[] = ["king", "queen", "knight", "pawn", "group", "groupKing", "groupRook", "groupBishop"];
 
 /**
  * How a class is taught: Private (one-to-one) or Group. `class.class_type`.

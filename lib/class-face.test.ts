@@ -47,8 +47,8 @@ describe("the icon", () => {
 });
 
 describe("the picker", () => {
-  it("offers four pieces and the group of three — no rook, bishop or trophy", () => {
-    expect(CLASS_ICONS).toEqual(["king", "queen", "knight", "pawn", "group"]);
+  it("offers four pieces and four groups of three — no rook, bishop or trophy", () => {
+    expect(CLASS_ICONS).toEqual(["king", "queen", "knight", "pawn", "group", "groupKing", "groupRook", "groupBishop"]);
   });
 });
 

@@ -409,7 +409,32 @@ describe("the enrolment card's dates", () => {
     expect(within(dialog).getByText("31 Dec 2026")).toBeTruthy();
     expect(within(dialog).getByText("8 credits")).toBeTruthy();
     expect(within(dialog).queryByRole("textbox")).toBeNull();
-    expect(within(dialog).getByRole("button", { name: "Edit" })).toBeTruthy();
+    /* The row's menu, as buttons: the same four acts in both places. */
+    expect(within(dialog).getAllByRole("button").map((b) => b.getAttribute("aria-label")).filter((l) => l && l !== "Close")).toEqual([
+      "Add credits for Beginner",
+      "Change Beginner to another course",
+      "Edit the Beginner enrolment",
+      "Delete the enrolment in Beginner",
+    ]);
+  });
+
+  it("opens straight into editing from the row's Edit", async () => {
+    const user = renderList();
+    await openStudent(user, "Anong");
+
+    await user.click(actionsOf(enrolmentRow("Beginner")).getByRole("menuitem", { name: "Edit the Beginner enrolment" }));
+    const dialog = screen.getByRole("dialog");
+    expect((within(dialog).getByLabelText("Expires") as HTMLInputElement).value).toBe("2026-12-31");
+  });
+
+  it("leaves the enrolment for Change course", async () => {
+    const user = renderList();
+    await openStudent(user, "Anong");
+
+    const dialog = await openEnrolment(user, "Beginner");
+    await user.click(within(dialog).getByRole("button", { name: "Change Beginner to another course" }));
+    expect(screen.queryByText("Beginner enrolment")).toBeNull();
+    expect(screen.getByRole("dialog")).toBeDefined();
   });
 
   it("opens a never-expiring row too, and says why its expiry cannot be set", async () => {
@@ -419,7 +444,7 @@ describe("the enrolment card's dates", () => {
     const dialog = await openEnrolment(user, "Intermediate");
     expect(within(dialog).getByText("Never expires")).toBeTruthy();
 
-    await user.click(within(dialog).getByRole("button", { name: "Edit" }));
+    await user.click(within(dialog).getByRole("button", { name: /^Edit the / }));
     expect((within(dialog).getByLabelText("Expires") as HTMLInputElement).disabled).toBe(true);
     expect(within(dialog).getByText(/No credits have been bought for this course yet/)).toBeTruthy();
   });
@@ -432,7 +457,7 @@ describe("the enrolment card's dates", () => {
 
     await user.click(within(enrolmentRow("Beginner")).getByRole("button", { name: "View the Beginner enrolment" }));
     const dialog = screen.getByRole("dialog");
-    await user.click(within(dialog).getByRole("button", { name: "Edit" }));
+    await user.click(within(dialog).getByRole("button", { name: /^Edit the / }));
 
     const expires = within(dialog).getByLabelText("Expires") as HTMLInputElement;
     await user.clear(expires);
@@ -450,7 +475,7 @@ describe("the enrolment card's dates", () => {
     await openStudent(user, "Anong");
 
     const dialog = await openEnrolment(user, "Beginner");
-    await user.click(within(dialog).getByRole("button", { name: "Edit" }));
+    await user.click(within(dialog).getByRole("button", { name: /^Edit the / }));
     const expires = within(dialog).getByLabelText("Expires") as HTMLInputElement;
     await user.clear(expires);
     await user.type(expires, "2025-01-01");
@@ -1538,7 +1563,6 @@ describe("the enrolment list", () => {
 
         await user.click(screen.getByRole("radio", { name: "All (2)" }));
         const row = enrolmentRow("Advanced");
-        expect(within(row).getByText("Withdrawn")).toBeDefined();
         expect(within(row).getByText("Left")).toBeDefined();
         expect(within(row).getByText("20 Dec 2025")).toBeDefined();
       },
@@ -1570,19 +1594,21 @@ describe("the enrolment list", () => {
         await openStudent(user, "Anong");
         const row = enrolmentRow("Advanced");
         expect(within(row).getByText(rowCredits(5))).toBeDefined();
-        expect(within(row).getByText("Withdrawn")).toBeDefined();
       },
       [{ credit_transaction_id: "x1", enrollment_id: "e_anong_old", amount: 5, transaction_date: "2025-01-06", transaction_type: "purchase" }],
     ));
 
-  it("shows each course's status, credits and dates, with its actions in a menu", () =>
+  it("shows each course's credits and dates, with its actions under Action", () =>
     withEnrolments(
       [{ enrollment_id: "e_anong_beg", student_id: "anong", class_id: "beg", status: "Active", enrolled_date: "2026-01-06" }],
       async () => {
         const user = renderList();
         await openStudent(user, "Anong");
         const row = enrolmentRow("Beginner");
-        expect(within(row).getByText("Active")).toBeDefined();
+        /* No status column: the Active | All switch already says it. */
+        expect(screen.queryByText("Status", { exact: true })).toBeNull();
+        expect(screen.getByText("Action", { exact: true })).toBeDefined();
+        expect(within(row).queryByText("Active")).toBeNull();
         expect(within(row).getByText("6 Jan 2026")).toBeDefined();
         expect(within(row).getByText("31 Dec 2026")).toBeDefined();
         expect(within(row).queryByRole("menuitem")).toBeNull();
@@ -1620,7 +1646,6 @@ describe("a deleted course in the history", () => {
 
       await user.click(screen.getByRole("radio", { name: "All (2)" }));
       const deleted = enrolmentRow("Beginner");
-      expect(within(deleted).getByText("Deleted")).toBeDefined();
       expect(within(deleted).getByText("Deleted · credits moved to Advanced")).toBeDefined();
       expect(within(deleted).queryByRole("button", { name: /^Actions for/ })).toBeNull();
       expect(within(enrolmentRow("Advanced")).getByText(/\+4\.5 credits from Beginner/)).toBeDefined();

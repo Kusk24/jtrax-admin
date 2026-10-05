@@ -625,6 +625,7 @@
     "movedFromCourse": "ย้ายมาจาก {className}",
     "enrolmentIn": "การลงทะเบียนในคอร์ส {className}",
     "deleteEnrolmentFrom": "ลบการลงทะเบียนในคอร์ส {className}",
+    "editEnrolmentOf": "แก้ไขการลงทะเบียนในคอร์ส {className}",
     "changeCourseNowhere": "ไม่มีคอร์สอื่นให้ย้ายไป",
     "changeCourseExpired": "เครดิตของการลงทะเบียนนี้หมดอายุแล้ว กรุณาแก้ไขวันหมดอายุก่อนย้ายคอร์ส",
     "enrolmentDeleteWithLedger": "{credits, plural, =0 {} other {รายการเครดิต # รายการจะยังคงอยู่กับนักเรียนในสถานะเครดิตที่ไม่ผูกกับคอร์ส และสามารถย้ายเข้าคอร์สได้ภายหลัง}} {payments, plural, =0 {} other {รายการชำระเงิน # รายการจะยังคงใบเสร็จไว้ แต่จะไม่ผูกกับคอร์สนี้อีก}}",
