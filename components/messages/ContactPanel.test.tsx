@@ -44,7 +44,9 @@ describe("the LINE contact panel", () => {
   it("shows the LINE user ID under the name", () => {
     show(<ContactPanel contact={sam} conversations={[sam]} onRelinked={() => {}} />);
     expect(screen.getByText("LINE user ID")).toBeDefined();
-    expect(screen.getByText(sam.lineUserId)).toBeDefined();
+    /* Shortened to fit the panel; the full id is on hover and on copy. */
+    const id = screen.getByText("U55025611f…");
+    expect(id.getAttribute("title")).toBe(sam.lineUserId);
   });
 
   it("links the chat to a parent picked by name", async () => {

@@ -13,6 +13,7 @@ import { navItemsForRole } from "@/lib/nav";
 import { COLORS, FONT, FONT_DISPLAY, ROLE_COLORS } from "@/lib/theme";
 import { useDashboardDate } from "./DashboardDate";
 import { useJtrax } from "./JtraxContext";
+import { useLineUnread } from "./messages/useLineUnread";
 
 
 /** '/' -> 'home', '/students' -> 'students'. */
@@ -33,6 +34,7 @@ function Sidebar({
   const { role } = useJtrax();
   const t = useTranslations("nav");
   const items = navItemsForRole(role);
+  const unread = useLineUnread(items.some((item) => item.id === "chat"));
   const [tip, setTip] = useState<{ label: string; top: number } | null>(null);
 
   /**
@@ -138,8 +140,34 @@ function Sidebar({
                 textDecoration: "none",
               }}
             >
-              <span style={{ display: "flex", width: 18, height: 18 }}>
+              <span style={{ position: "relative", display: "flex", width: 18, height: 18 }}>
                 <Icon name={item.icon} size={18} color={active ? COLORS.blue : COLORS.text} />
+                {/* Unread LINE messages, on the icon so it shows collapsed too. */}
+                {item.id === "chat" && unread > 0 && (
+                  <span
+                    role="status"
+                    aria-label={t("unreadMessages", { count: unread })}
+                    style={{
+                      position: "absolute",
+                      top: -7,
+                      right: -10,
+                      minWidth: 17,
+                      height: 17,
+                      padding: "0 4px",
+                      borderRadius: 999,
+                      background: COLORS.danger,
+                      color: "#fff",
+                      fontFamily: FONT,
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      lineHeight: "17px",
+                      textAlign: "center",
+                      boxSizing: "border-box",
+                    }}
+                  >
+                    {unread > 99 ? "99+" : unread}
+                  </span>
+                )}
               </span>
               <span
                 className="jt-nav-label"

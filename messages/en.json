@@ -19,7 +19,8 @@
     "themeLight": "Light",
     "themeDark": "Dark",
     "expandNav": "Expand navigation",
-    "collapseNav": "Collapse navigation"
+    "collapseNav": "Collapse navigation",
+    "unreadMessages": "{count, plural, one {# unread message} other {# unread messages}}"
   },
   "roles": {
     "Admin": "Admin",

@@ -19,7 +19,6 @@ import { COLORS, FONT, initialsOf } from "@/lib/theme";
 import { SearchInput } from "../page-kit";
 import { Avatar, Badge, Card, SectionTitle } from "../ui";
 import { ContactPanel } from "../messages/ContactPanel";
-import { StickerMessage } from "../messages/StickerMessage";
 import { useInbox, type SendResult } from "../messages/useInbox";
 
 const FILTERS = [
@@ -303,9 +302,6 @@ export function MessagesPage({ detailId }: { detailId?: string } = {}) {
                     <div style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start", gap: 8, alignItems: "flex-end" }}>
                       {!mine && <ContactAvatar contact={active} size={26} />}
                       <div style={{ maxWidth: "72%", display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start" }}>
-                        {m.kind === "sticker" && !failed ? (
-                          <StickerMessage sticker={m.sticker} text={m.body} />
-                        ) : (
                         <div
                           style={{
                             padding: "9px 13px",
@@ -324,7 +320,6 @@ export function MessagesPage({ detailId }: { detailId?: string } = {}) {
                         >
                           {bodyOf(m)}
                         </div>
-                        )}
                         <div
                           style={{
                             display: "flex",

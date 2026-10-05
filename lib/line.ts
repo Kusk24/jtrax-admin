@@ -29,9 +29,6 @@ export type LineConversation = {
 export type LineMessageKind =
   | "text" | "sticker" | "image" | "video" | "audio" | "file" | "location" | "other";
 
-/** How LINE names a sticker. Only these ids arrive — never the image. */
-export type LineSticker = { packageId: string; stickerId: string; resourceType?: string };
-
 export type LineMessage = {
   id: string;
   direction: "In" | "Out";
@@ -44,8 +41,6 @@ export type LineMessage = {
   channel?: "reply" | "push";
   delivery: "Sent" | "Failed";
   failureReason?: LineFailureReason;
-  /** On a sticker received after the ids were kept (backend 0068). */
-  sticker?: LineSticker;
 };
 
 export type LineFailureReason = "quota" | "blocked" | "invalid" | "network";
