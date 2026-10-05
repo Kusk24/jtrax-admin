@@ -400,6 +400,8 @@ function TournamentDetail({
             student_id: "", participant_name: "", participant_name_th: "", nickname: "",
             participant_date_of_birth: "", contact_phone: "", contact_email: "",
             tournament_category_id: "", fee_charged: autoFill.current.fee,
+            /* Card machine by default; nothing to pay, nothing to take. */
+            [PAY_METHOD]: autoFill.current.fee ? "CreditCard" : "",
           }
         : {
             student_id: p.studentId ?? "",
@@ -1250,10 +1252,11 @@ function studentFill(s: { name: string; dateOfBirth?: string; parentPhone?: stri
   };
 }
 /* Paying at sign-up, from the Add participant form. The names are the form's
-   own, not columns: they are taken out before the entry is saved. */
-const DESK_METHODS = ["Cash", "PromptPay", "BankTransfer"] as const;
-/* Every way an entry can have been paid, card included — for editing one. */
-const ALL_METHODS = ["Cash", "PromptPay", "BankTransfer", "CreditCard"] as const;
+   own, not columns: they are taken out before the entry is saved.
+   Card is the academy's own card machine, and the usual way at the desk. */
+const DESK_METHODS = ["CreditCard", "Cash", "PromptPay", "BankTransfer"] as const;
+/* Every way an entry can have been paid — for editing one. */
+const ALL_METHODS = DESK_METHODS;
 /* Entry fees are non-refundable (the terms), so there is no Refunded here. */
 /* Cancelled: not paid by the closing date, so the place was released. */
 const PAY_STATUSES = ["Pending", "Paid", "Cancelled"] as const;

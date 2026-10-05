@@ -1057,7 +1057,7 @@
     "paymentStatus": "Payment status",
     "noPaymentYet": "No payment yet",
     "ageFromDob": "From the date of birth",
-    "needDeskMethod": "Choose Cash, PromptPay or Bank transfer to mark it paid.",
+    "needDeskMethod": "Choose how it was paid (Card, Cash, PromptPay or Bank transfer) to mark it paid.",
     "methodCreditCard": "Card",
     "cancelled": "Cancelled",
     "dupStudentEntered": "{name} is already entered in this tournament.",

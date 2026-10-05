@@ -446,6 +446,9 @@ describe("adding a participant", () => {
     const dialog = within(screen.getByRole("dialog"));
     const fee = dialog.getByLabelText(/^Fee charged/) as HTMLInputElement;
 
+    /* Paid at the desk's card machine, unless the desk says otherwise. */
+    expect((dialog.getByLabelText(/^Payment method/) as HTMLSelectElement).value).toBe("CreditCard");
+
     /* Someone from outside, during the early bird. */
     expect(fee.value).toBe("250");
     expect(dialog.getByText(en.tournament.feeReason_earlyBird)).toBeDefined();
