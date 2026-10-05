@@ -694,7 +694,10 @@
     "colClassesJoined": "Classes joined",
     "studentIdLabel": "Student ID",
     "copyId": "Copy",
-    "copiedId": "Copied"
+    "copiedId": "Copied",
+    "colHours": "Hours attended",
+    "hoursOf": "{hours} / {goal} h",
+    "hoursReached": "{goal} h reached"
   },
   "parents": {
     "title": "Parents",
@@ -1203,7 +1206,7 @@
     "lineSave": "Save credentials",
     "lineDisconnect": "Disconnect",
     "certTitle": "Certificate Milestone",
-    "certDesc": "Hours of class needed for a certificate.",
+    "certDesc": "Hours of class in a course before the certificate assessment.",
     "unitClasses": "classes",
     "maxNegativeCreditTitle": "Maximum Negative Credit",
     "maxNegativeCreditDesc": "How far below zero a student can still check in.",

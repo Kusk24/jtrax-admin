@@ -33,6 +33,10 @@ export type EnrolmentItem = {
   creditsOf: number | null;
   /** Classes of this course the child was checked in to. */
   classes: number;
+  /** Hours of this course attended, and the academy's milestone for a
+      course (Settings → Certificate Milestone). */
+  hours: number;
+  hoursGoal: number;
   /** This course's own condition; null for a course the child has left. */
   creditStatus: Student["status"] | null;
   enrolledDate: string;
@@ -45,10 +49,26 @@ export type EnrolmentFilter = "active" | "all";
 
 const VIEWS = ["list", "card"] as const;
 const TEMPLATE_ACTIVE =
-  "minmax(190px, 2fr) minmax(100px, 0.8fr) minmax(130px, 1fr) minmax(80px, 0.6fr) minmax(110px, 0.9fr) minmax(110px, 0.9fr) minmax(120px, 1fr) 44px";
+  "minmax(190px, 2fr) minmax(100px, 0.8fr) minmax(130px, 1fr) minmax(80px, 0.6fr) minmax(130px, 1fr) minmax(110px, 0.9fr) minmax(110px, 0.9fr) minmax(120px, 1fr) 44px";
 /* All adds the timeline rail and what happened. */
 const TEMPLATE_ALL =
-  "22px minmax(170px, 1.6fr) minmax(170px, 1.5fr) minmax(95px, 0.8fr) minmax(125px, 1fr) minmax(75px, 0.6fr) minmax(105px, 0.9fr) minmax(105px, 0.9fr) minmax(115px, 1fr) 44px";
+  "22px minmax(170px, 1.6fr) minmax(170px, 1.5fr) minmax(95px, 0.8fr) minmax(125px, 1fr) minmax(75px, 0.6fr) minmax(130px, 1fr) minmax(105px, 0.9fr) minmax(105px, 0.9fr) minmax(115px, 1fr) 44px";
+
+/** Hours against the milestone — "32.5 / 50 h", and a tick once reached. */
+function HoursFigure({ item }: { item: EnrolmentItem }) {
+  const t = useTranslations("students");
+  const reached = item.hoursGoal > 0 && item.hours >= item.hoursGoal;
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontVariantNumeric: "tabular-nums" }}>
+      <span style={{ color: COLORS.text }}>{t("hoursOf", { hours: item.hours, goal: item.hoursGoal })}</span>
+      {reached && (
+        <Badge color={COLORS.success} bg={COLORS.successBg}>
+          {t("hoursReached", { goal: item.hoursGoal })}
+        </Badge>
+      )}
+    </span>
+  );
+}
 
 /** The credit figure takes the colour of the condition. */
 function creditTone(item: EnrolmentItem): string {
@@ -282,6 +302,8 @@ export function EnrolmentList({
               </span>
               {credits(item, 20)}
               <span style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "3px 10px", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+                <span>{t("colHours")}</span>
+                <HoursFigure item={item} />
                 <span>{t("colClassesJoined")}</span>
                 <span style={{ color: COLORS.text }}>{item.classes}</span>
                 <span>{t("enrolledDate")}</span>
@@ -309,13 +331,14 @@ export function EnrolmentList({
     tc("status"),
     t("colCredits"),
     t("colClassesJoined"),
+    t("colHours"),
     t("colCreditStatus"),
     t("enrolledDate"),
     t("expires"),
     "",
   ];
   return (
-    <Table columns={columns} template={template} minWidth={all ? 1180 : 1020}>
+    <Table columns={columns} template={template} minWidth={all ? 1310 : 1150}>
       {shown.map((item, i) => (
         <div key={item.id} data-enrolment-row={item.id} style={{ opacity: item.active ? 1 : 0.8 }}>
           <TableRow template={template} onClick={() => onOpen(item.id)}>
@@ -325,6 +348,7 @@ export function EnrolmentList({
             <span>{statusBadge(item)}</span>
             {credits(item, 14)}
             <span style={{ fontVariantNumeric: "tabular-nums" }}>{item.classes}</span>
+            <HoursFigure item={item} />
             <span>{condition(item)}</span>
             <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmtDate(item.enrolledDate)}</span>
             {expires(item)}

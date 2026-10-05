@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { api, ApiError } from "@/lib/api";
 import { generateHiddenPassword, generateReadablePassword } from "@/lib/credentials";
-import { classesJoined, creditsSinceTopUp } from "@/lib/enrolment-stats";
+import { classesJoined, hoursJoined, creditsSinceTopUp } from "@/lib/enrolment-stats";
 import { InviteButton, InviteOutcomeNote, inviteOutcome, type InviteOutcome } from "../InviteButton";
 import type { StudentLogin } from "@/lib/invite";
 import { type Student } from "@/lib/data";
@@ -1573,6 +1573,8 @@ function StudentDetail({
                     raw.creditTransactions.filter((tx) => String(tx["enrollment_id"]) === e.id),
                   ),
                   classes: classesJoined(raw, student.id, e.classId),
+                  hours: hoursJoined(raw, student.id, e.classId),
+                  hoursGoal: creditRules.certHours,
                   /* This course's own condition — never the student's. */
                   creditStatus: active ? enrolmentStatus(raw, e.id, creditRules).status : null,
                   enrolledDate: e.enrolledDate,

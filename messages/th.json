@@ -694,7 +694,10 @@
     "colClassesJoined": "จำนวนคลาสที่เข้าเรียน",
     "studentIdLabel": "รหัสนักเรียน",
     "copyId": "คัดลอก",
-    "copiedId": "คัดลอกแล้ว"
+    "copiedId": "คัดลอกแล้ว",
+    "colHours": "ชั่วโมงที่เรียน",
+    "hoursOf": "{hours} / {goal} ชม.",
+    "hoursReached": "ครบ {goal} ชม."
   },
   "parents": {
     "title": "ผู้ปกครอง",
@@ -1203,7 +1206,7 @@
     "lineSave": "บันทึกข้อมูลรับรอง",
     "lineDisconnect": "ยกเลิกการเชื่อมต่อ",
     "certTitle": "เกณฑ์รับประกาศนียบัตร",
-    "certDesc": "จำนวนชั่วโมงเรียนที่ต้องครบเพื่อรับใบประกาศ",
+    "certDesc": "จำนวนชั่วโมงเรียนในคอร์สก่อนการสอบรับใบประกาศ",
     "unitClasses": "คลาส",
     "maxNegativeCreditTitle": "เครดิตติดลบสูงสุด",
     "maxNegativeCreditDesc": "เครดิตติดลบได้เท่าใดและยังเช็คอินได้",
