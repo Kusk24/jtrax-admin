@@ -1304,12 +1304,12 @@
     "roundCharged": "= {credits} credits",
     "roundLegendThere": "In class",
     "roundLegendMissed": "Missed",
-    "roundColMissed": "Minutes late or early",
-    "roundColOff": "Taken off the charge",
-    "roundBand": "{from} – {to} min",
-    "roundNothing": "Nothing — full class",
-    "roundOff": "{time} ({credits} credits)",
-    "roundBoth": "Late and early together are added up and rounded once."
+    "roundColMissed": "Late/early",
+    "roundBoth": "Late and early together are added up and rounded once.",
+    "roundColAttended": "Time attended",
+    "roundColRounded": "Rounded",
+    "roundColCharged": "Charged",
+    "roundMinutes": "{minutes} min"
   },
   "games": {
     "title": "Games",

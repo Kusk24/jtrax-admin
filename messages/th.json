@@ -1304,12 +1304,12 @@
     "roundCharged": "= {credits} เครดิต",
     "roundLegendThere": "อยู่ในคลาส",
     "roundLegendMissed": "ขาดไป",
-    "roundColMissed": "มาสายหรือกลับก่อน (นาที)",
-    "roundColOff": "หักออกจากค่าคลาส",
-    "roundBand": "{from} – {to} นาที",
-    "roundNothing": "ไม่หัก — คิดเต็มคลาส",
-    "roundOff": "{time} ({credits} เครดิต)",
-    "roundBoth": "ถ้ามาสายและกลับก่อน จะรวมเวลาแล้วปัดครั้งเดียว"
+    "roundColMissed": "สาย/กลับก่อน",
+    "roundBoth": "ถ้ามาสายและกลับก่อน จะรวมเวลาแล้วปัดครั้งเดียว",
+    "roundColAttended": "เวลาที่เรียน",
+    "roundColRounded": "ปัดแล้ว",
+    "roundColCharged": "คิดเครดิต",
+    "roundMinutes": "{minutes} นาที"
   },
   "games": {
     "title": "เกม",

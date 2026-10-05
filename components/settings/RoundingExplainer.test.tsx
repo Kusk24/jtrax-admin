@@ -27,7 +27,11 @@ describe("the Attendance Rounding explainer", () => {
     expect(screen.getAllByText("Rounded to nearest 15 min → 1 h 30 min")).toHaveLength(2);
     expect(screen.getAllByText("= 1.5 credits")).toHaveLength(2);
     expect(screen.getAllByRole("img")).toHaveLength(2);
-    expect(screen.getByText("8 – 22 min")).toBeTruthy();
+    /* The table: 5 min late or early still charges the full class. */
+    const rows = Array.from(document.querySelectorAll("tbody tr")).map((r) => r.textContent);
+    expect(rows).toEqual([
+      "5 min1h552h2.0", "10 min1h501h451.75", "15 min1h451h451.75", "20 min1h401h451.75", "25 min1h351h301.5",
+    ]);
     if (process.env.DUMP_SVG) writeFileSync(process.env.DUMP_SVG, [...document.querySelectorAll("svg[role=img]")].map((x) => x.outerHTML).join("\n"));
   });
 

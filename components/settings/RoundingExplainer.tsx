@@ -126,15 +126,12 @@ function Example({ title, inAt, outAt, step }: { title: string; inAt: number; ou
 
 export function RoundingExplainer({ step, onClose }: { step: number; onClose: () => void }) {
   const t = useTranslations("settings");
-  /* How much a late arrival or early leave takes off, in bands of the step. */
-  const bands =
-    step > 0
-      ? [0, 1, 2, 3].map((k) => ({
-          from: k === 0 ? 1 : Math.floor(step * (k - 0.5)) + 1,
-          to: Math.floor(step * (k + 0.5)),
-          off: k * step,
-        }))
-      : [];
+  /* Five ways a 2-hour class can be cut short, worked at this step. */
+  const rows = [5, 10, 15, 20, 25].map((missed) => {
+    const attended = END - START - missed;
+    const charged = roundedMinutes(attended, END - START, step);
+    return { missed, attended, charged };
+  });
   return (
     <Modal title={t("roundHowTitle")} onClose={onClose} width={620}>
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -149,26 +146,26 @@ export function RoundingExplainer({ step, onClose }: { step: number; onClose: ()
           <span><Swatch color={COLORS.blue} /> {t("roundLegendThere")}</span>
           <span><Swatch color={COLORS.warning} faded /> {t("roundLegendMissed")}</span>
         </div>
-        {bands.length > 0 && (
-          <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: FONT, fontSize: 13.5 }}>
-            <thead>
-              <tr style={{ textAlign: "left", color: COLORS.textSecondary }}>
-                <th style={{ padding: "6px 8px", fontWeight: 600 }}>{t("roundColMissed")}</th>
-                <th style={{ padding: "6px 8px", fontWeight: 600 }}>{t("roundColOff")}</th>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: FONT, fontSize: 13.5, fontVariantNumeric: "tabular-nums" }}>
+          <thead>
+            <tr style={{ color: COLORS.textSecondary }}>
+              <th style={{ ...cell, textAlign: "right", fontWeight: 600 }}>{t("roundColMissed")}</th>
+              <th style={{ ...cell, textAlign: "right", fontWeight: 600 }}>{t("roundColAttended")}</th>
+              <th style={{ ...cell, textAlign: "right", fontWeight: 600 }}>{t("roundColRounded")}</th>
+              <th style={{ ...cell, textAlign: "right", fontWeight: 600 }}>{t("roundColCharged")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.missed} style={{ borderTop: `1px solid ${COLORS.border}` }}>
+                <td style={{ ...cell, textAlign: "right" }}>{t("roundMinutes", { minutes: r.missed })}</td>
+                <td style={{ ...cell, textAlign: "right" }}>{short(r.attended)}</td>
+                <td style={{ ...cell, textAlign: "right" }}>{short(r.charged)}</td>
+                <td style={{ ...cell, textAlign: "right", fontWeight: 700 }}>{oneDecimal(r.charged)}</td>
               </tr>
-            </thead>
-            <tbody>
-              {bands.map((b) => (
-                <tr key={b.off} style={{ borderTop: `1px solid ${COLORS.border}` }}>
-                  <td style={{ padding: "7px 8px" }}>{t("roundBand", { from: b.from, to: b.to })}</td>
-                  <td style={{ padding: "7px 8px", fontWeight: 600 }}>
-                    {b.off === 0 ? t("roundNothing") : t("roundOff", { time: fmtMinutes(b.off), credits: credits(b.off) })}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+            ))}
+          </tbody>
+        </table>
         <p style={{ margin: 0, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>{t("roundBoth")}</p>
       </div>
     </Modal>
@@ -183,3 +180,18 @@ function Swatch({ color, faded = false }: { color: string; faded?: boolean }) {
     />
   );
 }
+
+const cell = { padding: "7px 10px" } as const;
+
+/** "1h55", "2h" — the table's compact time. */
+function short(min: number): string {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return m ? `${h}h${String(m).padStart(2, "0")}` : `${h}h`;
+}
+
+/** Credits with at least one decimal: "2.0", "1.75". */
+function oneDecimal(min: number): string {
+  return (min / 60).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+}
+
