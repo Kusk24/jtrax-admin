@@ -33,7 +33,7 @@ const state = {
   raw: {
     classes: [
       { class_id: "cls_group", name: "Group Class" },
-      { class_id: "cls_master", name: "Master Class" },
+      { class_id: "cls_master", name: "Master Class", class_type: "Private" },
       { class_id: "cls_gone", name: "Retired Class", archived_at: "2026-08-21T00:00:00Z" },
     ],
     enrollments: [
@@ -560,5 +560,14 @@ describe("a student already in another class at that time", () => {
     const anong = screen.getByRole("checkbox", { name: /Anong Sri/ }) as HTMLInputElement;
     expect(anong.disabled).toBe(false);
     expect(screen.queryByText("In King Slayer")).toBeNull();
+  });
+});
+
+describe("the course picker", () => {
+  it("names each course with how it is taught, since the price differs", () => {
+    const { klass } = renderPanel();
+    const labels = Array.from(klass.options).map((o) => o.textContent);
+    expect(labels).toContain("Group Class · Group");
+    expect(labels).toContain("Master Class · Private");
   });
 });
