@@ -51,8 +51,7 @@
   },
   "classType": {
     "Private": "Private",
-    "Group": "Group",
-    "Master": "Master"
+    "Group": "Group"
   },
   "common": {
     "search": "Search",
@@ -1146,10 +1145,9 @@
     "editCourse": "Edit Course",
     "courseName": "Course Name",
     "description": "Description",
-    "badge": "Badge",
     "icon": "Icon",
     "classType": "Course Type",
-    "classTypeHelp": "How the course is taught. Private is one-to-one; Master is a masterclass.",
+    "classTypeHelp": "Private is one-to-one; Group is a group class.",
     "editTeacher": "Edit Teacher",
     "deleteTeacher": "Delete Teacher",
     "deleteTeacherTitle": "Delete {name}?",
@@ -1173,7 +1171,10 @@
     "firstPackageIncomplete": "Credits must be more than zero. A free course is fine — leave the price at 0.",
     "validityForever": "Never expires",
     "validityHelp": "Leave blank for credits that never expire.",
-    "validityMin": "Validity must be at least 1 day. Leave it blank for credits that never expire."
+    "validityMin": "Validity must be at least 1 day. Leave it blank for credits that never expire.",
+    "level": "Level",
+    "levelPick": "Choose a level",
+    "levelAndType": "Level · Type"
   },
   "settings": {
     "title": "Academy Rules",
@@ -1766,5 +1767,10 @@
     "done": "Done",
     "sentWithLogin": "Invite sent to {email}, with {name}'s student login. They choose their own password from the link, which works for 7 days.",
     "linkSent": "Password link sent to {email}. They choose their own password from it; the link works for 7 days."
+  },
+  "courseLevel": {
+    "Beginner": "Beginner",
+    "Intermediate": "Intermediate",
+    "Advanced": "Advanced"
   }
 }

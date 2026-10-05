@@ -22,11 +22,10 @@ const batch = vi.fn(async (job: () => Promise<unknown>) => job());
 
 const state = {
   raw: {
-    /* Stored with the rook and a badge nobody would derive: the old code drew
-       a queen for any Group class and showed "Group" in the badge field, so a
-       fixture that agreed with the guess would pass either way. */
+    /* Stored with the rook — the old code drew a queen for any Group class,
+       so a fixture that agreed with the guess would pass either way. */
     classes: [
-      { class_id: "cls_group", name: "Group Class", class_type: "Group", icon: "rook", badge: "Weekend" },
+      { class_id: "cls_group", name: "Group Class", class_type: "Group", icon: "rook", level: "Intermediate" },
     ],
     creditPackages: [
       { credit_package_id: "pkg_1", class_id: "cls_group", credit_amount: 20, standard_price: 12000, validity_days: 90 },
@@ -58,6 +57,8 @@ function renderAcademy() {
 
 async function openAddClass(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: "Add Course" }));
+  /* Level is required; the tests below are about the other fields. */
+  await user.selectOptions(screen.getByLabelText(/^Level/), "Beginner");
   return {
     name: screen.getByLabelText(/^Course Name( \*)?$/) as HTMLInputElement,
     credits: screen.getByLabelText(/^Credits( \*)?$/) as HTMLInputElement,
@@ -198,17 +199,9 @@ describe("editing an existing class", () => {
 });
 
 /**
- * The icon and the badge actually reaching the backend.
- *
- * Reported: changing either one in Academy does nothing — the card goes on
- * showing what it showed. Two separate faults, and the fix needs both halves.
- * `lib/class-face.test.ts` covers the reading rule; this covers the writing,
- * which is where the report came from: the form has always collected both and
- * the save has never sent either.
+ * The icon and the level actually reaching the backend.
  */
 describe("saving a class", () => {
-  /* The picker set state that the next render threw away, and Save posted a
-     body with neither field in it. */
   it("sends the icon that was picked", async () => {
     const user = userEvent.setup();
     renderAcademy();
@@ -222,41 +215,49 @@ describe("saving a class", () => {
     expect(patch.icon).toBe("rook");
   });
 
-  it("sends the badge that was typed", async () => {
+  it("opens on the stored level and sends a new one", async () => {
     const user = userEvent.setup();
     renderAcademy();
 
     await user.click(screen.getAllByRole("button", { name: /^Edit/ })[0]);
-    const badge = screen.getByLabelText("Badge") as HTMLInputElement;
-    /* Opens on the stored badge. It used to be class_type wearing a different
-       label, so the field read "Group" back however it had been filled in. */
-    expect(badge.value).toBe("Weekend");
-
-    await user.clear(badge);
-    await user.type(badge, "Juniors");
+    const level = screen.getByLabelText(/^Level/) as HTMLSelectElement;
+    expect(level.value).toBe("Intermediate");
+    await user.selectOptions(level, "Advanced");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     const [, , patch] = update.mock.calls[0] as unknown as [string, string, Record<string, unknown>];
-    expect(patch.badge).toBe("Juniors");
+    expect(patch.level).toBe("Advanced");
   });
 
-  it("sends both on a new class too", async () => {
+  it("needs a level before a new course can be saved", async () => {
+    const user = userEvent.setup();
+    renderAcademy();
+    await user.click(screen.getByRole("button", { name: "Add Course" }));
+    await user.type(screen.getByLabelText(/^Course Name( \*)?$/), "JCA NXT");
+    const save = screen.getByRole("button", { name: "Save" }) as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
+    await user.selectOptions(screen.getByLabelText(/^Level/), "Advanced");
+    expect(save.disabled).toBe(false);
+  });
+
+  it("sends the icon and level on a new class, and no badge", async () => {
     const user = userEvent.setup();
     renderAcademy();
     const f = await openAddClass(user);
 
     await user.type(f.name, "Endgame Lab");
-    await user.type(screen.getByLabelText("Badge"), "Exam prep");
     await user.click(screen.getByRole("button", { name: "bishop" }));
     await user.click(f.save);
 
     const [, cls] = create.mock.calls[0] as unknown as [string, Record<string, unknown>];
     expect(cls.icon).toBe("bishop");
-    expect(cls.badge).toBe("Exam prep");
+    expect(cls.level).toBe("Beginner");
+    expect("badge" in cls).toBe(false);
+    expect(screen.queryByLabelText("Badge")).toBeNull();
   });
 
   /* Renaming must not reset the face to whatever the type would guess. */
-  it("keeps the stored icon when only the name changes", async () => {
+  it("keeps the stored icon and level when only the name changes", async () => {
     const user = userEvent.setup();
     renderAcademy();
 
@@ -268,7 +269,15 @@ describe("saving a class", () => {
 
     const [, , patch] = update.mock.calls[0] as unknown as [string, string, Record<string, unknown>];
     expect(patch.icon).toBe("rook");
-    expect(patch.badge).toBe("Weekend");
+    expect(patch.level).toBe("Intermediate");
+  });
+});
+
+/* A course card reads name, then level and type. */
+describe("a course card", () => {
+  it("shows the level and type under the name", () => {
+    renderAcademy();
+    expect(screen.getAllByText("Intermediate · Group").length).toBeGreaterThan(0);
   });
 });
 
@@ -289,7 +298,7 @@ describe("the class type", () => {
     const f = await openAddClass(user);
 
     await user.type(f.name, "One to one");
-    await user.selectOptions(screen.getByLabelText("Course Type"), "Private");
+    await user.selectOptions(screen.getByLabelText(/^Course Type/), "Private");
     await user.click(f.save);
 
     const [, cls] = create.mock.calls[0] as unknown as [string, Record<string, unknown>];
@@ -301,11 +310,11 @@ describe("the class type", () => {
     renderAcademy();
 
     await user.click(screen.getAllByRole("button", { name: /^Edit/ })[0]);
-    await user.selectOptions(screen.getByLabelText("Course Type"), "Master");
+    await user.selectOptions(screen.getByLabelText(/^Course Type/), "Private");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     const [, , patch] = update.mock.calls[0] as unknown as [string, string, Record<string, unknown>];
-    expect(patch.class_type).toBe("Master");
+    expect(patch.class_type).toBe("Private");
   });
 
   it("opens on the class's own type, not a default", async () => {
@@ -313,18 +322,18 @@ describe("the class type", () => {
     renderAcademy();
 
     await user.click(screen.getAllByRole("button", { name: /^Edit/ })[0]);
-    expect((screen.getByLabelText("Course Type") as HTMLSelectElement).value).toBe("Group");
+    expect((screen.getByLabelText(/^Course Type/) as HTMLSelectElement).value).toBe("Group");
   });
 
   /* "Beginner" was the old draft's starting value. It is a level, and offering
      it here is how a class ends up typed as something the column cannot hold. */
-  it("offers only the three the column allows", async () => {
+  it("offers Private and Group only — Master is a level", async () => {
     const user = userEvent.setup();
     renderAcademy();
     await openAddClass(user);
 
-    const options = Array.from((screen.getByLabelText("Course Type") as HTMLSelectElement).options);
-    expect(options.map((o) => o.value)).toEqual(["Private", "Group", "Master"]);
+    const options = Array.from((screen.getByLabelText(/^Course Type/) as HTMLSelectElement).options);
+    expect(options.map((o) => o.value)).toEqual(["Private", "Group"]);
   });
 });
 

@@ -558,13 +558,15 @@ export function fmtSessionTime(start: string, end: string): string {
   return `${sameHalf ? from.slice(0, -3) : from}–${to}`;
 }
 
-/* The dashboard colours and picks an icon by category, which the ER model
-   spells as class_type. */
-function categoryOf(className: string, classType: string): string {
+/* The dashboard colours and picks an icon by a course's level (backend
+   0066), the same colours a student's level uses. A course without one falls
+   back to a level word in its name. */
+function categoryOf(className: string, level: string): string {
+  if (level === "Beginner" || level === "Intermediate" || level === "Advanced") return level;
   for (const word of ["Master", "Advanced", "Intermediate", "Beginner", "Weekend"]) {
     if (className.includes(word)) return word;
   }
-  return classType === "Master" ? "Master" : "Beginner";
+  return "Beginner";
 }
 
 /** Today's sessions, each with the students checked in to it. */
@@ -600,7 +602,7 @@ export function toTodaysClasses(c: LiveCollections, day = todayISO()): ClassDef[
         date: s(session, "session_date"),
         start,
         classId: s(session, "class_id"),
-        category: categoryOf(name, cls ? s(cls, "class_type") : ""),
+        category: categoryOf(name, cls ? s(cls, "level") : ""),
         name,
         time: start && end ? `${fmtTime(start)} – ${fmtTime(end)}` : fmtTime(start),
         /* The design's card has two states; a session not yet started reads as
@@ -634,7 +636,7 @@ export function toCancelledClasses(c: LiveCollections, day = todayISO()): ClassD
         date: s(session, "session_date"),
         start,
         classId: s(session, "class_id"),
-        category: categoryOf(name, cls ? s(cls, "class_type") : ""),
+        category: categoryOf(name, cls ? s(cls, "level") : ""),
         name,
         time: start && end ? `${fmtTime(start)} – ${fmtTime(end)}` : fmtTime(start),
         status: "Cancelled",
@@ -670,7 +672,7 @@ export function toCheckins(c: LiveCollections, day = todayISO()): CheckinDef[] {
         attendanceId: s(a, "attendance_id"),
         studentId,
         name: student ? s(student, "name") : studentId,
-        class: cls ? categoryOf(s(cls, "name"), s(cls, "class_type")) : "—",
+        class: cls ? categoryOf(s(cls, "name"), s(cls, "level")) : "—",
         timeIn: clockOf(s(a, "check_in_time")),
         timeOut: out ? clockOf(out) : "—",
         checkInAt: s(a, "check_in_time"),

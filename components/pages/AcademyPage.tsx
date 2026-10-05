@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useData } from "@/components/DataProvider";
 import { fmtTHB, liveClasses, livePackages } from "@/lib/live";
-import { CLASS_ICONS, CLASS_TYPES, badgeOf, classTypeOf, iconOf, type ClassType } from "@/lib/class-face";
+import { CLASS_ICONS, CLASS_LEVELS, CLASS_TYPES, classTypeOf, iconOf, levelOf, type ClassLevel, type ClassType } from "@/lib/class-face";
 import { Icon, type IconName } from "@/lib/icons";
 import { COLORS, FONT, initialsOf } from "@/lib/theme";
 import {
@@ -55,7 +55,8 @@ const TEACHER_TEMPLATE = equalTemplate(4, 110);
    not what it is called. It was named `category` here, which is most of why
    nobody could tell where it came from: two words for one column, and the
    console's word was not the one in the database. */
-type Course = { id: string; name: string; desc: string; badge: string; icon: IconName; classType: ClassType };
+/* A course is a name, a level and a type: JCA NXT · Advanced · Private. */
+type Course = { id: string; name: string; desc: string; level: ClassLevel | ""; icon: IconName; classType: ClassType };
 type Teacher = { id: string; name: string; email: string; phone: string; lineId: string; status: string };
 type CreditPackage = {
   id: string;
@@ -110,6 +111,7 @@ export function AcademyPage() {
   const { showError } = useErrorToast();
   const tStatus = useTranslations("status");
   const tClassType = useTranslations("classType");
+  const tLevel = useTranslations("courseLevel");
   const { raw, batch, create, update, remove } = useData();
 
   /* 0 and blank both mean "never expires" — the same convention the backend's
@@ -136,7 +138,7 @@ export function AcademyPage() {
     id: String(c.class_id),
     name: String(c.name ?? ""),
     desc: String(c.description ?? ""),
-    badge: badgeOf(c.badge, String(c.class_type ?? "")),
+    level: levelOf(c.level),
     icon: iconOf(c.icon, String(c.class_type ?? "")),
     classType: classTypeOf(c.class_type),
   }));
@@ -219,7 +221,7 @@ export function AcademyPage() {
   const [courseDraft, setCourseDraft] = useState<Omit<Course, "id">>({
     name: "",
     desc: "",
-    badge: "",
+    level: "",
     icon: "pawn",
     classType: "Group",
   });
@@ -253,7 +255,7 @@ export function AcademyPage() {
   function openCourseModal(course: Course | "new") {
     setCourseModal(course);
     setCourseDraft(
-      course === "new" ? { name: "", desc: "", badge: "", icon: "pawn", classType: "Group" } : { ...course },
+      course === "new" ? { name: "", desc: "", level: "", icon: "pawn", classType: "Group" } : { ...course },
     );
   }
 
@@ -339,8 +341,8 @@ export function AcademyPage() {
             <ViewToggle value={courseMode} onChange={setCourseMode} options={CARD_FIRST} />
             <ExportButton
               filename="courses"
-              columns={[t("courseName"), t("badge"), t("classType"), t("description")]}
-              rows={() => courses.map((c) => [c.name, c.badge, tClassType(c.classType), c.desc])}
+              columns={[t("courseName"), t("level"), t("classType"), t("description")]}
+              rows={() => courses.map((c) => [c.name, c.level ? tLevel(c.level) : "", tClassType(c.classType), c.desc])}
             />
             <button type="button" className="jt-btn-primary" style={primaryButtonStyle} onClick={() => openCourseModal("new")}>
               <Icon name="plus" size={15} color={COLORS.surface} /> {t("addCourse")}
@@ -372,11 +374,11 @@ export function AcademyPage() {
                   >
                     <Icon name={c.icon} size={21} color={COLORS.blue} />
                   </span>
-                  <Badge color={COLORS.blue} bg={COLORS.light}>
-                    {c.badge}
-                  </Badge>
                 </div>
-                <div style={{ fontFamily: FONT, fontSize: 16, fontWeight: 700, color: COLORS.text }}>{c.name}</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  <div style={{ fontFamily: FONT, fontSize: 16, fontWeight: 700, color: COLORS.text }}>{c.name}</div>
+                  <CourseFacts level={c.level} classType={c.classType} />
+                </div>
                 <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, lineHeight: 1.55, color: COLORS.textSecondary }}>
                   {c.desc}
                 </p>
@@ -392,7 +394,7 @@ export function AcademyPage() {
       ) : (
         <Card style={{ padding: 0, overflow: "hidden" }}>
           <Table
-            columns={[t("courseName"), t("badge"), t("description"), tCommon("action")]}
+            columns={[t("courseName"), t("levelAndType"), t("description"), tCommon("action")]}
             template={COURSE_TEMPLATE}
             minWidth={760}
           >
@@ -405,9 +407,7 @@ export function AcademyPage() {
                     {c.name}
                   </span>
                 </span>
-                <Badge color={COLORS.blue} bg={COLORS.light} style={{ justifySelf: "start" }}>
-                  {c.badge}
-                </Badge>
+                <CourseFacts level={c.level} classType={c.classType} />
                 <span
                   style={{
                     color: COLORS.textSecondary,
@@ -609,7 +609,12 @@ export function AcademyPage() {
             <p style={{ margin: 0, fontFamily: FONT, fontSize: 14.5, lineHeight: 1.6, color: COLORS.textSecondary }}>
               {courseDetail.desc}
             </p>
-            <InfoGrid rows={[{ label: t("badge"), value: courseDetail.badge }, { label: t("classType"), value: tClassType(courseDetail.classType) }]} />
+            <InfoGrid
+              rows={[
+                { label: t("level"), value: courseDetail.level ? tLevel(courseDetail.level) : "—" },
+                { label: t("classType"), value: tClassType(courseDetail.classType) },
+              ]}
+            />
           </div>
         </Modal>
       )}
@@ -695,7 +700,7 @@ export function AcademyPage() {
               <ActionButton
                 className="jt-btn-primary"
                 style={primaryButtonStyle}
-                disabled={!courseDraft.name || (courseModal === "new" && !firstPackageComplete)}
+                disabled={!courseDraft.name.trim() || !courseDraft.level || (courseModal === "new" && !firstPackageComplete)}
                 busyLabel={tCommon("saving")}
                 onClick={async () => {
                   try {
@@ -711,7 +716,7 @@ export function AcademyPage() {
                           /* The two the form has always asked for and never
                              sent. Without them the picker is decoration. */
                           icon: courseDraft.icon,
-                          badge: courseDraft.badge,
+                          level: courseDraft.level,
                         });
                         await create("credit-packages", {
                           class_id: cls.class_id,
@@ -731,7 +736,7 @@ export function AcademyPage() {
                         description: courseDraft.desc,
                         class_type: courseDraft.classType,
                         icon: courseDraft.icon,
-                        badge: courseDraft.badge,
+                        level: courseDraft.level,
                       });
                     }
                   } catch (e) {
@@ -751,24 +756,21 @@ export function AcademyPage() {
               <input id="co-name" value={courseDraft.name} onChange={(e) => setCourseDraft({ ...courseDraft, name: e.target.value })} style={fieldStyle} />
             </div>
             <div>
-              <label style={labelStyle} htmlFor="co-desc">{t("description")}</label>
-              <textarea
-                id="co-desc"
-                rows={3}
-                value={courseDraft.desc}
-                onChange={(e) => setCourseDraft({ ...courseDraft, desc: e.target.value })}
-                style={{ ...fieldStyle, resize: "vertical", lineHeight: 1.5 }}
-              />
+              <label style={labelStyle} htmlFor="co-level">{t("level")}<Req /></label>
+              <select
+                id="co-level"
+                value={courseDraft.level}
+                onChange={(e) => setCourseDraft({ ...courseDraft, level: e.target.value as ClassLevel })}
+                style={selectStyle}
+              >
+                <option value="" disabled>{t("levelPick")}</option>
+                {CLASS_LEVELS.map((v) => (
+                  <option key={v} value={v}>{tLevel(v)}</option>
+                ))}
+              </select>
             </div>
             <div>
-              <label style={labelStyle} htmlFor="co-badge">{t("badge")}</label>
-              <input id="co-badge" value={courseDraft.badge} onChange={(e) => setCourseDraft({ ...courseDraft, badge: e.target.value })} style={fieldStyle} />
-            </div>
-            {/* The column has existed since the first migration and this form
-                has never asked for it, so every class the academy created came
-                out "Group" whether it was one or not. */}
-            <div>
-              <label style={labelStyle} htmlFor="co-type">{t("classType")}</label>
+              <label style={labelStyle} htmlFor="co-type">{t("classType")}<Req /></label>
               <select
                 id="co-type"
                 value={courseDraft.classType}
@@ -782,6 +784,16 @@ export function AcademyPage() {
               <p style={{ margin: "5px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
                 {t("classTypeHelp")}
               </p>
+            </div>
+            <div>
+              <label style={labelStyle} htmlFor="co-desc">{t("description")}</label>
+              <textarea
+                id="co-desc"
+                rows={3}
+                value={courseDraft.desc}
+                onChange={(e) => setCourseDraft({ ...courseDraft, desc: e.target.value })}
+                style={{ ...fieldStyle, resize: "vertical", lineHeight: 1.5 }}
+              />
             </div>
             <div>
               <span style={labelStyle}>{t("icon")}</span>
@@ -939,3 +951,15 @@ export function AcademyPage() {
     </div>
   );
 }
+
+/* Level and type under a course's name — "Advanced · Private". */
+function CourseFacts({ level, classType }: { level: ClassLevel | ""; classType: ClassType }) {
+  const tLevel = useTranslations("courseLevel");
+  const tClassType = useTranslations("classType");
+  return (
+    <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
+      {[level ? tLevel(level) : "", tClassType(classType)].filter(Boolean).join(" · ")}
+    </span>
+  );
+}
+
