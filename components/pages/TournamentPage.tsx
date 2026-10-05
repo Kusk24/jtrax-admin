@@ -349,6 +349,7 @@ function TournamentDetail({
               half: true,
               placeholder: t("noPaymentYet"),
               options: PAY_STATUSES.map((st) => ({ value: st, label: tStatus(st) })),
+              help: participantValues[PAY_STATUS] === "Cancelled" ? t("cancelReleases") : undefined,
             },
             /* The answer to the arrival reminder — or a phone call the desk took. */
             {
@@ -628,7 +629,13 @@ function TournamentDetail({
                  Pending, the payment row's own word for it. */
               const status = String(payStatus ?? "") || (pay ? "Pending" : "");
               const method = String(payMethod ?? "");
-              if (pay) {
+              if (status === "Cancelled" && pay?.status !== "Cancelled") {
+                /* Cancelled takes the place out of the tournament, as closing
+                   does: it leaves this list for Released places, where it can
+                   be restored. */
+                await api.post(`tournament-registrations/${participantModal.id}/release`, {});
+                await refresh();
+              } else if (pay) {
                 if ((status && status !== pay.status) || (method && method !== pay.method)) {
                   await update("payments", pay.id, {
                     ...(status && status !== pay.status ? { status } : {}),

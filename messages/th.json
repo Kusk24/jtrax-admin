@@ -1068,7 +1068,8 @@
     "feeReason_earlyBird": "ราคา early bird",
     "feeReason_student": "ราคานักเรียน JCA (ลด {pct}%)",
     "feeReason_studentEarlyBird": "ราคานักเรียน JCA แบบ early bird",
-    "feeReason_studentEarlyBirdDiscount": "ราคานักเรียน JCA แบบ early bird ลด {pct}%"
+    "feeReason_studentEarlyBirdDiscount": "ราคานักเรียน JCA แบบ early bird ลด {pct}%",
+    "cancelReleases": "ย้ายไปที่รายการที่ยกเลิกแล้ว"
   },
   "announcement": {
     "title": "ประกาศ",

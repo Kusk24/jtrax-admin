@@ -100,6 +100,12 @@ vi.mock("@/components/DataProvider", () => ({
   }),
 }));
 
+const { post } = vi.hoisted(() => ({ post: vi.fn(async (_path: string, _body: unknown) => ({})) }));
+vi.mock("@/lib/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api")>();
+  return { ...actual, api: { ...actual.api, post: (path: string, body: unknown) => post(path, body) } };
+});
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
   usePathname: () => "/tournament",
@@ -386,6 +392,20 @@ describe("editing a participant", () => {
     await user.selectOptions(dialog.getByLabelText(/^Payment status/), "");
     await user.click(dialog.getByRole("button", { name: /^Save/ }));
     await waitFor(() => expect(update).toHaveBeenCalledWith("payments", "pay_1", { status: "Pending" }));
+  });
+
+  it("releases the place when the fee is cancelled", async () => {
+    tournaments = [withEntry()];
+    update.mockClear();
+    post.mockClear();
+    const user = openDetail();
+    await user.click(screen.getByRole("button", { name: /^participants/i }));
+    await user.click(screen.getByRole("button", { name: /^Edit Alice/ }));
+    const dialog = within(screen.getByRole("dialog"));
+    await user.selectOptions(dialog.getByLabelText(/^Payment status/), "Cancelled");
+    await user.click(dialog.getByRole("button", { name: /^Save/ }));
+    await waitFor(() => expect(post).toHaveBeenCalledWith("tournament-registrations/treg_1/release", {}));
+    expect(update.mock.calls.some((c) => c[0] === "payments")).toBe(false);
   });
 
   it("lays the form out in the desk's order, with no rating", async () => {

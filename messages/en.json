@@ -1068,7 +1068,8 @@
     "feeReason_earlyBird": "Early-bird fee",
     "feeReason_student": "JCA student fee ({pct}% off)",
     "feeReason_studentEarlyBird": "JCA student, early-bird fee",
-    "feeReason_studentEarlyBirdDiscount": "JCA student, early-bird fee with {pct}% off"
+    "feeReason_studentEarlyBirdDiscount": "JCA student, early-bird fee with {pct}% off",
+    "cancelReleases": "Moves them to Released places"
   },
   "announcement": {
     "title": "Announcement",
