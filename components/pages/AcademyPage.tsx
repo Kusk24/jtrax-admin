@@ -774,7 +774,11 @@ export function AcademyPage() {
                         class_type: courseDraft.classType,
                         icon: courseDraft.icon,
                         level: courseDraft.level,
-                        price_per_credit: courseDraft.pricePerCredit.trim() === "" ? null : Number(courseDraft.pricePerCredit),
+                        /* Only when it changed: an edit that leaves it alone
+                           does not depend on the server knowing the field. */
+                        ...(courseDraft.pricePerCredit.trim() !== courseModal.pricePerCredit.trim()
+                          ? { price_per_credit: courseDraft.pricePerCredit.trim() === "" ? null : Number(courseDraft.pricePerCredit) }
+                          : {}),
                       });
                     }
                   } catch (e) {

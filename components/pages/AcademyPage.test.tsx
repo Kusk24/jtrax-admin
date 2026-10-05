@@ -270,7 +270,8 @@ describe("saving a class", () => {
     const [, , patch] = update.mock.calls[0] as unknown as [string, string, Record<string, unknown>];
     expect(patch.icon).toBe("knight");
     expect(patch.level).toBe("Intermediate");
-    expect(patch.price_per_credit).toBe(500);
+    /* Untouched, so not sent. */
+    expect("price_per_credit" in patch).toBe(false);
   });
 });
 
@@ -446,3 +447,29 @@ describe("a package's validity", () => {
     expect(body.validity_days).toBeNull();
   });
 });
+
+describe("editing a course's price per credit", () => {
+  it("opens on the stored price and saves a new one", async () => {
+    const user = userEvent.setup();
+    renderAcademy();
+    await user.click(screen.getAllByRole("button", { name: /^Edit/ })[0]);
+    const ppc = screen.getByLabelText(/^Price per credit/) as HTMLInputElement;
+    expect(ppc.value).toBe("500");
+    await user.clear(ppc);
+    await user.type(ppc, "650");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    const [, , patch] = update.mock.calls[0] as unknown as [string, string, Record<string, unknown>];
+    expect(patch.price_per_credit).toBe(650);
+  });
+
+  it("clears it when emptied", async () => {
+    const user = userEvent.setup();
+    renderAcademy();
+    await user.click(screen.getAllByRole("button", { name: /^Edit/ })[0]);
+    await user.clear(screen.getByLabelText(/^Price per credit/));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    const [, , patch] = update.mock.calls[0] as unknown as [string, string, Record<string, unknown>];
+    expect(patch.price_per_credit).toBeNull();
+  });
+});
+
