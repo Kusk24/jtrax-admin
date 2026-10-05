@@ -19,7 +19,6 @@ import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf } from "@/lib/theme";
 import {
   ActionButton,
-  ConfirmDeleteModal,
   CrudFormModal,
   RowActions,
   type CrudField,
@@ -47,7 +46,7 @@ import {
   TableRow,
 } from "../page-kit";
 import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
-import { DeleteButton, DetailHeader, EditButton } from "../detail";
+import { DetailHeader, EditButton } from "../detail";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 import { useErrorToast } from "../ErrorToast";
@@ -636,12 +635,10 @@ export function PaymentDetail({
   payment,
   onClose,
   onEdit,
-  onDelete,
 }: {
   payment: Payment;
   onClose: () => void;
   onEdit: () => void;
-  onDelete: () => void;
 }) {
   const t = useTranslations("payment");
   const tCommon = useTranslations("common");
@@ -701,10 +698,8 @@ export function PaymentDetail({
           }
           actions={
             payment.id ? (
-              <>
-                <EditButton onClick={onEdit} />
-                <DeleteButton onClick={onDelete} />
-              </>
+              /* Edit only: a payment is corrected, never deleted. */
+              <EditButton onClick={onEdit} />
             ) : undefined
           }
         />
@@ -810,7 +805,7 @@ export function PaymentPage({
   const t = useTranslations("payment");
   const tCommon = useTranslations("common");
   const { showError } = useErrorToast();
-  const { payments, raw, batch, create, update, remove, loading } = useData();
+  const { payments, raw, batch, create, update, loading } = useData();
   /* Arriving with a student means the wizard just registered them and the next
      thing the desk does is take their money. */
   const [formOpen, setFormOpen] = useState(Boolean(startStudentId) || Boolean(startNew));
@@ -828,7 +823,6 @@ export function PaymentPage({
   const [detail, setDetail] = useState<Payment | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [values, setValues] = useState<CrudValues>({});
-  const [deleting, setDeleting] = useState<Payment | null>(null);
 
   const editFields: CrudField[] = useMemo(
     () => [
@@ -1088,15 +1082,6 @@ export function PaymentPage({
           payment={detail}
           onClose={() => setDetail(null)}
           onEdit={() => { openEdit(detail); setDetail(null); }}
-          onDelete={() => { setDeleting(detail); setDetail(null); }}
-        />
-      )}
-
-      {deleting && (
-        <ConfirmDeleteModal
-          what={t("paymentFor", { name: deleting.name, amount: deleting.amount })}
-          onClose={() => setDeleting(null)}
-          onConfirm={() => remove("payments", deleting.id!)}
         />
       )}
 
