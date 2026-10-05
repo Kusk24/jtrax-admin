@@ -1126,7 +1126,7 @@
     "reasonInvalid": "LINE ปฏิเสธข้อความนี้ กรุณาตรวจสอบการตั้งค่าช่องทาง",
     "reasonNetwork": "ไม่สามารถติดต่อ LINE ได้ กรุณาลองใหม่อีกครั้ง",
     "kindText": "[ข้อความ]",
-    "kindSticker": "[สติกเกอร์]",
+    "kindSticker": "สติกเกอร์",
     "kindImage": "[รูปภาพ]",
     "kindVideo": "[วิดีโอ]",
     "kindAudio": "[ข้อความเสียง]",

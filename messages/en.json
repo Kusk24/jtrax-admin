@@ -1126,7 +1126,7 @@
     "reasonInvalid": "LINE rejected the message. Check the channel settings.",
     "reasonNetwork": "Could not reach LINE. Try again.",
     "kindText": "[Message]",
-    "kindSticker": "[Sticker]",
+    "kindSticker": "Sticker",
     "kindImage": "[Photo]",
     "kindVideo": "[Video]",
     "kindAudio": "[Voice message]",
