@@ -166,7 +166,7 @@ export function LoginScreen({ justReset }: { justReset?: boolean }) {
               className="jtrax-fade-in-up"
               style={{
                 display: "flex",
-                alignItems: "center",
+                alignItems: state.error === "noAccess" ? "flex-start" : "center",
                 gap: 9,
                 padding: "10px 13px",
                 borderRadius: 10,
@@ -200,7 +200,13 @@ export function LoginScreen({ justReset }: { justReset?: boolean }) {
               }}
             >
               <Icon name="alertTriangle" size={17} color={COLORS.danger} />
-              {t(
+              {state.error === "noAccess" ? (
+                /* A real account, for the other app: say which one to use. */
+                <span>
+                  <strong style={{ display: "block", fontWeight: 700 }}>{t("errorNoAccessTitle")}</strong>
+                  {t("errorNoAccess")}
+                </span>
+              ) : t(
                 state.error === "missing"
                   ? "errorMissing"
                   : state.error === "unreachable"

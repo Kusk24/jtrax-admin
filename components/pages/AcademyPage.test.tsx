@@ -22,11 +22,10 @@ const batch = vi.fn(async (job: () => Promise<unknown>) => job());
 
 const state = {
   raw: {
-    /* Stored with the rook and a badge nobody would derive: the old code drew
-       a queen for any Group class and showed "Group" in the badge field, so a
-       fixture that agreed with the guess would pass either way. */
+    /* Stored with the knight — not what a Group class would fall back to, so
+       a fixture that agreed with the guess cannot pass by accident. */
     classes: [
-      { class_id: "cls_group", name: "Group Class", class_type: "Group", icon: "rook", badge: "Weekend" },
+      { class_id: "cls_group", name: "Group Class", class_type: "Group", icon: "knight", level: "Intermediate", price_per_credit: 500 },
     ],
     creditPackages: [
       { credit_package_id: "pkg_1", class_id: "cls_group", credit_amount: 20, standard_price: 12000, validity_days: 90 },
@@ -58,10 +57,12 @@ function renderAcademy() {
 
 async function openAddClass(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: "Add Course" }));
+  /* Level is required; the tests below are about the other fields. */
+  await user.selectOptions(screen.getByLabelText(/^Level/), "Beginner");
   return {
-    name: screen.getByLabelText("Course Name") as HTMLInputElement,
-    credits: screen.getByLabelText("Credits") as HTMLInputElement,
-    price: screen.getByLabelText("Price") as HTMLInputElement,
+    name: screen.getByLabelText(/^Course Name( \*)?$/) as HTMLInputElement,
+    credits: screen.getByLabelText(/^Credits( \*)?$/) as HTMLInputElement,
+    price: screen.getByLabelText(/^Price( \*)?$/) as HTMLInputElement,
     days: screen.getByLabelText("Validity (days)") as HTMLInputElement,
     save: screen.getByRole("button", { name: "Save" }) as HTMLButtonElement,
   };
@@ -152,7 +153,9 @@ describe("the Add Course card", () => {
   /* 0 is not the same failure zero credits is: it is the same answer as
      leaving the field blank, so it must not block the save the way it used
      to when validity was required. */
-  it("still saves with validity typed as exactly 0", async () => {
+  /* Blank is the one way to say "never expires"; 0 read as "expires at
+     once", so it is refused rather than saved. */
+  it("refuses validity typed as 0", async () => {
     const user = userEvent.setup();
     renderAcademy();
     const f = await openAddClass(user);
@@ -160,10 +163,8 @@ describe("the Add Course card", () => {
     await user.clear(f.days);
     await user.type(f.days, "0");
 
-    expect(f.save.disabled).toBe(false);
-    await user.click(f.save);
-    const [, pkg] = create.mock.calls[1] as unknown as [string, Record<string, unknown>];
-    expect(pkg.validity_days).toBe(0);
+    expect(f.save.disabled).toBe(true);
+    expect(screen.getByText(en.academy.validityMin)).toBeTruthy();
   });
 
   /* An academy does run free trial classes. */
@@ -189,7 +190,7 @@ describe("editing an existing class", () => {
 
     /* The card's own edit button; RowActions labels it "Edit <thing>". */
     await user.click(screen.getAllByRole("button", { name: /^Edit/ })[0]);
-    expect(screen.queryByLabelText("Credits")).toBeNull();
+    expect(screen.queryByLabelText(/^Credits( \*)?$/)).toBeNull();
 
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(create).not.toHaveBeenCalled();
@@ -198,77 +199,116 @@ describe("editing an existing class", () => {
 });
 
 /**
- * The icon and the badge actually reaching the backend.
- *
- * Reported: changing either one in Academy does nothing — the card goes on
- * showing what it showed. Two separate faults, and the fix needs both halves.
- * `lib/class-face.test.ts` covers the reading rule; this covers the writing,
- * which is where the report came from: the form has always collected both and
- * the save has never sent either.
+ * The icon and the level actually reaching the backend.
  */
 describe("saving a class", () => {
-  /* The picker set state that the next render threw away, and Save posted a
-     body with neither field in it. */
   it("sends the icon that was picked", async () => {
     const user = userEvent.setup();
     renderAcademy();
 
     await user.click(screen.getAllByRole("button", { name: /^Edit/ })[0]);
-    await user.click(screen.getByRole("button", { name: "rook" }));
+    await user.click(screen.getByRole("button", { name: "group" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     const [path, id, patch] = update.mock.calls[0] as unknown as [string, string, Record<string, unknown>];
     expect([path, id]).toEqual(["classes", "cls_group"]);
-    expect(patch.icon).toBe("rook");
+    expect(patch.icon).toBe("group");
   });
 
-  it("sends the badge that was typed", async () => {
+  it("opens on the stored level and sends a new one", async () => {
     const user = userEvent.setup();
     renderAcademy();
 
     await user.click(screen.getAllByRole("button", { name: /^Edit/ })[0]);
-    const badge = screen.getByLabelText("Badge") as HTMLInputElement;
-    /* Opens on the stored badge. It used to be class_type wearing a different
-       label, so the field read "Group" back however it had been filled in. */
-    expect(badge.value).toBe("Weekend");
-
-    await user.clear(badge);
-    await user.type(badge, "Juniors");
+    const level = screen.getByLabelText(/^Level/) as HTMLSelectElement;
+    expect(level.value).toBe("Intermediate");
+    await user.selectOptions(level, "Advanced");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     const [, , patch] = update.mock.calls[0] as unknown as [string, string, Record<string, unknown>];
-    expect(patch.badge).toBe("Juniors");
+    expect(patch.level).toBe("Advanced");
   });
 
-  it("sends both on a new class too", async () => {
+  it("needs a level before a new course can be saved", async () => {
+    const user = userEvent.setup();
+    renderAcademy();
+    await user.click(screen.getByRole("button", { name: "Add Course" }));
+    await user.type(screen.getByLabelText(/^Course Name( \*)?$/), "JCA NXT");
+    const save = screen.getByRole("button", { name: "Save" }) as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
+    await user.selectOptions(screen.getByLabelText(/^Level/), "Advanced");
+    expect(save.disabled).toBe(false);
+  });
+
+  it("sends the icon and level on a new class, and no badge", async () => {
     const user = userEvent.setup();
     renderAcademy();
     const f = await openAddClass(user);
 
     await user.type(f.name, "Endgame Lab");
-    await user.type(screen.getByLabelText("Badge"), "Exam prep");
-    await user.click(screen.getByRole("button", { name: "bishop" }));
+    await user.click(screen.getByRole("button", { name: "knight" }));
     await user.click(f.save);
 
     const [, cls] = create.mock.calls[0] as unknown as [string, Record<string, unknown>];
-    expect(cls.icon).toBe("bishop");
-    expect(cls.badge).toBe("Exam prep");
+    expect(cls.icon).toBe("knight");
+    expect(cls.level).toBe("Beginner");
+    expect("badge" in cls).toBe(false);
+    expect(screen.queryByLabelText("Badge")).toBeNull();
   });
 
   /* Renaming must not reset the face to whatever the type would guess. */
-  it("keeps the stored icon when only the name changes", async () => {
+  it("keeps the stored icon and level when only the name changes", async () => {
     const user = userEvent.setup();
     renderAcademy();
 
     await user.click(screen.getAllByRole("button", { name: /^Edit/ })[0]);
-    const name = screen.getByLabelText("Course Name") as HTMLInputElement;
+    const name = screen.getByLabelText(/^Course Name( \*)?$/) as HTMLInputElement;
     await user.clear(name);
     await user.type(name, "Group Class II");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     const [, , patch] = update.mock.calls[0] as unknown as [string, string, Record<string, unknown>];
-    expect(patch.icon).toBe("rook");
-    expect(patch.badge).toBe("Weekend");
+    expect(patch.icon).toBe("knight");
+    expect(patch.level).toBe("Intermediate");
+    /* Untouched, so not sent. */
+    expect("price_per_credit" in patch).toBe(false);
+  });
+});
+
+/* A course card: the type as a tag in the corner, the level under the name. */
+describe("a course card", () => {
+  it("shows the type tag and the level", () => {
+    renderAcademy();
+    expect(screen.getAllByText("Group").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Intermediate").length).toBeGreaterThan(0);
+  });
+});
+
+/* The price per credit starts new prices, and never overrides a typed one. */
+describe("the price per credit", () => {
+  it("fills the first package's price, until the price is typed", async () => {
+    const user = userEvent.setup();
+    renderAcademy();
+    const f = await openAddClass(user);
+    await user.type(screen.getByLabelText(/^Price per credit/), "600");
+    expect(f.price.value).toBe("12000"); // 20 credits × 600
+    await user.clear(f.credits);
+    await user.type(f.credits, "10");
+    expect(f.price.value).toBe("6000");
+    await user.clear(f.price);
+    await user.type(f.price, "5500");
+    await user.clear(f.credits);
+    await user.type(f.credits, "12");
+    expect(f.price.value).toBe("5500");
+  });
+
+  it("fills a new package's price from its course", async () => {
+    const user = userEvent.setup();
+    renderAcademy();
+    await user.click(screen.getByRole("button", { name: /Add Package/ }));
+    await user.selectOptions(screen.getByLabelText(/^Course/), "cls_group");
+    await user.type(screen.getByLabelText(/^Credits/), "8");
+    expect((screen.getByLabelText(/^Price/) as HTMLInputElement).value).toBe("4000");
   });
 });
 
@@ -289,7 +329,7 @@ describe("the class type", () => {
     const f = await openAddClass(user);
 
     await user.type(f.name, "One to one");
-    await user.selectOptions(screen.getByLabelText("Course Type"), "Private");
+    await user.selectOptions(screen.getByLabelText(/^Course Type/), "Private");
     await user.click(f.save);
 
     const [, cls] = create.mock.calls[0] as unknown as [string, Record<string, unknown>];
@@ -301,11 +341,11 @@ describe("the class type", () => {
     renderAcademy();
 
     await user.click(screen.getAllByRole("button", { name: /^Edit/ })[0]);
-    await user.selectOptions(screen.getByLabelText("Course Type"), "Master");
+    await user.selectOptions(screen.getByLabelText(/^Course Type/), "Private");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     const [, , patch] = update.mock.calls[0] as unknown as [string, string, Record<string, unknown>];
-    expect(patch.class_type).toBe("Master");
+    expect(patch.class_type).toBe("Private");
   });
 
   it("opens on the class's own type, not a default", async () => {
@@ -313,18 +353,18 @@ describe("the class type", () => {
     renderAcademy();
 
     await user.click(screen.getAllByRole("button", { name: /^Edit/ })[0]);
-    expect((screen.getByLabelText("Course Type") as HTMLSelectElement).value).toBe("Group");
+    expect((screen.getByLabelText(/^Course Type/) as HTMLSelectElement).value).toBe("Group");
   });
 
   /* "Beginner" was the old draft's starting value. It is a level, and offering
      it here is how a class ends up typed as something the column cannot hold. */
-  it("offers only the three the column allows", async () => {
+  it("offers Private and Group only — Master is a level", async () => {
     const user = userEvent.setup();
     renderAcademy();
     await openAddClass(user);
 
-    const options = Array.from((screen.getByLabelText("Course Type") as HTMLSelectElement).options);
-    expect(options.map((o) => o.value)).toEqual(["Private", "Group", "Master"]);
+    const options = Array.from((screen.getByLabelText(/^Course Type/) as HTMLSelectElement).options);
+    expect(options.map((o) => o.value)).toEqual(["Private", "Group"]);
   });
 });
 
@@ -407,3 +447,39 @@ describe("a package's validity", () => {
     expect(body.validity_days).toBeNull();
   });
 });
+
+describe("editing a course's price per credit", () => {
+  it("opens on the stored price and saves a new one", async () => {
+    const user = userEvent.setup();
+    renderAcademy();
+    await user.click(screen.getAllByRole("button", { name: /^Edit/ })[0]);
+    const ppc = screen.getByLabelText(/^Price per credit/) as HTMLInputElement;
+    expect(ppc.value).toBe("500");
+    await user.clear(ppc);
+    await user.type(ppc, "650");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    const [, , patch] = update.mock.calls[0] as unknown as [string, string, Record<string, unknown>];
+    expect(patch.price_per_credit).toBe(650);
+  });
+
+  it("clears it when emptied", async () => {
+    const user = userEvent.setup();
+    renderAcademy();
+    await user.click(screen.getAllByRole("button", { name: /^Edit/ })[0]);
+    await user.clear(screen.getByLabelText(/^Price per credit/));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    const [, , patch] = update.mock.calls[0] as unknown as [string, string, Record<string, unknown>];
+    expect(patch.price_per_credit).toBeNull();
+  });
+});
+
+describe("the package form's course list", () => {
+  it("names each course with its type", async () => {
+    const user = userEvent.setup();
+    renderAcademy();
+    await user.click(screen.getByRole("button", { name: /Add Package/ }));
+    const options = Array.from((screen.getByLabelText(/^Course/) as HTMLSelectElement).options).map((o) => o.textContent);
+    expect(options).toContain("Group Class · Group");
+  });
+});
+

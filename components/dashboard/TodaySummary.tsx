@@ -10,15 +10,16 @@
  * roster now sits beside it as an actionable status chart rather than three
  * more numbers that are repeated elsewhere on the page.
  *
- * The headline is always the calendar month. The range switch under it changes
- * only the sparkline: "what did we take this month" and "what shape has the
- * money been" are two questions, and tying them together would make the big
- * number mean something different depending on a control beside it.
+ * The headline follows the range switch under it: "this month" by default,
+ * "this week" or "this year" when that is what is picked, each with its own
+ * total and its own comparison to the stretch before it. A label and a number
+ * that disagreed — "this week" over a month's takings — would be worse than
+ * no range switch at all.
  */
 
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { monthToDate, REVENUE_RANGES, revenueSeries, type RevenueRange } from "@/lib/dashboard-charts";
+import { periodToDate, REVENUE_RANGES, revenueSeries, type RevenueRange } from "@/lib/dashboard-charts";
 import { fmtTHB } from "@/lib/live";
 import { Icon } from "@/lib/icons";
 import { ACCENTS, ACCENT_TINTS, COLORS, FONT, FONT_DISPLAY } from "@/lib/theme";
@@ -40,10 +41,18 @@ function DeltaArrow({ up, color }: { up: boolean; color: string }) {
 export function TodaySummary() {
   const t = useTranslations("dashboard");
   const locale = useLocale();
-  const { monthRevenue, payments } = useData();
+  const { payments } = useData();
   const [range, setRange] = useState<RevenueRange>("30D");
-  const delta = monthToDate(payments);
-  const lastMonth = new Intl.DateTimeFormat(locale, { month: "short" }).format(delta.previousMonth);
+  const delta = periodToDate(payments, range);
+  /* What "the same point" was measured against, in the period's own terms:
+     a month name for 30D, last year's number for Year, and a fixed phrase
+     for 7D — a week has no short name the way a month or a year does. */
+  const previousPeriod =
+    range === "Year"
+      ? String(delta.previousStart.getFullYear())
+      : range === "7D"
+        ? t("lastWeek")
+        : new Intl.DateTimeFormat(locale, { month: "short" }).format(delta.previousStart);
   const trend = revenueSeries(payments, range);
 
   /* "3 Sep" for a day, "Sep 2026" for a month (the Year range). */
@@ -63,7 +72,7 @@ export function TodaySummary() {
             <span className="jt-revenue-icon" style={{ background: ACCENT_TINTS.blue }}>
               <Icon name="wallet" size={18} color={ACCENTS.blue} />
             </span>
-            <span className="jt-revenue-eyebrow">{t("revenueThisMonth")}</span>
+            <span className="jt-revenue-eyebrow">{t(`revenueHeadline.${range}`)}</span>
           </div>
 
           {/* Radio group, not buttons: these are three views of one thing and
@@ -87,7 +96,7 @@ export function TodaySummary() {
 
         <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
           <span style={{ fontFamily: FONT_DISPLAY, fontSize: 32, fontWeight: 600, color: COLORS.text, lineHeight: 1.15 }}>
-            {fmtTHB(monthRevenue.total)}
+            {fmtTHB(delta.current)}
           </span>
           {delta.pct !== null && (
             <span
@@ -111,8 +120,8 @@ export function TodaySummary() {
         </div>
 
         <div style={{ fontFamily: FONT, fontSize: 12.5, lineHeight: 1.4, color: COLORS.textSecondary }}>
-          {t("fromPayments", { count: monthRevenue.count })}
-          {delta.pct !== null && <> · {t("vsSamePoint", { month: lastMonth })}</>}
+          {t("fromPayments", { count: delta.count })}
+          {delta.pct !== null && <> · {t("vsSamePoint", { period: previousPeriod })}</>}
         </div>
 
         {/* Pushed to the bottom so the card's height is the stat block's, not

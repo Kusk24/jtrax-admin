@@ -18,6 +18,7 @@ import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
 import type { AdminPerson } from "@/lib/data";
+import { starred } from "@/lib/starred-label";
 
 const create = vi.fn();
 
@@ -97,14 +98,14 @@ describe("the create wizard", () => {
     await user.click(screen.getByText(en.tournament.create));
     // The form opens straight away — there is no upload step first.
 
-    await user.type(screen.getByLabelText(en.tournament.fieldName), "JCA Open");
+    await user.type(screen.getByLabelText(starred(en.tournament.fieldName)), "JCA Open");
 
     // Both controls are here, before the tournament exists.
-    const pct = screen.getByLabelText(en.tournament.discountLabel);
+    const pct = screen.getByLabelText(starred(en.tournament.discountLabel));
     await user.clear(pct);
     await user.type(pct, "20");
 
-    const cat = screen.getByLabelText(en.tournament.categoryPlaceholder);
+    const cat = screen.getByLabelText(starred(en.tournament.categoryPlaceholder));
     await user.type(cat, "U8 Boys{Enter}");
     await user.type(cat, "U12 Girls{Enter}");
     expect(screen.getByText("U8 Boys")).toBeTruthy();
@@ -123,11 +124,11 @@ describe("the create wizard", () => {
     const user = openWizard();
     await user.click(screen.getByText(en.tournament.create));
 
-    const cat = screen.getByLabelText(en.tournament.categoryPlaceholder);
+    const cat = screen.getByLabelText(starred(en.tournament.categoryPlaceholder));
     await user.type(cat, "U8 Boys{Enter}");
     await user.type(cat, "u8 boys{Enter}");
 
-    await user.type(screen.getByLabelText(en.tournament.fieldName), "JCA Open");
+    await user.type(screen.getByLabelText(starred(en.tournament.fieldName)), "JCA Open");
     await user.click(screen.getByText(en.tournament.continueToReview));
 
     /* Asserted on the writes rather than the chips: a chip and the div
@@ -142,7 +143,7 @@ describe("the create wizard", () => {
     post.mockClear();
     const user = openWizard();
     await user.click(screen.getByText(en.tournament.create));
-    await user.type(screen.getByLabelText(en.tournament.fieldName), "JCA Open");
+    await user.type(screen.getByLabelText(starred(en.tournament.fieldName)), "JCA Open");
     await user.click(screen.getByText(en.tournament.continueToReview));
 
     await waitFor(() => expect(screen.getByText(en.tournament.reviewTitle)).toBeTruthy());
@@ -159,7 +160,7 @@ describe("the create wizard", () => {
     del.mockClear();
     const user = openWizard();
     await user.click(screen.getByText(en.tournament.create));
-    await user.type(screen.getByLabelText(en.tournament.fieldName), "JCA Open");
+    await user.type(screen.getByLabelText(starred(en.tournament.fieldName)), "JCA Open");
     await user.click(screen.getByText(en.tournament.continueToReview));
     await waitFor(() => expect(screen.getByText(en.tournament.reviewTitle)).toBeTruthy());
 

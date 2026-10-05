@@ -12,6 +12,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
+import { starred } from "@/lib/starred-label";
 
 const db: Record<string, Record<string, unknown>[]> = {};
 const patches: Array<{ path: string; body: Record<string, unknown> }> = [];
@@ -120,7 +121,7 @@ async function openTheChild() {
 }
 
 const dobField = () =>
-  screen.getByLabelText(en.students.dateOfBirth) as HTMLInputElement;
+  screen.getByLabelText(starred(en.students.dateOfBirth)) as HTMLInputElement;
 
 describe("a child's date of birth", () => {
   it("arrives in the form as the date on file", async () => {
@@ -231,7 +232,7 @@ describe("a write the server accepts and does not perform", () => {
     await user.click(screen.getByRole("button", { name: en.common.save }));
 
     await waitFor(() =>
-      expect(screen.queryByLabelText(en.students.dateOfBirth)).toBeNull(),
+      expect(screen.queryByLabelText(starred(en.students.dateOfBirth))).toBeNull(),
     );
     expect(screen.queryByText(/did not store it/)).toBeNull();
   });

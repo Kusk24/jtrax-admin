@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { axisTicks,
-  attendanceSplit, byCourse, byMethod, monthToDate, parseAmount, revenueSeries, STATUS_ORDER,
+  attendanceSplit, byCourse, byMethod, monthToDate, parseAmount, periodToDate, revenueSeries, STATUS_ORDER,
   statusCounts,
 } from "./dashboard-charts";
 import { arcPath, donutSlices, niceTicks, pct } from "@/components/charts/geometry";
@@ -162,7 +162,7 @@ describe("revenueSeries", () => {
       [
         paid("2026-09-18", "1000"),
         { isoDate: "2026-09-18", amount: "5000", status: "Pending" },
-        { isoDate: "2026-09-18", amount: "7000", status: "Refunded" },
+        { isoDate: "2026-09-18", amount: "7000", status: "Cancelled" },
       ],
       "7D",
       now,
@@ -214,7 +214,7 @@ describe("monthToDate", () => {
     const d = monthToDate([
       paid("2026-09-01", "1000"),
       { isoDate: "2026-09-02", amount: "500", status: "Pending" as const },
-      { isoDate: "2026-09-03", amount: "700", status: "Refunded" as const },
+      { isoDate: "2026-09-03", amount: "700", status: "Cancelled" as const },
     ], now);
     expect(d.current).toBe(1000);
   });
@@ -230,6 +230,65 @@ describe("monthToDate", () => {
     expect(d.previous).toBe(100);
     expect(d.previousMonth.getFullYear()).toBe(2025);
     expect(d.previousMonth.getMonth()).toBe(11);
+  });
+});
+
+describe("periodToDate", () => {
+  const paid = (isoDate: string, amount: string) => ({ isoDate, amount, status: "Paid" as const });
+
+  it("30D is monthToDate, with a count added", () => {
+    const now = new Date(2026, 8, 8); // 8 September 2026
+    const d = periodToDate(
+      [paid("2026-09-02", "4000"), paid("2026-09-20", "9999"), paid("2026-08-03", "1000")],
+      "30D",
+      now,
+    );
+    expect(d.current).toBe(4000);
+    expect(d.previous).toBe(1000);
+    // Both September rows, even the one dated after today — the count is of
+    // the month, not of the comparison window the total is cut to.
+    expect(d.count).toBe(2);
+  });
+
+  it("7D compares Monday-to-date against the same weekdays last week", () => {
+    const wed = new Date(2026, 9, 7); // Wednesday 7 October 2026
+    const d = periodToDate(
+      [
+        paid("2026-10-05", "1000"), // this week, Monday
+        paid("2026-10-06", "500"), // this week, Tuesday
+        paid("2026-09-28", "200"), // last week, Monday
+        paid("2026-09-29", "800"), // last week, Tuesday
+        paid("2026-09-30", "50"), // last week, Wednesday — today's weekday, still comparable
+        paid("2026-10-01", "99999"), // last week's Thursday: hasn't happened yet this week
+      ],
+      "7D",
+      wed,
+    );
+    expect(d.current).toBe(1500);
+    expect(d.previous).toBe(1050);
+    expect(d.count).toBe(2);
+  });
+
+  it("Year compares January-to-date against the same point last year", () => {
+    const now = new Date(2026, 9, 7); // 7 October 2026
+    const d = periodToDate(
+      [
+        paid("2026-01-10", "300"),
+        paid("2026-10-05", "1000"),
+        paid("2025-01-10", "150"),
+        paid("2025-10-10", "99999"), // after 7 October last year: not comparable
+      ],
+      "Year",
+      now,
+    );
+    expect(d.current).toBe(1300);
+    expect(d.previous).toBe(150);
+    expect(d.previousStart.getFullYear()).toBe(2025);
+  });
+
+  it("has no percentage to report when the earlier period took nothing", () => {
+    const now = new Date(2026, 9, 7);
+    expect(periodToDate([paid("2026-10-05", "500")], "7D", now).pct).toBeNull();
   });
 });
 

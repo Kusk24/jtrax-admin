@@ -190,7 +190,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/components/DataProvider", () => ({
   useData: () => ({
     raw,
-    creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certSessions: 50, maxNegativeCredit: 0, checkoutRoundMinutes: 15 },
+    creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certHours: 50, maxNegativeCredit: 0, checkoutRoundMinutes: 15 },
     students: STUDENTS,
     loading: false,
     error: null,
@@ -409,7 +409,32 @@ describe("the enrolment card's dates", () => {
     expect(within(dialog).getByText("31 Dec 2026")).toBeTruthy();
     expect(within(dialog).getByText("8 credits")).toBeTruthy();
     expect(within(dialog).queryByRole("textbox")).toBeNull();
-    expect(within(dialog).getByRole("button", { name: "Edit" })).toBeTruthy();
+    /* The row's menu, as buttons: the same four acts in both places. */
+    expect(within(dialog).getAllByRole("button").map((b) => b.getAttribute("aria-label")).filter((l) => l && l !== "Close")).toEqual([
+      "Add credits for Beginner",
+      "Change Beginner to another course",
+      "Edit the Beginner enrolment",
+      "Delete the enrolment in Beginner",
+    ]);
+  });
+
+  it("opens straight into editing from the row's Edit", async () => {
+    const user = renderList();
+    await openStudent(user, "Anong");
+
+    await user.click(actionsOf(enrolmentRow("Beginner")).getByRole("menuitem", { name: "Edit the Beginner enrolment" }));
+    const dialog = screen.getByRole("dialog");
+    expect((within(dialog).getByLabelText("Expires") as HTMLInputElement).value).toBe("2026-12-31");
+  });
+
+  it("leaves the enrolment for Change course", async () => {
+    const user = renderList();
+    await openStudent(user, "Anong");
+
+    const dialog = await openEnrolment(user, "Beginner");
+    await user.click(within(dialog).getByRole("button", { name: "Change Beginner to another course" }));
+    expect(screen.queryByText("Beginner enrolment")).toBeNull();
+    expect(screen.getByRole("dialog")).toBeDefined();
   });
 
   it("opens a never-expiring row too, and says why its expiry cannot be set", async () => {
@@ -419,7 +444,7 @@ describe("the enrolment card's dates", () => {
     const dialog = await openEnrolment(user, "Intermediate");
     expect(within(dialog).getByText("Never expires")).toBeTruthy();
 
-    await user.click(within(dialog).getByRole("button", { name: "Edit" }));
+    await user.click(within(dialog).getByRole("button", { name: /^Edit the / }));
     expect((within(dialog).getByLabelText("Expires") as HTMLInputElement).disabled).toBe(true);
     expect(within(dialog).getByText(/No credits have been bought for this course yet/)).toBeTruthy();
   });
@@ -432,7 +457,7 @@ describe("the enrolment card's dates", () => {
 
     await user.click(within(enrolmentRow("Beginner")).getByRole("button", { name: "View the Beginner enrolment" }));
     const dialog = screen.getByRole("dialog");
-    await user.click(within(dialog).getByRole("button", { name: "Edit" }));
+    await user.click(within(dialog).getByRole("button", { name: /^Edit the / }));
 
     const expires = within(dialog).getByLabelText("Expires") as HTMLInputElement;
     await user.clear(expires);
@@ -450,7 +475,7 @@ describe("the enrolment card's dates", () => {
     await openStudent(user, "Anong");
 
     const dialog = await openEnrolment(user, "Beginner");
-    await user.click(within(dialog).getByRole("button", { name: "Edit" }));
+    await user.click(within(dialog).getByRole("button", { name: /^Edit the / }));
     const expires = within(dialog).getByLabelText("Expires") as HTMLInputElement;
     await user.clear(expires);
     await user.type(expires, "2025-01-01");
@@ -531,7 +556,7 @@ describe("enrolling", () => {
 });
 
 describe("filtering the roster by class", () => {
-  const filter = () => screen.getByLabelText("Course") as HTMLSelectElement;
+  const filter = () => screen.getByLabelText(/^Course( \*)?$/) as HTMLSelectElement;
   const namesOnScreen = () =>
     STUDENTS.filter((s) => screen.queryByText(s.name) !== null).map(
       (s) => s.name,
@@ -609,7 +634,7 @@ describe("changing course", () => {
       name: `Change ${className} to another course`,
     });
   const amountField = () =>
-    screen.getByLabelText("Credits to add") as HTMLInputElement;
+    screen.getByLabelText(/^Credits\ to\ add( \*)?$/) as HTMLInputElement;
   const expiryField = () =>
     screen.getByLabelText("Expires") as HTMLInputElement;
   const confirmChange = () =>
@@ -635,7 +660,7 @@ describe("changing course", () => {
     const user = renderList();
     await openChange(user);
     const options = Array.from(
-      (screen.getByLabelText("Move them to") as HTMLSelectElement).options,
+      (screen.getByLabelText(/^Move\ them\ to( \*)?$/) as HTMLSelectElement).options,
     ).map((o) => o.textContent);
     expect(options).toEqual(["Advanced"]);
   });
@@ -921,7 +946,7 @@ describe("deleting an enrolment", () => {
  */
 describe("what a change converts against", () => {
   const amountField = () =>
-    screen.getByLabelText("Credits to add") as HTMLInputElement;
+    screen.getByLabelText(/^Credits\ to\ add( \*)?$/) as HTMLInputElement;
 
   async function openChangeFrom(
     user: ReturnType<typeof userEvent.setup>,
@@ -960,7 +985,7 @@ describe("what a change converts against", () => {
     try {
       const user = renderList();
       await openChangeFrom(user, "Chai", "Intermediate");
-      await user.selectOptions(screen.getByLabelText("Move them to"), "beg");
+      await user.selectOptions(screen.getByLabelText(/^Move\ them\ to( \*)?$/), "beg");
       expect(amountField().value).toBe("6.5");
     } finally {
       raw.creditTransactions.pop();
@@ -999,7 +1024,7 @@ describe("what a change converts against", () => {
     try {
       const user = renderList();
       await openChangeFrom(user, "Chai", "Intermediate");
-      await user.selectOptions(screen.getByLabelText("Move them to"), "beg");
+      await user.selectOptions(screen.getByLabelText(/^Move\ them\ to( \*)?$/), "beg");
       /* Beginner's own package, not the orphan's. Reading the orphan would
          price Beginner at 1,000 an hour and hand back 4 credits instead of
          6.5 — the "moving to a cheaper course gave fewer credits" the office
@@ -1097,7 +1122,7 @@ describe("credits with no course", () => {
         screen.getByRole("button", { name: "Move into a course" }),
       );
       expect(
-        (screen.getByLabelText("Credits to add") as HTMLInputElement).value,
+        (screen.getByLabelText(/^Credits\ to\ add( \*)?$/) as HTMLInputElement).value,
       ).toBe("21.5");
       /* And the expiry comes across from the balance being moved. */
       expect((screen.getByLabelText("Expires") as HTMLInputElement).value).toBe(
@@ -1167,7 +1192,7 @@ describe("credits with no course", () => {
         screen.getByRole("button", { name: "Move into a course" }),
       );
       expect(
-        (screen.getByLabelText("Credits to add") as HTMLInputElement).value,
+        (screen.getByLabelText(/^Credits\ to\ add( \*)?$/) as HTMLInputElement).value,
       ).toBe("13");
     } finally {
       restore();
@@ -1269,7 +1294,7 @@ describe("credits that came from more than one course", () => {
         screen.getByRole("button", { name: "Move into a course" }),
       );
       const amount = (
-        screen.getByLabelText("Credits to add") as HTMLInputElement
+        screen.getByLabelText(/^Credits\ to\ add( \*)?$/) as HTMLInputElement
       ).value;
       expect(amount).toBe("27.5");
       /* 16.5 is what pricing Intermediate hours as Beginner ones gives back —
@@ -1301,7 +1326,7 @@ describe("credits that came from more than one course", () => {
           screen.getByRole("button", { name: "Move into a course" }),
         );
         expect(
-          (screen.getByLabelText("Credits to add") as HTMLInputElement).value,
+          (screen.getByLabelText(/^Credits\ to\ add( \*)?$/) as HTMLInputElement).value,
         ).toBe("27.5");
       } finally {
         restore();
@@ -1495,7 +1520,7 @@ describe("the payments tab", () => {
       { payment_id: "pay1", student_id: "anong", final_amount: 12000, payment_date: "2026-09-01", payment_method: "Cash", status: "Paid" },
       { payment_id: "pay2", student_id: "anong", final_amount: 3500, payment_date: "2026-09-10", payment_method: "PromptPay" },
       { payment_id: "pay3", student_id: "anong", final_amount: 5000, payment_date: "2026-09-12", payment_method: "Card", status: "Pending" },
-      { payment_id: "pay4", student_id: "anong", final_amount: 2000, payment_date: "2026-09-14", payment_method: "Cash", status: "Refunded" },
+      { payment_id: "pay4", student_id: "anong", final_amount: 2000, payment_date: "2026-09-14", payment_method: "Cash", status: "Cancelled" },
       { payment_id: "pay5", student_id: "boon", final_amount: 9000, payment_date: "2026-09-14", payment_method: "Cash", status: "Paid" },
     ];
     try {
@@ -1538,7 +1563,6 @@ describe("the enrolment list", () => {
 
         await user.click(screen.getByRole("radio", { name: "All (2)" }));
         const row = enrolmentRow("Advanced");
-        expect(within(row).getByText("Withdrawn")).toBeDefined();
         expect(within(row).getByText("Left")).toBeDefined();
         expect(within(row).getByText("20 Dec 2025")).toBeDefined();
       },
@@ -1570,19 +1594,21 @@ describe("the enrolment list", () => {
         await openStudent(user, "Anong");
         const row = enrolmentRow("Advanced");
         expect(within(row).getByText(rowCredits(5))).toBeDefined();
-        expect(within(row).getByText("Withdrawn")).toBeDefined();
       },
       [{ credit_transaction_id: "x1", enrollment_id: "e_anong_old", amount: 5, transaction_date: "2025-01-06", transaction_type: "purchase" }],
     ));
 
-  it("shows each course's status, credits and dates, with its actions in a menu", () =>
+  it("shows each course's credits and dates, with its actions under Action", () =>
     withEnrolments(
       [{ enrollment_id: "e_anong_beg", student_id: "anong", class_id: "beg", status: "Active", enrolled_date: "2026-01-06" }],
       async () => {
         const user = renderList();
         await openStudent(user, "Anong");
         const row = enrolmentRow("Beginner");
-        expect(within(row).getByText("Active")).toBeDefined();
+        /* No status column: the Active | All switch already says it. */
+        expect(screen.queryByText("Status", { exact: true })).toBeNull();
+        expect(screen.getByText("Action", { exact: true })).toBeDefined();
+        expect(within(row).queryByText("Active")).toBeNull();
         expect(within(row).getByText("6 Jan 2026")).toBeDefined();
         expect(within(row).getByText("31 Dec 2026")).toBeDefined();
         expect(within(row).queryByRole("menuitem")).toBeNull();
@@ -1620,7 +1646,6 @@ describe("a deleted course in the history", () => {
 
       await user.click(screen.getByRole("radio", { name: "All (2)" }));
       const deleted = enrolmentRow("Beginner");
-      expect(within(deleted).getByText("Deleted")).toBeDefined();
       expect(within(deleted).getByText("Deleted · credits moved to Advanced")).toBeDefined();
       expect(within(deleted).queryByRole("button", { name: /^Actions for/ })).toBeNull();
       expect(within(enrolmentRow("Advanced")).getByText(/\+4\.5 credits from Beginner/)).toBeDefined();
@@ -1679,11 +1704,50 @@ describe("the credits tab", () => {
       const byText = (s: string) => rows.find((r) => r.textContent?.includes(s))!;
       expect(byText("+20").textContent).toContain("Beginner");
       expect(byText("+5").textContent).toContain("Intermediate");
-      expect(byText("+5").textContent).toContain("Not in a course");
-      expect(byText("+20").textContent).not.toContain("Not in a course");
+      expect(byText("+5").textContent).toContain(en.common.removed);
+      expect(byText("+20").textContent).not.toContain(en.common.removed);
     } finally {
       raw.enrollments = saved.e;
       raw.creditTransactions = saved.c;
     }
   });
 });
+
+/* A class charge opens to say how it was worked out. */
+describe("a credit entry's detail", () => {
+  it("shows the class time, check-in and check-out, and why an early leave cost less", async () => {
+    const saved = { e: raw.enrollments, c: raw.creditTransactions, s: raw.classSessions, a: raw.attendance };
+    raw.enrollments = [
+      { enrollment_id: "e_anong_beg", student_id: "anong", class_id: "beg", status: "Active", enrolled_date: "2026-01-06" },
+    ];
+    raw.classSessions = [
+      { session_id: "ses_1", class_id: "beg", session_date: "2026-10-05", start_time: "02:45", end_time: "04:45" },
+    ] as never;
+    raw.attendance = [
+      { attendance_id: "att_1", student_id: "anong", session_id: "ses_1",
+        check_in_time: "2026-10-04T19:45:00Z", check_out_time: "2026-10-04T20:42:00Z" },
+    ] as never;
+    raw.creditTransactions = [
+      { credit_transaction_id: "tx_1", enrollment_id: "e_anong_beg", transaction_type: "consumption",
+        amount: -1, transaction_date: "2026-10-05", attendance_id: "att_1" },
+    ];
+    try {
+      const user = renderList();
+      await openStudent(user, "Anong");
+      await user.click(screen.getByRole("button", { name: "Credits" }));
+      const row = (Array.from(document.querySelectorAll(".jt-table-row")) as HTMLElement[]).find((r) => r.textContent?.includes("-1"))!;
+      await user.click(row);
+      const dialog = screen.getByRole("dialog");
+      expect(dialog.textContent).toContain("02:45 – 04:45 (2 h)");
+      expect(dialog.textContent).toContain("03:42");
+      expect(dialog.textContent).toContain("left 1 h 3 min early");
+      expect(dialog.textContent).toContain("rounded to the nearest 15 min (1 h) = 1 credit");
+    } finally {
+      raw.enrollments = saved.e;
+      raw.creditTransactions = saved.c;
+      raw.classSessions = saved.s;
+      raw.attendance = saved.a;
+    }
+  });
+});
+

@@ -108,31 +108,54 @@ export const ROLE_COLORS: Record<JtraxRole, { color: string; bg: string }> = {
   Receptionist: { color: ACCENTS.amber, bg: ACCENT_TINTS.amber },
 };
 
+/* A class reads in its level's colour — the same code a student's level
+   uses: Beginner green, Intermediate blue, Advanced (and Master) purple. */
 export const CLASS_CATEGORY_COLORS: Record<string, string> = {
-  Master: ACCENTS.navy,
-  Intermediate: ACCENTS.amber,
+  Master: ACCENTS.plum,
+  Advanced: ACCENTS.plum,
+  Intermediate: ACCENTS.blue,
   Beginner: ACCENTS.green,
-  Weekend: ACCENTS.plum,
+  Weekend: ACCENTS.amber,
 };
 
 /** The tint that goes with a class category, for icon wells and chips. */
 export function classCategoryTint(category: string | undefined): string {
   switch (category) {
     case "Master":
-      return ACCENT_TINTS.navy;
+    case "Advanced":
+      return ACCENT_TINTS.plum;
     case "Intermediate":
-      return ACCENT_TINTS.amber;
+      return ACCENT_TINTS.blue;
     case "Beginner":
       return ACCENT_TINTS.green;
     case "Weekend":
-      return ACCENT_TINTS.plum;
+      return ACCENT_TINTS.amber;
     default:
       return COLORS.light;
   }
 }
 
+/* Each course's level by its name, as the console last loaded them — so a
+   course's dot anywhere (check-ins, Class History, Students, Payments) takes
+   the colour of its level, the same as its Today's Classes card. The
+   DataProvider keeps it current. */
+let levelByName = new Map<string, string>();
+
+export function setClassLevels(classes: Array<Record<string, unknown>>): void {
+  const next = new Map<string, string>();
+  for (const c of classes) {
+    const name = String(c.name ?? "");
+    const level = String(c.level ?? "");
+    if (name && level) next.set(name, level);
+  }
+  levelByName = next;
+}
+
 export function classDotColor(className: string | undefined): string {
   if (!className) return COLORS.textSecondary;
+  const level = levelByName.get(className);
+  if (level && CLASS_CATEGORY_COLORS[level]) return CLASS_CATEGORY_COLORS[level];
+  /* A course without a level: a level word in its name, else grey. */
   const key = Object.keys(CLASS_CATEGORY_COLORS).find((k) => className.includes(k));
   return key ? CLASS_CATEGORY_COLORS[key] : COLORS.textSecondary;
 }
@@ -178,9 +201,9 @@ export function statusChipColors(status: string): { color: string; bg: string } 
     case "Expiring":
     case "Pending":
     case "Upcoming":
+    case "Scheduled":
       return { color: COLORS.warning, bg: COLORS.warningBg };
     case "Expired":
-    case "Refunded":
     case "Absent":
     case "Cancelled":
       return { color: COLORS.danger, bg: COLORS.dangerBg };

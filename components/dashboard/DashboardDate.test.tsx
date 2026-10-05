@@ -3,7 +3,7 @@
  *
  * The top bar's date chip picks the day; the class list and the check-in
  * register follow it. A past day is a record — nothing is checked out on it;
- * a later day shows its scheduled classes as Upcoming.
+ * a later day shows its classes as Scheduled.
  */
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
@@ -37,6 +37,8 @@ const raw = {
   tournaments: empty, tournamentCategories: empty, tournamentRegistrations: empty, practiceActivities: empty, systemConfig: empty,
 };
 
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+
 vi.mock("../DataProvider", () => ({
   useData: () => ({
     raw,
@@ -44,7 +46,7 @@ vi.mock("../DataProvider", () => ({
     checkins: [],
     batch: async (job: () => Promise<unknown>) => job(),
     update: vi.fn(),
-    creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certSessions: 50, maxNegativeCredit: 0, checkoutRoundMinutes: 15 },
+    creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certHours: 50, maxNegativeCredit: 0, checkoutRoundMinutes: 15 },
   }),
 }));
 
@@ -75,12 +77,12 @@ describe("the class list on another day", () => {
     expect(screen.queryByText("Ongoing", { selector: ".jt-class-card *" })).toBeNull();
   });
 
-  it("shows a later day's classes as Upcoming", () => {
+  it("shows a later day's classes as Scheduled", () => {
     onDay(FUTURE, <TodaysClasses onViewClass={() => {}} />);
 
     expect(screen.getByText(`Classes · ${fmtDate(FUTURE)}`)).toBeTruthy();
     const card = document.querySelector(".jt-class-card") as HTMLElement;
-    expect(within(card).getByText("Upcoming")).toBeTruthy();
+    expect(within(card).getByText("Scheduled")).toBeTruthy();
   });
 });
 

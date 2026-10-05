@@ -16,6 +16,7 @@ import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
 import type { AdminPerson, Tournament } from "@/lib/data";
+import { starred } from "@/lib/starred-label";
 
 const TOURNAMENT_ID = "trn_1";
 
@@ -146,16 +147,16 @@ describe("editing a tournament in place", () => {
     expect(screen.getAllByText("JCA Open").length).toBeGreaterThan(0);
     // The venue's map, which opens Google Maps when clicked.
     expect(screen.getByTitle(en.tournament.mapPreviewTitle)).toBeTruthy();
-    expect(screen.queryByLabelText(en.tournament.fieldName)).toBeNull();
+    expect(screen.queryByLabelText(starred(en.tournament.fieldName))).toBeNull();
 
     await user.click(screen.getByText(en.common.edit));
 
     // The existing values, not blanks — this is what "convert the displayed
     // values into editable fields" means; a form that resets to empty is not
     // the same feature.
-    const nameInput = screen.getByLabelText(en.tournament.fieldName) as HTMLInputElement;
+    const nameInput = screen.getByLabelText(starred(en.tournament.fieldName)) as HTMLInputElement;
     expect(nameInput.value).toBe("JCA Open");
-    const venueInput = screen.getByLabelText(en.tournament.fieldVenue) as HTMLInputElement;
+    const venueInput = screen.getByLabelText(starred(en.tournament.fieldVenue)) as HTMLInputElement;
     expect(venueInput.value).toBe("Wellington College");
     expect(screen.getByText("U8 Boys")).toBeTruthy();
 
@@ -165,7 +166,7 @@ describe("editing a tournament in place", () => {
     // Stage a category change: drop the existing one, add a new one. Neither
     // should touch the API until Save.
     await user.click(screen.getByLabelText(en.common.deleteThing.replace("{what}", "U8 Boys")));
-    const catInput = screen.getByLabelText(en.tournament.categoryPlaceholder);
+    const catInput = screen.getByLabelText(starred(en.tournament.categoryPlaceholder));
     await user.type(catInput, "U10 Boys{Enter}");
     expect(create).not.toHaveBeenCalled();
     expect(remove).not.toHaveBeenCalled();
@@ -180,7 +181,7 @@ describe("editing a tournament in place", () => {
     expect(categoryWrites()).toEqual(["U10 Boys"]);
 
     // Back to a read-only page — the edit surface is gone, not just disabled.
-    await waitFor(() => expect(screen.queryByLabelText(en.tournament.fieldName)).toBeNull());
+    await waitFor(() => expect(screen.queryByLabelText(starred(en.tournament.fieldName))).toBeNull());
   });
 
   it("Cancel discards every staged change, category edits included", async () => {
@@ -189,7 +190,7 @@ describe("editing a tournament in place", () => {
     const user = openDetail();
 
     await user.click(screen.getByText(en.common.edit));
-    const nameInput = screen.getByLabelText(en.tournament.fieldName) as HTMLInputElement;
+    const nameInput = screen.getByLabelText(starred(en.tournament.fieldName)) as HTMLInputElement;
     await user.clear(nameInput);
     await user.type(nameInput, "Something Else Entirely");
     await user.click(screen.getByLabelText(en.common.deleteThing.replace("{what}", "U8 Boys")));
@@ -220,7 +221,7 @@ describe("editing a tournament in place", () => {
 
     // Landed on the detail page, already editing — not a modal, and not the
     // read-only view first.
-    const nameInput = await screen.findByLabelText(en.tournament.fieldName) as HTMLInputElement;
+    const nameInput = await screen.findByLabelText(starred(en.tournament.fieldName)) as HTMLInputElement;
     expect(nameInput.value).toBe("JCA Open");
     expect(screen.getByText(en.common.saveChanges)).toBeTruthy();
   });
@@ -329,5 +330,69 @@ describe("removing an age group with entrants", () => {
       expect(screen.queryByLabelText(en.common.deleteThing.replace("{what}", "U8 Boys"))).toBeNull(),
     );
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});
+
+/* Editing an entry covers its payment and attendance too. */
+describe("editing a participant", () => {
+  const withEntry = () =>
+    makeTournament({
+      participants: [
+        {
+          id: "treg_1", name: "Alice", categoryId: "cat_1", rating: 0, category: "U8 Boys", score: "", rank: 1, prize: "",
+          paymentStatus: "Pending", payment: { id: "pay_1", status: "Pending", method: "CreditCard" },
+          age: 7, dateOfBirth: "2019-03-01", guardian: "", contact: "", wins: 0, arrival: "Pending",
+          nickname: "Ali", contactPhone: "081-000-0000", contactEmail: "alice@example.com",
+        },
+      ] as Tournament["participants"],
+    });
+
+  it("changes the payment's status and method, and shows the age without sending it", async () => {
+    tournaments = [withEntry()];
+    update.mockClear();
+    const user = openDetail();
+    await user.click(screen.getByRole("button", { name: /^participants/i }));
+    await user.click(screen.getByRole("button", { name: /^Edit Alice/ }));
+    const dialog = within(screen.getByRole("dialog"));
+    expect((dialog.getByLabelText(/^Age/) as HTMLInputElement).readOnly).toBe(true);
+    const statuses = Array.from((dialog.getByLabelText(/^Payment status/) as HTMLSelectElement).options).map((o) => o.value);
+    expect(statuses).toEqual(["", "Pending", "Paid", "Cancelled"]);
+    await user.selectOptions(dialog.getByLabelText(/^Payment status/), "Paid");
+    await user.selectOptions(dialog.getByLabelText(/^Payment method/), "Cash");
+    await user.selectOptions(dialog.getByLabelText(/^Attending/), "Confirmed");
+    await user.click(dialog.getByRole("button", { name: /^Save/ }));
+
+    await waitFor(() => expect(update).toHaveBeenCalledWith("payments", "pay_1", { status: "Paid", payment_method: "Cash" }));
+    const entry = update.mock.calls.find((c) => c[0] === "tournament-registrations")![2];
+    expect(entry.arrival_status).toBe("Confirmed");
+    expect(Object.keys(entry).some((k) => k.startsWith("pay_") || k.includes("age_shown"))).toBe(false);
+  });
+
+  it("lays the form out in the desk's order, with no rating", async () => {
+    tournaments = [withEntry()];
+    const user = openDetail();
+    await user.click(screen.getByRole("button", { name: /^participants/i }));
+    await user.click(screen.getByRole("button", { name: /^Edit Alice/ }));
+    const labels = Array.from(within(screen.getByRole("dialog")).getAllByText((_, el) => el?.tagName === "LABEL"))
+      .map((l) => l.textContent?.replace(/\s*\*$/, "").trim());
+    const at = (label: string) => labels.indexOf(label);
+    const order = [
+      en.tournament.nameEnglish, en.tournament.nameThai, en.tournament.nickname, en.tournament.dateOfBirth,
+      en.tournament.age, en.tournament.category, en.tournament.parentEmail, en.common.phone,
+      en.tournament.feeCharged, en.tournament.paymentMethod, en.tournament.paymentStatus, en.tournament.arrivalStatus,
+    ];
+    expect(order.map(at).every((i, k, all) => i >= 0 && (k === 0 || i > all[k - 1]))).toBe(true);
+    expect(labels).not.toContain(en.tournament.rating);
+  });
+
+  it("can be started from the slide-in profile", async () => {
+    tournaments = [withEntry()];
+    const user = openDetail();
+    await user.click(screen.getByRole("button", { name: /^participants/i }));
+    await user.click(screen.getByText("Alice"));
+    /* The profile's Edit, the last one on screen (the tournament has its own). */
+    const edits = screen.getAllByRole("button", { name: en.common.edit });
+    await user.click(edits[edits.length - 1]);
+    expect(screen.getByRole("dialog").textContent).toContain(en.tournament.editParticipant);
   });
 });

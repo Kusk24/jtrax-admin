@@ -42,6 +42,7 @@ vi.mock("@/components/DataProvider", () => ({
 }));
 
 const { ParentsPage } = await import("./ParentsPage");
+const { ErrorToastProvider } = await import("../ErrorToast");
 
 beforeEach(() => {
   push.mockClear();
@@ -51,9 +52,11 @@ beforeEach(() => {
 function renderParent() {
   render(
     <NextIntlClientProvider locale="en" messages={en}>
-      <SignedInAs>
-        <ParentsPage detailId="par_malee" />
-      </SignedInAs>
+      <ErrorToastProvider>
+        <SignedInAs>
+          <ParentsPage detailId="par_malee" />
+        </SignedInAs>
+      </ErrorToastProvider>
     </NextIntlClientProvider>,
   );
   return userEvent.setup();

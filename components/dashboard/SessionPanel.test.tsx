@@ -45,7 +45,7 @@ const state = {
       { enrollment_id: "e4", student_id: "anong", class_id: "cls_master", status: "Withdrawn" },
     ],
   },
-  creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certSessions: 50, maxNegativeCredit: 0 },
+  creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certHours: 50, maxNegativeCredit: 0 },
 };
 
 vi.mock("@/components/DataProvider", () => ({
@@ -82,7 +82,7 @@ function renderPanel() {
     </NextIntlClientProvider>,
   );
   return {
-    klass: screen.getByLabelText("Course") as HTMLSelectElement,
+    klass: screen.getByLabelText(/^Course( \*)?$/) as HTMLSelectElement,
     startHour: screen.getByLabelText("Start hour") as HTMLSelectElement,
     startMinute: screen.getByLabelText("Start minute") as HTMLSelectElement,
     /* The length the Duration control holds, in minutes. */
@@ -366,7 +366,8 @@ describe("the students who can be added", () => {
 });
 
 describe("creating it", () => {
-  it("writes the session and everyone already in the room, in one batch", async () => {
+  /* The clock reads 10:00 (nowClock above). */
+  it("books students on a class that starts later, charging nothing yet", async () => {
     const user = userEvent.setup();
     const f = renderPanel();
     const button = f.button;
@@ -382,11 +383,24 @@ describe("creating it", () => {
     expect(session.class_id).toBe("cls_group");
     expect(session.start_time).toBe("11:00");
     expect(session.end_time).toBe("12:30");
+    expect(session.session_status).toBe("Scheduled");
 
-    const attendance = create.mock.calls.slice(1);
-    expect(attendance.map((c) => c[0])).toEqual(["attendance", "attendance"]);
-    expect(attendance.map((c) => c[1].student_id)).toEqual(["anong", "boon"]);
-    expect(attendance[0][1].session_id).toBe("ses_new");
+    const bookings = create.mock.calls.slice(1);
+    expect(bookings.map((c) => c[0])).toEqual(["session-bookings", "session-bookings"]);
+    expect(bookings.map((c) => c[1].student_id)).toEqual(["anong", "boon"]);
+    expect(bookings[0][1].session_id).toBe("ses_new");
+  });
+
+  it("checks students in on a class that starts now", async () => {
+    const user = userEvent.setup();
+    const f = renderPanel();
+    await setTime(user, f.startHour, f.startMinute, "10:00");
+    await runUntil(user, f, "11:00");
+    await user.click(screen.getByRole("checkbox", { name: /Anong Sri/ }));
+    await user.click(f.button);
+
+    expect(create.mock.calls[0][1].session_status).toBe("Ongoing");
+    expect(create.mock.calls.slice(1).map((c) => c[0])).toEqual(["attendance"]);
   });
 
   /* Nobody has to be ticked: the dashboard checks a child in when they arrive,

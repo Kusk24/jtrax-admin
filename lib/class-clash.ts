@@ -10,7 +10,7 @@
 
 import type { Row } from "./live";
 
-type ClashSource = { classSessions?: Row[]; attendance?: Row[]; classes?: Row[] };
+type ClashSource = { classSessions?: Row[]; attendance?: Row[]; sessionBookings?: Row[]; classes?: Row[] };
 
 /**
  * Every student already in another session that overlaps `start`–`end` on
@@ -46,6 +46,12 @@ export function busyStudents(
     if (a.check_out_time) continue;
     const name = overlapping.get(String(a.session_id));
     const student = String(a.student_id ?? "");
+    if (name !== undefined && student && !busy.has(student)) busy.set(student, name);
+  }
+  /* Booked on a class that has not started holds the hour just the same. */
+  for (const b of raw.sessionBookings ?? []) {
+    const name = overlapping.get(String(b.session_id));
+    const student = String(b.student_id ?? "");
     if (name !== undefined && student && !busy.has(student)) busy.set(student, name);
   }
   return busy;

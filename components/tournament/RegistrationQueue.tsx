@@ -1,27 +1,37 @@
 "use client";
 
-/* Who has signed up through the public form.
+/* Who has signed up through the public form, since the office last looked.
  *
  * This was a queue with approve and reject on the end of it. The academy takes
- * every entry, so there is nothing left to decide here and the list is a
- * record: the same people, in the order they arrived, with what they were
- * quoted.
+ * every entry, so there is nothing left to decide here. It used to be a
+ * record too — every public entry ever, oldest first — but a popular event
+ * means hundreds of them, and a card that is hundreds of rows tall is not a
+ * glance any more. The full history is the Participants table below, which
+ * every entry (however it arrived) already joins; this card's job is just to
+ * flag what is new since the desk last had this tab open, the same way the
+ * tab's own badge does.
  *
- * It is not the participants table repeated. That one is every entrant however
- * they got in; this one is the public door specifically, and carries the one
- * fact the table has no column for — whether the email somebody registered
- * with belongs to a student the academy already knows. The public reply
- * deliberately never says so (a discount that appeared only for real students
- * would be a way to test whether a given child is a pupil here), so this is
- * the only place it is visible.
+ * It is not the participants table repeated otherwise. That one is every
+ * entrant however they got in; this one is the public door specifically, and
+ * carries the one fact the table has no column for — whether the email
+ * somebody registered with belongs to a student the academy already knows.
+ * The public reply deliberately never says so (a discount that appeared only
+ * for real students would be a way to test whether a given child is a pupil
+ * here), so this is the only place it is visible.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { COLORS, FONT } from "@/lib/theme";
 import { fmtTHB } from "@/lib/live";
 import { listRegistrations, type QueueEntry } from "@/lib/registration";
+import { useNewParticipants } from "@/lib/seen-participants";
 import { ErrorNote, errorText } from "../crud";
 import { Badge, Card, SectionTitle } from "../ui";
+
+/* Past this many rows the card is doing the table's job over again. The rest
+   are still "new" and still on the roster below — just not glanced at one
+   row per entry. */
+const MAX_SHOWN = 20;
 
 export function RegistrationQueue({ tournamentId }: { tournamentId: string }) {
   const t = useTranslations("registration");
@@ -56,25 +66,53 @@ export function RegistrationQueue({ tournamentId }: { tournamentId: string }) {
     };
   }, [tournamentId, loadFailed]);
 
-  /* Withdrawn entries stay on the list rather than vanishing: somebody who
-     pulled out is a thing the desk needs to see, not an absence. */
+  /* Withdrawn entries stay in the running, so somebody who pulled out is still
+     a thing the desk can be told about while it is new — the same rule as
+     before, just applied to a shorter list. */
   const signups = rows.filter((r) => r.source === "Public");
 
-  // Nothing has ever come through the form: the card would be an empty box on
-  // a screen that already has plenty.
+  /* "New" under its own namespace, independent of the Participants tab's own
+     badge: opening that tab must not silently clear this card, and dismissing
+     this card must not silently clear that badge. No baseline on first visit
+     — unlike the badge, a list that showed nothing the first time anyone
+     opened it would read as broken, not as considerate. */
+  const { newIds, markSeen } = useNewParticipants(
+    tournamentId,
+    signups.map((r) => r.id),
+    "signups",
+    false,
+  );
+  const newSet = new Set(newIds);
+  const shown = signups.filter((r) => newSet.has(r.id)).slice(0, MAX_SHOWN);
+  const moreCount = Math.max(0, newIds.length - shown.length);
+
+  /* Marked seen only when the desk actually leaves this tournament's screen —
+     not on every render, which `markSeen`'s own identity would otherwise
+     trigger, and not while still looking, which would clear the list out from
+     under whoever is reading it. The ref always holds the latest closure, so
+     the one cleanup that fires at unmount sees the final set of ids. */
+  const markSeenRef = useRef(markSeen);
+  useEffect(() => {
+    markSeenRef.current = markSeen;
+  });
+  useEffect(() => () => markSeenRef.current(), []);
+
+  // Nothing has ever come through the form, or nothing is new since the desk
+  // last looked: the card would be an empty box on a screen that already has
+  // plenty either way.
   //
   // `error` is part of the condition because `rows` is also empty when the load
   // failed, and `[].every()` is true — so a failed request used to hide the
   // whole card rather than show an empty one. Staff saw no queue at all.
-  if (!loading && !error && rows.every((r) => r.source !== "Public")) return null;
+  if (!loading && !error && (rows.every((r) => r.source !== "Public") || shown.length === 0)) return null;
 
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 13 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
         <SectionTitle>{t("signupsTitle")}</SectionTitle>
-        {signups.length > 0 && (
+        {shown.length > 0 && (
           <Badge color={COLORS.navy} bg={COLORS.light}>
-            {t("signupCount", { count: signups.length })}
+            {t("newSignupCount", { count: newIds.length })}
           </Badge>
         )}
       </div>
@@ -89,12 +127,12 @@ export function RegistrationQueue({ tournamentId }: { tournamentId: string }) {
            just admitted it cannot answer. */
         null
       ) : (
-        /* No empty branch: the card returns null above when nothing has come
-           through the form, so `signups` is non-empty by the time we are here.
-           An unreachable "nobody has signed up" would be a sentence waiting
-           for a bug to make it true. */
+        /* No empty branch: the card returns null above when nothing new has
+           come through the form, so `shown` is non-empty by the time we are
+           here. An unreachable "nobody has signed up" would be a sentence
+           waiting for a bug to make it true. */
         <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
-          {signups.map((entry) => (
+          {shown.map((entry) => (
             <li
               key={entry.id}
               style={{
@@ -136,6 +174,12 @@ export function RegistrationQueue({ tournamentId }: { tournamentId: string }) {
             </li>
           ))}
         </ul>
+      )}
+
+      {moreCount > 0 && (
+        <p style={{ margin: 0, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+          {t("moreSignups", { count: moreCount })}
+        </p>
       )}
     </Card>
   );

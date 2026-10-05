@@ -488,7 +488,7 @@ describe("the game history", () => {
                   white: { displayName: "Chai Dee", studentId: "stu_chai" }, black: { displayName: "Anong Sri", studentId: "stu_anong" } };
   const WON = { ...DONE, gameRoomId: "gr_w", resultReason: "Checkmate",
                 white: { displayName: "Anong Sri", studentId: "stu_anong" }, black: { displayName: "Boon Mek", studentId: "stu_boon" } };
-  /* A game from another day, which the page does not show until asked. */
+  /* A game from another day, shown by default and still reachable by date. */
   const EARLIER = { ...WON, gameRoomId: "gr_e", startedAt: "2026-09-20 03:00:00",
                     white: { displayName: "Boon Mek", studentId: "stu_boon" }, black: { displayName: "Chai Dee", studentId: "stu_chai" } };
 
@@ -521,12 +521,12 @@ describe("the game history", () => {
     expect(table().queryByText("No time control")).toBeNull();
   });
 
-  it("opens on today's games, and shows another day when asked", async () => {
+  it("opens on every game, and narrows to one day when asked", async () => {
     const user = await showList();
-    expect(table().queryByText("Boon Mek won")).toBeNull();
+    expect(table().getByText("Boon Mek won")).toBeDefined();
+    expect(table().getByText("Anong Sri won")).toBeDefined();
 
-    const date = screen.getByLabelText("Date");
-    await user.clear(date);
+    const date = screen.getByLabelText(/^Date( \*)?$/);
     await user.type(date, "2026-09-20");
     expect(table().getByText("Boon Mek won")).toBeDefined();
     expect(table().queryByText("Anong Sri won")).toBeNull();

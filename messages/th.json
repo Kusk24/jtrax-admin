@@ -51,8 +51,7 @@
   },
   "classType": {
     "Private": "ตัวต่อตัว",
-    "Group": "กลุ่ม",
-    "Master": "มาสเตอร์คลาส"
+    "Group": "กลุ่ม"
   },
   "common": {
     "search": "ค้นหา",
@@ -121,7 +120,8 @@
     "checkInFailed": "ไม่สามารถเพิ่มนักเรียนเข้าคลาสนี้ได้",
     "regulationUploadFailed": "สร้างรายการแข่งขันแล้ว แต่แนบไฟล์ระเบียบการไม่สำเร็จ",
     "saveChanges": "บันทึกการเปลี่ยนแปลง",
-    "removeThing": "ลบ {what}"
+    "removeThing": "ลบ {what}",
+    "removed": "นำออกแล้ว"
   },
   "participantProfile": {
     "entryFee": "ค่าสมัคร",
@@ -253,11 +253,13 @@
     "submit": "เข้าสู่ระบบ",
     "signingIn": "กำลังเข้าสู่ระบบ…",
     "errorMissing": "กรุณากรอกอีเมลและรหัสผ่าน",
-    "errorInvalid": "อีเมลหรือรหัสผ่านไม่ตรงกับบัญชีผู้ดูแล",
+    "errorInvalid": "อีเมล/ชื่อผู้ใช้ หรือรหัสผ่านไม่ถูกต้อง",
     "footer": "โรงเรียนหมากรุก JCA · ระบบผู้ดูแล",
     "errorUnreachable": "เชื่อมต่อเซิร์ฟเวอร์ JTrax ไม่ได้ — กรุณาตรวจสอบว่าระบบหลังบ้านทำงานอยู่",
     "resetDone": "เปลี่ยนรหัสผ่านแล้ว กรุณาเข้าสู่ระบบด้วยรหัสผ่านใหม่",
-    "errorTooMany": "มีการพยายามเข้าสู่ระบบบัญชีนี้บ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่ รหัสผ่านของคุณอาจถูกต้องอยู่แล้ว"
+    "errorTooMany": "มีการพยายามเข้าสู่ระบบบัญชีนี้บ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่ รหัสผ่านของคุณอาจถูกต้องอยู่แล้ว",
+    "errorNoAccess": "บัญชีนี้ไม่สามารถเข้าใช้งาน Admin Console ได้ กรุณาเข้าสู่ระบบผ่าน JTrax Portal",
+    "errorNoAccessTitle": "บัญชีผู้ปกครองหรือนักเรียน — กรุณาใช้ JTrax Portal"
   },
   "reset": {
     "requestTitle": "ตั้งรหัสผ่านใหม่",
@@ -300,7 +302,12 @@
     "lastSixMonths": "6 เดือนล่าสุด",
     "revenueChartLabel": "รายได้ย้อนหลัง 6 เดือน ตั้งแต่ {from} ถึง {to} บาท",
     "overview": "ภาพรวม",
-    "revenueThisMonth": "รายได้เดือนนี้",
+    "revenueHeadline": {
+      "7D": "รายได้สัปดาห์นี้",
+      "30D": "รายได้เดือนนี้",
+      "Year": "รายได้ปีนี้"
+    },
+    "lastWeek": "สัปดาห์ที่แล้ว",
     "fromPayments": "จาก {count} รายการ",
     "totalStudents": "นักเรียนทั้งหมด",
     "enrolledAcross": "ลงทะเบียนในทุกคอร์ส",
@@ -358,7 +365,7 @@
     "howTheyPaidSub": "ยอดชำระเดือนนี้แยกตามช่องทาง",
     "plusMoreMethods": "5 อันดับแรก · อีก {count} ช่องทางไม่ได้แสดง",
     "noPaymentsThisMonth": "เดือนนี้ยังไม่มีการชำระเงิน",
-    "vsSamePoint": "เทียบกับ{month}ช่วงเวลาเดียวกัน",
+    "vsSamePoint": "เทียบกับ{period}ช่วงเวลาเดียวกัน",
     "classCount": "{count, plural, other {# คลาส}}",
     "classListLabel": "รายชื่อคลาสวันนี้",
     "noClassesToday": "วันนี้ไม่มีคลาสเรียน",
@@ -394,7 +401,8 @@
     "gamesOpened": "เกมที่เปิด",
     "playingConsistently": "เล่นสม่ำเสมอ",
     "consistentRule": "{days}+ จาก {window} วัน",
-    "filterByCourse": "กรองตามคอร์ส"
+    "filterByCourse": "กรองตามคอร์ส",
+    "classesThatWeek": "คลาสในสัปดาห์นั้น"
   },
   "find": {
     "title": "ค้นหานักเรียน",
@@ -487,7 +495,10 @@
     "durationWholeNumber": "กรุณาพิมพ์เป็นจำนวนเต็ม",
     "durationTypeLabel": "พิมพ์{part}",
     "durationSegmentTitle": "คลิกเพื่อเลือก ดับเบิลคลิกเพื่อพิมพ์ค่าเอง",
-    "durationMinutesRange": "นาทีต้องอยู่ระหว่าง 0 ถึง 59"
+    "durationMinutesRange": "นาทีต้องอยู่ระหว่าง 0 ถึง 59",
+    "bookedCount": "จองไว้ ({count})",
+    "bookedHelp": "ยังไม่ได้เช็คอิน ระบบจะเช็คอินและหักเครดิตเมื่อคลาสเริ่ม",
+    "bookingProblem": "เช็คอินไม่สำเร็จเมื่อคลาสเริ่ม: {reason}"
   },
   "earlyCheckout": {
     "titleOne": "เช็คเอาท์ {name} ก่อนเวลาใช่ไหม?",
@@ -567,8 +578,8 @@
     "loginsTitle": "สร้างบัญชีแล้ว",
     "loginsHint": "คัดลอกรหัสผ่านของนักเรียนตอนนี้ — จะไม่แสดงอีก ผู้ปกครองจะตั้งรหัสผ่านเองจากอีเมลคำเชิญ",
     "studentLogin": "บัญชีนักเรียน",
-    "loginId": "รหัสเข้าสู่ระบบ",
-    "studentLoginIdHint": "นักเรียนใช้รหัสนี้เข้าสู่ระบบแทนอีเมล โดยกรอกในช่องแรก ระบบส่งอะไรไปที่รหัสนี้ไม่ได้ กรุณามอบรหัสผ่านให้ด้วยตนเอง หากลืมรหัสผ่านให้เจ้าหน้าที่ตั้งใหม่ให้",
+    "loginId": "ชื่อผู้ใช้สำหรับเข้าสู่ระบบ",
+    "studentLoginIdHint": "นักเรียนใช้ชื่อผู้ใช้นี้เข้าสู่ระบบแทนอีเมล โดยกรอกในช่องแรก ระบบส่งอะไรไปที่รหัสนี้ไม่ได้ กรุณามอบรหัสผ่านให้ด้วยตนเอง หากลืมรหัสผ่านให้เจ้าหน้าที่ตั้งใหม่ให้",
     "parentLogin": "บัญชีผู้ปกครอง",
     "tempPassword": "รหัสผ่านชั่วคราว",
     "tabCredits": "เครดิต",
@@ -613,6 +624,7 @@
     "movedFromCourse": "ย้ายมาจาก {className}",
     "enrolmentIn": "การลงทะเบียนในคอร์ส {className}",
     "deleteEnrolmentFrom": "ลบการลงทะเบียนในคอร์ส {className}",
+    "editEnrolmentOf": "แก้ไขการลงทะเบียนในคอร์ส {className}",
     "changeCourseNowhere": "ไม่มีคอร์สอื่นให้ย้ายไป",
     "changeCourseExpired": "เครดิตของการลงทะเบียนนี้หมดอายุแล้ว กรุณาแก้ไขวันหมดอายุก่อนย้ายคอร์ส",
     "enrolmentDeleteWithLedger": "{credits, plural, =0 {} other {รายการเครดิต # รายการจะยังคงอยู่กับนักเรียนในสถานะเครดิตที่ไม่ผูกกับคอร์ส และสามารถย้ายเข้าคอร์สได้ภายหลัง}} {payments, plural, =0 {} other {รายการชำระเงิน # รายการจะยังคงใบเสร็จไว้ แต่จะไม่ผูกกับคอร์สนี้อีก}}",
@@ -675,11 +687,30 @@
     "topUp": "เพิ่มเครดิต",
     "topUpCourse": "เพิ่มเครดิตสำหรับ {className}",
     "adjustCredits": "ปรับเครดิต",
-    "notInACourse": "ไม่ได้อยู่ในคอร์ส",
+    "notInACourse": "นำออกจากนักเรียนแล้ว",
     "guardianEmailIsParent": "อีเมลนี้เป็นของ {name} ซึ่งเป็นผู้ปกครองอยู่แล้ว",
     "guardianEmailTaken": "อีเมลนี้ถูกใช้โดยบัญชีอื่นแล้ว กรุณาใช้อีเมลอื่น",
     "useExistingGuardian": "เชื่อม {name} เป็นผู้ปกครองแทน",
-    "colClassesJoined": "จำนวนคลาสที่เข้าเรียน"
+    "colClassesJoined": "จำนวนคลาสที่เข้าเรียน",
+    "studentIdLabel": "รหัสนักเรียน",
+    "copyId": "คัดลอก",
+    "copiedId": "คัดลอกแล้ว",
+    "colHours": "ชั่วโมงที่เรียน",
+    "hoursOf": "{hours} / {goal} ชม.",
+    "hoursReached": "ครบ {goal} ชม.",
+    "creditDetailTitle": "รายการเครดิต",
+    "chargeHowTitle": "วิธีคิดเครดิตครั้งนี้",
+    "chargeClassTime": "เวลาเรียน",
+    "chargeCheckIn": "เช็คอิน",
+    "chargeCheckOut": "เช็คเอาท์",
+    "chargeStillIn": "ยังอยู่ในคลาส",
+    "chargeLate": "มาสาย {minutes}",
+    "chargeEarly": "กลับก่อน {minutes}",
+    "chargeFull": "เรียนครบทั้งคลาส: {length} = {credits} เครดิต",
+    "chargePart": "คิดตามเวลาที่เรียนจริง {from} – {to} ({attended}) = {credits} เครดิต",
+    "chargePartRounded": "คิดตามเวลาที่เรียนจริง {from} – {to} ({attended}) ปัดเป็นทุก {step} นาที ({charged}) = {credits} เครดิต",
+    "chargeDiffers": "รายการนี้บันทึก {credits} เครดิต — มีการแก้ไขหลังจบคลาส",
+    "chargeNoVisit": "ไม่พบข้อมูลการเข้าเรียนของรายการนี้แล้ว"
   },
   "parents": {
     "title": "ผู้ปกครอง",
@@ -777,7 +808,8 @@
     "cardLinkCopy": "คัดลอกลิงก์",
     "cardLinkCopied": "คัดลอกแล้ว",
     "cardLinkOff": "เซิร์ฟเวอร์ยังไม่ได้ตั้งค่าการชำระด้วยบัตร",
-    "cardLinkFailed": "สร้างลิงก์ไม่สำเร็จ"
+    "cardLinkFailed": "สร้างลิงก์ไม่สำเร็จ",
+    "publicEntry": "สมัครผ่านเว็บไซต์"
   },
   "classHistory": {
     "title": "ประวัติคลาสเรียน",
@@ -867,6 +899,7 @@
     "noParticipants": "ยังไม่มีผู้เข้าแข่งขัน",
     "rank": "อันดับ",
     "entryNo": "ลำดับ",
+    "registered": "วันที่สมัคร",
     "player": "ผู้เล่น",
     "rating": "เรตติ้ง",
     "category": "รุ่น",
@@ -1018,7 +1051,12 @@
       "attending": "เข้าร่วม",
       "notAttending": "ไม่เข้าร่วม",
       "noResponse": "ไม่ตอบกลับ"
-    }
+    },
+    "paymentStatus": "สถานะการชำระเงิน",
+    "noPaymentYet": "ยังไม่มีการชำระ",
+    "ageFromDob": "คำนวณจากวันเกิด",
+    "needDeskMethod": "เลือกเงินสด พร้อมเพย์ หรือโอนเงิน เพื่อบันทึกว่าชำระแล้ว",
+    "methodCreditCard": "บัตร"
   },
   "announcement": {
     "title": "ประกาศ",
@@ -1127,10 +1165,9 @@
     "editCourse": "แก้ไขคอร์สเรียน",
     "courseName": "ชื่อคอร์สเรียน",
     "description": "คำอธิบาย",
-    "badge": "ป้ายกำกับ",
     "icon": "ไอคอน",
     "classType": "ประเภทคอร์ส",
-    "classTypeHelp": "รูปแบบการสอน — Private คือตัวต่อตัว, Master คือมาสเตอร์คลาส",
+    "classTypeHelp": "Private คือตัวต่อตัว, Group คือเรียนเป็นกลุ่ม",
     "editTeacher": "แก้ไขข้อมูลคุณครู",
     "deleteTeacher": "ลบครูผู้สอน",
     "deleteTeacherTitle": "ลบ {name} ใช่หรือไม่?",
@@ -1153,7 +1190,13 @@
     "firstPackageHelp": "คอร์สจะขาย ชำระเงิน หรือเข้าเรียนไม่ได้จนกว่าจะมีแพ็กเกจ สามารถแก้ไขหรือเพิ่มได้ที่การ์ดแพ็กเกจเครดิตด้านล่าง",
     "firstPackageIncomplete": "จำนวนเครดิตต้องมากกว่าศูนย์ หากเป็นคอร์สฟรี ให้ใส่ราคาเป็น 0",
     "validityForever": "ไม่มีวันหมดอายุ",
-    "validityHelp": "เว้นว่างไว้หากต้องการให้เครดิตไม่มีวันหมดอายุ"
+    "validityHelp": "เว้นว่างไว้หากต้องการให้เครดิตไม่มีวันหมดอายุ",
+    "validityMin": "อายุเครดิตต้องอย่างน้อย 1 วัน เว้นว่างไว้หากต้องการให้เครดิตไม่มีวันหมดอายุ",
+    "level": "ระดับ",
+    "levelPick": "เลือกระดับ",
+    "levelAndType": "ระดับ · ประเภท",
+    "pricePerCredit": "ราคาต่อเครดิต (บาท)",
+    "pricePerCreditHelp": "ใช้เติมราคาแพ็กเกจใหม่และการขายเครดิตแบบกำหนดเอง แก้ไขได้ทุกครั้ง"
   },
   "settings": {
     "title": "กติกาของสถาบัน",
@@ -1186,12 +1229,12 @@
     "lineSave": "บันทึกข้อมูลรับรอง",
     "lineDisconnect": "ยกเลิกการเชื่อมต่อ",
     "certTitle": "เกณฑ์รับประกาศนียบัตร",
-    "certDesc": "จำนวนคลาสเพื่อรับประกาศนียบัตร",
+    "certDesc": "จำนวนชั่วโมงเรียนในคอร์สก่อนการสอบรับใบประกาศ",
     "unitClasses": "คลาส",
     "maxNegativeCreditTitle": "เครดิตติดลบสูงสุด",
     "maxNegativeCreditDesc": "เครดิตติดลบได้เท่าใดและยังเช็คอินได้",
-    "checkoutRoundTitle": "การปัดเวลาเมื่อเช็คเอาท์ก่อนเวลา",
-    "checkoutRoundDesc": "ออกก่อนเวลา หักตามเวลาที่เรียน ปัดตามนาทีนี้ 0 = นาทีจริง",
+    "checkoutRoundTitle": "การปัดเวลาเข้าเรียน",
+    "checkoutRoundDesc": "มาสายหรือกลับก่อน คิดตามเวลาที่เรียนจริง ปัดตามนาทีนี้ 0 = นาทีจริง",
     "unitMinutes": "นาที",
     "themeTitle": "ธีมการแสดงผล",
     "themeDesc": "สว่าง มืด หรือตามอุปกรณ์",
@@ -1237,7 +1280,37 @@
     "scanProviderErrorStatus": "Google ตอบกลับด้วยข้อผิดพลาด (สถานะ {status}) ลองใหม่อีกครั้งในอีกสักครู่",
     "scanTestFailed": "ไม่สามารถทดสอบได้ กรุณาลองใหม่",
     "notifyCancelled": "ยกเลิกคลาสเรียน",
-    "notifyCancelledDesc": "เมื่อยกเลิกคลาสที่กำลังจะถึง"
+    "notifyCancelledDesc": "เมื่อยกเลิกคลาสที่กำลังจะถึง",
+    "unitHours": "ชั่วโมง",
+    "contactTitle": "ข้อมูลติดต่อโรงเรียน",
+    "contactDesc": "แสดงบนหน้าสาธารณะ แบบฟอร์มสมัคร และอีเมลทุกฉบับ",
+    "contactPhone": "โทรศัพท์",
+    "contactPhoneHint": "คั่นหลายเบอร์ด้วย /",
+    "contactEmail": "อีเมล",
+    "contactLine": "LINE",
+    "contactLineHint": "ลิงก์หรือ @ID",
+    "contactFacebook": "Facebook",
+    "contactInstagram": "Instagram",
+    "contactWebsite": "เว็บไซต์",
+    "contactAddresses": "ที่อยู่",
+    "contactAddressN": "ที่อยู่ {n}",
+    "contactRemoveAddress": "ลบที่อยู่ {n}",
+    "contactAddAddress": "เพิ่มที่อยู่",
+    "contactSaved": "บันทึกแล้ว",
+    "contactEdit": "แก้ไข",
+    "roundHowTitle": "การปัดเวลาเข้าเรียนทำงานอย่างไร",
+    "roundPresent": "อยู่จริง {time}",
+    "roundClass": "คลาส: 10:00 – 12:00 (2 ชั่วโมง)",
+    "roundRule": "รวมเวลาที่อยู่ในคลาสจริง ตั้งแต่เช็คอินถึงเช็คเอาท์ แล้วปัดเป็นทุก {step} นาทีที่ใกล้ที่สุด ก่อนคิดเป็นเครดิต มาสายและกลับก่อนคิดแบบเดียวกัน",
+    "roundRuleExact": "คิดตามเวลาที่อยู่ในคลาสจริงเป็นนาที ไม่ปัด",
+    "roundRingLabel": "นาทีที่ขาด (มาสายหรือกลับก่อน) และเครดิตที่คิดในแต่ละช่วง",
+    "roundRingCentre": "นาทีที่ขาด",
+    "roundRingCentreSub": "มาสายหรือกลับก่อน",
+    "roundBandMissed": "{from} – {to} นาที",
+    "roundFullClass": "เต็มคลาส",
+    "roundCredits": "{credits} เครดิต",
+    "roundArrived": "มาถึง {time}",
+    "roundLeft": "กลับ {time}"
   },
   "games": {
     "title": "เกม",
@@ -1643,6 +1716,8 @@
     "studentUnverified": "แจ้งว่าเป็นนักเรียน JCA แต่ไม่พบข้อมูล",
     "signupsTitle": "ผู้สมัครผ่านแบบฟอร์ม",
     "signupCount": "สมัครแล้ว {count} คน",
+    "newSignupCount": "ใหม่ {count} คน",
+    "moreSignups": "อีก {count} คน — ดูได้ในตารางด้านล่าง",
     "pricingBoth": "ค่าสมัครล่วงหน้า แล้วลดอีก {pct}%",
     "pricingEarly": "ค่าสมัครล่วงหน้า ภายในระยะเวลาที่กำหนด"
   },
@@ -1726,5 +1801,10 @@
     "done": "เสร็จสิ้น",
     "sentWithLogin": "ส่งคำเชิญพร้อมข้อมูลเข้าสู่ระบบของ {name} ไปที่ {email} แล้ว ผู้ปกครองตั้งรหัสผ่านเองจากลิงก์ ซึ่งใช้ได้ 7 วัน",
     "linkSent": "ส่งลิงก์ตั้งรหัสผ่านไปที่ {email} แล้ว ผู้ปกครองตั้งรหัสผ่านเองจากลิงก์ ซึ่งใช้ได้ 7 วัน"
+  },
+  "courseLevel": {
+    "Beginner": "ระดับต้น",
+    "Intermediate": "ระดับกลาง",
+    "Advanced": "ระดับสูง"
   }
 }

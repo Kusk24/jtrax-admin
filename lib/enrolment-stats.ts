@@ -41,3 +41,42 @@ export function classesJoined(
     (a) => s(a, "student_id") === studentId && sessions.has(s(a, "session_id")) && s(a, "check_in_time") !== "",
   ).length;
 }
+
+/** A stored time as a moment: one with a zone as given, one without in Bangkok time. */
+function moment(raw: string): number {
+  const v = raw.trim().replace(" ", "T");
+  if (!v) return NaN;
+  return new Date(/([zZ]|[+-]\d{2}:?\d{2})$/.test(v) ? v : `${v}+07:00`).getTime();
+}
+
+/**
+ * Hours of this course the child has attended — what the office reads
+ * against the certificate milestone (`certificate_hours`). Each visit counts
+ * its time in the class: from arrival (or the start) to departure (or the
+ * end), the span a class is charged for; still checked in counts to the end.
+ */
+export function hoursJoined(
+  raw: { attendance?: Row[]; classSessions?: Row[] },
+  studentId: string,
+  classId: string,
+): number {
+  const sessions = new Map(
+    (raw.classSessions ?? []).filter((x) => s(x, "class_id") === classId).map((x) => [s(x, "session_id"), x]),
+  );
+  let ms = 0;
+  for (const a of raw.attendance ?? []) {
+    if (s(a, "student_id") !== studentId || s(a, "check_in_time") === "") continue;
+    const ses = sessions.get(s(a, "session_id"));
+    if (!ses) continue;
+    const day = s(ses, "session_date").slice(0, 10);
+    const begin = new Date(`${day}T${s(ses, "start_time").slice(0, 5)}:00+07:00`).getTime();
+    const end = new Date(`${day}T${s(ses, "end_time").slice(0, 5)}:00+07:00`).getTime();
+    if (Number.isNaN(begin) || Number.isNaN(end) || end <= begin) continue;
+    const arrived = moment(s(a, "check_in_time"));
+    const left = moment(s(a, "check_out_time"));
+    const from = Number.isNaN(arrived) ? begin : Math.max(begin, arrived);
+    const to = Number.isNaN(left) ? end : Math.min(end, left);
+    if (to > from) ms += to - from;
+  }
+  return Math.round((ms / 3_600_000) * 100) / 100;
+}

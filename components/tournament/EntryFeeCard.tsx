@@ -20,7 +20,7 @@ import { fmtTHB } from "@/lib/live";
 import { COLORS, FONT } from "@/lib/theme";
 import { useData } from "../DataProvider";
 import { ActionButton, ErrorNote, errorText } from "../crud";
-import { fieldStyle, labelStyle, primaryButtonStyle, secondaryButtonStyle, selectStyle } from "../page-kit";
+import { fieldStyle, labelStyle, primaryButtonStyle, Req, secondaryButtonStyle, selectStyle } from "../page-kit";
 import { Badge } from "../ui";
 
 /* The backend's spelling; card is not here because Stripe, not the desk,
@@ -96,7 +96,7 @@ export function EntryFeeCard({
       ) : (
         <>
           <div>
-            <label style={labelStyle} htmlFor={`fee-${registrationId}`}>{t("feeCharged")}</label>
+            <label style={labelStyle} htmlFor={`fee-${registrationId}`}>{t("feeCharged")}<Req /></label>
             <div style={{ display: "flex", gap: 8 }}>
               <input
                 id={`fee-${registrationId}`}
@@ -120,7 +120,7 @@ export function EntryFeeCard({
           </div>
 
           <div>
-            <label style={labelStyle} htmlFor={`desk-${registrationId}`}>{t("paidWith")}</label>
+            <label style={labelStyle} htmlFor={`desk-${registrationId}`}>{t("paidWith")}<Req /></label>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <select
                 id={`desk-${registrationId}`}

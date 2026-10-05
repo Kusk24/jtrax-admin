@@ -6,7 +6,8 @@ import { ResultsTab } from "../tournament/ResultsTab";
 import { ExternalTournaments } from "../tournament/ExternalTournaments";
 import { ParticipantProfile, type ResultsLink } from "../tournament/ParticipantProfile";
 import { api } from "@/lib/api";
-import { fmtDate, fmtTHB, todayISO } from "@/lib/live";
+import { fmtDate, fmtDateTime, fmtTHB, todayISO } from "@/lib/live";
+import { ageOn } from "@/lib/age-group";
 import { RegistrationCard } from "../tournament/RegistrationCard";
 import { RegistrationQueue } from "../tournament/RegistrationQueue";
 import { RegulationCard } from "../tournament/RegulationCard";
@@ -38,6 +39,7 @@ import {
   fieldStyle,
   InfoGrid,
   labelStyle,
+  Req,
   ExportButton,
   equalTemplate,
   PageHeader,
@@ -59,7 +61,9 @@ import { useUrlBackedState } from "@/lib/url-state";
 import { ApiError } from "@/lib/api";
 import { refreshLinkedResults } from "@/lib/chess-results";
 
-const PARTICIPANT_TEMPLATE = "0.45fr 1.6fr 0.5fr 1.25fr 0.8fr 0.8fr 0.9fr 70px";
+/* Every column the same width, the office's own request — a grid that reads
+   as a grid rather than a layout that happens to use one. */
+const PARTICIPANT_TEMPLATE = "repeat(9, 1fr)";
 
 /* Answers to the arrival reminder, in the order the desk reads them. */
 const ARRIVAL = ["Pending", "Confirmed", "NotAttending"] as const;
@@ -281,12 +285,15 @@ function TournamentDetail({
         options: students.map((s) => ({ value: s.id, label: s.name })),
         help: t("participantStudentHelp"),
       },
+      /* In pairs, as the desk reads an entry: the names, nickname and date of
+         birth, age and category; then how to reach the family; then the
+         money; then whether they are coming. */
       { name: "participant_name", label: t("nameEnglish"), required: true, half: true },
       { name: "participant_name_th", label: t("nameThai"), half: true },
       { name: "nickname", label: t("nickname"), required: true, half: true },
       { name: "participant_date_of_birth", label: t("dateOfBirth"), kind: "date", required: true, half: true },
-      { name: "contact_phone", label: tCommon("phone"), required: true, half: true },
-      { name: "contact_email", label: t("parentEmail"), required: true, half: true },
+      /* Worked out from the date of birth on the tournament's first day. */
+      { name: AGE, label: t("age"), kind: "number", half: true, readOnly: true, help: t("ageFromDob") },
       {
         name: "tournament_category_id",
         label: t("category"),
@@ -295,16 +302,32 @@ function TournamentDetail({
         half: true,
         options: categoryRows.map((c) => ({ value: c.id, label: c.name })),
       },
-      { name: "fide_rating", label: t("rating"), kind: "number", half: true, min: 0 },
-      { name: "fee_charged", label: t("feeCharged"), kind: "number", half: true, min: 0 },
-      /* The answer to the arrival reminder — or a phone call the desk took. */
+      { name: "contact_email", label: t("parentEmail"), required: true, half: true },
+      { name: "contact_phone", label: tCommon("phone"), required: true, half: true },
+      { name: "fee_charged", label: t("feeCharged"), kind: "number", min: 0 },
+      /* The entry's payment, editable here: how it was paid and its status. */
       ...(participantModal !== "new"
         ? [
+            {
+              name: PAY_METHOD,
+              label: t("paymentMethod"),
+              kind: "select" as const,
+              half: true,
+              options: ALL_METHODS.map((m) => ({ value: m, label: t(`method${m}`) })),
+            },
+            {
+              name: PAY_STATUS,
+              label: t("paymentStatus"),
+              kind: "select" as const,
+              half: true,
+              placeholder: t("noPaymentYet"),
+              options: PAY_STATUSES.map((st) => ({ value: st, label: tStatus(st) })),
+            },
+            /* The answer to the arrival reminder — or a phone call the desk took. */
             {
               name: "arrival_status",
               label: t("arrivalStatus"),
               kind: "select" as const,
-              half: true,
               options: ARRIVAL.map((a) => ({ value: a, label: t(`arrival${a}`) })),
             },
           ]
@@ -327,7 +350,7 @@ function TournamentDetail({
           ]
         : []),
     ],
-    [students, categoryRows, t, tCommon, participantModal, participantValues],
+    [students, categoryRows, t, tCommon, tStatus, participantModal, participantValues],
   );
 
   /* Sends the confirmation email again to someone who has not answered. */
@@ -348,7 +371,7 @@ function TournamentDetail({
         ? {
             student_id: "", participant_name: "", participant_name_th: "", nickname: "",
             participant_date_of_birth: "", contact_phone: "", contact_email: "",
-            tournament_category_id: "", fide_rating: "", fee_charged: "",
+            tournament_category_id: "", fee_charged: "",
           }
         : {
             student_id: p.studentId ?? "",
@@ -360,9 +383,11 @@ function TournamentDetail({
             contact_phone: p.contactPhone || (p.contact === "—" ? "" : p.contact),
             contact_email: p.contactEmail ?? "",
             tournament_category_id: p.categoryId ?? "",
-            fide_rating: p.rating ? String(p.rating) : "",
             fee_charged: p.feeCharged ? String(p.feeCharged) : "",
             arrival_status: p.arrival ?? "Pending",
+            [AGE]: p.dateOfBirth ? String(ageOn(p.dateOfBirth, tournament.startISO || todayISO())) : p.age ? String(p.age) : "",
+            [PAY_STATUS]: p.payment?.status ?? "",
+            [PAY_METHOD]: p.payment?.method ?? "",
           },
     );
   }
@@ -408,7 +433,7 @@ function TournamentDetail({
   const renderDraftField = (f: (typeof infoFields)[number] & { hintKey?: string }) => (
     /* The arrival reminder spans the whole row, as it does on the create form. */
     <div key={f.key} style={f.key === "arrival_reminder_days" ? { gridColumn: "1 / -1" } : undefined}>
-      <label style={labelStyle} htmlFor={`td-${f.key}`}>{t(f.labelKey)}</label>
+      <label style={labelStyle} htmlFor={`td-${f.key}`}>{t(f.labelKey)}{f.key === "name" && <Req />}</label>
       <input
         id={`td-${f.key}`}
         type={f.kind ?? "text"}
@@ -500,6 +525,10 @@ function TournamentDetail({
               }
               next = filled;
             }
+            if (next.participant_date_of_birth !== participantValues.participant_date_of_birth) {
+              const dob = String(next.participant_date_of_birth ?? "");
+              next = { ...next, [AGE]: dob ? String(ageOn(dob, tournament.startISO || todayISO())) : "" };
+            }
             setParticipantValues(next);
           }}
           onClose={() => setParticipantModal(null)}
@@ -527,7 +556,26 @@ function TournamentDetail({
                 }
               }
             } else {
-              await update("tournament-registrations", participantModal.id!, payload);
+              /* The payment fields are the payment's, not the entry's. */
+              const { [PAY_STATUS]: payStatus, [PAY_METHOD]: payMethod, ...entry } = payload;
+              await update("tournament-registrations", participantModal.id!, entry);
+              const pay = participantModal.payment;
+              const status = String(payStatus ?? "");
+              const method = String(payMethod ?? "");
+              if (pay) {
+                if ((status && status !== pay.status) || (method && method !== pay.method)) {
+                  await update("payments", pay.id, {
+                    ...(status && status !== pay.status ? { status } : {}),
+                    ...(method && method !== pay.method ? { payment_method: method } : {}),
+                  });
+                }
+              } else if (status === "Paid") {
+                /* Nothing recorded yet: marking it paid records the money as
+                   the desk takes it, which needs how it was paid. */
+                if (!(DESK_METHODS as readonly string[]).includes(method)) throw new Error(t("needDeskMethod"));
+                await api.post(`tournament-registrations/${participantModal.id}/desk-payment`, { payment_method: method });
+                await refresh();
+              }
             }
           }}
         />
@@ -896,15 +944,16 @@ function TournamentDetail({
                fit, so the desk can check an entry the ID scan may have
                misread. Payment shows who still owes: an unpaid place is
                released when registration closes. */
-            columns={[t("entryNo"), t("player"), t("age"), t("category"), t("amount"), t("payment"), t("arrivalStatus"), tCommon("action")]}
+            columns={[t("entryNo"), t("registered"), t("player"), t("age"), t("category"), t("amount"), t("payment"), t("arrivalStatus"), tCommon("action")]}
             template={PARTICIPANT_TEMPLATE}
-            minWidth={880}
+            minWidth={1080}
           >
             {pageRows.length === 0 && <EmptyRow>{t("noParticipants")}</EmptyRow>}
             {pageRows.map((p) => {
               return (
                 <TableRow key={p.name} template={PARTICIPANT_TEMPLATE} onClick={() => setDrawer(p)}>
                   <span style={{ fontWeight: 700, color: COLORS.textSecondary }}>#{p.rank}</span>
+                  <span style={{ color: COLORS.textSecondary }}>{p.registeredAt ? fmtDateTime(p.registeredAt) : "—"}</span>
                   <span style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
                     <Avatar initials={initialsOf(p.name)} size={28} />
                     <span style={{ minWidth: 0 }}>
@@ -1020,6 +1069,14 @@ function TournamentDetail({
           target={{ participantId: drawer.id }}
           onLink={linkResults}
           onClose={() => setDrawer(null)}
+          onEdit={(p) => {
+            setDrawer(null);
+            openParticipant(p);
+          }}
+          onDelete={(p) => {
+            setDrawer(null);
+            setDeletingParticipant(p);
+          }}
         />
       )}
 
@@ -1134,6 +1191,13 @@ function studentFill(s: { name: string; dateOfBirth?: string; parentPhone?: stri
 /* Paying at sign-up, from the Add participant form. The names are the form's
    own, not columns: they are taken out before the entry is saved. */
 const DESK_METHODS = ["Cash", "PromptPay", "BankTransfer"] as const;
+/* Every way an entry can have been paid, card included — for editing one. */
+const ALL_METHODS = ["Cash", "PromptPay", "BankTransfer", "CreditCard"] as const;
+/* Entry fees are non-refundable (the terms), so there is no Refunded here. */
+/* Cancelled: not paid by the closing date, so the place was released. */
+const PAY_STATUSES = ["Pending", "Paid", "Cancelled"] as const;
+const PAY_STATUS = "pay_status";
+const AGE = "participant_age_shown";
 const PAY_METHOD = "pay_method";
 const PAY_REFERENCE = "pay_reference";
 export function TournamentPage({

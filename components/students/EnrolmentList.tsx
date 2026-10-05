@@ -16,7 +16,7 @@ import { fmtDate } from "@/lib/live";
 import { classDotColor, COLORS, FONT, statusChipColors } from "@/lib/theme";
 import { useViewMode } from "@/lib/view-mode";
 import { MoreMenu, type MoreMenuItem } from "../MoreMenu";
-import { Table, TableRow } from "../page-kit";
+import { equalTemplate, Table, TableRow } from "../page-kit";
 import { Badge, Card, ClassDot } from "../ui";
 import { CardGrid, ViewToggle } from "../view-mode";
 
@@ -33,6 +33,10 @@ export type EnrolmentItem = {
   creditsOf: number | null;
   /** Classes of this course the child was checked in to. */
   classes: number;
+  /** Hours of this course attended, and the academy's milestone for a
+      course (Settings → Certificate Milestone). */
+  hours: number;
+  hoursGoal: number;
   /** This course's own condition; null for a course the child has left. */
   creditStatus: Student["status"] | null;
   enrolledDate: string;
@@ -44,11 +48,27 @@ export type EnrolmentItem = {
 export type EnrolmentFilter = "active" | "all";
 
 const VIEWS = ["list", "card"] as const;
-const TEMPLATE_ACTIVE =
-  "minmax(190px, 2fr) minmax(100px, 0.8fr) minmax(130px, 1fr) minmax(80px, 0.6fr) minmax(110px, 0.9fr) minmax(110px, 0.9fr) minmax(120px, 1fr) 44px";
+/* Every column the same width; only the Action column (and, under All, the
+   timeline rail) stays narrow. */
+const TEMPLATE_ACTIVE = `${equalTemplate(7, 120)} 76px`;
 /* All adds the timeline rail and what happened. */
-const TEMPLATE_ALL =
-  "22px minmax(170px, 1.6fr) minmax(170px, 1.5fr) minmax(95px, 0.8fr) minmax(125px, 1fr) minmax(75px, 0.6fr) minmax(105px, 0.9fr) minmax(105px, 0.9fr) minmax(115px, 1fr) 44px";
+const TEMPLATE_ALL = `22px ${equalTemplate(8, 120)} 76px`;
+
+/** Hours against the milestone — "32.5 / 50 h", and a tick once reached. */
+function HoursFigure({ item }: { item: EnrolmentItem }) {
+  const t = useTranslations("students");
+  const reached = item.hoursGoal > 0 && item.hours >= item.hoursGoal;
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontVariantNumeric: "tabular-nums" }}>
+      <span style={{ color: COLORS.text }}>{t("hoursOf", { hours: item.hours, goal: item.hoursGoal })}</span>
+      {reached && (
+        <Badge color={COLORS.success} bg={COLORS.successBg}>
+          {t("hoursReached", { goal: item.hoursGoal })}
+        </Badge>
+      )}
+    </span>
+  );
+}
 
 /** The credit figure takes the colour of the condition. */
 function creditTone(item: EnrolmentItem): string {
@@ -282,6 +302,8 @@ export function EnrolmentList({
               </span>
               {credits(item, 20)}
               <span style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "3px 10px", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+                <span>{t("colHours")}</span>
+                <HoursFigure item={item} />
                 <span>{t("colClassesJoined")}</span>
                 <span style={{ color: COLORS.text }}>{item.classes}</span>
                 <span>{t("enrolledDate")}</span>
@@ -306,29 +328,29 @@ export function EnrolmentList({
     ...(all ? [""] : []),
     tc("class"),
     ...(all ? [t("colHappened")] : []),
-    tc("status"),
     t("colCredits"),
     t("colClassesJoined"),
+    t("colHours"),
     t("colCreditStatus"),
     t("enrolledDate"),
     t("expires"),
-    "",
+    tc("action"),
   ];
   return (
-    <Table columns={columns} template={template} minWidth={all ? 1180 : 1020}>
+    <Table columns={columns} template={template} minWidth={all ? 1100 : 930}>
       {shown.map((item, i) => (
         <div key={item.id} data-enrolment-row={item.id} style={{ opacity: item.active ? 1 : 0.8 }}>
           <TableRow template={template} onClick={() => onOpen(item.id)}>
             {all && rail(item, i)}
             {name(item)}
             {all && happened(item)}
-            <span>{statusBadge(item)}</span>
             {credits(item, 14)}
             <span style={{ fontVariantNumeric: "tabular-nums" }}>{item.classes}</span>
+            <HoursFigure item={item} />
             <span>{condition(item)}</span>
             <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmtDate(item.enrolledDate)}</span>
             {expires(item)}
-            <span style={{ display: "flex", justifyContent: "flex-end" }}>{menu(item)}</span>
+            <span style={{ display: "flex", justifyContent: "flex-start" }}>{menu(item)}</span>
           </TableRow>
         </div>
       ))}

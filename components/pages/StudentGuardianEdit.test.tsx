@@ -20,6 +20,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
+import { starred } from "@/lib/starred-label";
 
 const db: Record<string, Record<string, unknown>[]> = {};
 const writes: Array<{
@@ -152,9 +153,7 @@ const link = () =>
 describe("choosing the guardian", () => {
   it("offers the parents on file", async () => {
     await openEditor();
-    const picker = screen.getByLabelText(
-      en.students.chooseGuardian,
-    ) as HTMLSelectElement;
+    const picker = screen.getByLabelText(starred(en.students.chooseGuardian)) as HTMLSelectElement;
     expect(Array.from(picker.options).map((o) => o.textContent)).toContain(
       "Somchai Sri",
     );
@@ -166,7 +165,7 @@ describe("choosing the guardian", () => {
   it("moves the child to another parent", async () => {
     const user = await openEditor();
     await user.selectOptions(
-      screen.getByLabelText(en.students.chooseGuardian),
+      screen.getByLabelText(starred(en.students.chooseGuardian)),
       "par_2",
     );
     await save(user);
@@ -185,7 +184,7 @@ describe("choosing the guardian", () => {
   it("saves the relationship, which belongs to the link and nowhere else", async () => {
     const user = await openEditor();
     await user.selectOptions(
-      screen.getByLabelText(en.students.relation),
+      screen.getByLabelText(starred(en.students.relation)),
       "Father",
     );
     await save(user);
@@ -196,7 +195,7 @@ describe("choosing the guardian", () => {
   it("can detach a guardian without touching the parent", async () => {
     const user = await openEditor();
     await user.selectOptions(
-      screen.getByLabelText(en.students.chooseGuardian),
+      screen.getByLabelText(starred(en.students.chooseGuardian)),
       "",
     );
     await save(user);
@@ -213,10 +212,10 @@ describe("the parent's own details", () => {
     await openEditor();
     /* Their name, phone, email and LINE ID were all inputs here. The only
        name field left is the child's own. */
-    expect(screen.queryByLabelText(en.common.name)).toBeNull();
-    expect(screen.queryByLabelText(en.common.phone)).toBeNull();
-    expect(screen.queryByLabelText(en.common.email)).toBeNull();
-    expect(screen.queryByLabelText(en.common.lineId)).toBeNull();
+    expect(screen.queryByLabelText(starred(en.common.name))).toBeNull();
+    expect(screen.queryByLabelText(starred(en.common.phone))).toBeNull();
+    expect(screen.queryByLabelText(starred(en.common.email))).toBeNull();
+    expect(screen.queryByLabelText(starred(en.common.lineId))).toBeNull();
   });
 
   it("says where they are changed, and goes there", async () => {
@@ -235,7 +234,7 @@ describe("the parent's own details", () => {
   it("is left alone by a save", async () => {
     const user = await openEditor();
     await user.selectOptions(
-      screen.getByLabelText(en.students.relation),
+      screen.getByLabelText(starred(en.students.relation)),
       "Father",
     );
     await save(user);
@@ -258,7 +257,7 @@ describe("a save that fails", () => {
     await save(user);
 
     await waitFor(() =>
-      expect(screen.getByLabelText(en.students.dateOfBirth)).toBeTruthy(),
+      expect(screen.getByLabelText(starred(en.students.dateOfBirth))).toBeTruthy(),
     );
   });
 
@@ -277,7 +276,7 @@ describe("a save that fails", () => {
     await save(user);
 
     await waitFor(() =>
-      expect(screen.queryByLabelText(en.students.dateOfBirth)).toBeNull(),
+      expect(screen.queryByLabelText(starred(en.students.dateOfBirth))).toBeNull(),
     );
   });
 });

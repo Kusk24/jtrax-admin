@@ -36,7 +36,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/components/DataProvider", () => ({
   useData: () => ({
     raw,
-    creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certSessions: 50, maxNegativeCredit: 0, checkoutRoundMinutes: 15 },
+    creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certHours: 50, maxNegativeCredit: 0, checkoutRoundMinutes: 15 },
     students: [],
     payments: [],
     announcements: [],
@@ -127,7 +127,7 @@ describe("a section arrived at any other way", () => {
 describe("the name typed into the dashboard search", () => {
   it("arrives in the registration form", () => {
     show(<StudentsPage startWizard="Anong Suk" />);
-    expect((screen.getByLabelText("Full Name") as HTMLInputElement).value).toBe("Anong Suk");
+    expect((screen.getByLabelText(/^Full Name( \*)?$/) as HTMLInputElement).value).toBe("Anong Suk");
   });
 });
 

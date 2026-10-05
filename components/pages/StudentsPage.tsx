@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { api, ApiError } from "@/lib/api";
 import { generateHiddenPassword, generateReadablePassword } from "@/lib/credentials";
-import { classesJoined, creditsSinceTopUp } from "@/lib/enrolment-stats";
-import { InviteOutcomeNote, inviteOutcome, type InviteOutcome } from "../InviteButton";
+import { classesJoined, hoursJoined, creditsSinceTopUp } from "@/lib/enrolment-stats";
+import { InviteButton, InviteOutcomeNote, inviteOutcome, type InviteOutcome } from "../InviteButton";
 import type { StudentLogin } from "@/lib/invite";
 import { type Student } from "@/lib/data";
 import { useData } from "@/components/DataProvider";
-import { enrolmentStatus, isRevenue, fmtCredits, fmtDate, fmtSessionTime, fmtTHB, isActiveEnrolment, liveClasses, toDateInput, todayISO } from "@/lib/live";
+import { CourseName } from "@/components/CourseName";
+import { enrolmentStatus, isArchivedClass, isRevenue, fmtCredits, fmtDate, fmtSessionTime, fmtTHB, isActiveEnrolment, liveClasses, toDateInput, todayISO } from "@/lib/live";
 import { creditsForValue, planTransfer, ratePerCredit, roundCredits, valueOfLots, type CreditRate } from "@/lib/credit-transfer";
 import { opensCreate } from "@/lib/quick-actions";
 import { createStudentAccount, isTakenIdError } from "@/lib/student-login-id";
@@ -25,7 +26,6 @@ import {
   CrudFormModal,
   ErrorNote,
   errorText,
-  RowActions,
   type CrudField,
   type CrudValues,
 } from "../crud";
@@ -35,6 +35,7 @@ import {
   FilterBar,
   InfoGrid,
   labelStyle,
+  Req,
   Modal,
   dangerSolidButtonStyle,
   equalTemplate,
@@ -54,6 +55,8 @@ import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
 import { BackLink, DangerPanel, DeleteButton, DetailHeader, EditButton } from "../detail";
 import { ResetPasswordButton } from "../ResetPassword";
 import { EnrolmentModal, type EnrolmentEdits } from "../students/EnrolmentModal";
+import type { MoreMenuItem } from "../MoreMenu";
+import { explainCharge, fmtMinutes } from "@/lib/charge-explain";
 import { PracticeTab, useStreak } from "../students/PracticeTab";
 import {
   EnrolmentFilterToggle,
@@ -227,7 +230,7 @@ type View =
 /* ---------------------------------------------------------------- detail --- */
 
 const DETAIL_TABS = ["Overview", "Attendance", "Credits", "Practice", "Payments"] as const;
-const CREDIT_TEMPLATE = "minmax(100px, 0.9fr) minmax(150px, 1.4fr) minmax(120px, 1fr) minmax(80px, 0.7fr) minmax(100px, 0.9fr) minmax(80px, 0.7fr)";
+const CREDIT_TEMPLATE = "minmax(100px, 0.9fr) minmax(150px, 1.4fr) minmax(120px, 1fr) minmax(80px, 0.7fr)";
 const CREDIT_TYPES = ["purchase", "consumption", "manual_adjustment"];
 type DetailTab = (typeof DETAIL_TABS)[number];
 
@@ -333,13 +336,22 @@ function StudentDetail({
           end: session ? String(session["end_time"] ?? "") : "",
           classId: cls ? String(cls["class_id"]) : "",
           className: cls ? String(cls["name"] ?? "") : "—",
+          /* Archived by the academy, or removed from this student (only a
+             deleted enrolment left for that course). */
+          removed:
+            isArchivedClass(cls) ||
+            (Boolean(cls) &&
+              !raw.enrollments.some((e) => String(e["student_id"]) === student.id && String(e["class_id"]) === String(cls!["class_id"])) &&
+              (raw.deletedEnrollments ?? []).some(
+                (e) => String(e["student_id"]) === student.id && String(e["class_id"]) === String(cls!["class_id"]),
+              )),
           /* Negative, as the ledger writes it; null when nothing was charged
              (a walk-in with no enrolment, or an unreadable timetable). */
           creditsUsed: charges.length ? charges.reduce((sum, tx) => sum + Number(tx["amount"] ?? 0), 0) : null,
         };
       })
       .sort((a, b) => b.date.localeCompare(a.date) || b.start.localeCompare(a.start));
-  }, [raw.attendance, raw.classSessions, raw.classes, raw.creditTransactions, student.id]);
+  }, [raw.attendance, raw.classSessions, raw.classes, raw.creditTransactions, raw.enrollments, raw.deletedEnrollments, student.id]);
 
   const [attCourse, setAttCourse] = useState("");
   const [attFrom, setAttFrom] = useState("");
@@ -369,6 +381,8 @@ function StudentDetail({
     [raw.enrollments, student.id],
   );
 
+  /* The ledger entry open in the read-only detail. */
+  const [viewingCredit, setViewingCredit] = useState<string | null>(null);
   const creditRows = useMemo(() => {
     return raw.creditTransactions
       /* Their enrolments' entries, and the ones no enrolment claims — those
@@ -389,11 +403,15 @@ function StudentDetail({
         id: String(tx["credit_transaction_id"]),
         enrollmentId: String(tx["enrollment_id"] ?? ""),
         className: cls ? String(cls["name"] ?? "") : "",
+        /* Held outside any course (its enrolment was deleted), or for a
+           course the academy archived. */
+        removed: !enrolment || isArchivedClass(cls),
         type: String(tx["transaction_type"] ?? ""),
         amount: Number(tx["amount"] ?? 0),
         date: String(tx["transaction_date"] ?? ""),
         expiry: String(tx["expiry_date"] ?? ""),
         notes: String(tx["notes"] ?? ""),
+        attendanceId: String(tx["attendance_id"] ?? ""),
         };
       })
       .sort((a, b) => b.date.localeCompare(a.date));
@@ -454,7 +472,8 @@ function StudentDetail({
   const [changing, setChanging] = useState<(typeof enrolments)[number] | null>(null);
   /* The enrolment whose modal is open — by id, so the modal shows the saved
      values the moment a save lands rather than a copy taken on opening. */
-  const [viewingEnrolment, setViewingEnrolment] = useState<string | null>(null);
+  /* The enrolment open in the modal, and whether it opened straight into Edit. */
+  const [viewingEnrolment, setViewingEnrolment] = useState<{ id: string; editing: boolean } | null>(null);
   /* Active by default; All is every course the child has had, as a timeline. */
   const [enrolmentFilter, setEnrolmentFilter] = useState<EnrolmentFilter>("active");
 
@@ -473,6 +492,57 @@ function StudentDetail({
         }
       }
     });
+  }
+
+  /* What can be done to one enrolment — the same in its row's menu and in
+     its own modal. */
+  function enrolmentActions(id: string, active: boolean, balance: number): MoreMenuItem[] {
+    /* A deleted course has nothing left to do to it. */
+    const e = enrolments.find((x) => x.id === id);
+    if (!e) return [];
+    /* Expired credit blocks Change Course, as it blocks check-in. */
+    const expired = e.expires !== "" && e.expires < todayISO();
+    const nowhereToGo = changeTargets(e).length === 0;
+    return [
+      /* Only out of a course they are in. */
+      ...(active
+        ? [
+            {
+              label: t("topUp"),
+              ariaLabel: t("topUpCourse", { className: e.className }),
+              icon: "plus" as const,
+              onSelect: () => openAddEnrolment(e.classId),
+            },
+            {
+              label: t("changeCourse"),
+              ariaLabel: t("changeCourseFrom", { className: e.className }),
+              icon: "refund" as const,
+              disabledReason: expired ? t("changeCourseExpired") : nowhereToGo ? t("changeCourseNowhere") : null,
+              onSelect: () => {
+                setChangeTo(changeTargets(e)[0]?.id ?? "");
+                setChangeCarry(balance > 0);
+                setMoveAmount(null);
+                setMoveExpiry(expiryOf(raw.creditTransactions, e.id));
+                setChanging(e);
+              },
+            },
+          ]
+        : []),
+      /* The enrolled date, expiry and note. */
+      {
+        label: tCommon("edit"),
+        ariaLabel: t("editEnrolmentOf", { className: e.className }),
+        icon: "edit" as const,
+        onSelect: () => setViewingEnrolment({ id: e.id, editing: true }),
+      },
+      {
+        label: tCommon("delete"),
+        ariaLabel: t("deleteEnrolmentFrom", { className: e.className }),
+        icon: "trash" as const,
+        danger: true,
+        onSelect: () => setDeletingEnrolment(e),
+      },
+    ];
   }
 
   /** The entries that brought hours into an enrolment — where its expiry lives. */
@@ -851,9 +921,8 @@ function StudentDetail({
     router.push(`/payment?student=${encodeURIComponent(student.id)}${course}`);
   }
 
-  const [creditModal, setCreditModal] = useState<(typeof creditRows)[number] | "new" | null>(null);
+  const [addingCredit, setAddingCredit] = useState(false);
   const [creditValues, setCreditValues] = useState<CrudValues>({});
-  const [deletingCredit, setDeletingCredit] = useState<(typeof creditRows)[number] | null>(null);
 
   const creditFields: CrudField[] = useMemo(
     () => [
@@ -893,36 +962,22 @@ function StudentDetail({
         help: t("creditAmountHelp"),
       },
       { name: "transaction_date", label: tCommon("date"), kind: "date", required: true, half: true },
-      { name: "expiry_date", label: t("expires"), kind: "date", half: true },
       { name: "notes", label: t("notes"), kind: "textarea" },
     ],
     [raw.enrollments, raw.classes, student.id, t, tCommon],
   );
 
-  function openCreditModal(row: (typeof creditRows)[number] | "new") {
-    setCreditModal(row);
+  function openCreditModal() {
+    setAddingCredit(true);
     const today = new Date().toISOString().slice(0, 10);
-    setCreditValues(
-      row === "new"
-        ? {
-            /* A course they are in, rather than whichever came first. */
-            enrollment_id:
-              enrolments.find((e) => isActiveEnrolment({ status: e.status }))?.id ?? enrolmentIds[0] ?? "",
-            transaction_type: "manual_adjustment",
-            amount: "",
-            transaction_date: today,
-            expiry_date: "",
-            notes: "",
-          }
-        : {
-            enrollment_id: row.enrollmentId,
-            transaction_type: row.type,
-            amount: String(row.amount),
-            transaction_date: row.date,
-            expiry_date: row.expiry,
-            notes: row.notes,
-          },
-    );
+    setCreditValues({
+      /* A course they are in, rather than whichever came first. */
+      enrollment_id: enrolments.find((e) => isActiveEnrolment({ status: e.status }))?.id ?? enrolmentIds[0] ?? "",
+      transaction_type: "manual_adjustment",
+      amount: "",
+      transaction_date: today,
+      notes: "",
+    });
   }
 
   const streak = useStreak(student.id);
@@ -935,13 +990,22 @@ function StudentDetail({
         .filter((p) => String(p["student_id"]) === student.id)
         .map((p) => {
           const enr = raw.enrollments.find((e) => String(e["enrollment_id"]) === String(p["enrollment_id"]));
-          const cls = enr ? raw.classes.find((c) => String(c["class_id"]) === String(enr["class_id"])) : undefined;
+          /* A course deleted from the student: its enrolment is kept apart,
+             and the payment says "deleted course" rather than "—". */
+          const gone = enr
+            ? undefined
+            : (raw.deletedEnrollments ?? []).find((e) => String(e["enrollment_id"]) === String(p["enrollment_id"]));
           const pkg = raw.creditPackages.find(
             (k) => String(k["credit_package_id"]) === String(p["credit_package_id"]),
           );
+          /* The course through the enrolment, else through the package
+             bought: older payments recorded neither enrolment nor name. */
+          const classId = (enr ?? gone) ? String((enr ?? gone)!["class_id"]) : pkg ? String(pkg["class_id"] ?? "") : "";
+          const cls = classId ? raw.classes.find((c) => String(c["class_id"]) === classId) : undefined;
           return {
             id: String(p["payment_id"]),
-            className: cls ? String(cls["name"] ?? "") : "—",
+            className: cls ? String(cls["name"] ?? "") : String(p["class_name"] ?? "") || (gone ? "" : "—"),
+            courseDeleted: Boolean(gone) || isArchivedClass(cls),
             credits:
               Number(p["credit_amount"] ?? 0) > 0
                 ? `+${Number(p["credit_amount"])}`
@@ -957,7 +1021,7 @@ function StudentDetail({
           };
         })
         .sort((a, b) => b.date.localeCompare(a.date)),
-    [raw.payments, raw.enrollments, raw.classes, raw.creditPackages, student.id],
+    [raw.payments, raw.enrollments, raw.deletedEnrollments, raw.classes, raw.creditPackages, student.id],
   );
 
   /* The guardian's name when this student is their only child, so the delete
@@ -1001,6 +1065,10 @@ function StudentDetail({
         actions={
           !editing && (
             <>
+              {/* An older student who signs in with their own email gets a
+                  link to choose a password, as a parent does. Hidden for a
+                  child's login ID, which has no mailbox. */}
+              <InviteButton accountId={student.accountId ?? ""} email={student.email ?? ""} />
               {/* A child's ID has no mailbox, so the forgot-password link that
                   serves everyone else cannot reach them. This is the only way
                   back in, and it is why it sits on the child's own card. */}
@@ -1117,7 +1185,7 @@ function StudentDetail({
               <SectionTitle>{t("studentSection")}</SectionTitle>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <div>
-                  <label style={labelStyle} htmlFor="ed-name">{t("fullName")}</label>
+                  <label style={labelStyle} htmlFor="ed-name">{t("fullName")}<Req /></label>
                   <input id="ed-name" value={draft.name} onChange={(e) => setField("name", e.target.value)} style={fieldStyle} />
                 </div>
                 {/* Course, Branch and Membership used to be fields here. None
@@ -1192,7 +1260,7 @@ function StudentDetail({
               <SectionTitle>{t("parentSection")}</SectionTitle>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <div>
-                  <label style={labelStyle} htmlFor="ed-pguardian">{t("chooseGuardian")}</label>
+                  <label style={labelStyle} htmlFor="ed-pguardian">{t("chooseGuardian")}<Req /></label>
                   <select
                     id="ed-pguardian"
                     value={draft.parentId}
@@ -1302,6 +1370,19 @@ function StudentDetail({
             <SectionTitle>{t("studentSection")}</SectionTitle>
             <InfoGrid
               rows={[
+                /* The two IDs first: what the desk is most often asked for.
+                   The student ID is the record's own — what the public
+                   tournament form asks for to give the student discount. */
+                { label: t("studentIdLabel"), value: <CopyableId id={student.id} /> },
+                /* One identifier, two kinds of thing: an ID for the children,
+                   who have no mailbox, and a real address for an older student
+                   who gave one. Labelled by what this row actually holds
+                   rather than by which is more common, because the answer
+                   decides whether the desk can write to it. */
+                {
+                  label: student.email && !student.email.includes("@") ? t("loginId") : tCommon("email"),
+                  value: student.email || t("noAccountYet"),
+                },
                 { label: tCommon("class"), value: student.className },
                 { label: tCommon("branch"), value: student.branch },
                 /* Shown, not just implied by the age in the header. The only
@@ -1313,15 +1394,6 @@ function StudentDetail({
                 { label: t("level"), value: student.level },
                 { label: t("currentSchool"), value: student.school || "—" },
                 { label: t("fideIdLabel"), value: student.fideId || "—" },
-                /* One identifier, two kinds of thing: an ID for the children,
-                   who have no mailbox, and a real address for an older student
-                   who gave one. Labelled by what this row actually holds
-                   rather than by which is more common, because the answer
-                   decides whether the desk can write to it. */
-                {
-                  label: student.email && !student.email.includes("@") ? t("loginId") : tCommon("email"),
-                  value: student.email || t("noAccountYet"),
-                },
                 { label: t("joined"), value: student.joinedDate },
                 /* Membership, credits expire and the student's LINE ID used to
                    sit here. Membership was never a thing the academy has:
@@ -1345,14 +1417,24 @@ function StudentDetail({
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
               <SectionTitle>{t("parentSection")}</SectionTitle>
               {hasGuardian && (
-                <button
-                  type="button"
-                  className="jt-btn-ghost"
-                  style={{ ...secondaryButtonStyle, padding: "6px 12px", fontSize: 13 }}
-                  onClick={() => onUnlinkGuardian()}
-                >
-                  {t("unlinkGuardian")}
-                </button>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    type="button"
+                    className="jt-btn-ghost"
+                    style={{ ...secondaryButtonStyle, padding: "6px 12px", fontSize: 13 }}
+                    onClick={() => router.push(`/parents?id=${encodeURIComponent(student.parentId)}`)}
+                  >
+                    <Icon name="parents" size={14} /> {t("openParent", { name: student.parentName })}
+                  </button>
+                  <button
+                    type="button"
+                    className="jt-btn-ghost"
+                    style={{ ...secondaryButtonStyle, padding: "6px 12px", fontSize: 13 }}
+                    onClick={() => onUnlinkGuardian()}
+                  >
+                    {t("unlinkGuardian")}
+                  </button>
+                </div>
               )}
             </div>
             {hasGuardian ? (
@@ -1380,7 +1462,7 @@ function StudentDetail({
                 ) : (
                   <div style={{ display: "flex", gap: 9, flexWrap: "wrap", alignItems: "flex-end" }}>
                     <div style={{ flex: "1 1 170px" }}>
-                      <label style={labelStyle} htmlFor="sd-guardian">{t("chooseGuardian")}</label>
+                      <label style={labelStyle} htmlFor="sd-guardian">{t("chooseGuardian")}<Req /></label>
                       <select
                         id="sd-guardian"
                         value={guardianId}
@@ -1423,14 +1505,14 @@ function StudentDetail({
         </div>
       )}
 
-      {creditModal && (
+      {addingCredit && (
         <CrudFormModal
-          title={creditModal === "new" ? t("addCredit") : t("editCredit")}
-          isEdit={creditModal !== "new"}
+          title={t("addCredit")}
+          isEdit={false}
           fields={creditFields}
           values={creditValues}
           onChange={setCreditValues}
-          onClose={() => setCreditModal(null)}
+          onClose={() => setAddingCredit(false)}
           onSubmit={async (payload) => {
             /* Stamped with whose hours these are and which course they were
                bought for, so the entry survives its enrolment being deleted
@@ -1444,17 +1526,8 @@ function StudentDetail({
               student_id: student.id,
               ...(chosen ? { class_id: String(chosen["class_id"] ?? "") } : {}),
             };
-            if (creditModal === "new") await create("credit-transactions", stamped);
-            else await update("credit-transactions", creditModal.id, stamped);
+            await create("credit-transactions", stamped);
           }}
-        />
-      )}
-
-      {deletingCredit && (
-        <ConfirmDeleteModal
-          what={t("creditEntry", { amount: deletingCredit.amount, date: fmtDate(deletingCredit.date) })}
-          onClose={() => setDeletingCredit(null)}
-          onConfirm={() => remove("credit-transactions", deletingCredit.id)}
         />
       )}
 
@@ -1557,6 +1630,8 @@ function StudentDetail({
                     raw.creditTransactions.filter((tx) => String(tx["enrollment_id"]) === e.id),
                   ),
                   classes: classesJoined(raw, student.id, e.classId),
+                  hours: hoursJoined(raw, student.id, e.classId),
+                  hoursGoal: creditRules.certHours,
                   /* This course's own condition — never the student's. */
                   creditStatus: active ? enrolmentStatus(raw, e.id, creditRules).status : null,
                   enrolledDate: e.enrolledDate,
@@ -1564,55 +1639,15 @@ function StudentDetail({
                   expired: e.expires !== "" && e.expires < todayISO(),
                 };
               })}
-              onOpen={setViewingEnrolment}
-              actionsFor={(item) => {
-                /* A deleted course has nothing left to do to it. */
-                const e = enrolments.find((x) => x.id === item.id);
-                if (!e) return [];
-                /* Expired credit blocks Change Course, as it blocks check-in. */
-                const expired = e.expires !== "" && e.expires < todayISO();
-                const nowhereToGo = changeTargets(e).length === 0;
-                return [
-                  /* Only out of a course they are in. */
-                  ...(item.active
-                    ? [
-                        {
-                          label: t("topUp"),
-                          ariaLabel: t("topUpCourse", { className: e.className }),
-                          icon: "plus" as const,
-                          onSelect: () => openAddEnrolment(e.classId),
-                        },
-                        {
-                          label: t("changeCourse"),
-                          ariaLabel: t("changeCourseFrom", { className: e.className }),
-                          icon: "refund" as const,
-                          disabledReason: expired ? t("changeCourseExpired") : nowhereToGo ? t("changeCourseNowhere") : null,
-                          onSelect: () => {
-                            setChangeTo(changeTargets(e)[0]?.id ?? "");
-                            setChangeCarry(item.balance > 0);
-                            setMoveAmount(null);
-                            setMoveExpiry(expiryOf(raw.creditTransactions, e.id));
-                            setChanging(e);
-                          },
-                        },
-                      ]
-                    : []),
-                  {
-                    label: tCommon("delete"),
-                    ariaLabel: t("deleteEnrolmentFrom", { className: e.className }),
-                    icon: "trash" as const,
-                    danger: true,
-                    onSelect: () => setDeletingEnrolment(e),
-                  },
-                ];
-              }}
+              onOpen={(id) => setViewingEnrolment({ id, editing: false })}
+              actionsFor={(item) => enrolmentActions(item.id, item.active, item.balance)}
             />
           )}
         </Card>
       )}
 
       {viewingEnrolment && (() => {
-        const e = allEnrolments.find((x) => x.id === viewingEnrolment);
+        const e = allEnrolments.find((x) => x.id === viewingEnrolment.id);
         if (!e) return null;
         const active = isActiveEnrolment({ status: e.status }) && !e.deletedDate;
         return (
@@ -1621,6 +1656,12 @@ function StudentDetail({
             balance={balanceOf(e.id)}
             creditStatus={active ? enrolmentStatus(raw, e.id, creditRules).status : null}
             canSetExpiry={purchasesOf(e.id).length > 0}
+            editing={viewingEnrolment.editing}
+            onEditingChange={(editing) => setViewingEnrolment({ id: e.id, editing })}
+            /* Anything but Edit leaves the modal for its own dialog. */
+            actions={enrolmentActions(e.id, active, balanceOf(e.id)).map((a) =>
+              a.icon === "edit" ? a : { ...a, onSelect: () => { setViewingEnrolment(null); a.onSelect(); } },
+            )}
             onClose={() => setViewingEnrolment(null)}
             onSave={(edits) => saveEnrolment(e.id, e, edits)}
           />
@@ -1695,7 +1736,7 @@ function StudentDetail({
               </p>
 
               <div>
-                <label style={labelStyle} htmlFor="cl-target">{t("moveCreditsTo")}</label>
+                <label style={labelStyle} htmlFor="cl-target">{t("moveCreditsTo")}<Req /></label>
                 <select
                   id="cl-target"
                   value={target?.id ?? ""}
@@ -1710,7 +1751,7 @@ function StudentDetail({
 
               <div style={{ display: "flex", gap: 12 }}>
                 <div style={{ flex: 1 }}>
-                  <label style={labelStyle} htmlFor="cl-amount">{t("moveAmount")}</label>
+                  <label style={labelStyle} htmlFor="cl-amount">{t("moveAmount")}<Req /></label>
                   <input
                     id="cl-amount"
                     type="number"
@@ -1833,7 +1874,7 @@ function StudentDetail({
               </p>
 
               <div>
-                <label style={labelStyle} htmlFor="ch-target">{t("changeCourseTo")}</label>
+                <label style={labelStyle} htmlFor="ch-target">{t("changeCourseTo")}<Req /></label>
                 <select
                   id="ch-target"
                   value={target?.id ?? ""}
@@ -1872,7 +1913,7 @@ function StudentDetail({
                     <>
                       <div style={{ display: "flex", gap: 12 }}>
                         <div style={{ flex: 1 }}>
-                          <label style={labelStyle} htmlFor="ch-amount">{t("moveAmount")}</label>
+                          <label style={labelStyle} htmlFor="ch-amount">{t("moveAmount")}<Req /></label>
                           <input
                             id="ch-amount"
                             type="number"
@@ -1960,43 +2001,134 @@ function StudentDetail({
             <span style={{ marginLeft: "auto" }}>
               {/* No payment behind these: corrections, make-ups, gifts. Buying
                   credits is Add Credits on the Overview, via Payment. */}
-              <AddButton label={t("adjustCredits")} onClick={() => openCreditModal("new")} />
+              <AddButton label={t("adjustCredits")} onClick={() => openCreditModal()} />
             </span>
           </div>
+          {/* A ledger, not a form: every row is history, and the expiry that
+              governs a course's credits is set from Overview's enrolment
+              section, where it belongs to a specific enrolment rather than a
+              loose adjustment. */}
           <Table
-            columns={[tCommon("date"), tCommon("class"), t("creditType"), tCommon("amount"), t("expires"), tCommon("action")]}
+            columns={[tCommon("date"), tCommon("class"), t("creditType"), tCommon("amount")]}
             template={CREDIT_TEMPLATE}
-            minWidth={820}
+            minWidth={620}
           >
             {creditRows.length === 0 && <EmptyRow>{t("noCredits")}</EmptyRow>}
             {creditRows.map((row) => (
-              <TableRow key={row.id} template={CREDIT_TEMPLATE}>
+              <TableRow key={row.id} template={CREDIT_TEMPLATE} onClick={() => setViewingCredit(row.id)}>
                 <span style={{ color: COLORS.textSecondary }}>{fmtDate(row.date)}</span>
                 <span style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
                   <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     {row.className && <ClassDot color={classDotColor(row.className)} />}
-                    {row.className || "—"}
+                    <CourseName name={row.className} deleted={row.removed} />
                   </span>
-                  {/* Hours held outside any course — left from a deleted one. */}
-                  {!row.enrollmentId && (
-                    <span style={{ fontSize: 12, color: COLORS.textSecondary }}>{t("notInACourse")}</span>
-                  )}
                 </span>
                 <span>{t(`creditType_${row.type}`)}</span>
                 <span style={{ fontWeight: 700, color: row.amount < 0 ? COLORS.danger : COLORS.success }}>
                   {row.amount > 0 ? `+${row.amount}` : row.amount}
                 </span>
-                <span style={{ color: COLORS.textSecondary }}>{row.expiry ? fmtDate(row.expiry) : "—"}</span>
-                <RowActions
-                  label={t("creditEntry", { amount: row.amount, date: fmtDate(row.date) })}
-                  onEdit={() => openCreditModal(row)}
-                  onDelete={() => setDeletingCredit(row)}
-                />
               </TableRow>
             ))}
           </Table>
         </Card>
       )}
+
+      {viewingCredit && (() => {
+        const row = creditRows.find((r) => r.id === viewingCredit);
+        if (!row) return null;
+        const att = row.attendanceId
+          ? raw.attendance.find((a) => String(a["attendance_id"]) === row.attendanceId)
+          : undefined;
+        const ses = att
+          ? [...raw.classSessions, ...(raw.cancelledSessions ?? [])].find((x) => String(x["session_id"]) === String(att["session_id"]))
+          : undefined;
+        const how = ses && att
+          ? explainCharge({
+              sessionDate: String(ses["session_date"] ?? ""),
+              startTime: String(ses["start_time"] ?? ""),
+              endTime: String(ses["end_time"] ?? ""),
+              checkIn: String(att["check_in_time"] ?? ""),
+              checkOut: String(att["check_out_time"] ?? ""),
+              stepMinutes: creditRules.checkoutRoundMinutes,
+            })
+          : null;
+        return (
+          <Modal title={t("creditDetailTitle")} onClose={() => setViewingCredit(null)} width={520}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <InfoGrid
+                rows={[
+                  { label: tCommon("date"), value: fmtDate(row.date) },
+                  { label: tCommon("class"), value: row.className ? <CourseName name={row.className} deleted={row.removed} /> : "—" },
+                  { label: t("creditType"), value: t(`creditType_${row.type}`) },
+                  {
+                    label: tCommon("amount"),
+                    value: (
+                      <strong style={{ color: row.amount < 0 ? COLORS.danger : COLORS.success }}>
+                        {row.amount > 0 ? `+${row.amount}` : row.amount} {tCommon("credits")}
+                      </strong>
+                    ),
+                  },
+                  ...(row.expiry ? [{ label: t("expires"), value: fmtDate(row.expiry) }] : []),
+                  ...(row.notes ? [{ label: t("notes"), value: row.notes }] : []),
+                ]}
+              />
+              {row.type === "consumption" && how && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 14, borderTop: `1px solid ${COLORS.border}` }}>
+                  <SectionTitle>{t("chargeHowTitle")}</SectionTitle>
+                  <InfoGrid
+                    rows={[
+                      {
+                        label: t("chargeClassTime"),
+                        value: `${fmtDate(String(ses!["session_date"] ?? ""))} · ${how.classStart} – ${how.classEnd} (${fmtMinutes(how.classMinutes)})`,
+                      },
+                      {
+                        label: t("chargeCheckIn"),
+                        value: (
+                          <span>
+                            {how.checkIn || "—"}
+                            {how.lateMinutes > 0 && (
+                              <span style={{ color: COLORS.warning, fontWeight: 600 }}> · {t("chargeLate", { minutes: fmtMinutes(how.lateMinutes) })}</span>
+                            )}
+                          </span>
+                        ),
+                      },
+                      {
+                        label: t("chargeCheckOut"),
+                        value: (
+                          <span>
+                            {how.checkOut || t("chargeStillIn")}
+                            {how.earlyMinutes > 0 && how.checkOut && (
+                              <span style={{ color: COLORS.warning, fontWeight: 600 }}> · {t("chargeEarly", { minutes: fmtMinutes(how.earlyMinutes) })}</span>
+                            )}
+                          </span>
+                        ),
+                      },
+                    ]}
+                  />
+                  <p style={{ margin: 0, padding: "10px 12px", borderRadius: 10, background: COLORS.light, fontFamily: FONT, fontSize: 13.5, lineHeight: 1.55, color: COLORS.text }}>
+                    {how.lateMinutes === 0 && how.earlyMinutes === 0
+                      ? t("chargeFull", { length: fmtMinutes(how.classMinutes), credits: how.credits })
+                      : how.stepMinutes > 0 && how.chargedMinutes !== how.attendedMinutes
+                        ? t("chargePartRounded", {
+                            from: how.from, to: how.to, attended: fmtMinutes(how.attendedMinutes),
+                            step: how.stepMinutes, charged: fmtMinutes(how.chargedMinutes), credits: how.credits,
+                          })
+                        : t("chargePart", { from: how.from, to: how.to, attended: fmtMinutes(how.attendedMinutes), credits: how.credits })}
+                  </p>
+                  {Math.abs(how.credits + row.amount) > 0.01 && (
+                    <p style={{ margin: 0, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+                      {t("chargeDiffers", { credits: -row.amount })}
+                    </p>
+                  )}
+                </div>
+              )}
+              {row.type === "consumption" && !how && (
+                <p style={{ margin: 0, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>{t("chargeNoVisit")}</p>
+              )}
+            </div>
+          </Modal>
+        );
+      })()}
 
       {tab === "Attendance" && (
         <Card style={{ padding: 0, overflow: "hidden" }}>
@@ -2065,7 +2197,7 @@ function StudentDetail({
                   <span style={{ color: COLORS.textSecondary }}>{fmtSessionTime(row.start, row.end)}</span>
                   <span style={{ display: "flex", alignItems: "center" }}>
                     <ClassDot color={classDotColor(row.className)} />
-                    {row.className}
+                    <CourseName name={row.className} deleted={row.removed} />
                   </span>
                   <span style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>
                     {row.creditsUsed === null ? "—" : `−${fmtCredits(-row.creditsUsed)}`}
@@ -2093,7 +2225,7 @@ function StudentDetail({
               <TableRow key={p.id} template={equalTemplate(5, 80)}>
                 <span style={{ display: "flex", alignItems: "center" }}>
                   <ClassDot color={classDotColor(p.className)} />
-                  {p.className}
+                  <CourseName name={p.className} deleted={p.courseDeleted} />
                 </span>
                 <span style={{ color: COLORS.success, fontWeight: 600 }}>{p.credits}</span>
                 <span style={{ fontWeight: 600 }}>{p.amount}</span>
@@ -2419,7 +2551,7 @@ function AddStudentWizard({
             <SectionTitle>{t("studentInfo")}</SectionTitle>
             <div className="jt-duo">
               <div>
-                <label style={labelStyle} htmlFor="w-name">{t("fullName")}</label>
+                <label style={labelStyle} htmlFor="w-name">{t("fullName")}<Req /></label>
                 <input id="w-name" value={draft.name} onChange={(e) => set("name", e.target.value)} style={fieldStyle} />
               </div>
               <div>
@@ -2518,7 +2650,7 @@ function AddStudentWizard({
             {draft.parentId ? (
               <div className="jt-duo">
                 <div>
-                  <label style={labelStyle} htmlFor="w-pexisting">{t("chooseGuardian")}</label>
+                  <label style={labelStyle} htmlFor="w-pexisting">{t("chooseGuardian")}<Req /></label>
                   <select
                     id="w-pexisting"
                     value={draft.parentId}
@@ -2547,7 +2679,7 @@ function AddStudentWizard({
             ) : (
               <div className="jt-duo">
                 <div>
-                  <label style={labelStyle} htmlFor="w-pname">{tCommon("name")}</label>
+                  <label style={labelStyle} htmlFor="w-pname">{tCommon("name")}<Req /></label>
                   <input id="w-pname" value={draft.parentName} onChange={(e) => set("parentName", e.target.value)} style={fieldStyle} />
                 </div>
                 <div>
@@ -2559,11 +2691,11 @@ function AddStudentWizard({
                   </select>
                 </div>
                 <div>
-                  <label style={labelStyle} htmlFor="w-pphone">{tCommon("phone")}</label>
+                  <label style={labelStyle} htmlFor="w-pphone">{tCommon("phone")}<Req /></label>
                   <input id="w-pphone" value={draft.parentPhone} onChange={(e) => set("parentPhone", e.target.value)} style={fieldStyle} />
                 </div>
                 <div>
-                  <label style={labelStyle} htmlFor="w-pmail">{t("emailRequired")}</label>
+                  <label style={labelStyle} htmlFor="w-pmail">{tCommon("email")}<Req /></label>
                   <input
                     id="w-pmail"
                     type="email"
@@ -2756,7 +2888,8 @@ export function StudentsPage({
         q &&
         !s.name.toLowerCase().includes(q) &&
         !s.parentPhone.includes(q) &&
-        !(s.email ?? "").toLowerCase().includes(q)
+        !(s.email ?? "").toLowerCase().includes(q) &&
+        !s.id.toLowerCase().includes(q)
       ) {
         return false;
       }
@@ -3313,5 +3446,49 @@ function ContactPill({
     >
       <Icon name="phone" size={12} /> {label}
     </a>
+  );
+}
+
+
+/** A student's ID, set in a monospace face so 0 and O, 1 and l are told
+    apart when it is read down the phone, with an icon that copies it and
+    turns to a tick for a moment once it has. */
+function CopyableId({ id }: { id: string }) {
+  const t = useTranslations("students");
+  const [copied, setCopied] = useState(false);
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+      <code style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 13 }}>{id}</code>
+      <button
+        type="button"
+        className="jt-btn-ghost"
+        aria-label={copied ? t("copiedId") : t("copyId")}
+        title={copied ? t("copiedId") : t("copyId")}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 26,
+          height: 26,
+          padding: 0,
+          border: "none",
+          borderRadius: 6,
+          background: "transparent",
+          cursor: "pointer",
+          color: copied ? COLORS.success : COLORS.textSecondary,
+        }}
+        onClick={async () => {
+          try {
+            await navigator.clipboard.writeText(id);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+          } catch {
+            /* No clipboard (an insecure origin): the ID is on screen to read. */
+          }
+        }}
+      >
+        <Icon name={copied ? "check" : "copy"} size={14} />
+      </button>
+    </span>
   );
 }

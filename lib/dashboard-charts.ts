@@ -192,6 +192,76 @@ export function monthToDate(
   };
 }
 
+/** Monday on or before `d` — the calendar's own week-start convention
+    (`lib/week-stats.ts`, `components/calendar.tsx`), so "this week" here means
+    the same week they mean. */
+function mondayOf(d: Date): Date {
+  const back = (d.getDay() + 6) % 7;
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - back);
+}
+
+/**
+ * The revenue card's headline, generalised across the range switch beneath
+ * it: this period's takings so far, against the same stretch of the one
+ * before it.
+ *
+ * 30D keeps meaning the calendar month (`monthToDate`) rather than a rolling
+ * thirty days — "this month" is the label above it, and changing what the
+ * number counts without changing what it is labelled would make the two
+ * disagree. 7D and Year are their calendar counterparts: Monday-to-date and
+ * January-to-date, each against the same point in the period before it, for
+ * the reason `monthToDate` already gives — a whole-period comparison reports
+ * a collapse every period and is right about none of them.
+ */
+export function periodToDate(
+  payments: Pick<Payment, "amount" | "isoDate" | "status">[],
+  range: RevenueRange,
+  now = new Date(),
+): { current: number; previous: number; pct: number | null; count: number; previousStart: Date } {
+  if (range === "30D") {
+    const m = monthToDate(payments, now);
+    const prefix = isoDay(now).slice(0, 7);
+    const count = payments.filter((p) => (p.status || "Paid") === "Paid" && (p.isoDate ?? "").startsWith(prefix)).length;
+    return { current: m.current, previous: m.previous, pct: m.pct, count, previousStart: m.previousMonth };
+  }
+
+  const sumAndCount = (from: Date, to: Date) => {
+    const fromKey = isoDay(from);
+    const toKey = isoDay(to);
+    let sum = 0;
+    let count = 0;
+    for (const p of payments) {
+      if ((p.status || "Paid") !== "Paid") continue;
+      const key = (p.isoDate ?? "").slice(0, 10);
+      if (!key || key < fromKey || key > toKey) continue;
+      sum += parseAmount(p.amount);
+      count += 1;
+    }
+    return { sum, count };
+  };
+
+  let start: Date, previousStart: Date, previousEnd: Date;
+  if (range === "7D") {
+    start = mondayOf(now);
+    previousStart = new Date(start.getFullYear(), start.getMonth(), start.getDate() - 7);
+    previousEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+  } else {
+    start = new Date(now.getFullYear(), 0, 1);
+    previousStart = new Date(now.getFullYear() - 1, 0, 1);
+    previousEnd = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+  }
+
+  const current = sumAndCount(start, now);
+  const previous = sumAndCount(previousStart, previousEnd);
+  return {
+    current: current.sum,
+    previous: previous.sum,
+    pct: previous.sum > 0 ? Math.round(((current.sum - previous.sum) / previous.sum) * 100) : null,
+    count: current.count,
+    previousStart,
+  };
+}
+
 /**
  * Which points of a revenue series get a label on the time axis.
  *

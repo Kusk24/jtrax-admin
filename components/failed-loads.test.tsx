@@ -62,6 +62,9 @@ const DOWN_SILENT = () => Promise.reject({});
 const FAILED = en.common.loadFailed;
 
 beforeEach(() => {
+  /* The sign-ups card remembers who it has shown, per tournament, in
+     localStorage — so each test starts as a first visit. */
+  window.localStorage.clear();
   vi.clearAllMocks();
 });
 

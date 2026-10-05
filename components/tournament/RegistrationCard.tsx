@@ -76,33 +76,27 @@ export function RegistrationCard({
 
       {error && <ErrorNote>{error}</ErrorNote>}
 
-      {/* ---- the link, only once there is something to link to ---- */}
-      {open && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 16,
-            flexWrap: "wrap",
-          }}
-        >
-          {url ? (
-            <ShareLink
-              url={url}
-              qrLabel={t("qrLabel", { name: tournamentName })}
-              openLabel={t("openForm")}
-            />
-          ) : (
-            /* Registration is open but nobody can be sent anywhere. Said plainly
-               rather than printing a link built from the console's own origin,
-               which is how the published-results link came to 404 for everyone
-               who scanned it. */
-            <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.warning }}>
-              {t("portalUnset")}
-            </p>
-          )}
-        </div>
-      )}
+      {/* ---- the link, only once there is something to link to ----
+          A plain block, not a flex row: ShareLink is a flex row itself, and
+          wrapping a single flex item in another flex container left it sized
+          to its content instead of the card's full width — half the screen
+          of white space beside it on anything wider than a laptop. */}
+      {open &&
+        (url ? (
+          <ShareLink
+            url={url}
+            qrLabel={t("qrLabel", { name: tournamentName })}
+            openLabel={t("openForm")}
+          />
+        ) : (
+          /* Registration is open but nobody can be sent anywhere. Said plainly
+             rather than printing a link built from the console's own origin,
+             which is how the published-results link came to 404 for everyone
+             who scanned it. */
+          <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.warning }}>
+            {t("portalUnset")}
+          </p>
+        ))}
     </Card>
   );
 }

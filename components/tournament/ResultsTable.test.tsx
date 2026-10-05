@@ -14,6 +14,7 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
 import type { ExternalStanding, LinkedRound } from "@/lib/chess-results";
+import { starred } from "@/lib/starred-label";
 
 /* The player panel looks a matched student up to show who to ring. One row is
    enough; the rest of the console's data is not involved. */
@@ -170,7 +171,7 @@ describe("the boards themselves", () => {
 });
 
 describe("narrowing the table to one player", () => {
-  const search = () => screen.getByLabelText(en.results.searchPlayer);
+  const search = () => screen.getByLabelText(starred(en.results.searchPlayer));
 
   it("filters the boards to the ones that player sits at", () => {
     renderTable();
@@ -260,7 +261,7 @@ describe("clicking a player", () => {
         <ResultsTable rounds={ROUNDS} standings={STANDINGS} totalRounds={4} eventName="E" onOpenPlayer={onOpenPlayer} />
       </NextIntlClientProvider>,
     );
-    fireEvent.change(screen.getByLabelText(en.results.searchPlayer), { target: { value: "Stancec" } });
+    fireEvent.change(screen.getByLabelText(starred(en.results.searchPlayer)), { target: { value: "Stancec" } });
     expect(onOpenPlayer).not.toHaveBeenCalled();
   });
 });

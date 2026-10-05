@@ -14,11 +14,13 @@
  */
 import type { IconName } from "./icons";
 
-/** What the picker offers: the six pieces, plus the trophy a Master class uses. */
-export const CLASS_ICONS: IconName[] = ["king", "queen", "rook", "knight", "bishop", "pawn", "trophy"];
+/** What the picker offers: four pieces, and four trios for a group. */
+export const CLASS_ICONS: IconName[] = ["king", "queen", "knight", "pawn", "group", "groupKing", "groupRook", "groupBishop"];
 
 /**
- * How a class is taught. `class.class_type` in the ER model.
+ * How a class is taught: Private (one-to-one) or Group. `class.class_type`.
+ * "Master" was here too, but it is a level, not a way of teaching (backend
+ * 0066), so it moved to `level`.
  *
  * NOT NULL with `CHECK (class_type IN ('Private','Group','Master'))` since the
  * first migration, and the console never asked for it. Worse, the Add form
@@ -31,7 +33,7 @@ export const CLASS_ICONS: IconName[] = ["king", "queen", "rook", "knight", "bish
  * could tell where it came from: one column, two names, and neither screen used
  * the database's.
  */
-export const CLASS_TYPES = ["Private", "Group", "Master"] as const;
+export const CLASS_TYPES = ["Private", "Group"] as const;
 export type ClassType = (typeof CLASS_TYPES)[number];
 
 /**
@@ -61,18 +63,15 @@ export function classTypeOf(stored: unknown): ClassType {
 export function iconOf(stored: unknown, classType: string): IconName {
   const name = String(stored ?? "");
   if ((CLASS_ICONS as string[]).includes(name)) return name as IconName;
-  return classType === "Master" ? "trophy" : classType === "Private" ? "king" : "queen";
+  return classType === "Private" ? "king" : "group";
 }
 
-/**
- * The badge to label a class with.
- *
- * Free text — "Weekend", "Exam prep", "Sec 101" — and not the class type,
- * though the class type is what it falls back to. Blank counts as absent: an
- * empty badge renders an empty chip, which reads as a rendering fault rather
- * than a deliberate blank.
- */
-export function badgeOf(stored: unknown, classType: string): string {
-  const badge = String(stored ?? "").trim();
-  return badge || classType;
+/** A course's level, apart from how it is taught (backend 0066). */
+export const CLASS_LEVELS = ["Beginner", "Intermediate", "Advanced"] as const;
+export type ClassLevel = (typeof CLASS_LEVELS)[number];
+
+/** A stored level, or "" for a course that has none yet. */
+export function levelOf(stored: unknown): ClassLevel | "" {
+  const value = String(stored ?? "");
+  return (CLASS_LEVELS as readonly string[]).includes(value) ? (value as ClassLevel) : "";
 }

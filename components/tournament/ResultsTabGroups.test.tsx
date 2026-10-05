@@ -12,6 +12,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
 import type { LinkedResults, ResultSections } from "@/lib/chess-results";
+import { starred } from "@/lib/starred-label";
 
 vi.mock("@/components/DataProvider", () => ({ useData: () => ({ students: [] }) }));
 
@@ -149,7 +150,7 @@ describe("results tabs", () => {
     renderTab();
     await openStandings();
     await waitFor(() => expect(ranked().getByText("Seng, Rosslyn")).toBeTruthy());
-    fireEvent.click(screen.getByLabelText(en.resultsLink.jcaOnly));
+    fireEvent.click(screen.getByLabelText(starred(en.resultsLink.jcaOnly)));
     await waitFor(() => expect(ranked().queryByText("Seng, Rosslyn")).toBeNull());
     expect(ranked().getByText("Uapongkitikul, Pavatt")).toBeTruthy();
   });
@@ -177,7 +178,7 @@ describe("connecting", () => {
   it("asks for one link when not connected, and shows the arbiter's categories after", async () => {
     getSections.mockImplementation(async () => ({ connected: false, sections: [] }));
     renderTab();
-    const input = await screen.findByLabelText(en.resultsLink.urlLabel);
+    const input = await screen.findByLabelText(starred(en.resultsLink.urlLabel));
     expect(screen.queryByRole("tablist")).toBeNull();
     fireEvent.change(input, { target: { value: "https://s2.chess-results.com/tnr1193905.aspx?lan=1&art=2&rd=7" } });
     fireEvent.click(screen.getByRole("button", { name: en.resultsLink.connect }));

@@ -34,7 +34,7 @@ const create = vi.fn<(path: string, body: Row) => Promise<Row>>(async () => ({})
 vi.mock("@/components/DataProvider", () => ({
   useData: () => ({
     raw,
-    creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certSessions: 50, maxNegativeCredit: 0, checkoutRoundMinutes: 15 },
+    creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certHours: 50, maxNegativeCredit: 0, checkoutRoundMinutes: 15 },
     students: [],
     loading: false,
     error: null,
@@ -75,9 +75,9 @@ function renderForm() {
 }
 
 async function fillGuardian(user: ReturnType<typeof userEvent.setup>, email: string) {
-  await user.type(screen.getByLabelText("Name"), "Sandy Jones");
-  await user.type(screen.getByLabelText("Phone"), "0812345678");
-  await user.type(screen.getByLabelText("Email (required)"), email);
+  await user.type(screen.getByLabelText(/^Name( \*)?$/), "Sandy Jones");
+  await user.type(screen.getByLabelText(/^Phone( \*)?$/), "0812345678");
+  await user.type(screen.getByLabelText(/^Email( \*)?$/), email);
 }
 
 const submit = () => screen.getByRole("button", { name: "Register Student" }) as HTMLButtonElement;
@@ -93,7 +93,7 @@ describe("a guardian email that already has an account", () => {
     expect(submit().disabled).toBe(true);
 
     await user.click(screen.getByRole("button", { name: "Link Sandy Jones as the guardian instead" }));
-    expect((screen.getByLabelText("Guardian") as HTMLSelectElement).value).toBe("par_sandy");
+    expect((screen.getByLabelText(/^Guardian( \*)?$/) as HTMLSelectElement).value).toBe("par_sandy");
     expect(submit().disabled).toBe(false);
   });
 
@@ -118,7 +118,7 @@ describe("a guardian email that already has an account", () => {
     expect(create.mock.calls.map((c) => c[0])).toEqual(["user-accounts"]);
     expect(await screen.findByText("This email is already used by another account. Use a different email.")).toBeDefined();
     /* Still on the form, with what was typed. */
-    expect((screen.getByLabelText("Full Name") as HTMLInputElement).value).toBe("Uri Tan");
+    expect((screen.getByLabelText(/^Full Name( \*)?$/) as HTMLInputElement).value).toBe("Uri Tan");
   });
 });
 

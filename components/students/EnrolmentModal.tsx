@@ -3,18 +3,21 @@
 /* One enrolment, opened from its row on the student's page.
 
    Read-only first: most clicks are the office checking a date or a note, and a
-   form that opens editable invites a stray keystroke into a ledger. Edit turns
-   the three things that can be corrected here into fields — when the child
-   joined, when this course's credits expire, and the office's note. The course
-   and the status have their own acts (Change course, Delete) because each of
-   those moves credits, which a field edit must not. */
+   form that opens editable invites a stray keystroke into a ledger. Its
+   buttons are the row's own menu — Add credits, Change course, Edit, Delete.
+   Edit turns the three things that can be corrected here into fields — when
+   the child joined, when this course's credits expire, and the office's note.
+   The course and the status have their own acts (Change course, Delete)
+   because each of those moves credits, which a field edit must not. */
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { fmtDate, todayISO } from "@/lib/live";
 import { COLORS, FONT, statusChipColors } from "@/lib/theme";
 import type { Student } from "@/lib/data";
 import { ActionButton, ErrorNote, errorText } from "../crud";
-import { fieldStyle, InfoGrid, labelStyle, Modal, primaryButtonStyle, secondaryButtonStyle } from "../page-kit";
+import { fieldStyle, InfoGrid, labelStyle, Modal, Req, primaryButtonStyle, secondaryButtonStyle } from "../page-kit";
+import { Icon } from "@/lib/icons";
+import type { MoreMenuItem } from "../MoreMenu";
 import { Badge } from "../ui";
 
 export type EnrolmentSummary = {
@@ -35,6 +38,9 @@ export function EnrolmentModal({
   balance,
   creditStatus,
   canSetExpiry,
+  editing,
+  onEditingChange,
+  actions,
   onClose,
   onSave,
 }: {
@@ -45,13 +51,16 @@ export function EnrolmentModal({
   /** Expiry lives on the course's purchases. With none bought yet there is
       nothing for a date to be on, so the field says so instead. */
   canSetExpiry: boolean;
+  editing: boolean;
+  onEditingChange: (editing: boolean) => void;
+  /** The same as the row's menu; Edit among them switches this modal to editing. */
+  actions: MoreMenuItem[];
   onClose: () => void;
   onSave: (edits: EnrolmentEdits) => Promise<void>;
 }) {
   const t = useTranslations("students");
   const tc = useTranslations("common");
   const tStatus = useTranslations("status");
-  const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<EnrolmentEdits>({
     enrolledDate: enrolment.enrolledDate.slice(0, 10),
     expires: enrolment.expires.slice(0, 10),
@@ -75,7 +84,7 @@ export function EnrolmentModal({
     setProblem("");
     try {
       await onSave(draft);
-      setEditing(false);
+      onEditingChange(false);
     } catch (e) {
       setProblem(errorText(e, tc("saveFailed")));
     }
@@ -94,7 +103,7 @@ export function EnrolmentModal({
             notes: enrolment.notes,
           });
           setProblem("");
-          setEditing(false);
+          onEditingChange(false);
         }}
       >
         {tc("cancel")}
@@ -104,20 +113,43 @@ export function EnrolmentModal({
       </ActionButton>
     </>
   ) : (
-    <>
-      <button type="button" className="jt-btn-ghost" style={secondaryButtonStyle} onClick={onClose}>
-        {tc("close")}
-      </button>
-      <button type="button" className="jt-btn-primary" style={primaryButtonStyle} onClick={() => setEditing(true)}>
-        {tc("edit")}
-      </button>
-    </>
+    /* The header's × closes; Close is kept only for a course with nothing
+       left to do to it. */
+    <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "flex-end", gap: 8 }}>
+      {actions.length === 0 && (
+        <button type="button" className="jt-btn-ghost" style={secondaryButtonStyle} onClick={onClose}>
+          {tc("close")}
+        </button>
+      )}
+      {actions.map((a) => (
+        <button
+          key={a.label}
+          type="button"
+          className="jt-btn-ghost"
+          aria-label={a.ariaLabel}
+          title={a.disabledReason ?? undefined}
+          disabled={!!a.disabledReason}
+          onClick={a.onSelect}
+          style={{
+            ...secondaryButtonStyle,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            color: a.danger ? COLORS.danger : secondaryButtonStyle.color,
+            opacity: a.disabledReason ? 0.5 : 1,
+            cursor: a.disabledReason ? "not-allowed" : "pointer",
+          }}
+        >
+          {a.icon && <Icon name={a.icon} size={14} />} {a.label}
+        </button>
+      ))}
+    </div>
   );
 
   const muted = { color: COLORS.textSecondary };
 
   return (
-    <Modal title={t("enrolmentTitle", { className: enrolment.className })} onClose={onClose} footer={footer} width={520}>
+    <Modal title={t("enrolmentTitle", { className: enrolment.className })} onClose={onClose} footer={footer} width={600}>
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         {problem && <ErrorNote>{problem}</ErrorNote>}
 
@@ -182,7 +214,7 @@ export function EnrolmentModal({
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
               <label>
-                <span style={labelStyle}>{t("enrolledDate")}</span>
+                <span style={labelStyle}>{t("enrolledDate")}<Req /></span>
                 <input
                   type="date"
                   required

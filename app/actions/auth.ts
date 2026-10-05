@@ -6,7 +6,11 @@ import { API_BASE, SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/auth";
 
 /* Errors come back as keys, not sentences — the sign-in screen translates
    them, so the server never has to know which locale is active. */
-export type SignInState = { error?: "missing" | "invalid" | "tooMany" | "unreachable" };
+export type SignInState = { error?: "missing" | "invalid" | "tooMany" | "unreachable" | "noAccess" };
+
+/* Who the console is for. A parent or student signs in correctly and is then
+   not let in — said so, rather than left on the sign-in page wondering. */
+const CONSOLE_ROLES = new Set(["Admin", "Receptionist"]);
 
 export async function signIn(_prev: SignInState, formData: FormData): Promise<SignInState> {
   const email = String(formData.get("email") ?? "").trim();
@@ -27,7 +31,18 @@ export async function signIn(_prev: SignInState, formData: FormData): Promise<Si
     // correct all along.
     if (res.status === 429) return { error: "tooMany" };
     if (!res.ok) return { error: "invalid" };
-    ({ token } = (await res.json()) as { token: string });
+    const body = (await res.json()) as { token: string; user?: { role?: string } };
+    if (!CONSOLE_ROLES.has(body.user?.role ?? "")) {
+      /* The password was right, so the backend issued a session. It is not one
+         this console will use: revoke it rather than leave it live. */
+      await fetch(`${API_BASE}/api/v1/auth/logout`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${body.token}` },
+        cache: "no-store",
+      }).catch(() => {});
+      return { error: "noAccess" };
+    }
+    token = body.token;
   } catch {
     return { error: "unreachable" };
   }

@@ -54,7 +54,7 @@ const state = {
       { session_id: "ses_1", class_id: "cls_group", start_time: "09:00", end_time: "10:00" },
     ],
   },
-  creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certSessions: 50, maxNegativeCredit: 0 },
+  creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certHours: 50, maxNegativeCredit: 0 },
 };
 
 vi.mock("@/components/DataProvider", () => ({

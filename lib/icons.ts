@@ -11,6 +11,52 @@ import { createElement } from "react";
 
 type IconPart = [string, Record<string, string | number>];
 
+/* Three of one piece on a shared base — a group class. Each piece is the
+   single icon without its own base, shrunk; the middle one stands taller. */
+function trio(piece: IconPart[], baseY: number): IconPart[] {
+  const body = piece.filter(([tag]) => tag !== "rect");
+  const at = (cx: number, scale: number): IconPart[] =>
+    body.map(([tag, props]) => [
+      tag,
+      {
+        ...props,
+        transform: `translate(${(cx - 12 * scale).toFixed(2)} ${(16 - baseY * scale).toFixed(2)}) scale(${scale})`,
+        strokeWidth: (1.6 / scale).toFixed(2),
+      },
+    ]);
+  return [...at(4.6, 0.5), ...at(19.4, 0.5), ...at(12, 0.68), ["rect", { "x": 2, "y": 16, "width": 20, "height": 2.2, "rx": 0.6 }]];
+}
+
+const KING: IconPart[] = [
+  ["path", { "d": "M12 3v3" }],
+  ["path", { "d": "M10.5 4.5h3" }],
+  ["path", { "d": "M8 9c0-1 1.5-2 4-2s4 1 4 2l-1 7H9L8 9Z" }],
+  ["rect", { "x": 7, "y": 18, "width": 10, "height": 2, "rx": 0.6 }],
+];
+const QUEEN: IconPart[] = [
+  ["path", { "d": "M6 9l1.8 3 4.2-4 4.2 4 1.8-3-1 7H7L6 9Z" }],
+  ["circle", { "cx": 6, "cy": 9, "r": 1, "fill": "currentColor", "stroke": "none" }],
+  ["circle", { "cx": 12, "cy": 8, "r": 1, "fill": "currentColor", "stroke": "none" }],
+  ["circle", { "cx": 18, "cy": 9, "r": 1, "fill": "currentColor", "stroke": "none" }],
+  ["rect", { "x": 7, "y": 18, "width": 10, "height": 2, "rx": 0.6 }],
+];
+const ROOK: IconPart[] = [
+  ["path", { "d": "M7 8V5h2v2h2V5h2v2h2V5h2v3l-1 2H8L7 8Z" }],
+  ["path", { "d": "M8 10h8l1 8H7l1-8Z" }],
+  ["rect", { "x": 6, "y": 18, "width": 12, "height": 2, "rx": 0.6 }],
+];
+const BISHOP: IconPart[] = [
+  ["path", { "d": "M12 3.5a1.3 1.3 0 1 1 0 2.6 1.3 1.3 0 0 1 0-2.6Z" }],
+  ["path", { "d": "M9 15c0-4 1-6.5 3-8 2 1.5 3 4 3 8" }],
+  ["path", { "d": "M8.5 15h7l.5 3H8l.5-3Z" }],
+  ["rect", { "x": 7, "y": 19, "width": 10, "height": 2, "rx": 0.6 }],
+];
+const KNIGHT: IconPart[] = [
+  ["path", { "d": "M8 19l1-6c.3-2 1-3.5 2.5-4.5L9 7c-.5-1 0-2.5 1.5-3 1.7 2 3.5 2 5 3 1.5 1 2 2.5 2 4.5v3l1 4.5H8Z" }],
+  ["circle", { "cx": 12.2, "cy": 8, "r": 0.6, "fill": "currentColor", "stroke": "none" }],
+  ["rect", { "x": 7, "y": 19, "width": 10, "height": 2, "rx": 0.6 }],
+];
+
 const ICON_DATA = {
   "home": [
     ["path", { "d": "M3 11.5L12 4l9 7.5" }],
@@ -125,40 +171,37 @@ const ICON_DATA = {
     ["path", { "d": "M9 3v18" }],
     ["path", { "d": "M15 3v18" }],
   ],
-  "king": [
-    ["path", { "d": "M12 3v3" }],
-    ["path", { "d": "M10.5 4.5h3" }],
-    ["path", { "d": "M8 9c0-1 1.5-2 4-2s4 1 4 2l-1 7H9L8 9Z" }],
-    ["rect", { "x": 7, "y": 18, "width": 10, "height": 2, "rx": 0.6 }],
-  ],
-  "queen": [
-    ["path", { "d": "M6 9l1.8 3 4.2-4 4.2 4 1.8-3-1 7H7L6 9Z" }],
-    ["circle", { "cx": 6, "cy": 9, "r": 1, "fill": "currentColor", "stroke": "none" }],
-    ["circle", { "cx": 12, "cy": 8, "r": 1, "fill": "currentColor", "stroke": "none" }],
-    ["circle", { "cx": 18, "cy": 9, "r": 1, "fill": "currentColor", "stroke": "none" }],
-    ["rect", { "x": 7, "y": 18, "width": 10, "height": 2, "rx": 0.6 }],
-  ],
+  "king": KING,
+  "queen": QUEEN,
   "pawn": [
     ["circle", { "cx": 12, "cy": 7.5, "r": 2.5 }],
     ["path", { "d": "M9 17c0-3 1.3-5 3-5s3 2 3 5" }],
     ["rect", { "x": 7, "y": 17, "width": 10, "height": 2, "rx": 0.6 }],
   ],
-  "rook": [
-    ["path", { "d": "M7 8V5h2v2h2V5h2v2h2V5h2v3l-1 2H8L7 8Z" }],
-    ["path", { "d": "M8 10h8l1 8H7l1-8Z" }],
-    ["rect", { "x": 6, "y": 18, "width": 12, "height": 2, "rx": 0.6 }],
+  /* An i in a circle — "how this works". */
+  "info": [
+    ["circle", { "cx": 12, "cy": 12, "r": 9 }],
+    ["path", { "d": "M12 11v5.5" }],
+    ["circle", { "cx": 12, "cy": 7.8, "r": 0.9, "fill": "currentColor", "stroke": "none" }],
   ],
-  "knight": [
-    ["path", { "d": "M8 19l1-6c.3-2 1-3.5 2.5-4.5L9 7c-.5-1 0-2.5 1.5-3 1.7 2 3.5 2 5 3 1.5 1 2 2.5 2 4.5v3l1 4.5H8Z" }],
-    ["circle", { "cx": 12.2, "cy": 8, "r": 0.6, "fill": "currentColor", "stroke": "none" }],
-    ["rect", { "x": 7, "y": 19, "width": 10, "height": 2, "rx": 0.6 }],
+  /* Three pieces side by side — a group class. */
+  "group": [
+    ["circle", { "cx": 6, "cy": 9.5, "r": 1.7 }],
+    ["path", { "d": "M4.2 16c0-2.2.8-3.8 1.8-3.8s1.8 1.6 1.8 3.8" }],
+    ["circle", { "cx": 18, "cy": 9.5, "r": 1.7 }],
+    ["path", { "d": "M16.2 16c0-2.2.8-3.8 1.8-3.8s1.8 1.6 1.8 3.8" }],
+    ["circle", { "cx": 12, "cy": 7.2, "r": 2.2 }],
+    ["path", { "d": "M9.6 16c0-3 1.1-4.8 2.4-4.8s2.4 1.8 2.4 4.8" }],
+    ["rect", { "x": 3, "y": 16, "width": 18, "height": 2.2, "rx": 0.6 }],
   ],
-  "bishop": [
-    ["path", { "d": "M12 3.5a1.3 1.3 0 1 1 0 2.6 1.3 1.3 0 0 1 0-2.6Z" }],
-    ["path", { "d": "M9 15c0-4 1-6.5 3-8 2 1.5 3 4 3 8" }],
-    ["path", { "d": "M8.5 15h7l.5 3H8l.5-3Z" }],
-    ["rect", { "x": 7, "y": 19, "width": 10, "height": 2, "rx": 0.6 }],
-  ],
+  /* The same, in kings, rooks and bishops. Queens and knights were tried and
+     blur together at this size. */
+  "groupKing": trio(KING, 16),
+  "groupRook": trio(ROOK, 18),
+  "groupBishop": trio(BISHOP, 18),
+  "rook": ROOK,
+  "knight": KNIGHT,
+  "bishop": BISHOP,
   "logout": [
     ["path", { "d": "M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3" }],
     ["path", { "d": "M16 15l4-3-4-3" }],

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { COLORS, FONT, type Theme } from "@/lib/theme";
 import { useJtrax } from "./JtraxContext";
@@ -40,8 +39,11 @@ export function ThemeToggle() {
      So the pill sat on Auto over a dark screen, permanently, while the theme
      itself was saved and applied correctly. **A value the server renders has
      to come from something the server can see.** */
-  const { theme: saved } = useJtrax();
-  const [theme, setTheme] = useState<Theme>(saved);
+  /* Read from, and written to, the session context rather than state of its
+     own: this component is unmounted when you leave Settings, and its own
+     state came back as the theme the console first loaded with — Light
+     pressed over a dark screen. */
+  const { theme, setTheme } = useJtrax();
 
   function choose(next: Theme) {
     if (next === theme) return;

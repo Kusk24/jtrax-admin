@@ -8,6 +8,7 @@
 import {
   createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode,
 } from "react";
+import { setClassLevels } from "@/lib/theme";
 import { api } from "@/lib/api";
 import {
   creditRulesOf, monthRevenue, toAdmins, toAnnouncements, toCheckins, toParents, toPayments,
@@ -21,7 +22,7 @@ import { RULE_KEYS, type CreditRules } from "@/lib/derive";
 
 const EMPTY: LiveCollections = {
   students: [], parents: [], parentContacts: [], studentParents: [], classes: [],
-  classSessions: [], attendance: [], enrollments: [], creditTransactions: [],
+  classSessions: [], attendance: [], sessionBookings: [], enrollments: [], creditTransactions: [],
   creditPackages: [], payments: [], teachers: [], admins: [], accounts: [],
   announcements: [], tournaments: [], tournamentCategories: [],
   tournamentRegistrations: [], practiceActivities: [], systemConfig: [],
@@ -30,7 +31,7 @@ const EMPTY: LiveCollections = {
 const PATHS: Record<Exclude<keyof LiveCollections, "deletedEnrollments" | "cancelledSessions">, string> = {
   students: "students", parents: "parents", parentContacts: "parent-contacts",
   studentParents: "student-parents", classes: "classes", classSessions: "class-sessions",
-  attendance: "attendance", enrollments: "enrollments",
+  attendance: "attendance", sessionBookings: "session-bookings", enrollments: "enrollments",
   creditTransactions: "credit-transactions", creditPackages: "credit-packages",
   payments: "payments", teachers: "teachers", admins: "admins", accounts: "user-accounts",
   announcements: "announcements", tournaments: "tournaments",
@@ -206,6 +207,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   /* Same reader `toStudents` uses, so a threshold saved in Settings moves the
      status chips and the dashboard counts together. */
+  /* Course dots everywhere follow each course's level (lib/theme). Set while
+     rendering, before the children that draw the dots. */
+  useMemo(() => setClassLevels(raw.classes ?? []), [raw.classes]);
   const creditRules = useMemo<CreditRules>(() => creditRulesOf(raw), [raw]);
 
   const saveCreditRules = useCallback(async (rules: CreditRules) => {

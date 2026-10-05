@@ -17,6 +17,7 @@ import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
 import { todayISO } from "@/lib/live";
+import { starred } from "@/lib/starred-label";
 
 const today = todayISO();
 
@@ -76,6 +77,9 @@ function reset() {
    cost one refetch, and only the provider's own GETs can show that. */
 let gets = 0;
 
+const push = vi.fn();
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+
 vi.mock("@/lib/api", () => ({
   api: {
     get: async (path: string) => {
@@ -103,6 +107,7 @@ const { ErrorToastProvider } = await import("../ErrorToast");
 beforeEach(() => {
   reset();
   gets = 0;
+  push.mockClear();
 });
 
 async function renderTable() {
@@ -124,7 +129,7 @@ async function renderTable() {
   return { user, round: gets };
 }
 
-const selectAll = () => screen.getByLabelText(en.dashboard.selectAll) as HTMLInputElement;
+const selectAll = () => screen.getByLabelText(starred(en.dashboard.selectAll)) as HTMLInputElement;
 const stampedOut = () => db.attendance.filter((a) => a["check_out_time"]).length;
 
 describe("selecting who goes home", () => {
@@ -200,5 +205,20 @@ describe("selecting who goes home", () => {
 
     await waitFor(() => expect(stampedOut()).toBe(2));
     expect(db.attendance.find((a) => a["attendance_id"] === "att_1")?.["check_out_time"]).toBeTruthy();
+  });
+});
+
+describe("a row of the register", () => {
+  it("opens that student's page", async () => {
+    const { user } = await renderTable();
+    await user.click(screen.getByText("Fon"));
+    expect(push).toHaveBeenCalledWith("/students?id=stu_5");
+  });
+
+  it("does not open it when the tick box is what was pressed", async () => {
+    const { user } = await renderTable();
+    const box = screen.queryByLabelText("Select Fon");
+    if (box) await user.click(box);
+    expect(push).not.toHaveBeenCalled();
   });
 });

@@ -369,12 +369,6 @@ function RatedBadge({ room, t }: { room: GameRoom; t: (k: string) => string }) {
 type StatusTab = "all" | "Open" | "Active" | "Stopped" | "Finished";
 const STATUS_TABS: StatusTab[] = ["all", "Open", "Active", "Stopped", "Finished"];
 
-/** Today on the admin's own calendar, as the date field writes it. */
-function todayLocal(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
 const dateTime = new Intl.DateTimeFormat("en-GB", {
   day: "numeric",
   month: "short",
@@ -393,9 +387,9 @@ export function GamesPage({ detailId }: { detailId?: string } = {}) {
 
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<StatusTab>("all");
-  /* Today's games by default: the page is opened during a class, and the
-     record of every earlier day is one cleared date away. */
-  const [day, setDay] = useState(todayLocal);
+  /* Every game by default — the record, not just today's class. The date
+     field narrows to one day when that's what's being asked for. */
+  const [day, setDay] = useState("");
   const [classId, setClassId] = useState("");
   const [result, setResult] = useState("");
   /* Always opens on the grid: it is what a class is watched on. The list is

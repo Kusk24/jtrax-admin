@@ -17,7 +17,7 @@ export type CreditRules = {
   /* Not a credit rule, but it rides the same machinery: the classes-attended
      milestone at which the academy awards a certificate. The parent portal
      counts toward it. */
-  certSessions: number;
+  certHours: number;
   /* How far a check-in may push a balance below zero before it is refused —
      enforced by the backend too, so this is the true rule, not just a UI
      hint. */
@@ -27,14 +27,14 @@ export type CreditRules = {
   checkoutRoundMinutes: number;
 };
 
-/* Defaults from the design's `state.settingsCreditRules`; certSessions is the
+/* Defaults from the design's `state.settingsCreditRules`; certHours is the
    academy's stated rule. maxNegativeCredit defaults to 0: no negative balance
    until an admin says otherwise, matching the backend's own default. */
 export const DEFAULT_CREDIT_RULES: CreditRules = {
   lowCredit: 3,
   expiringDays: 7,
   inactiveDays: 30,
-  certSessions: 50,
+  certHours: 50,
   maxNegativeCredit: 0,
   checkoutRoundMinutes: 15,
 };
@@ -44,7 +44,7 @@ export const RULE_KEYS: Record<keyof CreditRules, string> = {
   lowCredit: "credit_rule_low_credit",
   expiringDays: "credit_rule_expiring_days",
   inactiveDays: "credit_rule_inactive_days",
-  certSessions: "certificate_sessions",
+  certHours: "certificate_hours",
   maxNegativeCredit: "credit_rule_max_negative",
   checkoutRoundMinutes: "credit_rule_checkout_round_minutes",
 };

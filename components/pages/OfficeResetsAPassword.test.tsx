@@ -18,6 +18,7 @@ import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
 import type { JtraxRole } from "@/lib/theme";
+import { starred } from "@/lib/starred-label";
 
 type Row = Record<string, unknown>;
 const db: Record<string, Row[]> = {};
@@ -226,18 +227,18 @@ describe("registering a child with a new guardian", () => {
 
   it("will not submit on a name and a phone number alone", async () => {
     const user = await openTheWizard();
-    await user.type(screen.getByLabelText(en.students.fullName), "New Child");
-    await user.type(screen.getByLabelText(en.common.name), "A Parent");
-    await user.type(screen.getByLabelText(en.common.phone), "0801234567");
+    await user.type(screen.getByLabelText(starred(en.students.fullName)), "New Child");
+    await user.type(screen.getByLabelText(starred(en.common.name)), "A Parent");
+    await user.type(screen.getByLabelText(starred(en.common.phone)), "0801234567");
     expect((submit() as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("submits once the guardian's address is there", async () => {
     const user = await openTheWizard();
-    await user.type(screen.getByLabelText(en.students.fullName), "New Child");
-    await user.type(screen.getByLabelText(en.common.name), "A Parent");
-    await user.type(screen.getByLabelText(en.common.phone), "0801234567");
-    await user.type(screen.getByLabelText(en.students.emailRequired), "a.parent@gmail.com");
+    await user.type(screen.getByLabelText(starred(en.students.fullName)), "New Child");
+    await user.type(screen.getByLabelText(starred(en.common.name)), "A Parent");
+    await user.type(screen.getByLabelText(starred(en.common.phone)), "0801234567");
+    await user.type(screen.getByLabelText(starred(en.common.email)), "a.parent@gmail.com");
     expect((submit() as HTMLButtonElement).disabled).toBe(false);
 
     await user.click(submit());
@@ -254,7 +255,8 @@ describe("registering a child with a new guardian", () => {
      the button greyed out with nothing explaining which box is missing. */
   it("labels the address as required", async () => {
     await openTheWizard();
-    expect(screen.getByLabelText(en.students.emailRequired)).toBeTruthy();
+    /* Marked with the red star every required field carries. */
+    expect(screen.getByLabelText(`${en.common.email} *`)).toBeTruthy();
     expect(en.students.guardianEmailHelp).toMatch(/required/i);
   });
 });

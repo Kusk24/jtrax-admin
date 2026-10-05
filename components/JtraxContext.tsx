@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { type AdminPerson } from "@/lib/data";
 import type { JtraxRole, Theme } from "@/lib/theme";
 
@@ -23,6 +23,10 @@ type JtraxContextValue = {
      properties. This won't be patched up."* The picker was left showing Auto
      over a dark screen, for ever. */
   theme: Theme;
+  /* The appearance chosen in this visit. Kept here, above every page, so
+     coming back to Settings shows what is on screen — the Settings toggle
+     used to start again from the value the console loaded with. */
+  setTheme: (theme: Theme) => void;
 };
 
 const JtraxContext = createContext<JtraxContextValue | null>(null);
@@ -38,9 +42,16 @@ export function JtraxProvider({
   person: AdminPerson;
   theme?: Theme;
 }) {
+  const [chosen, setChosen] = useState<Theme>(theme);
+  /* A newer value from the server (after a refresh) replaces the choice. */
+  const [fromServer, setFromServer] = useState<Theme>(theme);
+  if (theme !== fromServer) {
+    setFromServer(theme);
+    setChosen(theme);
+  }
   const value = useMemo<JtraxContextValue>(
-    () => ({ person, role: person.role, theme }),
-    [person, theme],
+    () => ({ person, role: person.role, theme: chosen, setTheme: setChosen }),
+    [person, chosen],
   );
 
   return <JtraxContext.Provider value={value}>{children}</JtraxContext.Provider>;

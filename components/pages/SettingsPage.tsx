@@ -14,6 +14,8 @@ import { NotificationSwitchboard } from "../settings/NotificationSwitchboard";
 import { ScanModelCard } from "../settings/ScanModelCard";
 import { ThemeToggle } from "../ThemeToggle";
 import { Card, SectionTitle } from "../ui";
+import { AcademyContactCard } from "../settings/AcademyContactCard";
+import { RoundingExplainer } from "../settings/RoundingExplainer";
 import { AdminsPage } from "./AdminsPage";
 
 type RuleKey = keyof CreditRules;
@@ -22,7 +24,7 @@ const RULES: Array<{ key: RuleKey; icon: IconName; titleKey: string; descKey: st
   { key: "lowCredit", icon: "wallet", titleKey: "lowCreditTitle", descKey: "lowCreditDesc", unitKey: "unitCredits" },
   { key: "expiringDays", icon: "calendar", titleKey: "expiringTitle", descKey: "expiringDesc", unitKey: "unitDays" },
   { key: "inactiveDays", icon: "userX", titleKey: "inactiveTitle", descKey: "inactiveDesc", unitKey: "unitDays" },
-  { key: "certSessions", icon: "trophy", titleKey: "certTitle", descKey: "certDesc", unitKey: "unitClasses" },
+  { key: "certHours", icon: "trophy", titleKey: "certTitle", descKey: "certDesc", unitKey: "unitHours" },
   { key: "maxNegativeCredit", icon: "alertTriangle", titleKey: "maxNegativeCreditTitle", descKey: "maxNegativeCreditDesc", unitKey: "unitCredits" },
   { key: "checkoutRoundMinutes", icon: "clockSmall", titleKey: "checkoutRoundTitle", descKey: "checkoutRoundDesc", unitKey: "unitMinutes" },
 ];
@@ -38,6 +40,8 @@ export function SettingsPage() {
      defaults over what is stored or trip the cascading-render rule; falling
      through to `creditRules` needs neither. */
   const [edited, setEdited] = useState<CreditRules | null>(null);
+  /* The Attendance Rounding explainer, drawn at the value being set. */
+  const [explaining, setExplaining] = useState(false);
   const draft = edited ?? creditRules;
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -71,6 +75,7 @@ export function SettingsPage() {
       <PageHeader title={t("pageTitle")} sub={isAdmin ? t("sub") : t("subStaff")} />
 
       {error && <ErrorNote>{error}</ErrorNote>}
+      {explaining && <RoundingExplainer step={draft.checkoutRoundMinutes} onClose={() => setExplaining(false)} />}
 
       {/* Two columns, the way the parent portal lays its settings out: one
           scroll of unrelated blocks became two, side by side, so what is on
@@ -136,10 +141,24 @@ export function SettingsPage() {
             <div style={{ flex: "1 1 260px", minWidth: 0 }}>
               <label
                 htmlFor={`jtrax-rule-${rule.key}`}
-                style={{ display: "block", fontFamily: FONT, fontSize: 15, fontWeight: 600, color: COLORS.text }}
+                style={{ display: "inline", fontFamily: FONT, fontSize: 15, fontWeight: 600, color: COLORS.text }}
               >
                 {t(rule.titleKey)}
               </label>
+              {rule.key === "checkoutRoundMinutes" && (
+                <button
+                  type="button"
+                  aria-label={t("roundHowTitle")}
+                  title={t("roundHowTitle")}
+                  onClick={() => setExplaining(true)}
+                  style={{
+                    marginLeft: 6, padding: 2, border: "none", background: "transparent", cursor: "pointer",
+                    display: "inline-flex", verticalAlign: "-3px", color: COLORS.blue,
+                  }}
+                >
+                  <Icon name="info" size={17} color={COLORS.blue} />
+                </button>
+              )}
               <p style={{ margin: "3px 0 0", fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
                 {t(rule.descKey)}
               </p>
@@ -263,6 +282,15 @@ export function SettingsPage() {
           Full width rather than half for the same reason the roster is: the
           webhook URL it prints is a long single line, and a 400px box wraps it
           into something nobody can copy at a glance. */}
+      {/* How families reach the academy — the footer of the public pages and
+          of every email. Admin only, like the rules. */}
+      {isAdmin && (
+        <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 24, display: "flex", flexDirection: "column", gap: 16 }}>
+          <SectionTitle>{t("contactTitle")}</SectionTitle>
+          <AcademyContactCard />
+        </div>
+      )}
+
       {isAdmin && (
         <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 24, display: "flex", flexDirection: "column", gap: 16 }}>
           <SectionTitle>{t("lineTitle")}</SectionTitle>

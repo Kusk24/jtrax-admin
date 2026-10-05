@@ -51,8 +51,7 @@
   },
   "classType": {
     "Private": "Private",
-    "Group": "Group",
-    "Master": "Master"
+    "Group": "Group"
   },
   "common": {
     "search": "Search",
@@ -121,7 +120,8 @@
     "checkInFailed": "Could not add the student to this class.",
     "regulationUploadFailed": "Tournament created, but the regulation could not be attached.",
     "saveChanges": "Save Changes",
-    "removeThing": "Remove {what}"
+    "removeThing": "Remove {what}",
+    "removed": "Removed"
   },
   "participantProfile": {
     "entryFee": "Entry fee",
@@ -253,11 +253,13 @@
     "submit": "Sign in",
     "signingIn": "Signing in…",
     "errorMissing": "Enter your email and password.",
-    "errorInvalid": "That email and password don't match an admin account.",
+    "errorInvalid": "Email/username or password is incorrect.",
     "footer": "JCA Chess School · Admin console",
     "errorUnreachable": "Cannot reach the JTrax backend — is it running?",
     "resetDone": "Password changed. Sign in with your new one.",
-    "errorTooMany": "Too many sign-in attempts for this account. Please wait a minute and try again — your password may well be correct."
+    "errorTooMany": "Too many sign-in attempts for this account. Please wait a minute and try again — your password may well be correct.",
+    "errorNoAccess": "This account cannot access the Admin Console. Please sign in through the JTrax Portal.",
+    "errorNoAccessTitle": "Parent or Student account — use the JTrax Portal"
   },
   "reset": {
     "requestTitle": "Reset your password",
@@ -300,7 +302,12 @@
     "lastSixMonths": "Last 6 months",
     "revenueChartLabel": "Revenue over the last 6 months, from {from} to {to} THB",
     "overview": "Overview",
-    "revenueThisMonth": "Revenue This Month",
+    "revenueHeadline": {
+      "7D": "Revenue This Week",
+      "30D": "Revenue This Month",
+      "Year": "Revenue This Year"
+    },
+    "lastWeek": "last week",
     "fromPayments": "From {count} payments",
     "totalStudents": "Total Students",
     "enrolledAcross": "Enrolled across all courses",
@@ -358,7 +365,7 @@
     "howTheyPaidSub": "This month's takings by method",
     "plusMoreMethods": "Top 5 · {count} more not shown",
     "noPaymentsThisMonth": "No payments this month",
-    "vsSamePoint": "vs {month} at the same point",
+    "vsSamePoint": "vs {period} at the same point",
     "classCount": "{count, plural, one {# class} other {# classes}}",
     "classListLabel": "Today's class list",
     "noClassesToday": "No classes today",
@@ -394,7 +401,8 @@
     "gamesOpened": "Games opened",
     "playingConsistently": "Playing consistently",
     "consistentRule": "{days}+ of {window} days",
-    "filterByCourse": "Filter by course"
+    "filterByCourse": "Filter by course",
+    "classesThatWeek": "Classes that week"
   },
   "find": {
     "title": "Find a Student",
@@ -487,7 +495,10 @@
     "durationWholeNumber": "Type a whole number.",
     "durationTypeLabel": "Type {part}",
     "durationSegmentTitle": "Click for presets, double-click to type any value",
-    "durationMinutesRange": "Minutes go from 0 to 59."
+    "durationMinutesRange": "Minutes go from 0 to 59.",
+    "bookedCount": "Booked ({count})",
+    "bookedHelp": "Not checked in yet. They're checked in, and their credits used, when the class starts.",
+    "bookingProblem": "Not checked in at the start: {reason}"
   },
   "earlyCheckout": {
     "titleOne": "Check out {name} early?",
@@ -567,8 +578,8 @@
     "loginsTitle": "Accounts created",
     "loginsHint": "Copy the student's password now — it isn't shown again. The parent chooses their own from the invite email.",
     "studentLogin": "Student login",
-    "loginId": "Login ID",
-    "studentLoginIdHint": "A child signs in with this ID, not an email address — it is the one they type into the first box. Nothing can be sent to it, so hand the password over in person; the office resets it if they forget.",
+    "loginId": "Login Username",
+    "studentLoginIdHint": "A child signs in with this username, not an email address — it is the one they type into the first box. Nothing can be sent to it, so hand the password over in person; the office resets it if they forget.",
     "parentLogin": "Parent login",
     "tempPassword": "Temporary password",
     "tabCredits": "Credits",
@@ -613,6 +624,7 @@
     "movedFromCourse": "Moved from {className}",
     "enrolmentIn": "the enrolment in {className}",
     "deleteEnrolmentFrom": "Delete the enrolment in {className}",
+    "editEnrolmentOf": "Edit the {className} enrolment",
     "changeCourseNowhere": "There is no other course to move them to.",
     "changeCourseExpired": "This enrolment's credits have expired. Correct the expiry date before moving them.",
     "enrolmentDeleteWithLedger": "{credits, plural, =0 {} one {# credit entry stays with the child as credits not in any course, ready to be moved into one.} other {# credit entries stay with the child as credits not in any course, ready to be moved into one.}} {payments, plural, =0 {} one {# payment keeps its receipt but stops pointing at this course.} other {# payments keep their receipts but stop pointing at this course.}}",
@@ -675,11 +687,30 @@
     "topUp": "Add credits",
     "topUpCourse": "Add credits for {className}",
     "adjustCredits": "Adjust Credits",
-    "notInACourse": "Not in a course",
+    "notInACourse": "Removed from student",
     "guardianEmailIsParent": "This email already belongs to {name}, who is a guardian here.",
     "guardianEmailTaken": "This email is already used by another account. Use a different email.",
     "useExistingGuardian": "Link {name} as the guardian instead",
-    "colClassesJoined": "Classes joined"
+    "colClassesJoined": "Classes joined",
+    "studentIdLabel": "Student ID",
+    "copyId": "Copy",
+    "copiedId": "Copied",
+    "colHours": "Hours attended",
+    "hoursOf": "{hours} / {goal} h",
+    "hoursReached": "{goal} h reached",
+    "creditDetailTitle": "Credit entry",
+    "chargeHowTitle": "How this was charged",
+    "chargeClassTime": "Class time",
+    "chargeCheckIn": "Checked in",
+    "chargeCheckOut": "Checked out",
+    "chargeStillIn": "Still in class",
+    "chargeLate": "{minutes} late",
+    "chargeEarly": "left {minutes} early",
+    "chargeFull": "Stayed the whole class: {length} = {credits, plural, one {# credit} other {# credits}}.",
+    "chargePart": "Charged for the time attended, {from} – {to} ({attended}) = {credits, plural, one {# credit} other {# credits}}.",
+    "chargePartRounded": "Charged for the time attended, {from} – {to} ({attended}), rounded to the nearest {step} min ({charged}) = {credits, plural, one {# credit} other {# credits}}.",
+    "chargeDiffers": "The entry records {credits, plural, one {# credit} other {# credits}} — it was changed after the class.",
+    "chargeNoVisit": "The class visit for this charge is no longer on record."
   },
   "parents": {
     "title": "Parents",
@@ -777,7 +808,8 @@
     "cardLinkCopy": "Copy link",
     "cardLinkCopied": "Copied",
     "cardLinkOff": "Card payments are not set up on the server yet.",
-    "cardLinkFailed": "Could not create the payment link."
+    "cardLinkFailed": "Could not create the payment link.",
+    "publicEntry": "public entry"
   },
   "classHistory": {
     "title": "Class History",
@@ -867,6 +899,7 @@
     "noParticipants": "No participants yet.",
     "rank": "Rank",
     "entryNo": "No.",
+    "registered": "Registered",
     "player": "Player",
     "rating": "Rating",
     "category": "Category",
@@ -1018,7 +1051,12 @@
       "attending": "Attending",
       "notAttending": "Not attending",
       "noResponse": "No response"
-    }
+    },
+    "paymentStatus": "Payment status",
+    "noPaymentYet": "No payment yet",
+    "ageFromDob": "From the date of birth",
+    "needDeskMethod": "Choose Cash, PromptPay or Bank transfer to mark it paid.",
+    "methodCreditCard": "Card"
   },
   "announcement": {
     "title": "Announcement",
@@ -1127,10 +1165,9 @@
     "editCourse": "Edit Course",
     "courseName": "Course Name",
     "description": "Description",
-    "badge": "Badge",
     "icon": "Icon",
     "classType": "Course Type",
-    "classTypeHelp": "How the course is taught. Private is one-to-one; Master is a masterclass.",
+    "classTypeHelp": "Private is one-to-one; Group is a group class.",
     "editTeacher": "Edit Teacher",
     "deleteTeacher": "Delete Teacher",
     "deleteTeacherTitle": "Delete {name}?",
@@ -1153,7 +1190,13 @@
     "firstPackageHelp": "A course cannot be sold, paid for or attended until it has one. Change it or add more on the Credit Packages card below.",
     "firstPackageIncomplete": "Credits must be more than zero. A free course is fine — leave the price at 0.",
     "validityForever": "Never expires",
-    "validityHelp": "Leave blank for credits that never expire."
+    "validityHelp": "Leave blank for credits that never expire.",
+    "validityMin": "Validity must be at least 1 day. Leave it blank for credits that never expire.",
+    "level": "Level",
+    "levelPick": "Choose a level",
+    "levelAndType": "Level · Type",
+    "pricePerCredit": "Price per credit (THB)",
+    "pricePerCreditHelp": "Fills in new package and custom sale prices. Can be changed each time."
   },
   "settings": {
     "title": "Academy Rules",
@@ -1186,12 +1229,12 @@
     "lineSave": "Save credentials",
     "lineDisconnect": "Disconnect",
     "certTitle": "Certificate Milestone",
-    "certDesc": "Classes needed for a certificate.",
+    "certDesc": "Hours of class in a course before the certificate assessment.",
     "unitClasses": "classes",
     "maxNegativeCreditTitle": "Maximum Negative Credit",
     "maxNegativeCreditDesc": "How far below zero a student can still check in.",
-    "checkoutRoundTitle": "Early Check-out Rounding",
-    "checkoutRoundDesc": "Early leavers pay for time attended, rounded to this. 0 = exact minutes.",
+    "checkoutRoundTitle": "Attendance Rounding",
+    "checkoutRoundDesc": "Late arrivals and early leavers pay for the time attended, rounded to this. 0 = exact minutes.",
     "unitMinutes": "minutes",
     "themeTitle": "Appearance",
     "themeDesc": "Light, dark, or match this device.",
@@ -1237,7 +1280,37 @@
     "scanProviderErrorStatus": "Google answered with an error (status {status}). Try again in a minute.",
     "scanTestFailed": "The test could not run. Try again.",
     "notifyCancelled": "Class cancelled",
-    "notifyCancelledDesc": "When an upcoming class is cancelled"
+    "notifyCancelledDesc": "When an upcoming class is cancelled",
+    "unitHours": "hours",
+    "contactTitle": "Academy Contact",
+    "contactDesc": "Shown on the public pages, the registration form and every email.",
+    "contactPhone": "Phone",
+    "contactPhoneHint": "Separate numbers with /",
+    "contactEmail": "Email",
+    "contactLine": "LINE",
+    "contactLineHint": "Link or @ID",
+    "contactFacebook": "Facebook",
+    "contactInstagram": "Instagram",
+    "contactWebsite": "Website",
+    "contactAddresses": "Address",
+    "contactAddressN": "Address {n}",
+    "contactRemoveAddress": "Remove address {n}",
+    "contactAddAddress": "Add address",
+    "contactSaved": "Saved",
+    "contactEdit": "Edit",
+    "roundHowTitle": "How Attendance Rounding works",
+    "roundPresent": "Present {time}",
+    "roundClass": "Class: 10:00 – 12:00 (2 hours)",
+    "roundRule": "Add up the student's time in class, from check-in to check-out, then round it to the nearest {step} minutes before working out the credits. Arriving late and leaving early count the same.",
+    "roundRuleExact": "The student's time in class, from check-in to check-out, is charged to the exact minute — no rounding.",
+    "roundRingLabel": "Minutes missed, late or early, and what each range is charged",
+    "roundRingCentre": "Minutes missed",
+    "roundRingCentreSub": "late or early",
+    "roundBandMissed": "{from} – {to} min",
+    "roundFullClass": "Full class",
+    "roundCredits": "{credits, plural, one {# credit} other {# credits}}",
+    "roundArrived": "Arrived {time}",
+    "roundLeft": "Left {time}"
   },
   "games": {
     "title": "Games",
@@ -1643,6 +1716,8 @@
     "studentUnverified": "Claimed JCA student, no match",
     "signupsTitle": "Public sign-ups",
     "signupCount": "{count} signed up",
+    "newSignupCount": "{count} new",
+    "moreSignups": "+{count} more — see the table below",
     "pricingBoth": "Early bird fee, then {pct}% off",
     "pricingEarly": "Early bird fee while it lasts"
   },
@@ -1726,5 +1801,10 @@
     "done": "Done",
     "sentWithLogin": "Invite sent to {email}, with {name}'s student login. They choose their own password from the link, which works for 7 days.",
     "linkSent": "Password link sent to {email}. They choose their own password from it; the link works for 7 days."
+  },
+  "courseLevel": {
+    "Beginner": "Beginner",
+    "Intermediate": "Intermediate",
+    "Advanced": "Advanced"
   }
 }

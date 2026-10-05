@@ -34,6 +34,7 @@ import { useData } from "../DataProvider";
 import { Drawer, InfoGrid, primaryButtonStyle, SearchInput, secondaryButtonStyle } from "../page-kit";
 import { Avatar, Badge, SectionTitle } from "../ui";
 import { PlayerResults } from "./PlayerResults";
+import { DeleteButton, EditButton } from "../detail";
 
 /** Who to show: an entry, or a results row. */
 export type ProfileTarget = { participantId: string } | { sectionId: number; name: string };
@@ -71,12 +72,17 @@ export function ParticipantProfile({
   target,
   onLink,
   onClose,
+  onEdit,
+  onDelete,
 }: {
   tournamentId: string;
   participants: Participant[];
   target: ProfileTarget;
   onLink: (participantId: string, link: ResultsLink) => Promise<void>;
   onClose: () => void;
+  /** The table's own Edit and Delete, for the entry this profile shows. */
+  onEdit?: (p: Participant) => void;
+  onDelete?: (p: Participant) => void;
 }) {
   const t = useTranslations("participantProfile");
   const tT = useTranslations("tournament");
@@ -236,6 +242,13 @@ export function ParticipantProfile({
               <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>{t("onChessResults", { name: standing.name })}</span>
             )}
           </div>
+          {/* The same actions as the participant's row in the table. */}
+          {participant && (onEdit || onDelete) && (
+            <div style={{ marginLeft: "auto", display: "flex", gap: 8, flexShrink: 0 }}>
+              {onEdit && <EditButton onClick={() => onEdit(participant)} />}
+              {onDelete && <DeleteButton onClick={() => onDelete(participant)} />}
+            </div>
+          )}
         </div>
         {student && (
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>

@@ -4,9 +4,9 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useData } from "@/components/DataProvider";
 import { fmtTHB, liveClasses, livePackages } from "@/lib/live";
-import { CLASS_ICONS, CLASS_TYPES, badgeOf, classTypeOf, iconOf, type ClassType } from "@/lib/class-face";
+import { CLASS_ICONS, CLASS_LEVELS, CLASS_TYPES, classTypeOf, iconOf, levelOf, type ClassLevel, type ClassType } from "@/lib/class-face";
 import { Icon, type IconName } from "@/lib/icons";
-import { COLORS, FONT, initialsOf } from "@/lib/theme";
+import { CLASS_CATEGORY_COLORS, classCategoryTint, COLORS, FONT, initialsOf } from "@/lib/theme";
 import {
   ActionButton,
   AddButton,
@@ -21,6 +21,7 @@ import {
   fieldStyle,
   InfoGrid,
   labelStyle,
+  Req,
   Modal,
   dangerSolidButtonStyle,
   EmptyRow,
@@ -54,7 +55,12 @@ const TEACHER_TEMPLATE = equalTemplate(4, 110);
    not what it is called. It was named `category` here, which is most of why
    nobody could tell where it came from: two words for one column, and the
    console's word was not the one in the database. */
-type Course = { id: string; name: string; desc: string; badge: string; icon: IconName; classType: ClassType };
+/* A course is a name, a level and a type: JCA NXT · Advanced · Private. */
+type Course = {
+  id: string; name: string; desc: string; level: ClassLevel | ""; icon: IconName; classType: ClassType;
+  /** The usual price of one credit, "" when unset — a starting value for new prices. */
+  pricePerCredit: string;
+};
 type Teacher = { id: string; name: string; email: string; phone: string; lineId: string; status: string };
 type CreditPackage = {
   id: string;
@@ -109,6 +115,7 @@ export function AcademyPage() {
   const { showError } = useErrorToast();
   const tStatus = useTranslations("status");
   const tClassType = useTranslations("classType");
+  const tLevel = useTranslations("courseLevel");
   const { raw, batch, create, update, remove } = useData();
 
   /* 0 and blank both mean "never expires" — the same convention the backend's
@@ -135,7 +142,8 @@ export function AcademyPage() {
     id: String(c.class_id),
     name: String(c.name ?? ""),
     desc: String(c.description ?? ""),
-    badge: badgeOf(c.badge, String(c.class_type ?? "")),
+    level: levelOf(c.level),
+    pricePerCredit: c.price_per_credit == null ? "" : String(c.price_per_credit),
     icon: iconOf(c.icon, String(c.class_type ?? "")),
     classType: classTypeOf(c.class_type),
   }));
@@ -173,6 +181,7 @@ export function AcademyPage() {
   const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
   const [packageModal, setPackageModal] = useState<CreditPackage | "new" | null>(null);
   const [packageValues, setPackageValues] = useState<CrudValues>({});
+  const [packagePriceTyped, setPackagePriceTyped] = useState(false);
   const [deletingPackage, setDeletingPackage] = useState<CreditPackage | null>(null);
 
   const packageFields: CrudField[] = [
@@ -181,21 +190,22 @@ export function AcademyPage() {
       label: tCommon("class"),
       kind: "select",
       required: true,
-      options: courses.map((c) => ({ value: c.id, label: c.name })),
+      /* "JCA Starters · Group": two courses can share a name and differ by type. */
+      options: courses.map((c) => ({ value: c.id, label: `${c.name} · ${tClassType(c.classType)}` })),
     },
     { name: "credit_amount", label: t("creditAmount"), kind: "number", required: true, half: true, min: 0 },
     { name: "standard_price", label: t("price"), kind: "number", required: true, half: true, min: 0 },
-    /* Not required: a package the office never wants to expire — a founding
-       rate, a free trial — has nothing truthful to put here. Blank and 0 both
-       read as "never" downstream (the backend's grant path and the console's
-       own expiryFrom have coalesced a missing validity to 0 since before this
-       could be left blank), so leaving it out costs nothing today and stops
-       the office typing a lie to get past a required field. */
-    { name: "validity_days", label: t("validity"), kind: "number", half: true, min: 0, help: t("validityHelp") },
+    /* Optional: blank is "never expires" — a founding rate, a free trial has
+       nothing truthful to put here. At least one day otherwise: 0 used to be a
+       second way of writing "never" and read as "expires at once", so the
+       backend refuses it (checkPackageValidity). */
+    { name: "validity_days", label: t("validity"), kind: "number", half: true, min: 1, help: t("validityHelp") },
   ];
 
   function openPackageModal(p: CreditPackage | "new") {
     setPackageModal(p);
+    /* An existing package keeps its price unless the office changes it. */
+    setPackagePriceTyped(p !== "new");
     setPackageValues(
       p === "new"
         ? { class_id: "", credit_amount: "", standard_price: "", validity_days: "" }
@@ -220,9 +230,10 @@ export function AcademyPage() {
   const [courseDraft, setCourseDraft] = useState<Omit<Course, "id">>({
     name: "",
     desc: "",
-    badge: "",
-    icon: "pawn",
+    level: "",
+    icon: "group",
     classType: "Group",
+    pricePerCredit: "",
   });
   /* A class with no package cannot be sold, cannot be paid for and cannot give
      anyone credits — so its first one is asked for here rather than left as a
@@ -232,16 +243,19 @@ export function AcademyPage() {
      for it: the office should get to decide a course's first package expires
      at all, not un-notice a number that was already sitting in the field. */
   const [firstPackage, setFirstPackage] = useState({ credits: "20", price: "12000", days: "" });
+  /* Typed by hand: the price per credit stops filling it in. */
+  const [firstPriceTyped, setFirstPriceTyped] = useState(false);
   /* Credits must be a real, positive number. Price may be nothing — a free
-     trial class is a real thing an academy runs. Validity may also be
-     nothing: blank and 0 both mean the package never expires, the same
-     convention the main Add/Edit Package form and everything downstream
-     (grantPurchasedCredits, expiryFrom) already use. */
+     trial class is a real thing an academy runs. Validity is blank for never
+     expires, or a whole number of days from 1 — the same rule as the main
+     Add/Edit Package form. */
+  const firstPackageDaysOk =
+    firstPackage.days.trim() === "" || (Number.isInteger(Number(firstPackage.days)) && Number(firstPackage.days) >= 1);
   const firstPackageComplete =
     Number(firstPackage.credits) > 0 &&
     firstPackage.price.trim() !== "" &&
     Number(firstPackage.price) >= 0 &&
-    (firstPackage.days.trim() === "" || Number(firstPackage.days) >= 0);
+    firstPackageDaysOk;
   const [teacherDraft, setTeacherDraft] = useState<Omit<Teacher, "id">>({
     name: "",
     email: "",
@@ -252,8 +266,12 @@ export function AcademyPage() {
 
   function openCourseModal(course: Course | "new") {
     setCourseModal(course);
+    if (course === "new") {
+      setFirstPackage({ credits: "20", price: "12000", days: "" });
+      setFirstPriceTyped(false);
+    }
     setCourseDraft(
-      course === "new" ? { name: "", desc: "", badge: "", icon: "pawn", classType: "Group" } : { ...course },
+      course === "new" ? { name: "", desc: "", level: "", icon: "group", classType: "Group", pricePerCredit: "" } : { ...course },
     );
   }
 
@@ -285,7 +303,23 @@ export function AcademyPage() {
           isEdit={packageModal !== "new"}
           fields={packageFields}
           values={packageValues}
-          onChange={setPackageValues}
+          onChange={(next) => {
+            /* A typed price stays; until then it follows credits × the
+               course's price per credit. */
+            if (next.standard_price !== packageValues.standard_price) {
+              setPackagePriceTyped(true);
+              setPackageValues(next);
+              return;
+            }
+            const per = Number(raw.classes.find((c) => String(c.class_id) === String(next.class_id))?.price_per_credit ?? 0);
+            const credits = Number(next.credit_amount);
+            const moved = next.class_id !== packageValues.class_id || next.credit_amount !== packageValues.credit_amount;
+            setPackageValues(
+              moved && !packagePriceTyped && per > 0 && credits > 0
+                ? { ...next, standard_price: String(Math.round(per * credits * 100) / 100) }
+                : next,
+            );
+          }}
           onClose={() => setPackageModal(null)}
           onSubmit={async (payload) => {
             if (packageModal === "new") await create("credit-packages", payload);
@@ -339,8 +373,8 @@ export function AcademyPage() {
             <ViewToggle value={courseMode} onChange={setCourseMode} options={CARD_FIRST} />
             <ExportButton
               filename="courses"
-              columns={[t("courseName"), t("badge"), t("classType"), t("description")]}
-              rows={() => courses.map((c) => [c.name, c.badge, tClassType(c.classType), c.desc])}
+              columns={[t("courseName"), t("level"), t("classType"), t("description")]}
+              rows={() => courses.map((c) => [c.name, c.level ? tLevel(c.level) : "", tClassType(c.classType), c.desc])}
             />
             <button type="button" className="jt-btn-primary" style={primaryButtonStyle} onClick={() => openCourseModal("new")}>
               <Icon name="plus" size={15} color={COLORS.surface} /> {t("addCourse")}
@@ -367,32 +401,40 @@ export function AcademyPage() {
                       width: 42,
                       height: 42,
                       borderRadius: 12,
-                      background: COLORS.light,
+                      background: levelTint(c.level),
                     }}
                   >
-                    <Icon name={c.icon} size={21} color={COLORS.blue} />
+                    <Icon name={c.icon} size={21} color={levelColor(c.level)} />
                   </span>
-                  <Badge color={COLORS.blue} bg={COLORS.light}>
-                    {c.badge}
-                  </Badge>
+                  <Badge color={COLORS.blue} bg={COLORS.light}>{tClassType(c.classType)}</Badge>
                 </div>
-                <div style={{ fontFamily: FONT, fontSize: 16, fontWeight: 700, color: COLORS.text }}>{c.name}</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  <div style={{ fontFamily: FONT, fontSize: 16, fontWeight: 700, color: COLORS.text }}>{c.name}</div>
+                  {c.level && (
+                    <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: levelColor(c.level) }}>
+                      {tLevel(c.level)}
+                    </span>
+                  )}
+                </div>
                 <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, lineHeight: 1.55, color: COLORS.textSecondary }}>
                   {c.desc}
                 </p>
               </div>
-              <RowActions
-                label={c.name}
-                onEdit={() => openCourseModal(c)}
-                onDelete={() => setDeletingCourse(c)}
-              />
+              {/* Bottom right, pinned there however long the description. */}
+              <div style={{ marginTop: "auto", display: "flex", justifyContent: "flex-end" }}>
+                <RowActions
+                  label={c.name}
+                  onEdit={() => openCourseModal(c)}
+                  onDelete={() => setDeletingCourse(c)}
+                />
+              </div>
             </Card>
           ))}
         </CardGrid>
       ) : (
         <Card style={{ padding: 0, overflow: "hidden" }}>
           <Table
-            columns={[t("courseName"), t("badge"), t("description"), tCommon("action")]}
+            columns={[t("courseName"), t("levelAndType"), t("description"), tCommon("action")]}
             template={COURSE_TEMPLATE}
             minWidth={760}
           >
@@ -400,14 +442,12 @@ export function AcademyPage() {
             {courses.map((c) => (
               <TableRow key={c.id} template={COURSE_TEMPLATE} onClick={() => setCourseDetail(c)}>
                 <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                  <Icon name={c.icon} size={18} color={COLORS.blue} />
+                  <Icon name={c.icon} size={18} color={levelColor(c.level)} />
                   <span style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {c.name}
                   </span>
                 </span>
-                <Badge color={COLORS.blue} bg={COLORS.light} style={{ justifySelf: "start" }}>
-                  {c.badge}
-                </Badge>
+                <CourseFacts level={c.level} classType={c.classType} />
                 <span
                   style={{
                     color: COLORS.textSecondary,
@@ -601,15 +641,20 @@ export function AcademyPage() {
                 width: 52,
                 height: 52,
                 borderRadius: 14,
-                background: COLORS.light,
+                background: levelTint(courseDetail.level),
               }}
             >
-              <Icon name={courseDetail.icon} size={25} color={COLORS.blue} />
+              <Icon name={courseDetail.icon} size={25} color={levelColor(courseDetail.level)} />
             </span>
             <p style={{ margin: 0, fontFamily: FONT, fontSize: 14.5, lineHeight: 1.6, color: COLORS.textSecondary }}>
               {courseDetail.desc}
             </p>
-            <InfoGrid rows={[{ label: t("badge"), value: courseDetail.badge }, { label: t("classType"), value: tClassType(courseDetail.classType) }]} />
+            <InfoGrid
+              rows={[
+                { label: t("level"), value: courseDetail.level ? tLevel(courseDetail.level) : "—" },
+                { label: t("classType"), value: tClassType(courseDetail.classType) },
+              ]}
+            />
           </div>
         </Modal>
       )}
@@ -695,7 +740,7 @@ export function AcademyPage() {
               <ActionButton
                 className="jt-btn-primary"
                 style={primaryButtonStyle}
-                disabled={!courseDraft.name || (courseModal === "new" && !firstPackageComplete)}
+                disabled={!courseDraft.name.trim() || !courseDraft.level || (courseModal === "new" && !firstPackageComplete)}
                 busyLabel={tCommon("saving")}
                 onClick={async () => {
                   try {
@@ -711,7 +756,8 @@ export function AcademyPage() {
                           /* The two the form has always asked for and never
                              sent. Without them the picker is decoration. */
                           icon: courseDraft.icon,
-                          badge: courseDraft.badge,
+                          level: courseDraft.level,
+                          ...(courseDraft.pricePerCredit.trim() !== "" ? { price_per_credit: Number(courseDraft.pricePerCredit) } : {}),
                         });
                         await create("credit-packages", {
                           class_id: cls.class_id,
@@ -731,7 +777,12 @@ export function AcademyPage() {
                         description: courseDraft.desc,
                         class_type: courseDraft.classType,
                         icon: courseDraft.icon,
-                        badge: courseDraft.badge,
+                        level: courseDraft.level,
+                        /* Only when it changed: an edit that leaves it alone
+                           does not depend on the server knowing the field. */
+                        ...(courseDraft.pricePerCredit.trim() !== courseModal.pricePerCredit.trim()
+                          ? { price_per_credit: courseDraft.pricePerCredit.trim() === "" ? null : Number(courseDraft.pricePerCredit) }
+                          : {}),
                       });
                     }
                   } catch (e) {
@@ -747,8 +798,62 @@ export function AcademyPage() {
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
             <div>
-              <label style={labelStyle} htmlFor="co-name">{t("courseName")}</label>
+              <label style={labelStyle} htmlFor="co-name">{t("courseName")}<Req /></label>
               <input id="co-name" value={courseDraft.name} onChange={(e) => setCourseDraft({ ...courseDraft, name: e.target.value })} style={fieldStyle} />
+            </div>
+            {/* Level and type side by side: what a course is, and how it is taught. */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12 }}>
+              <div>
+                <label style={labelStyle} htmlFor="co-level">{t("level")}<Req /></label>
+                <select
+                  id="co-level"
+                  value={courseDraft.level}
+                  onChange={(e) => setCourseDraft({ ...courseDraft, level: e.target.value as ClassLevel })}
+                  style={selectStyle}
+                >
+                  <option value="" disabled>{t("levelPick")}</option>
+                  {CLASS_LEVELS.map((v) => (
+                    <option key={v} value={v}>{tLevel(v)}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle} htmlFor="co-type">{t("classType")}<Req /></label>
+                <select
+                  id="co-type"
+                  value={courseDraft.classType}
+                  onChange={(e) => setCourseDraft({ ...courseDraft, classType: e.target.value as ClassType })}
+                  style={selectStyle}
+                >
+                  {CLASS_TYPES.map((v) => (
+                    <option key={v} value={v}>{tClassType(v)}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <p style={{ margin: "-6px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+              {t("classTypeHelp")}
+            </p>
+            <div>
+              <label style={labelStyle} htmlFor="co-ppc">{t("pricePerCredit")}</label>
+              <input
+                id="co-ppc"
+                type="number"
+                min={0}
+                value={courseDraft.pricePerCredit}
+                onChange={(e) => {
+                  const ppc = e.target.value;
+                  setCourseDraft({ ...courseDraft, pricePerCredit: ppc });
+                  /* The first package's price follows, until it is typed over. */
+                  if (courseModal === "new" && !firstPriceTyped && Number(ppc) > 0 && Number(firstPackage.credits) > 0) {
+                    setFirstPackage({ ...firstPackage, price: String(Math.round(Number(ppc) * Number(firstPackage.credits) * 100) / 100) });
+                  }
+                }}
+                style={fieldStyle}
+              />
+              <p style={{ margin: "5px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+                {t("pricePerCreditHelp")}
+              </p>
             </div>
             <div>
               <label style={labelStyle} htmlFor="co-desc">{t("description")}</label>
@@ -759,29 +864,6 @@ export function AcademyPage() {
                 onChange={(e) => setCourseDraft({ ...courseDraft, desc: e.target.value })}
                 style={{ ...fieldStyle, resize: "vertical", lineHeight: 1.5 }}
               />
-            </div>
-            <div>
-              <label style={labelStyle} htmlFor="co-badge">{t("badge")}</label>
-              <input id="co-badge" value={courseDraft.badge} onChange={(e) => setCourseDraft({ ...courseDraft, badge: e.target.value })} style={fieldStyle} />
-            </div>
-            {/* The column has existed since the first migration and this form
-                has never asked for it, so every class the academy created came
-                out "Group" whether it was one or not. */}
-            <div>
-              <label style={labelStyle} htmlFor="co-type">{t("classType")}</label>
-              <select
-                id="co-type"
-                value={courseDraft.classType}
-                onChange={(e) => setCourseDraft({ ...courseDraft, classType: e.target.value as ClassType })}
-                style={selectStyle}
-              >
-                {CLASS_TYPES.map((v) => (
-                  <option key={v} value={v}>{tClassType(v)}</option>
-                ))}
-              </select>
-              <p style={{ margin: "5px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-                {t("classTypeHelp")}
-              </p>
             </div>
             <div>
               <span style={labelStyle}>{t("icon")}</span>
@@ -801,25 +883,38 @@ export function AcademyPage() {
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}>
                   <div>
-                    <label style={labelStyle} htmlFor="co-credits">{t("creditAmount")}</label>
+                    <label style={labelStyle} htmlFor="co-credits">{t("creditAmount")}<Req /></label>
                     <input
                       id="co-credits"
                       type="number"
                       min={0}
                       step={0.5}
                       value={firstPackage.credits}
-                      onChange={(e) => setFirstPackage({ ...firstPackage, credits: e.target.value })}
+                      onChange={(e) => {
+                        const credits = e.target.value;
+                        const per = Number(courseDraft.pricePerCredit);
+                        setFirstPackage({
+                          ...firstPackage,
+                          credits,
+                          ...(!firstPriceTyped && per > 0 && Number(credits) > 0
+                            ? { price: String(Math.round(per * Number(credits) * 100) / 100) }
+                            : {}),
+                        });
+                      }}
                       style={fieldStyle}
                     />
                   </div>
                   <div>
-                    <label style={labelStyle} htmlFor="co-price">{t("price")}</label>
+                    <label style={labelStyle} htmlFor="co-price">{t("price")}<Req /></label>
                     <input
                       id="co-price"
                       type="number"
                       min={0}
                       value={firstPackage.price}
-                      onChange={(e) => setFirstPackage({ ...firstPackage, price: e.target.value })}
+                      onChange={(e) => {
+                        setFirstPriceTyped(true);
+                        setFirstPackage({ ...firstPackage, price: e.target.value });
+                      }}
                       style={fieldStyle}
                     />
                   </div>
@@ -828,7 +923,8 @@ export function AcademyPage() {
                     <input
                       id="co-days"
                       type="number"
-                      min={0}
+                      min={1}
+                      step={1}
                       placeholder={t("validityForever")}
                       value={firstPackage.days}
                       onChange={(e) => setFirstPackage({ ...firstPackage, days: e.target.value })}
@@ -838,7 +934,7 @@ export function AcademyPage() {
                 </div>
                 {!firstPackageComplete && (
                   <p style={{ margin: 0, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-                    {t("firstPackageIncomplete")}
+                    {firstPackageDaysOk ? t("firstPackageIncomplete") : t("validityMin")}
                   </p>
                 )}
               </>
@@ -904,7 +1000,7 @@ export function AcademyPage() {
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
             <div>
-              <label style={labelStyle} htmlFor="te-name">{tCommon("name")}</label>
+              <label style={labelStyle} htmlFor="te-name">{tCommon("name")}<Req /></label>
               <input id="te-name" value={teacherDraft.name} onChange={(e) => setTeacherDraft({ ...teacherDraft, name: e.target.value })} style={fieldStyle} />
             </div>
             <div>
@@ -938,3 +1034,24 @@ export function AcademyPage() {
     </div>
   );
 }
+
+/* Level and type under a course's name — "Advanced · Private". */
+function CourseFacts({ level, classType }: { level: ClassLevel | ""; classType: ClassType }) {
+  const tLevel = useTranslations("courseLevel");
+  const tClassType = useTranslations("classType");
+  return (
+    <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
+      {[level ? tLevel(level) : "", tClassType(classType)].filter(Boolean).join(" · ")}
+    </span>
+  );
+}
+
+/* A course's level colour — the same one Today's Classes and a student's
+   level use: Beginner green, Intermediate blue, Advanced purple. */
+function levelColor(level: ClassLevel | ""): string {
+  return level ? CLASS_CATEGORY_COLORS[level] ?? COLORS.blue : COLORS.blue;
+}
+function levelTint(level: ClassLevel | ""): string {
+  return level ? classCategoryTint(level) : COLORS.light;
+}
+

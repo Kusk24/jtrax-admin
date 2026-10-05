@@ -37,7 +37,7 @@ vi.mock("@/components/DataProvider", () => ({
     raw,
     students: [],
     todaysClasses: [],
-    creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certSessions: 50, maxNegativeCredit: 0 },
+    creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certHours: 50, maxNegativeCredit: 0 },
     create: vi.fn(),
     update: vi.fn(),
     remove: vi.fn(),
@@ -62,22 +62,35 @@ function renderPage() {
 }
 
 describe("class history actions", () => {
-  it("edits only a class not yet over, and removes only a cancelled one", () => {
+  /* The table has no action column: Edit and Delete are in the session that
+     opens, offered by the same rules. */
+  it("has no action buttons in the table", () => {
     renderPage();
-    expect(screen.getAllByRole("button", { name: /^Delete / })).toHaveLength(1);
-    expect(screen.getByRole("button", { name: /^Delete .*King Slayer/ })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /^Edit .*King Slayer/ })).toBeNull();
-    expect(screen.getByRole("button", { name: /^Edit .*Beginner/ })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /^Edit .*Master/ })).toBeNull();
-    expect(screen.queryByRole("button", { name: /^Delete .*Master/ })).toBeNull();
+    expect(screen.queryAllByRole("button", { name: /^(Edit|Delete) / })).toHaveLength(0);
+  });
+
+  it("edits only a class not yet over, and removes only a cancelled one", async () => {
+    const user = renderPage();
+    const open = async (name: string) => {
+      const row = (Array.from(document.querySelectorAll(".jt-table-row")) as HTMLElement[]).find((r) => r.textContent?.includes(name))!;
+      await user.click(row);
+      const dialog = screen.getByRole("dialog");
+      const has = (label: string) => within(dialog).queryByRole("button", { name: label }) !== null;
+      const out = { edit: has(en.common.edit), delete: has(en.common.delete) };
+      await user.keyboard("{Escape}");
+      return out;
+    };
+    expect(await open("King Slayer")).toEqual({ edit: false, delete: true });
+    expect(await open("Beginner")).toEqual({ edit: true, delete: false });
+    expect(await open("Master")).toEqual({ edit: false, delete: false });
   });
 
   it("adds a class on the dashboard's panel, with a date from today on", async () => {
     const user = renderPage();
     await user.click(screen.getByRole("button", { name: en.classHistory.addSession }));
-    const date = screen.getByLabelText("Date") as HTMLInputElement;
+    const date = screen.getByLabelText(/^Date( \*)?$/) as HTMLInputElement;
     expect(date.min).toBe(date.value);
-    expect(screen.getByLabelText("Course")).toBeTruthy();
+    expect(screen.getByLabelText(/^Course( \*)?$/)).toBeTruthy();
     expect(within(document.body).getAllByRole("button", { name: "Create Class" }).length).toBeGreaterThan(0);
   });
 });

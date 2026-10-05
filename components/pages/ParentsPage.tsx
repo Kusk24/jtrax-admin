@@ -41,7 +41,9 @@ import {
 } from "../page-kit";
 import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
 import { BackLink, DeleteButton, DetailHeader, EditButton } from "../detail";
+import { useErrorToast } from "../ErrorToast";
 import { InviteButton, InviteOutcomeNote, inviteOutcome, type InviteOutcome } from "../InviteButton";
+import { ResetPasswordButton } from "../ResetPassword";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 
@@ -89,6 +91,8 @@ function ParentDetail({
   const openChild = (studentId: string) => router.push(`/students?id=${encodeURIComponent(studentId)}`);
   const t = useTranslations("parents");
   const tCommon = useTranslations("common");
+  const { update } = useData();
+  const { showError } = useErrorToast();
   const [linking, setLinking] = useState(false);
   const [childId, setChildId] = useState("");
   const [relation, setRelation] = useState("Mother");
@@ -140,11 +144,21 @@ function ParentDetail({
         }
         actions={
           <>
-            {/* No office-made password for a parent: they have an email. This
-                sends them a link to choose their own — the same one a new
+            {/* A link to choose their own password — the same one a new
                 parent is invited with — for a lost invite, an expired link,
                 or a corrected address. They can also use Forgot password. */}
             <InviteButton accountId={parent.accountId ?? ""} email={parent.loginEmail} />
+            {/* Some parent rows still carry the invented @parent.jca.ac.th
+                address from before registration asked for a real one (see the
+                warning below) — a link to that address goes nowhere. This is
+                the same office-set-and-read-out path students use. */}
+            <ResetPasswordButton
+              accountId={parent.accountId ?? ""}
+              identifier={parent.loginEmail}
+              name={parent.name}
+              update={update}
+              onError={(e) => showError(tCommon("saveFailed"), e)}
+            />
             <EditButton onClick={onEdit} />
             <DeleteButton onClick={onDelete} />
           </>
