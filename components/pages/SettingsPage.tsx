@@ -14,6 +14,7 @@ import { NotificationSwitchboard } from "../settings/NotificationSwitchboard";
 import { ScanModelCard } from "../settings/ScanModelCard";
 import { ThemeToggle } from "../ThemeToggle";
 import { Card, SectionTitle } from "../ui";
+import { AcademyContactCard } from "../settings/AcademyContactCard";
 import { AdminsPage } from "./AdminsPage";
 
 type RuleKey = keyof CreditRules;
@@ -263,6 +264,15 @@ export function SettingsPage() {
           Full width rather than half for the same reason the roster is: the
           webhook URL it prints is a long single line, and a 400px box wraps it
           into something nobody can copy at a glance. */}
+      {/* How families reach the academy — the footer of the public pages and
+          of every email. Admin only, like the rules. */}
+      {isAdmin && (
+        <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 24, display: "flex", flexDirection: "column", gap: 16 }}>
+          <SectionTitle>{t("contactTitle")}</SectionTitle>
+          <AcademyContactCard />
+        </div>
+      )}
+
       {isAdmin && (
         <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 24, display: "flex", flexDirection: "column", gap: 16 }}>
           <SectionTitle>{t("lineTitle")}</SectionTitle>
