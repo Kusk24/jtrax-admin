@@ -15,6 +15,7 @@ import { ScanModelCard } from "../settings/ScanModelCard";
 import { ThemeToggle } from "../ThemeToggle";
 import { Card, SectionTitle } from "../ui";
 import { AcademyContactCard } from "../settings/AcademyContactCard";
+import { RoundingExplainer } from "../settings/RoundingExplainer";
 import { AdminsPage } from "./AdminsPage";
 
 type RuleKey = keyof CreditRules;
@@ -39,6 +40,8 @@ export function SettingsPage() {
      defaults over what is stored or trip the cascading-render rule; falling
      through to `creditRules` needs neither. */
   const [edited, setEdited] = useState<CreditRules | null>(null);
+  /* The Attendance Rounding explainer, drawn at the value being set. */
+  const [explaining, setExplaining] = useState(false);
   const draft = edited ?? creditRules;
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -72,6 +75,7 @@ export function SettingsPage() {
       <PageHeader title={t("pageTitle")} sub={isAdmin ? t("sub") : t("subStaff")} />
 
       {error && <ErrorNote>{error}</ErrorNote>}
+      {explaining && <RoundingExplainer step={draft.checkoutRoundMinutes} onClose={() => setExplaining(false)} />}
 
       {/* Two columns, the way the parent portal lays its settings out: one
           scroll of unrelated blocks became two, side by side, so what is on
@@ -137,10 +141,24 @@ export function SettingsPage() {
             <div style={{ flex: "1 1 260px", minWidth: 0 }}>
               <label
                 htmlFor={`jtrax-rule-${rule.key}`}
-                style={{ display: "block", fontFamily: FONT, fontSize: 15, fontWeight: 600, color: COLORS.text }}
+                style={{ display: "inline", fontFamily: FONT, fontSize: 15, fontWeight: 600, color: COLORS.text }}
               >
                 {t(rule.titleKey)}
               </label>
+              {rule.key === "checkoutRoundMinutes" && (
+                <button
+                  type="button"
+                  aria-label={t("roundHowTitle")}
+                  title={t("roundHowTitle")}
+                  onClick={() => setExplaining(true)}
+                  style={{
+                    marginLeft: 6, padding: 2, border: "none", background: "transparent", cursor: "pointer",
+                    display: "inline-flex", verticalAlign: "-3px", color: COLORS.blue,
+                  }}
+                >
+                  <Icon name="info" size={17} color={COLORS.blue} />
+                </button>
+              )}
               <p style={{ margin: "3px 0 0", fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
                 {t(rule.descKey)}
               </p>

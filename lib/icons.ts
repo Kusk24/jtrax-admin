@@ -143,6 +143,12 @@ const ICON_DATA = {
     ["path", { "d": "M9 17c0-3 1.3-5 3-5s3 2 3 5" }],
     ["rect", { "x": 7, "y": 17, "width": 10, "height": 2, "rx": 0.6 }],
   ],
+  /* An i in a circle — "how this works". */
+  "info": [
+    ["circle", { "cx": 12, "cy": 12, "r": 9 }],
+    ["path", { "d": "M12 11v5.5" }],
+    ["circle", { "cx": 12, "cy": 7.8, "r": 0.9, "fill": "currentColor", "stroke": "none" }],
+  ],
   /* Three pieces side by side — a group class. */
   "group": [
     ["circle", { "cx": 6, "cy": 9.5, "r": 1.7 }],
