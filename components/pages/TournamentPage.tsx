@@ -285,14 +285,15 @@ function TournamentDetail({
         options: students.map((s) => ({ value: s.id, label: s.name })),
         help: t("participantStudentHelp"),
       },
+      /* In pairs, as the desk reads an entry: the names, nickname and date of
+         birth, age and category; then how to reach the family; then the
+         money; then whether they are coming. */
       { name: "participant_name", label: t("nameEnglish"), required: true, half: true },
       { name: "participant_name_th", label: t("nameThai"), half: true },
       { name: "nickname", label: t("nickname"), required: true, half: true },
       { name: "participant_date_of_birth", label: t("dateOfBirth"), kind: "date", required: true, half: true },
       /* Worked out from the date of birth on the tournament's first day. */
       { name: AGE, label: t("age"), kind: "number", half: true, readOnly: true, help: t("ageFromDob") },
-      { name: "contact_phone", label: tCommon("phone"), required: true, half: true },
-      { name: "contact_email", label: t("parentEmail"), required: true, half: true },
       {
         name: "tournament_category_id",
         label: t("category"),
@@ -301,23 +302,19 @@ function TournamentDetail({
         half: true,
         options: categoryRows.map((c) => ({ value: c.id, label: c.name })),
       },
-      { name: "fide_rating", label: t("rating"), kind: "number", half: true, min: 0 },
-      { name: "fee_charged", label: t("feeCharged"), kind: "number", half: true, min: 0 },
-      /* The answer to the arrival reminder — or a phone call the desk took. */
+      { name: "contact_email", label: t("parentEmail"), required: true, half: true },
+      { name: "contact_phone", label: tCommon("phone"), required: true, half: true },
+      { name: "fee_charged", label: t("feeCharged"), kind: "number", min: 0 },
+      /* The entry's payment, editable here: how it was paid and its status. */
       ...(participantModal !== "new"
         ? [
             {
-              name: "arrival_status",
-              label: t("arrivalStatus"),
+              name: PAY_METHOD,
+              label: t("paymentMethod"),
               kind: "select" as const,
               half: true,
-              options: ARRIVAL.map((a) => ({ value: a, label: t(`arrival${a}`) })),
+              options: ALL_METHODS.map((m) => ({ value: m, label: t(`method${m}`) })),
             },
-          ]
-        : []),
-      /* The entry's payment, editable here: its status and how it was paid. */
-      ...(participantModal !== "new"
-        ? [
             {
               name: PAY_STATUS,
               label: t("paymentStatus"),
@@ -326,12 +323,12 @@ function TournamentDetail({
               placeholder: t("noPaymentYet"),
               options: PAY_STATUSES.map((st) => ({ value: st, label: tStatus(st) })),
             },
+            /* The answer to the arrival reminder — or a phone call the desk took. */
             {
-              name: PAY_METHOD,
-              label: t("paymentMethod"),
+              name: "arrival_status",
+              label: t("arrivalStatus"),
               kind: "select" as const,
-              half: true,
-              options: ALL_METHODS.map((m) => ({ value: m, label: t(`method${m}`) })),
+              options: ARRIVAL.map((a) => ({ value: a, label: t(`arrival${a}`) })),
             },
           ]
         : []),
@@ -374,7 +371,7 @@ function TournamentDetail({
         ? {
             student_id: "", participant_name: "", participant_name_th: "", nickname: "",
             participant_date_of_birth: "", contact_phone: "", contact_email: "",
-            tournament_category_id: "", fide_rating: "", fee_charged: "",
+            tournament_category_id: "", fee_charged: "",
           }
         : {
             student_id: p.studentId ?? "",
@@ -386,7 +383,6 @@ function TournamentDetail({
             contact_phone: p.contactPhone || (p.contact === "—" ? "" : p.contact),
             contact_email: p.contactEmail ?? "",
             tournament_category_id: p.categoryId ?? "",
-            fide_rating: p.rating ? String(p.rating) : "",
             fee_charged: p.feeCharged ? String(p.feeCharged) : "",
             arrival_status: p.arrival ?? "Pending",
             [AGE]: p.dateOfBirth ? String(ageOn(p.dateOfBirth, tournament.startISO || todayISO())) : p.age ? String(p.age) : "",
