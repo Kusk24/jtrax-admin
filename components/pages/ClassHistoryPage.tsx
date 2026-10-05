@@ -46,7 +46,7 @@ import { SessionPanel, type PanelState } from "../dashboard/SessionPanel";
 
 /* The chevron is the one column that is not data, so it keeps a fixed
    width; the five data columns share the rest equally. */
-const TEMPLATE = `${equalTemplate(5, 100)} 44px`;
+const TEMPLATE = `${equalTemplate(4, 100)} 44px`;
 
 /* The attendee rows in the detail panel: name takes the slack, the two times
    and the two actions size to themselves. Shared by the header and the rows
@@ -881,7 +881,7 @@ export function ClassHistoryPage() {
         </>
       ) : (
       <Card style={{ padding: 0, overflow: "hidden" }}>
-        <Table columns={[tCommon("date"), tCommon("class"), t("time"), t("attendance"), tCommon("action"), ""]} template={TEMPLATE} minWidth={880}>
+        <Table columns={[tCommon("date"), tCommon("class"), t("time"), t("attendance"), ""]} template={TEMPLATE} minWidth={760}>
           {pageRows.length === 0 && <EmptyRow>{t("empty")}</EmptyRow>}
           {/* The row opens the session rather than unfolding underneath it: the
               roster is an editor, and an editor belongs on a screen you chose
@@ -907,11 +907,7 @@ export function ClassHistoryPage() {
               <span style={{ color: COLORS.textSecondary, ...fade }}>
                 {cancelled ? "—" : t("presentCount", { count: row.attendees.length })}
               </span>
-              <RowActions
-                label={t("sessionOn", { className: row.className, date: row.date })}
-                onEdit={canEdit(row) ? () => openEdit(row) : undefined}
-                onDelete={row.status === "Cancelled" ? () => setDeletingSession(row) : undefined}
-              />
+              {/* Edit and remove live in the session that opens. */}
               <span style={{ display: "inline-flex", justifySelf: "end", color: COLORS.textSecondary }}>
                 <Icon name="chevronRight" size={16} />
               </span>

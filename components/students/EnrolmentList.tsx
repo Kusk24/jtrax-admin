@@ -16,7 +16,7 @@ import { fmtDate } from "@/lib/live";
 import { classDotColor, COLORS, FONT, statusChipColors } from "@/lib/theme";
 import { useViewMode } from "@/lib/view-mode";
 import { MoreMenu, type MoreMenuItem } from "../MoreMenu";
-import { Table, TableRow } from "../page-kit";
+import { equalTemplate, Table, TableRow } from "../page-kit";
 import { Badge, Card, ClassDot } from "../ui";
 import { CardGrid, ViewToggle } from "../view-mode";
 
@@ -48,11 +48,11 @@ export type EnrolmentItem = {
 export type EnrolmentFilter = "active" | "all";
 
 const VIEWS = ["list", "card"] as const;
-const TEMPLATE_ACTIVE =
-  "minmax(190px, 2fr) minmax(100px, 0.8fr) minmax(130px, 1fr) minmax(80px, 0.6fr) minmax(130px, 1fr) minmax(110px, 0.9fr) minmax(110px, 0.9fr) minmax(120px, 1fr) 44px";
+/* Every column the same width; only the menu (and, under All, the
+   timeline rail) stays narrow. */
+const TEMPLATE_ACTIVE = `${equalTemplate(8, 120)} 44px`;
 /* All adds the timeline rail and what happened. */
-const TEMPLATE_ALL =
-  "22px minmax(170px, 1.6fr) minmax(170px, 1.5fr) minmax(95px, 0.8fr) minmax(125px, 1fr) minmax(75px, 0.6fr) minmax(130px, 1fr) minmax(105px, 0.9fr) minmax(105px, 0.9fr) minmax(115px, 1fr) 44px";
+const TEMPLATE_ALL = `22px ${equalTemplate(9, 120)} 44px`;
 
 /** Hours against the milestone — "32.5 / 50 h", and a tick once reached. */
 function HoursFigure({ item }: { item: EnrolmentItem }) {
@@ -338,7 +338,7 @@ export function EnrolmentList({
     "",
   ];
   return (
-    <Table columns={columns} template={template} minWidth={all ? 1310 : 1150}>
+    <Table columns={columns} template={template} minWidth={all ? 1180 : 1010}>
       {shown.map((item, i) => (
         <div key={item.id} data-enrolment-row={item.id} style={{ opacity: item.active ? 1 : 0.8 }}>
           <TableRow template={template} onClick={() => onOpen(item.id)}>
