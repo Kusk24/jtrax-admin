@@ -1197,7 +1197,8 @@ function studentFill(s: { name: string; dateOfBirth?: string; parentPhone?: stri
 const DESK_METHODS = ["Cash", "PromptPay", "BankTransfer"] as const;
 /* Every way an entry can have been paid, card included — for editing one. */
 const ALL_METHODS = ["Cash", "PromptPay", "BankTransfer", "CreditCard"] as const;
-const PAY_STATUSES = ["Pending", "Paid", "Refunded", "Expired"] as const;
+/* Entry fees are non-refundable (the terms), so there is no Refunded here. */
+const PAY_STATUSES = ["Pending", "Paid", "Expired"] as const;
 const PAY_STATUS = "pay_status";
 const AGE = "participant_age_shown";
 const PAY_METHOD = "pay_method";

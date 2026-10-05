@@ -355,6 +355,8 @@ describe("editing a participant", () => {
     await user.click(screen.getByRole("button", { name: /^Edit Alice/ }));
     const dialog = within(screen.getByRole("dialog"));
     expect((dialog.getByLabelText(/^Age/) as HTMLInputElement).readOnly).toBe(true);
+    const statuses = Array.from((dialog.getByLabelText(/^Payment status/) as HTMLSelectElement).options).map((o) => o.value);
+    expect(statuses).toEqual(["", "Pending", "Paid", "Expired"]);
     await user.selectOptions(dialog.getByLabelText(/^Payment status/), "Paid");
     await user.selectOptions(dialog.getByLabelText(/^Payment method/), "Cash");
     await user.selectOptions(dialog.getByLabelText(/^Attending/), "Confirmed");
