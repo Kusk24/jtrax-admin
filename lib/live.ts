@@ -434,11 +434,13 @@ export function toTournaments(c: LiveCollections): Tournament[] {
       /* The real thing since 0032: a payment row against the registration,
          marked Paid by the Stripe webhook for a card or by "Mark paid at desk"
          for money taken at the counter. This used to read "Paid" for
-         everybody, which told the desk nothing and told it confidently. */
-      paymentStatus: s(
-        c.payments.find((p) => s(p, "tournament_registration_id") === s(r, "tournament_registration_id")) ?? {},
-        "status",
-      ) === "Paid" ? "Paid" : "Pending",
+         everybody, which told the desk nothing and told it confidently.
+         Cancelled since 0059: still owed when registration closed, so the
+         place was released. Anything else is Pending — including an entry
+         with no payment row yet. */
+      paymentStatus: ((status) => (status === "Paid" || status === "Cancelled" ? status : "Pending"))(
+        s(c.payments.find((p) => s(p, "tournament_registration_id") === s(r, "tournament_registration_id")) ?? {}, "status"),
+      ),
       payment: (() => {
         const pay = c.payments.find((p) => s(p, "tournament_registration_id") === s(r, "tournament_registration_id"));
         return pay ? { id: s(pay, "payment_id"), status: s(pay, "status"), method: s(pay, "payment_method") } : undefined;

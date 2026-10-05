@@ -340,8 +340,8 @@ export function ParticipantProfile({
                       {
                         label: t("payment"),
                         value: (
-                          <span style={{ fontWeight: 600, color: participant.paymentStatus === "Paid" ? COLORS.success : COLORS.warning }}>
-                            {participant.paymentStatus === "Paid" ? t("paid") : t("unpaid")}
+                          <span style={{ fontWeight: 600, color: participant.paymentStatus === "Paid" ? COLORS.success : participant.paymentStatus === "Cancelled" ? COLORS.danger : COLORS.warning }}>
+                            {participant.paymentStatus === "Paid" ? t("paid") : participant.paymentStatus === "Cancelled" ? t("cancelled") : t("unpaid")}
                           </span>
                         ),
                       },
