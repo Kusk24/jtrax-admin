@@ -8,6 +8,7 @@
 import {
   createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode,
 } from "react";
+import { setClassLevels } from "@/lib/theme";
 import { api } from "@/lib/api";
 import {
   creditRulesOf, monthRevenue, toAdmins, toAnnouncements, toCheckins, toParents, toPayments,
@@ -206,6 +207,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   /* Same reader `toStudents` uses, so a threshold saved in Settings moves the
      status chips and the dashboard counts together. */
+  /* Course dots everywhere follow each course's level (lib/theme). Set while
+     rendering, before the children that draw the dots. */
+  useMemo(() => setClassLevels(raw.classes ?? []), [raw.classes]);
   const creditRules = useMemo<CreditRules>(() => creditRulesOf(raw), [raw]);
 
   const saveCreditRules = useCallback(async (rules: CreditRules) => {

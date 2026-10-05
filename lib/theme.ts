@@ -135,8 +135,27 @@ export function classCategoryTint(category: string | undefined): string {
   }
 }
 
+/* Each course's level by its name, as the console last loaded them — so a
+   course's dot anywhere (check-ins, Class History, Students, Payments) takes
+   the colour of its level, the same as its Today's Classes card. The
+   DataProvider keeps it current. */
+let levelByName = new Map<string, string>();
+
+export function setClassLevels(classes: Array<Record<string, unknown>>): void {
+  const next = new Map<string, string>();
+  for (const c of classes) {
+    const name = String(c.name ?? "");
+    const level = String(c.level ?? "");
+    if (name && level) next.set(name, level);
+  }
+  levelByName = next;
+}
+
 export function classDotColor(className: string | undefined): string {
   if (!className) return COLORS.textSecondary;
+  const level = levelByName.get(className);
+  if (level && CLASS_CATEGORY_COLORS[level]) return CLASS_CATEGORY_COLORS[level];
+  /* A course without a level: a level word in its name, else grey. */
   const key = Object.keys(CLASS_CATEGORY_COLORS).find((k) => className.includes(k));
   return key ? CLASS_CATEGORY_COLORS[key] : COLORS.textSecondary;
 }

@@ -672,7 +672,8 @@ export function toCheckins(c: LiveCollections, day = todayISO()): CheckinDef[] {
         attendanceId: s(a, "attendance_id"),
         studentId,
         name: student ? s(student, "name") : studentId,
-        class: cls ? categoryOf(s(cls, "name"), s(cls, "level")) : "—",
+        /* The course's own name; its dot takes the level's colour. */
+        class: cls ? s(cls, "name") : "—",
         timeIn: clockOf(s(a, "check_in_time")),
         timeOut: out ? clockOf(out) : "—",
         checkInAt: s(a, "check_in_time"),
