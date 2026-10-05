@@ -91,6 +91,9 @@ export type Payment = {
   /** True once the student this was for has been deleted: the names on the
       row are all that is left of who it was about. */
   detached?: boolean;
+  /** An entry from the public tournament form by somebody who is not a JCA
+      student: there never was a student record, so nothing was removed. */
+  publicEntry?: boolean;
   /** The course this paid for was deleted from the student. */
   courseDeleted?: boolean;
   status: 'Paid' | 'Pending' | 'Refunded';

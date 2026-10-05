@@ -76,3 +76,26 @@ describe("toPayments for a course the academy archived", () => {
     expect(p.courseDeleted).toBe(true);
   });
 });
+
+describe("a public tournament entrant's payment", () => {
+  it("is a public entry, not a removed student", () => {
+    const [p] = toPayments({
+      ...base,
+      payments: [
+        { payment_id: "pay_pub", student_id: null, student_name: "Outside Player", class_name: "JCA Open",
+          tournament_registration_id: "treg_1", final_amount: 500, status: "Pending", payment_date: "2026-10-05" },
+      ],
+    } as LiveCollections);
+    expect(p.publicEntry).toBe(true);
+    expect(p.detached).toBe(false);
+  });
+
+  it("is a removed student only for a course payment with no student", () => {
+    const [p] = toPayments({
+      ...base,
+      payments: [{ payment_id: "pay_old", student_id: null, student_name: "Gone", class_name: "JCA NXT", final_amount: 600, payment_date: "2026-09-01" }],
+    } as LiveCollections);
+    expect(p.detached).toBe(true);
+    expect(p.publicEntry).toBe(false);
+  });
+});

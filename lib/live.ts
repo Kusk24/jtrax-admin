@@ -315,7 +315,11 @@ export function toPayments(c: LiveCollections): Payment[] {
         /* Removed from the student, or archived by the academy. */
         courseDeleted: Boolean(gone) || isArchivedClass(cls),
         payer: s(p, "parent_name") || (guardian ? s(guardian, "name") : ""),
-        detached: !s(p, "student_id"),
+        /* No student on a course payment means the student was deleted. A
+           tournament payment with none is a public entrant who was never a
+           JCA student — nothing was removed. */
+        detached: !s(p, "student_id") && !s(p, "tournament_registration_id"),
+        publicEntry: !s(p, "student_id") && !!s(p, "tournament_registration_id"),
         /* The payment's own count (a custom sale has no package), else the package's. */
         credits: n(p, "credit_amount") > 0 ? `+${n(p, "credit_amount")}` : pkg ? `+${n(pkg, "credit_amount")}` : "—",
         amount: fmtTHB(n(p, "final_amount")),

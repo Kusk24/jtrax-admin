@@ -691,9 +691,9 @@ export function PaymentDetail({
                   {payment.credits} {tCommon("credits")}
                 </Badge>
               )}
-              {payment.detached && (
+              {(payment.detached || payment.publicEntry) && (
                 <Badge color={COLORS.textSecondary} bg={COLORS.neutralBg}>
-                  {t("studentRemoved")}
+                  {payment.publicEntry ? t("publicEntry") : t("studentRemoved")}
                 </Badge>
               )}
             </>
@@ -1183,6 +1183,7 @@ export function PaymentPage({
                     <ClassDot color={classDotColor(p.className)} />
                     <CourseName name={p.className} deleted={p.courseDeleted} />
                     {p.detached && ` · ${t("studentRemoved")}`}
+                    {p.publicEntry && ` · ${t("publicEntry")}`}
                   </span>
                 }
                 badges={
@@ -1236,9 +1237,9 @@ export function PaymentPage({
                     </span>
                     {/* The student is gone; this row is the only record of
                         them, so it says so rather than looking like a live one. */}
-                    {p.detached && (
+                    {(p.detached || p.publicEntry) && (
                       <span style={{ fontFamily: FONT, fontSize: 11.5, color: COLORS.textSecondary }}>
-                        {t("studentRemoved")}
+                        {p.publicEntry ? t("publicEntry") : t("studentRemoved")}
                       </span>
                     )}
                   </span>

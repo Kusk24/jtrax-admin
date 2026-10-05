@@ -807,7 +807,8 @@
     "cardLinkCopy": "Copy link",
     "cardLinkCopied": "Copied",
     "cardLinkOff": "Card payments are not set up on the server yet.",
-    "cardLinkFailed": "Could not create the payment link."
+    "cardLinkFailed": "Could not create the payment link.",
+    "publicEntry": "public entry"
   },
   "classHistory": {
     "title": "Class History",

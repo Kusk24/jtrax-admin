@@ -807,7 +807,8 @@
     "cardLinkCopy": "คัดลอกลิงก์",
     "cardLinkCopied": "คัดลอกแล้ว",
     "cardLinkOff": "เซิร์ฟเวอร์ยังไม่ได้ตั้งค่าการชำระด้วยบัตร",
-    "cardLinkFailed": "สร้างลิงก์ไม่สำเร็จ"
+    "cardLinkFailed": "สร้างลิงก์ไม่สำเร็จ",
+    "publicEntry": "สมัครผ่านเว็บไซต์"
   },
   "classHistory": {
     "title": "ประวัติคลาสเรียน",
