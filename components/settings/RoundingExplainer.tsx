@@ -149,7 +149,7 @@ export function RoundingExplainer({ step, onClose }: { step: number; onClose: ()
         <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: FONT, fontSize: 13.5, fontVariantNumeric: "tabular-nums" }}>
           <thead>
             <tr style={{ color: COLORS.textSecondary }}>
-              <th style={{ ...cell, textAlign: "right", fontWeight: 600 }}>{t("roundColMissed")}</th>
+              <th style={{ ...cell, ...first, fontWeight: 600 }}>{t("roundColMissed")}</th>
               <th style={{ ...cell, textAlign: "right", fontWeight: 600 }}>{t("roundColAttended")}</th>
               <th style={{ ...cell, textAlign: "right", fontWeight: 600 }}>{t("roundColRounded")}</th>
               <th style={{ ...cell, textAlign: "right", fontWeight: 600 }}>{t("roundColCharged")}</th>
@@ -158,7 +158,7 @@ export function RoundingExplainer({ step, onClose }: { step: number; onClose: ()
           <tbody>
             {rows.map((r) => (
               <tr key={r.missed} style={{ borderTop: `1px solid ${COLORS.border}` }}>
-                <td style={{ ...cell, textAlign: "right" }}>{t("roundMinutes", { minutes: r.missed })}</td>
+                <td style={{ ...cell, ...first }}>{t("roundMinutes", { minutes: r.missed })}</td>
                 <td style={{ ...cell, textAlign: "right" }}>{short(r.attended)}</td>
                 <td style={{ ...cell, textAlign: "right" }}>{short(r.charged)}</td>
                 <td style={{ ...cell, textAlign: "right", fontWeight: 700 }}>{oneDecimal(r.charged)}</td>
@@ -182,6 +182,8 @@ function Swatch({ color, faded = false }: { color: string; faded?: boolean }) {
 }
 
 const cell = { padding: "7px 10px" } as const;
+/* The first column starts flush with the text above it. */
+const first = { textAlign: "left", paddingLeft: 0 } as const;
 
 /** "1h55", "2h" — the table's compact time. */
 function short(min: number): string {
