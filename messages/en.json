@@ -696,7 +696,20 @@
     "copiedId": "Copied",
     "colHours": "Hours attended",
     "hoursOf": "{hours} / {goal} h",
-    "hoursReached": "{goal} h reached"
+    "hoursReached": "{goal} h reached",
+    "creditDetailTitle": "Credit entry",
+    "chargeHowTitle": "How this was charged",
+    "chargeClassTime": "Class time",
+    "chargeCheckIn": "Checked in",
+    "chargeCheckOut": "Checked out",
+    "chargeStillIn": "Still in class",
+    "chargeLate": "{minutes} late",
+    "chargeEarly": "left {minutes} early",
+    "chargeFull": "Stayed the whole class: {length} = {credits, plural, one {# credit} other {# credits}}.",
+    "chargePart": "Charged for the time attended, {from} – {to} ({attended}) = {credits, plural, one {# credit} other {# credits}}.",
+    "chargePartRounded": "Charged for the time attended, {from} – {to} ({attended}), rounded to the nearest {step} min ({charged}) = {credits, plural, one {# credit} other {# credits}}.",
+    "chargeDiffers": "The entry records {credits, plural, one {# credit} other {# credits}} — it was changed after the class.",
+    "chargeNoVisit": "The class visit for this charge is no longer on record."
   },
   "parents": {
     "title": "Parents",

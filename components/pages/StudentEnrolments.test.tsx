@@ -1687,3 +1687,42 @@ describe("the credits tab", () => {
     }
   });
 });
+
+/* A class charge opens to say how it was worked out. */
+describe("a credit entry's detail", () => {
+  it("shows the class time, check-in and check-out, and why an early leave cost less", async () => {
+    const saved = { e: raw.enrollments, c: raw.creditTransactions, s: raw.classSessions, a: raw.attendance };
+    raw.enrollments = [
+      { enrollment_id: "e_anong_beg", student_id: "anong", class_id: "beg", status: "Active", enrolled_date: "2026-01-06" },
+    ];
+    raw.classSessions = [
+      { session_id: "ses_1", class_id: "beg", session_date: "2026-10-05", start_time: "02:45", end_time: "04:45" },
+    ] as never;
+    raw.attendance = [
+      { attendance_id: "att_1", student_id: "anong", session_id: "ses_1",
+        check_in_time: "2026-10-04T19:45:00Z", check_out_time: "2026-10-04T20:42:00Z" },
+    ] as never;
+    raw.creditTransactions = [
+      { credit_transaction_id: "tx_1", enrollment_id: "e_anong_beg", transaction_type: "consumption",
+        amount: -1, transaction_date: "2026-10-05", attendance_id: "att_1" },
+    ];
+    try {
+      const user = renderList();
+      await openStudent(user, "Anong");
+      await user.click(screen.getByRole("button", { name: "Credits" }));
+      const row = (Array.from(document.querySelectorAll(".jt-table-row")) as HTMLElement[]).find((r) => r.textContent?.includes("-1"))!;
+      await user.click(row);
+      const dialog = screen.getByRole("dialog");
+      expect(dialog.textContent).toContain("02:45 – 04:45 (2 h)");
+      expect(dialog.textContent).toContain("03:42");
+      expect(dialog.textContent).toContain("left 1 h 3 min early");
+      expect(dialog.textContent).toContain("rounded to the nearest 15 min (1 h) = 1 credit");
+    } finally {
+      raw.enrollments = saved.e;
+      raw.creditTransactions = saved.c;
+      raw.classSessions = saved.s;
+      raw.attendance = saved.a;
+    }
+  });
+});
+

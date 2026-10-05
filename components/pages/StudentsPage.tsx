@@ -55,6 +55,7 @@ import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
 import { BackLink, DangerPanel, DeleteButton, DetailHeader, EditButton } from "../detail";
 import { ResetPasswordButton } from "../ResetPassword";
 import { EnrolmentModal, type EnrolmentEdits } from "../students/EnrolmentModal";
+import { explainCharge, fmtMinutes } from "@/lib/charge-explain";
 import { PracticeTab, useStreak } from "../students/PracticeTab";
 import {
   EnrolmentFilterToggle,
@@ -379,6 +380,8 @@ function StudentDetail({
     [raw.enrollments, student.id],
   );
 
+  /* The ledger entry open in the read-only detail. */
+  const [viewingCredit, setViewingCredit] = useState<string | null>(null);
   const creditRows = useMemo(() => {
     return raw.creditTransactions
       /* Their enrolments' entries, and the ones no enrolment claims — those
@@ -407,6 +410,7 @@ function StudentDetail({
         date: String(tx["transaction_date"] ?? ""),
         expiry: String(tx["expiry_date"] ?? ""),
         notes: String(tx["notes"] ?? ""),
+        attendanceId: String(tx["attendance_id"] ?? ""),
         };
       })
       .sort((a, b) => b.date.localeCompare(a.date));
@@ -1992,7 +1996,7 @@ function StudentDetail({
           >
             {creditRows.length === 0 && <EmptyRow>{t("noCredits")}</EmptyRow>}
             {creditRows.map((row) => (
-              <TableRow key={row.id} template={CREDIT_TEMPLATE}>
+              <TableRow key={row.id} template={CREDIT_TEMPLATE} onClick={() => setViewingCredit(row.id)}>
                 <span style={{ color: COLORS.textSecondary }}>{fmtDate(row.date)}</span>
                 <span style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
                   <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -2009,6 +2013,103 @@ function StudentDetail({
           </Table>
         </Card>
       )}
+
+      {viewingCredit && (() => {
+        const row = creditRows.find((r) => r.id === viewingCredit);
+        if (!row) return null;
+        const att = row.attendanceId
+          ? raw.attendance.find((a) => String(a["attendance_id"]) === row.attendanceId)
+          : undefined;
+        const ses = att
+          ? [...raw.classSessions, ...(raw.cancelledSessions ?? [])].find((x) => String(x["session_id"]) === String(att["session_id"]))
+          : undefined;
+        const how = ses && att
+          ? explainCharge({
+              sessionDate: String(ses["session_date"] ?? ""),
+              startTime: String(ses["start_time"] ?? ""),
+              endTime: String(ses["end_time"] ?? ""),
+              checkIn: String(att["check_in_time"] ?? ""),
+              checkOut: String(att["check_out_time"] ?? ""),
+              stepMinutes: creditRules.checkoutRoundMinutes,
+            })
+          : null;
+        return (
+          <Modal title={t("creditDetailTitle")} onClose={() => setViewingCredit(null)} width={520}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <InfoGrid
+                rows={[
+                  { label: tCommon("date"), value: fmtDate(row.date) },
+                  { label: tCommon("class"), value: row.className ? <CourseName name={row.className} deleted={row.removed} /> : "—" },
+                  { label: t("creditType"), value: t(`creditType_${row.type}`) },
+                  {
+                    label: tCommon("amount"),
+                    value: (
+                      <strong style={{ color: row.amount < 0 ? COLORS.danger : COLORS.success }}>
+                        {row.amount > 0 ? `+${row.amount}` : row.amount} {tCommon("credits")}
+                      </strong>
+                    ),
+                  },
+                  ...(row.expiry ? [{ label: t("expires"), value: fmtDate(row.expiry) }] : []),
+                  ...(row.notes ? [{ label: t("notes"), value: row.notes }] : []),
+                ]}
+              />
+              {row.type === "consumption" && how && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 14, borderTop: `1px solid ${COLORS.border}` }}>
+                  <SectionTitle>{t("chargeHowTitle")}</SectionTitle>
+                  <InfoGrid
+                    rows={[
+                      {
+                        label: t("chargeClassTime"),
+                        value: `${fmtDate(String(ses!["session_date"] ?? ""))} · ${how.classStart} – ${how.classEnd} (${fmtMinutes(how.classMinutes)})`,
+                      },
+                      {
+                        label: t("chargeCheckIn"),
+                        value: (
+                          <span>
+                            {how.checkIn || "—"}
+                            {how.lateMinutes > 0 && (
+                              <span style={{ color: COLORS.warning, fontWeight: 600 }}> · {t("chargeLate", { minutes: fmtMinutes(how.lateMinutes) })}</span>
+                            )}
+                          </span>
+                        ),
+                      },
+                      {
+                        label: t("chargeCheckOut"),
+                        value: (
+                          <span>
+                            {how.checkOut || t("chargeStillIn")}
+                            {how.earlyMinutes > 0 && how.checkOut && (
+                              <span style={{ color: COLORS.warning, fontWeight: 600 }}> · {t("chargeEarly", { minutes: fmtMinutes(how.earlyMinutes) })}</span>
+                            )}
+                          </span>
+                        ),
+                      },
+                    ]}
+                  />
+                  <p style={{ margin: 0, padding: "10px 12px", borderRadius: 10, background: COLORS.light, fontFamily: FONT, fontSize: 13.5, lineHeight: 1.55, color: COLORS.text }}>
+                    {how.lateMinutes === 0 && how.earlyMinutes === 0
+                      ? t("chargeFull", { length: fmtMinutes(how.classMinutes), credits: how.credits })
+                      : how.stepMinutes > 0 && how.chargedMinutes !== how.attendedMinutes
+                        ? t("chargePartRounded", {
+                            from: how.from, to: how.to, attended: fmtMinutes(how.attendedMinutes),
+                            step: how.stepMinutes, charged: fmtMinutes(how.chargedMinutes), credits: how.credits,
+                          })
+                        : t("chargePart", { from: how.from, to: how.to, attended: fmtMinutes(how.attendedMinutes), credits: how.credits })}
+                  </p>
+                  {Math.abs(how.credits + row.amount) > 0.01 && (
+                    <p style={{ margin: 0, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+                      {t("chargeDiffers", { credits: -row.amount })}
+                    </p>
+                  )}
+                </div>
+              )}
+              {row.type === "consumption" && !how && (
+                <p style={{ margin: 0, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>{t("chargeNoVisit")}</p>
+              )}
+            </div>
+          </Modal>
+        );
+      })()}
 
       {tab === "Attendance" && (
         <Card style={{ padding: 0, overflow: "hidden" }}>

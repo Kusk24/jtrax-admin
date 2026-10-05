@@ -696,7 +696,20 @@
     "copiedId": "คัดลอกแล้ว",
     "colHours": "ชั่วโมงที่เรียน",
     "hoursOf": "{hours} / {goal} ชม.",
-    "hoursReached": "ครบ {goal} ชม."
+    "hoursReached": "ครบ {goal} ชม.",
+    "creditDetailTitle": "รายการเครดิต",
+    "chargeHowTitle": "วิธีคิดเครดิตครั้งนี้",
+    "chargeClassTime": "เวลาเรียน",
+    "chargeCheckIn": "เช็คอิน",
+    "chargeCheckOut": "เช็คเอาท์",
+    "chargeStillIn": "ยังอยู่ในคลาส",
+    "chargeLate": "มาสาย {minutes}",
+    "chargeEarly": "กลับก่อน {minutes}",
+    "chargeFull": "เรียนครบทั้งคลาส: {length} = {credits} เครดิต",
+    "chargePart": "คิดตามเวลาที่เรียนจริง {from} – {to} ({attended}) = {credits} เครดิต",
+    "chargePartRounded": "คิดตามเวลาที่เรียนจริง {from} – {to} ({attended}) ปัดเป็นทุก {step} นาที ({charged}) = {credits} เครดิต",
+    "chargeDiffers": "รายการนี้บันทึก {credits} เครดิต — มีการแก้ไขหลังจบคลาส",
+    "chargeNoVisit": "ไม่พบข้อมูลการเข้าเรียนของรายการนี้แล้ว"
   },
   "parents": {
     "title": "ผู้ปกครอง",
