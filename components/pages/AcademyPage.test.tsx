@@ -473,3 +473,13 @@ describe("editing a course's price per credit", () => {
   });
 });
 
+describe("the package form's course list", () => {
+  it("names each course with its type", async () => {
+    const user = userEvent.setup();
+    renderAcademy();
+    await user.click(screen.getByRole("button", { name: /Add Package/ }));
+    const options = Array.from((screen.getByLabelText(/^Course/) as HTMLSelectElement).options).map((o) => o.textContent);
+    expect(options).toContain("Group Class · Group");
+  });
+});
+

@@ -190,7 +190,8 @@ export function AcademyPage() {
       label: tCommon("class"),
       kind: "select",
       required: true,
-      options: courses.map((c) => ({ value: c.id, label: c.name })),
+      /* "JCA Starters · Group": two courses can share a name and differ by type. */
+      options: courses.map((c) => ({ value: c.id, label: `${c.name} · ${tClassType(c.classType)}` })),
     },
     { name: "credit_amount", label: t("creditAmount"), kind: "number", required: true, half: true, min: 0 },
     { name: "standard_price", label: t("price"), kind: "number", required: true, half: true, min: 0 },
