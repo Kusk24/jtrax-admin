@@ -359,7 +359,9 @@ describe("editing a participant", () => {
     const dialog = within(screen.getByRole("dialog"));
     expect((dialog.getByLabelText(/^Age/) as HTMLInputElement).readOnly).toBe(true);
     const statuses = Array.from((dialog.getByLabelText(/^Payment status/) as HTMLSelectElement).options).map((o) => o.value);
-    expect(statuses).toEqual(["", "Pending", "Paid", "Cancelled"]);
+    /* Pending and no payment are one choice to the desk: unpaid. */
+    expect(statuses).toEqual(["", "Paid", "Cancelled"]);
+    expect((dialog.getByLabelText(/^Payment status/) as HTMLSelectElement).value).toBe("");
     await user.selectOptions(dialog.getByLabelText(/^Payment status/), "Paid");
     await user.selectOptions(dialog.getByLabelText(/^Payment method/), "Cash");
     await user.selectOptions(dialog.getByLabelText(/^Attending/), "Confirmed");
@@ -369,6 +371,21 @@ describe("editing a participant", () => {
     const entry = update.mock.calls.find((c) => c[0] === "tournament-registrations")![2];
     expect(entry.arrival_status).toBe("Confirmed");
     expect(Object.keys(entry).some((k) => k.startsWith("pay_") || k.includes("age_shown"))).toBe(false);
+  });
+
+  it("puts a paid fee back to unpaid with No payment yet", async () => {
+    const paid = withEntry();
+    paid.participants[0] = { ...paid.participants[0], paymentStatus: "Paid", payment: { id: "pay_1", status: "Paid", method: "Cash" } };
+    tournaments = [paid];
+    update.mockClear();
+    const user = openDetail();
+    await user.click(screen.getByRole("button", { name: /^participants/i }));
+    await user.click(screen.getByRole("button", { name: /^Edit Alice/ }));
+    const dialog = within(screen.getByRole("dialog"));
+    expect((dialog.getByLabelText(/^Payment status/) as HTMLSelectElement).value).toBe("Paid");
+    await user.selectOptions(dialog.getByLabelText(/^Payment status/), "");
+    await user.click(dialog.getByRole("button", { name: /^Save/ }));
+    await waitFor(() => expect(update).toHaveBeenCalledWith("payments", "pay_1", { status: "Pending" }));
   });
 
   it("lays the form out in the desk's order, with no rating", async () => {

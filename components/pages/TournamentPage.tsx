@@ -416,7 +416,8 @@ function TournamentDetail({
             fee_charged: p.feeCharged ? String(p.feeCharged) : "",
             arrival_status: p.arrival ?? "Pending",
             [AGE]: p.dateOfBirth ? String(ageOn(p.dateOfBirth, tournament.startISO || todayISO())) : p.age ? String(p.age) : "",
-            [PAY_STATUS]: p.payment?.status ?? "",
+            /* Pending reads as "No payment yet", the same thing to the desk. */
+            [PAY_STATUS]: p.payment && p.payment.status !== "Pending" ? p.payment.status : "",
             [PAY_METHOD]: p.payment?.method ?? "",
           },
     );
@@ -623,7 +624,9 @@ function TournamentDetail({
               const { [PAY_STATUS]: payStatus, [PAY_METHOD]: payMethod, ...entry } = payload;
               await update("tournament-registrations", participantModal.id!, entry);
               const pay = participantModal.payment;
-              const status = String(payStatus ?? "");
+              /* "No payment yet" on a payment that has one means it is unpaid:
+                 Pending, the payment row's own word for it. */
+              const status = String(payStatus ?? "") || (pay ? "Pending" : "");
               const method = String(payMethod ?? "");
               if (pay) {
                 if ((status && status !== pay.status) || (method && method !== pay.method)) {
@@ -1260,8 +1263,10 @@ const DESK_METHODS = ["CreditCard", "Cash", "PromptPay", "BankTransfer"] as cons
 /* Every way an entry can have been paid — for editing one. */
 const ALL_METHODS = DESK_METHODS;
 /* Entry fees are non-refundable (the terms), so there is no Refunded here. */
-/* Cancelled: not paid by the closing date, so the place was released. */
-const PAY_STATUSES = ["Pending", "Paid", "Cancelled"] as const;
+/* Cancelled: not paid by the closing date, so the place was released.
+   Not paid is the empty choice, "No payment yet": whether or not a Pending
+   payment row stands behind it, to the desk it is the same — unpaid. */
+const PAY_STATUSES = ["Paid", "Cancelled"] as const;
 const PAY_STATUS = "pay_status";
 const AGE = "participant_age_shown";
 const PAY_METHOD = "pay_method";
