@@ -127,7 +127,7 @@
     "entryFee": "Entry fee",
     "payment": "Payment",
     "paid": "Paid",
-    "unpaid": "Unpaid",
+    "unpaid": "Pending",
     "rating": "Rating {rating}",
     "onChessResults": "On Chess-Results: {name}",
     "jcaStudent": "JCA student",
@@ -154,7 +154,8 @@
     "phone": "Phone",
     "email": "Email",
     "registrationTitle": "Registration",
-    "registeredCategory": "Registered category"
+    "registeredCategory": "Registered category",
+    "cancelled": "Cancelled"
   },
   "resultsLink": {
     "checkTitle": "Is this the right event?",
@@ -1008,7 +1009,7 @@
     "previewNoPortal": "The preview needs the portal's address. Set NEXT_PUBLIC_PORTAL_URL in .env.local (for example http://localhost:3001) and restart the console.",
     "age": "Age",
     "paid": "Paid",
-    "unpaid": "Unpaid",
+    "unpaid": "Pending",
     "ageCheckFlag": "Check age",
     "ageCheck": {
       "tooOld": "The date of birth on the form is too old for this category.",
@@ -1056,7 +1057,8 @@
     "noPaymentYet": "No payment yet",
     "ageFromDob": "From the date of birth",
     "needDeskMethod": "Choose Cash, PromptPay or Bank transfer to mark it paid.",
-    "methodCreditCard": "Card"
+    "methodCreditCard": "Card",
+    "cancelled": "Cancelled"
   },
   "announcement": {
     "title": "Announcement",

@@ -990,6 +990,8 @@ function TournamentDetail({
                       <span style={{ color: COLORS.textSecondary }}>—</span>
                     ) : p.paymentStatus === "Paid" ? (
                       <Badge color={COLORS.success} bg={COLORS.successBg}>{t("paid")}</Badge>
+                    ) : p.paymentStatus === "Cancelled" ? (
+                      <Badge color={COLORS.danger} bg={COLORS.dangerBg}>{t("cancelled")}</Badge>
                     ) : (
                       <Badge color={COLORS.warning} bg={COLORS.warningBg}>{t("unpaid")}</Badge>
                     )}

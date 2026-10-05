@@ -65,8 +65,9 @@ function expiryFrom(isoDate: string, validityDays: number): string | null {
   return day.toISOString().slice(0, 10);
 }
 
-/** Paid is money in the account; the other two are not, and the list colours
-    them so a pending transfer is never mistaken for a settled one. */
+/** Paid is money in the account; the others are not, and the list colours
+    them so a pending transfer is never mistaken for a settled one. Expired is
+    a tournament fee still owed when its place was released at closing. */
 function statusChip(status: Payment["status"]): { color: string; bg: string } {
   if (status === "Pending") return { color: COLORS.warning, bg: COLORS.warningBg };
   if (status === "Cancelled") return { color: COLORS.danger, bg: COLORS.dangerBg };
@@ -683,8 +684,8 @@ export function PaymentDetail({
               <span style={{ fontFamily: FONT, fontSize: 19, fontWeight: 700, color: COLORS.text }}>
                 {payment.amount}
               </span>
-              {/* Payments are all Paid now; only an older Pending or Refunded
-                  record still says what it is. */}
+              {/* Only what is not money in the account says what it is:
+                  Pending, or a tournament fee Cancelled at closing. */}
               {payment.status !== "Paid" && <Badge {...statusChip(payment.status)}>{tStatus(payment.status)}</Badge>}
               {payment.credits !== "—" && (
                 <Badge color={COLORS.success} bg={COLORS.successBg}>

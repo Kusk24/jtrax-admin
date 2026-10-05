@@ -127,7 +127,7 @@
     "entryFee": "ค่าสมัคร",
     "payment": "การชำระเงิน",
     "paid": "ชำระแล้ว",
-    "unpaid": "ยังไม่ชำระ",
+    "unpaid": "รอชำระ",
     "rating": "เรตติ้ง {rating}",
     "onChessResults": "ชื่อบน Chess-Results: {name}",
     "jcaStudent": "นักเรียน JCA",
@@ -154,7 +154,8 @@
     "phone": "เบอร์โทร",
     "email": "อีเมล",
     "registrationTitle": "การสมัคร",
-    "registeredCategory": "รุ่นที่สมัคร"
+    "registeredCategory": "รุ่นที่สมัคร",
+    "cancelled": "ยกเลิก"
   },
   "resultsLink": {
     "checkTitle": "รายการนี้ถูกต้องหรือไม่",
@@ -1008,7 +1009,7 @@
     "previewNoPortal": "ตัวอย่างต้องใช้ที่อยู่ของพอร์ทัล ตั้งค่า NEXT_PUBLIC_PORTAL_URL ใน .env.local (เช่น http://localhost:3001) แล้วรีสตาร์ทคอนโซล",
     "age": "อายุ",
     "paid": "ชำระแล้ว",
-    "unpaid": "ยังไม่ชำระ",
+    "unpaid": "รอชำระ",
     "ageCheckFlag": "ตรวจอายุ",
     "ageCheck": {
       "tooOld": "วันเกิดในแบบฟอร์มเกินเกณฑ์อายุของรุ่นนี้",
@@ -1056,7 +1057,8 @@
     "noPaymentYet": "ยังไม่มีการชำระ",
     "ageFromDob": "คำนวณจากวันเกิด",
     "needDeskMethod": "เลือกเงินสด พร้อมเพย์ หรือโอนเงิน เพื่อบันทึกว่าชำระแล้ว",
-    "methodCreditCard": "บัตร"
+    "methodCreditCard": "บัตร",
+    "cancelled": "ยกเลิก"
   },
   "announcement": {
     "title": "ประกาศ",
