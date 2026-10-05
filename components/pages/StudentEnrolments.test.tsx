@@ -1495,7 +1495,7 @@ describe("the payments tab", () => {
       { payment_id: "pay1", student_id: "anong", final_amount: 12000, payment_date: "2026-09-01", payment_method: "Cash", status: "Paid" },
       { payment_id: "pay2", student_id: "anong", final_amount: 3500, payment_date: "2026-09-10", payment_method: "PromptPay" },
       { payment_id: "pay3", student_id: "anong", final_amount: 5000, payment_date: "2026-09-12", payment_method: "Card", status: "Pending" },
-      { payment_id: "pay4", student_id: "anong", final_amount: 2000, payment_date: "2026-09-14", payment_method: "Cash", status: "Expired" },
+      { payment_id: "pay4", student_id: "anong", final_amount: 2000, payment_date: "2026-09-14", payment_method: "Cash", status: "Cancelled" },
       { payment_id: "pay5", student_id: "boon", final_amount: 9000, payment_date: "2026-09-14", payment_method: "Cash", status: "Paid" },
     ];
     try {

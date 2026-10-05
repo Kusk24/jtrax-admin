@@ -1198,7 +1198,8 @@ const DESK_METHODS = ["Cash", "PromptPay", "BankTransfer"] as const;
 /* Every way an entry can have been paid, card included — for editing one. */
 const ALL_METHODS = ["Cash", "PromptPay", "BankTransfer", "CreditCard"] as const;
 /* Entry fees are non-refundable (the terms), so there is no Refunded here. */
-const PAY_STATUSES = ["Pending", "Paid", "Expired"] as const;
+/* Cancelled: not paid by the closing date, so the place was released. */
+const PAY_STATUSES = ["Pending", "Paid", "Cancelled"] as const;
 const PAY_STATUS = "pay_status";
 const AGE = "participant_age_shown";
 const PAY_METHOD = "pay_method";
