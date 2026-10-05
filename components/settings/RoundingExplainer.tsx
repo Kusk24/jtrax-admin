@@ -54,7 +54,7 @@ export function bandsFor(step: number, count = 5): Band[] {
 
 const C = 130;
 const R = 92;
-const W = 34;
+const W = 17;
 /* The clock face inside the ring. */
 const FACE = R - W / 2 - 6;
 
@@ -136,7 +136,6 @@ export function RoundingExplainer({ step, onClose }: { step: number; onClose: ()
     <Modal title={t("roundHowTitle")} onClose={onClose} width={680}>
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.textSecondary }}>{t("roundClass")}</span>
           <p style={{ margin: 0, fontFamily: FONT, fontSize: 14, lineHeight: 1.6, color: COLORS.text }}>
             {step > 0 ? t("roundRule", { step }) : t("roundRuleExact")}
           </p>
@@ -173,7 +172,7 @@ export function RoundingExplainer({ step, onClose }: { step: number; onClose: ()
         {/* The two examples in one box: the same rule, late and early. */}
         <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "14px 16px", borderRadius: 12, background: COLORS.light }}>
           <span style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: FONT, fontSize: 13.5, fontWeight: 700, color: COLORS.text }}>
-            {t("roundExamples")}
+            {t("roundClass")}
             <span style={{ padding: "1px 8px", borderRadius: 999, background: COLORS.surface, color: COLORS.blue, fontSize: 11.5 }}>
               {t("roundSameRule")}
             </span>

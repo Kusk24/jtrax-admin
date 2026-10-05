@@ -1302,7 +1302,6 @@
     "roundBandMissed": "{from} – {to} นาที",
     "roundFullClass": "เต็มคลาส",
     "roundCredits": "{credits} เครดิต",
-    "roundExamples": "ตัวอย่าง (คลาส 2 ชั่วโมง)",
     "roundSameRule": "กฎเดียวกัน",
     "roundArrived": "มาถึง {time}",
     "roundLeft": "กลับ {time}"
