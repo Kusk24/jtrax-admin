@@ -439,6 +439,10 @@ export function toTournaments(c: LiveCollections): Tournament[] {
         c.payments.find((p) => s(p, "tournament_registration_id") === s(r, "tournament_registration_id")) ?? {},
         "status",
       ) === "Paid" ? "Paid" : "Pending",
+      payment: (() => {
+        const pay = c.payments.find((p) => s(p, "tournament_registration_id") === s(r, "tournament_registration_id"));
+        return pay ? { id: s(pay, "payment_id"), status: s(pay, "status"), method: s(pay, "payment_method") } : undefined;
+      })(),
       /* On the tournament's first day, from the date of birth given; the age
          the family typed when there is none. */
       age: s(r, "participant_date_of_birth")

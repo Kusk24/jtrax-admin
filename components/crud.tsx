@@ -30,6 +30,8 @@ export type CrudField = {
   half?: boolean;
   min?: number;
   step?: number;
+  /* Shown, not typed in, and never sent — a value worked out from others. */
+  readOnly?: boolean;
 };
 
 export type CrudValues = Record<string, string | number | boolean>;
@@ -76,6 +78,7 @@ export function valuesFrom(fields: CrudField[], row: Record<string, unknown>): C
 export function toPayload(fields: CrudField[], values: CrudValues, isEdit: boolean): Record<string, unknown> {
   const body: Record<string, unknown> = {};
   for (const f of fields) {
+    if (f.readOnly) continue;
     const v = values[f.name];
     if (f.kind === "checkbox") {
       body[f.name] = Boolean(v);
@@ -186,8 +189,10 @@ function Field({
         placeholder={field.placeholder}
         min={field.min}
         step={field.step}
+        readOnly={field.readOnly}
+        tabIndex={field.readOnly ? -1 : undefined}
         onChange={(e) => onChange(e.target.value)}
-        style={fieldStyle}
+        style={field.readOnly ? { ...fieldStyle, background: COLORS.neutralBg, cursor: "default" } : fieldStyle}
       />
     );
 

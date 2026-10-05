@@ -1050,7 +1050,12 @@
       "attending": "เข้าร่วม",
       "notAttending": "ไม่เข้าร่วม",
       "noResponse": "ไม่ตอบกลับ"
-    }
+    },
+    "paymentStatus": "สถานะการชำระเงิน",
+    "noPaymentYet": "ยังไม่มีการชำระ",
+    "ageFromDob": "คำนวณจากวันเกิด",
+    "needDeskMethod": "เลือกเงินสด พร้อมเพย์ หรือโอนเงิน เพื่อบันทึกว่าชำระแล้ว",
+    "methodCreditCard": "บัตร"
   },
   "announcement": {
     "title": "ประกาศ",

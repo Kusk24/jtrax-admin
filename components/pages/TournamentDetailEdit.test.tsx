@@ -332,3 +332,48 @@ describe("removing an age group with entrants", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 });
+
+/* Editing an entry covers its payment and attendance too. */
+describe("editing a participant", () => {
+  const withEntry = () =>
+    makeTournament({
+      participants: [
+        {
+          id: "treg_1", name: "Alice", categoryId: "cat_1", rating: 0, category: "U8 Boys", score: "", rank: 1, prize: "",
+          paymentStatus: "Pending", payment: { id: "pay_1", status: "Pending", method: "CreditCard" },
+          age: 7, dateOfBirth: "2019-03-01", guardian: "", contact: "", wins: 0, arrival: "Pending",
+          nickname: "Ali", contactPhone: "081-000-0000", contactEmail: "alice@example.com",
+        },
+      ] as Tournament["participants"],
+    });
+
+  it("changes the payment's status and method, and shows the age without sending it", async () => {
+    tournaments = [withEntry()];
+    update.mockClear();
+    const user = openDetail();
+    await user.click(screen.getByRole("button", { name: /^participants/i }));
+    await user.click(screen.getByRole("button", { name: /^Edit Alice/ }));
+    const dialog = within(screen.getByRole("dialog"));
+    expect((dialog.getByLabelText(/^Age/) as HTMLInputElement).readOnly).toBe(true);
+    await user.selectOptions(dialog.getByLabelText(/^Payment status/), "Paid");
+    await user.selectOptions(dialog.getByLabelText(/^Payment method/), "Cash");
+    await user.selectOptions(dialog.getByLabelText(/^Attending/), "Confirmed");
+    await user.click(dialog.getByRole("button", { name: /^Save/ }));
+
+    await waitFor(() => expect(update).toHaveBeenCalledWith("payments", "pay_1", { status: "Paid", payment_method: "Cash" }));
+    const entry = update.mock.calls.find((c) => c[0] === "tournament-registrations")![2];
+    expect(entry.arrival_status).toBe("Confirmed");
+    expect(Object.keys(entry).some((k) => k.startsWith("pay_") || k.includes("age_shown"))).toBe(false);
+  });
+
+  it("can be started from the slide-in profile", async () => {
+    tournaments = [withEntry()];
+    const user = openDetail();
+    await user.click(screen.getByRole("button", { name: /^participants/i }));
+    await user.click(screen.getByText("Alice"));
+    /* The profile's Edit, the last one on screen (the tournament has its own). */
+    const edits = screen.getAllByRole("button", { name: en.common.edit });
+    await user.click(edits[edits.length - 1]);
+    expect(screen.getByRole("dialog").textContent).toContain(en.tournament.editParticipant);
+  });
+});

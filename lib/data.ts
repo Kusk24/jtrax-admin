@@ -191,6 +191,9 @@ export type Participant = {
   registeredAt: string;
   prize: string;
   paymentStatus: string;
+  /** The payment row behind the entry, when there is one: its own status
+      (Pending, Paid, Refunded, Expired) and how it was paid. */
+  payment?: { id: string; status: string; method: string };
   age: number;
   guardian: string;
   contact: string;
