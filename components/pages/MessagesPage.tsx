@@ -11,13 +11,15 @@
  * row — the `line_id` the ER model carries is a display handle and cannot be
  * used to send, so the right-hand panel shows the contact rather than a family.
  */
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { chatTime, dayKey, type LineConversation, type LineMessage } from "@/lib/line";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT, initialsOf } from "@/lib/theme";
-import { InfoGrid, SearchInput } from "../page-kit";
+import { SearchInput } from "../page-kit";
 import { Avatar, Badge, Card, SectionTitle } from "../ui";
+import { ContactPanel } from "../messages/ContactPanel";
+import { StickerMessage } from "../messages/StickerMessage";
 import { useInbox, type SendResult } from "../messages/useInbox";
 
 const FILTERS = [
@@ -52,17 +54,22 @@ function ContactAvatar({ contact, size }: { contact: LineConversation; size: num
   );
 }
 
-export function MessagesPage() {
+/** `detailId` opens that chat — how a parent's or student's page sends you here. */
+export function MessagesPage({ detailId }: { detailId?: string } = {}) {
   const t = useTranslations("messages");
   const tCommon = useTranslations("common");
-  const { conversations, selectedId, thread, loading, error, connection, unreadTotal, open, send } = useInbox();
+  const { conversations, selectedId, thread, loading, error, connection, unreadTotal, open, send, relinked } = useInbox();
+
+  /* Arriving with ?id= opens that chat, once. */
+  useEffect(() => {
+    if (detailId) open(detailId);
+  }, [detailId, open]);
 
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<SendResult>("");
-  const [copied, setCopied] = useState(false);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -75,10 +82,6 @@ export function MessagesPage() {
 
   const active = thread?.conversation ?? conversations.find((c) => c.lineUserId === selectedId) ?? null;
   const messages = thread?.messages ?? [];
-  /* How many replies in this thread came out of the monthly allowance. The
-     free ones did not, and the difference is the running cost of the feature. */
-  const metered = messages.filter((m) => m.channel === "push" && m.delivery === "Sent").length;
-
   /* Non-text messages arrive with no body; the thread says what was sent
      rather than showing an empty bubble. */
   function bodyOf(m: LineMessage): string {
@@ -96,17 +99,6 @@ export function MessagesPage() {
     setSending(false);
     if (reason) setSendError(reason);
     else setDraft("");
-  }
-
-  async function copyId() {
-    if (!active) return;
-    try {
-      await navigator.clipboard.writeText(active.lineUserId);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      /* Clipboard access can be refused; the id is on screen either way. */
-    }
   }
 
   return (
@@ -310,7 +302,10 @@ export function MessagesPage() {
                     )}
                     <div style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start", gap: 8, alignItems: "flex-end" }}>
                       {!mine && <ContactAvatar contact={active} size={26} />}
-                      <div style={{ maxWidth: "72%" }}>
+                      <div style={{ maxWidth: "72%", display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start" }}>
+                        {m.kind === "sticker" && !failed ? (
+                          <StickerMessage sticker={m.sticker} text={m.body} />
+                        ) : (
                         <div
                           style={{
                             padding: "9px 13px",
@@ -329,6 +324,7 @@ export function MessagesPage() {
                         >
                           {bodyOf(m)}
                         </div>
+                        )}
                         <div
                           style={{
                             display: "flex",
@@ -455,94 +451,7 @@ export function MessagesPage() {
 
       {/* ---- contact panel ---- */}
       <Card style={{ display: "flex", flexDirection: "column", gap: 18, overflowY: "auto", minHeight: 0 }}>
-        {active && (
-          <>
-            <div>
-              <SectionTitle style={{ marginBottom: 11 }}>{t("contact")}</SectionTitle>
-              <InfoGrid
-                rows={[
-                  { label: tCommon("name"), value: active.displayName || t("unnamedContact") },
-                  {
-                    label: tCommon("status"),
-                    /* The short form: this column is ~110px wide in the
-                       narrowest layout, and InfoGrid's label track is fixed, so
-                       "Following the account" is clipped rather than wrapped.
-                       The thread header above says it in full. */
-                    value: (
-                      <Badge
-                        color={active.followed ? COLORS.success : COLORS.textSecondary}
-                        bg={active.followed ? COLORS.successBg : COLORS.neutralBg}
-                      >
-                        {t(active.followed ? "statusFollowingShort" : "statusBlockedShort")}
-                      </Badge>
-                    ),
-                  },
-                  { label: t("lastMessage"), value: chatTime(active.lastMessageAt) },
-                ]}
-              />
-            </div>
-
-            <div>
-              <SectionTitle style={{ marginBottom: 9 }}>{t("lineUserId")}</SectionTitle>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <code
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    padding: "7px 10px",
-                    borderRadius: 8,
-                    background: COLORS.neutralBg,
-                    fontSize: 12,
-                    color: COLORS.textSecondary,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {active.lineUserId}
-                </code>
-                <button
-                  type="button"
-                  onClick={() => void copyId()}
-                  aria-label={t("copyId")}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: 32,
-                    height: 32,
-                    borderRadius: 8,
-                    border: `1px solid ${COLORS.border}`,
-                    background: COLORS.surface,
-                    cursor: "pointer",
-                    flexShrink: 0,
-                  }}
-                >
-                  <Icon name={copied ? "check" : "copy"} size={14} color={copied ? COLORS.success : COLORS.textSecondary} />
-                </button>
-              </div>
-            </div>
-
-            {/* Where the monthly allowance is going. Replies sent while the
-                free window is open cost nothing; the rest are billed. */}
-            <div>
-              <SectionTitle style={{ marginBottom: 9 }}>{t("costTitle")}</SectionTitle>
-              <p style={{ margin: 0, fontFamily: FONT, fontSize: 13, lineHeight: 1.55, color: COLORS.textSecondary }}>
-                {t("costBody")}
-              </p>
-              <p style={{ margin: "8px 0 0", fontFamily: FONT, fontSize: 13, color: COLORS.text }}>
-                {t("meteredInThread", { count: metered })}
-              </p>
-            </div>
-
-            <div>
-              <SectionTitle style={{ marginBottom: 9 }}>{t("notLinkedTitle")}</SectionTitle>
-              <p style={{ margin: 0, fontFamily: FONT, fontSize: 13, lineHeight: 1.55, color: COLORS.textSecondary }}>
-                {t("notLinkedBody")}
-              </p>
-            </div>
-          </>
-        )}
+        {active && <ContactPanel contact={active} conversations={conversations} onRelinked={relinked} />}
       </Card>
     </div>
   );

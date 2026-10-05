@@ -106,7 +106,7 @@ export function SectionRouter({
     case "academy":
       return <AcademyPage />;
     case "chat":
-      return <MessagesPage />;
+      return <MessagesPage key={detailId ?? "inbox"} detailId={detailId} />;
     case "tournament":
       return (
         <TournamentPage

@@ -20,10 +20,17 @@ export type LineConversation = {
   preview: string;
   previewKind?: LineMessageKind;
   previewFrom?: "In" | "Out";
+  /** The JTrax record the office linked this chat to: a parent or a student. */
+  parentId?: string;
+  studentId?: string;
+  linkedName?: string;
 };
 
 export type LineMessageKind =
   | "text" | "sticker" | "image" | "video" | "audio" | "file" | "location" | "other";
+
+/** How LINE names a sticker. Only these ids arrive — never the image. */
+export type LineSticker = { packageId: string; stickerId: string; resourceType?: string };
 
 export type LineMessage = {
   id: string;
@@ -37,6 +44,8 @@ export type LineMessage = {
   channel?: "reply" | "push";
   delivery: "Sent" | "Failed";
   failureReason?: LineFailureReason;
+  /** On a sticker received after the ids were kept (backend 0068). */
+  sticker?: LineSticker;
 };
 
 export type LineFailureReason = "quota" | "blocked" | "invalid" | "network";
@@ -59,6 +68,18 @@ export const getThread = (id: string) => api.get<LineThread>(`line/conversations
 export const sendMessage = (id: string, text: string) =>
   api.post<LineMessage>(`line/conversations/${id}/messages`, { text });
 export const markRead = (id: string) => api.post(`line/conversations/${id}/read`, {});
+/** Link a chat to a parent or a student; neither unlinks it. */
+export const linkConversation = (id: string, to: { parentId?: string; studentId?: string }) =>
+  api.put<LineConversation>(`line/conversations/${id}/link`, to);
+
+/** The chat linked to a student, else to their parent. */
+export function chatFor(list: LineConversation[], who: { studentId?: string; parentId?: string }) {
+  return (
+    (who.studentId && list.find((c) => c.studentId === who.studentId)) ||
+    (who.parentId && list.find((c) => c.parentId === who.parentId)) ||
+    null
+  );
+}
 
 export const getChannel = () => api.get<LineChannel>("line/channel");
 export const saveChannel = (accessToken: string, channelSecret: string) =>

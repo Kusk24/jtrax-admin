@@ -68,6 +68,7 @@ import { byLatestEvent, creditMoves, enrolmentEvents } from "@/lib/course-histor
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 import { useErrorToast } from "../ErrorToast";
+import { LineChatLink, useLineChat } from "../messages/LineChatLink";
 
 const TEMPLATE = equalTemplate(5, 90);
 const VIEWS = ["list", "card"] as const;
@@ -281,6 +282,9 @@ function StudentDetail({
     setDraft((d) => ({ ...d, [key]: value }));
   }
   const { raw, creditRules, batch, create, update, remove } = useData();
+  const tMsg = useTranslations("messages");
+  /* Theirs, else their parent's — the chat linked from Messages. */
+  const lineChat = useLineChat({ studentId: student.id, parentId: student.parentId });
 
   /**
    * Writes the link between this child and their guardian — which parent, and
@@ -1445,6 +1449,7 @@ function StudentDetail({
                   { label: tCommon("phone"), value: student.parentPhone },
                   { label: tCommon("email"), value: student.parentEmail },
                   { label: tCommon("lineId"), value: student.parentLineId },
+                  ...(lineChat.ready ? [{ label: tMsg("lineChat"), value: <LineChatLink chat={lineChat.chat} /> }] : []),
                 ]}
               />
             ) : (
@@ -1455,6 +1460,8 @@ function StudentDetail({
                 <p style={{ margin: 0, fontFamily: FONT, fontSize: 14, color: COLORS.textSecondary }}>
                   {t("noGuardian")}
                 </p>
+                {/* A chat linked to the student themselves still shows. */}
+                {lineChat.chat && <InfoGrid rows={[{ label: tMsg("lineChat"), value: <LineChatLink chat={lineChat.chat} /> }]} />}
                 {guardianOptions.length === 0 ? (
                   <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
                     {t("noGuardiansYet")}
