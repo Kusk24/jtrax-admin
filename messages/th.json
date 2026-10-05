@@ -1203,7 +1203,7 @@
     "lineSave": "บันทึกข้อมูลรับรอง",
     "lineDisconnect": "ยกเลิกการเชื่อมต่อ",
     "certTitle": "เกณฑ์รับประกาศนียบัตร",
-    "certDesc": "จำนวนคลาสเพื่อรับประกาศนียบัตร",
+    "certDesc": "จำนวนชั่วโมงเรียนที่ต้องครบเพื่อรับใบประกาศ",
     "unitClasses": "คลาส",
     "maxNegativeCreditTitle": "เครดิตติดลบสูงสุด",
     "maxNegativeCreditDesc": "เครดิตติดลบได้เท่าใดและยังเช็คอินได้",
@@ -1254,7 +1254,8 @@
     "scanProviderErrorStatus": "Google ตอบกลับด้วยข้อผิดพลาด (สถานะ {status}) ลองใหม่อีกครั้งในอีกสักครู่",
     "scanTestFailed": "ไม่สามารถทดสอบได้ กรุณาลองใหม่",
     "notifyCancelled": "ยกเลิกคลาสเรียน",
-    "notifyCancelledDesc": "เมื่อยกเลิกคลาสที่กำลังจะถึง"
+    "notifyCancelledDesc": "เมื่อยกเลิกคลาสที่กำลังจะถึง",
+    "unitHours": "ชั่วโมง"
   },
   "games": {
     "title": "เกม",

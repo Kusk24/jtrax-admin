@@ -1203,7 +1203,7 @@
     "lineSave": "Save credentials",
     "lineDisconnect": "Disconnect",
     "certTitle": "Certificate Milestone",
-    "certDesc": "Classes needed for a certificate.",
+    "certDesc": "Hours of class needed for a certificate.",
     "unitClasses": "classes",
     "maxNegativeCreditTitle": "Maximum Negative Credit",
     "maxNegativeCreditDesc": "How far below zero a student can still check in.",
@@ -1254,7 +1254,8 @@
     "scanProviderErrorStatus": "Google answered with an error (status {status}). Try again in a minute.",
     "scanTestFailed": "The test could not run. Try again.",
     "notifyCancelled": "Class cancelled",
-    "notifyCancelledDesc": "When an upcoming class is cancelled"
+    "notifyCancelledDesc": "When an upcoming class is cancelled",
+    "unitHours": "hours"
   },
   "games": {
     "title": "Games",

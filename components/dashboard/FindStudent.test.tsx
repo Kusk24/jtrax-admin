@@ -42,7 +42,7 @@ const state = {
       { enrollment_id: "enr_boon_m", student_id: "boon", class_id: "cls_master" },
     ],
   },
-  creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certSessions: 50, maxNegativeCredit: 0, checkoutRoundMinutes: 15 },
+  creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certHours: 50, maxNegativeCredit: 0, checkoutRoundMinutes: 15 },
 };
 
 vi.mock("@/components/DataProvider", () => ({

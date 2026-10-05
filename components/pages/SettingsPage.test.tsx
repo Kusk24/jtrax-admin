@@ -19,7 +19,7 @@ import type { AdminPerson } from "@/lib/data";
 
 vi.mock("@/components/DataProvider", () => ({
   useData: () => ({
-    creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certSessions: 50 },
+    creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certHours: 50 },
     saveCreditRules: vi.fn(async () => undefined),
     /* The academy contact card reads the saved configuration. */
     setConfig: vi.fn(async () => undefined),

@@ -37,7 +37,7 @@ vi.mock("@/components/DataProvider", () => ({
     raw,
     students: [],
     todaysClasses: [],
-    creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certSessions: 50, maxNegativeCredit: 0 },
+    creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certHours: 50, maxNegativeCredit: 0 },
     create: vi.fn(),
     update: vi.fn(),
     remove: vi.fn(),

@@ -124,7 +124,7 @@ export function creditRulesOf(c: LiveCollections): CreditRules {
     lowCredit: read(RULE_KEYS.lowCredit, DEFAULT_CREDIT_RULES.lowCredit),
     expiringDays: read(RULE_KEYS.expiringDays, DEFAULT_CREDIT_RULES.expiringDays),
     inactiveDays: read(RULE_KEYS.inactiveDays, DEFAULT_CREDIT_RULES.inactiveDays),
-    certSessions: read(RULE_KEYS.certSessions, DEFAULT_CREDIT_RULES.certSessions),
+    certHours: read(RULE_KEYS.certHours, DEFAULT_CREDIT_RULES.certHours),
     maxNegativeCredit: read(RULE_KEYS.maxNegativeCredit, DEFAULT_CREDIT_RULES.maxNegativeCredit),
     checkoutRoundMinutes: read(RULE_KEYS.checkoutRoundMinutes, DEFAULT_CREDIT_RULES.checkoutRoundMinutes),
   };

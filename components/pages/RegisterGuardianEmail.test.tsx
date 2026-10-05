@@ -34,7 +34,7 @@ const create = vi.fn<(path: string, body: Row) => Promise<Row>>(async () => ({})
 vi.mock("@/components/DataProvider", () => ({
   useData: () => ({
     raw,
-    creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certSessions: 50, maxNegativeCredit: 0, checkoutRoundMinutes: 15 },
+    creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certHours: 50, maxNegativeCredit: 0, checkoutRoundMinutes: 15 },
     students: [],
     loading: false,
     error: null,

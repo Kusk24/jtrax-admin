@@ -45,7 +45,7 @@ const state = {
       { enrollment_id: "e4", student_id: "anong", class_id: "cls_master", status: "Withdrawn" },
     ],
   },
-  creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certSessions: 50, maxNegativeCredit: 0 },
+  creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certHours: 50, maxNegativeCredit: 0 },
 };
 
 vi.mock("@/components/DataProvider", () => ({
