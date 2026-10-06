@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { classTypeOf } from "@/lib/class-face";
+import { useCourseLabel } from "../CourseName";
 import { useData } from "@/components/DataProvider";
 import type { Announcement, AnnouncementAudience } from "@/lib/data";
 import { Icon } from "@/lib/icons";
@@ -42,15 +44,17 @@ export function AnnouncementPage({
   /* Who a new announcement goes to. Every parent unless the office narrows
      it; fixed once it is sent — it has already reached those families. */
   const [audience, setAudience] = useState<AnnouncementAudience>("all");
+  const courseLabel = useCourseLabel();
   const [audienceIds, setAudienceIds] = useState<string[]>([]);
 
   const classOptions = useMemo(
     () =>
+      /* "JCA NXT · Private": one name can run as both. */
       liveClasses({ classes: raw.classes }).map((c) => ({
         id: String(c["class_id"]),
-        label: String(c["name"] ?? ""),
+        label: courseLabel(String(c["name"] ?? ""), classTypeOf(c["class_type"])),
       })),
-    [raw.classes],
+    [raw.classes, courseLabel],
   );
   /* Each parent with their children beside the name, so two Sarahs can be
      told apart. */
@@ -79,9 +83,12 @@ export function AnnouncementPage({
     if (a.audienceKind === "all") return t("audienceAll");
     const pool = a.audienceKind === "classes" ? classOptions : parentOptions;
     /* A class since archived still has its name on the raw row. */
-    const nameOf = (id: string) =>
-      pool.find((o) => o.id === id)?.label ??
-      String(raw.classes.find((c) => String(c["class_id"]) === id)?.["name"] ?? id);
+    const nameOf = (id: string) => {
+      const known = pool.find((o) => o.id === id)?.label;
+      if (known) return known;
+      const cls = raw.classes.find((c) => String(c["class_id"]) === id);
+      return cls ? courseLabel(String(cls["name"] ?? ""), classTypeOf(cls["class_type"])) : id;
+    };
     return a.audienceIds.map(nameOf).join(", ");
   }
 

@@ -1394,7 +1394,7 @@ function StudentDetail({
                   label: student.email && !student.email.includes("@") ? t("loginId") : tCommon("email"),
                   value: student.email || t("noAccountYet"),
                 },
-                { label: tCommon("class"), value: student.className },
+                { label: tCommon("class"), value: courseLabel(student.className, student.classType) },
                 { label: tCommon("branch"), value: student.branch },
                 /* Shown, not just implied by the age in the header. The only
                    trace of it used to be that number, so an office checking
