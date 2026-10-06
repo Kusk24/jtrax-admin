@@ -224,7 +224,8 @@ export function ParticipantProfile({
           {participant && (onEdit || onDelete) && (
             <div style={{ marginLeft: "auto", display: "flex", gap: 8, flexShrink: 0 }}>
               {onEdit && <EditButton onClick={() => onEdit(participant)} />}
-              {onDelete && <DeleteButton onClick={() => onDelete(participant)} />}
+              {/* Payments are kept, so a billed participant stays. */}
+              {onDelete && !participant.payment && <DeleteButton onClick={() => onDelete(participant)} />}
             </div>
           )}
         </div>

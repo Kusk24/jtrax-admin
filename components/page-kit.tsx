@@ -324,6 +324,43 @@ export function SelectFilter({
   );
 }
 
+/** A column heading that sorts: click for ascending, again for descending. */
+export function SortHeader({
+  label,
+  dir,
+  onClick,
+}: {
+  label: ReactNode;
+  dir: "asc" | "desc" | null;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-sort={dir === "asc" ? "ascending" : dir === "desc" ? "descending" : "none"}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        padding: 0,
+        border: "none",
+        background: "none",
+        cursor: "pointer",
+        font: "inherit",
+        color: dir ? COLORS.text : "inherit",
+        textTransform: "inherit",
+        letterSpacing: "inherit",
+      }}
+    >
+      {label}
+      <span style={{ display: "inline-flex", opacity: dir ? 1 : 0.4, transform: dir === "asc" ? "rotate(180deg)" : undefined }}>
+        <Icon name="chevronDown" size={12} />
+      </span>
+    </button>
+  );
+}
+
 /** Header row + rows share one grid template so columns line up. */
 export function Table({
   columns,

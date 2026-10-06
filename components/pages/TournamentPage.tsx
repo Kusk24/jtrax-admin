@@ -16,6 +16,10 @@ import { CreateWizard } from "../tournament/CreateWizard";
 import { TournamentBanner } from "../tournament/TournamentBanner";
 import { BannerCard } from "../tournament/BannerCard";
 import { mapEmbedUrl } from "@/lib/maps";
+import {
+  filterParticipants, nextSort, NO_FILTERS,
+  type ParticipantFilters, type PaymentFilter, type SortKey,
+} from "@/lib/participant-filters";
 import { useNewParticipants } from "@/lib/seen-participants";
 import { duplicateEntry } from "@/lib/duplicate-entry";
 import { useTranslations } from "next-intl";
@@ -50,7 +54,9 @@ import {
   primaryButtonStyle,
   SearchInput,
   secondaryButtonStyle,
+  SelectFilter,
   selectStyle,
+  SortHeader,
   Table,
   TableRow,
 } from "../page-kit";
@@ -65,7 +71,8 @@ import { refreshLinkedResults } from "@/lib/chess-results";
 
 /* Every column the same width, the office's own request — a grid that reads
    as a grid rather than a layout that happens to use one. */
-const PARTICIPANT_TEMPLATE = "repeat(9, 1fr)";
+/* A narrow first column for the tick box. */
+const PARTICIPANT_TEMPLATE = "36px repeat(9, 1fr)";
 
 /* Answers to the arrival reminder, in the order the desk reads them. */
 const ARRIVAL = ["Pending", "Confirmed", "NotAttending"] as const;
@@ -134,7 +141,9 @@ function TournamentDetail({
      it exists to get here, not to look around first. */
   startInEditing?: boolean;
   onBack: () => void;
-  onDelete: () => void;
+  /** Absent when the tournament cannot be deleted: payments are kept for
+      good, so one with any entry that was billed stays. */
+  onDelete?: () => void;
 }) {
   const t = useTranslations("tournament");
   const tCommon = useTranslations("common");
@@ -357,6 +366,10 @@ function TournamentDetail({
               label: t("arrivalStatus"),
               kind: "select" as const,
               options: ARRIVAL.map((a) => ({ value: a, label: t(`arrival${a}`) })),
+              help:
+                participantValues.arrival_status === "NotAttending" && participantModal?.arrival !== "NotAttending"
+                  ? t("cancelReleases")
+                  : undefined,
             },
           ]
         : []),
@@ -424,7 +437,9 @@ function TournamentDetail({
     );
   }
 
-  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState<ParticipantFilters>(NO_FILTERS);
+  const setFilter = (patch: Partial<ParticipantFilters>) => { setFilters((f) => ({ ...f, ...patch })); setPage(0); };
+  const sortDir = (key: SortKey) => (filters.sort?.key === key ? filters.sort.dir : null);
   const [page, setPage] = useState(0);
   const [mode, setMode] = useViewMode("participants", LIST_FIRST);
   const [drawer, setDrawer] = useState<Participant | null>(null);
@@ -478,13 +493,29 @@ function TournamentDetail({
     </div>
   );
 
-  const filteredParticipants = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return tournament.participants;
-    return tournament.participants.filter(
-      (p) => p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q),
-    );
-  }, [tournament.participants, search]);
+  const filteredParticipants = useMemo(
+    () => filterParticipants(tournament.participants, filters),
+    [tournament.participants, filters],
+  );
+  const categoryNames = useMemo(
+    () => [...new Set(tournament.participants.map((p) => p.category).filter(Boolean))].sort(),
+    [tournament.participants],
+  );
+  /* Who the arrival email can still go to: not answered, before the day. */
+  const started = !!tournament.startISO && tournament.startISO < todayISO();
+  const askable = started ? [] : filteredParticipants.filter((p) => p.id && (p.arrival ?? "Pending") === "Pending");
+  const [askingAll, setAskingAll] = useState(false);
+  /* Ticked rows, as in the check-in table. Only those still shown count. */
+  const [picked, setPicked] = useState<string[]>([]);
+  const chosen = askable.filter((p) => picked.includes(p.id!));
+  const allChosen = askable.length > 0 && chosen.length === askable.length;
+  const toggleAll = () => {
+    const ids = askable.map((p) => p.id!);
+    setPicked((cur) => (allChosen ? cur.filter((id) => !ids.includes(id)) : [...new Set([...cur, ...ids])]));
+  };
+  const toggleOne = (id: string) =>
+    setPicked((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+  const filtering = JSON.stringify({ ...filters, sort: null }) !== JSON.stringify({ ...NO_FILTERS, sort: null });
 
   const { pageRows, totalPages, page: current } = paginate(filteredParticipants, page);
 
@@ -528,7 +559,7 @@ function TournamentDetail({
           ) : (
             <>
               <EditButton onClick={startEdit} />
-              <DeleteButton onClick={onDelete} />
+              {onDelete && <DeleteButton onClick={onDelete} />}
             </>
           )
         }
@@ -676,6 +707,16 @@ function TournamentDetail({
                    the desk takes it, which needs how it was paid. */
                 if (!(DESK_METHODS as readonly string[]).includes(method)) throw new Error(t("needDeskMethod"));
                 await api.post(`tournament-registrations/${participantModal.id}/desk-payment`, { payment_method: method });
+                await refresh();
+              }
+              /* Not coming: the place goes to Released places, as a cancelled
+                 fee's does — paid or not; a paid fee stays paid. */
+              if (
+                entry.arrival_status === "NotAttending" &&
+                participantModal.arrival !== "NotAttending" &&
+                !(status === "Cancelled" && pay?.status !== "Cancelled")
+              ) {
+                await api.post(`tournament-registrations/${participantModal.id}/release`, { reason: "notAttending" });
                 await refresh();
               }
             }
@@ -995,8 +1036,8 @@ function TournamentDetail({
         <Card style={{ padding: 0, overflow: "hidden" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: 14, flexWrap: "wrap" }}>
             <SearchInput
-              value={search}
-              onChange={(v) => { setSearch(v); setPage(0); }}
+              value={filters.search}
+              onChange={(v) => setFilter({ search: v })}
               placeholder={t("searchParticipants")}
               label={t("searchParticipants")}
               style={{ maxWidth: 340 }}
@@ -1005,6 +1046,55 @@ function TournamentDetail({
               <ViewToggle value={mode} onChange={setMode} options={LIST_FIRST} />
               <AddButton label={t("addParticipant")} onClick={() => openParticipant("new")} />
             </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 14px 14px", flexWrap: "wrap" }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
+              <input type="date" aria-label={t("registeredFrom")} value={filters.from} max={filters.to || undefined}
+                onChange={(e) => setFilter({ from: e.target.value })} style={{ ...fieldStyle, width: "auto", padding: "7px 10px" }} />
+              –
+              <input type="date" aria-label={t("registeredTo")} value={filters.to} min={filters.from || undefined}
+                onChange={(e) => setFilter({ to: e.target.value })} style={{ ...fieldStyle, width: "auto", padding: "7px 10px" }} />
+            </span>
+            <SelectFilter
+              label={t("category")}
+              value={filters.category}
+              onChange={(v) => setFilter({ category: v })}
+              options={[{ value: "", label: t("filterAllCategories") }, ...categoryNames.map((c) => ({ value: c, label: c }))]}
+            />
+            <SelectFilter
+              label={t("payment")}
+              value={filters.payment}
+              onChange={(v) => setFilter({ payment: v as PaymentFilter })}
+              options={[
+                { value: "", label: t("filterAllPayments") },
+                { value: "Paid", label: t("paid") },
+                { value: "Unpaid", label: t("unpaid") },
+                { value: "Cancelled", label: t("cancelled") },
+              ]}
+            />
+            <SelectFilter
+              label={t("arrivalStatus")}
+              value={filters.attending}
+              onChange={(v) => setFilter({ attending: v as ParticipantFilters["attending"] })}
+              options={[
+                { value: "", label: t("filterAllAttending") },
+                ...(["attending", "notAttending", "noResponse", "sent", "notSent"] as const).map((s) => ({ value: s, label: t(`arrivalState.${s}`) })),
+              ]}
+            />
+            {filtering && (
+              <button type="button" onClick={() => setFilter({ ...NO_FILTERS, sort: filters.sort })}
+                style={{ border: "none", background: "none", cursor: "pointer", fontFamily: FONT, fontSize: 13.5, fontWeight: 600, color: COLORS.blue }}>
+                {t("clearFilters")}
+              </button>
+            )}
+            <span style={{ marginLeft: "auto", fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
+              {t("shownOf", { shown: filteredParticipants.length, total: tournament.participants.length })}
+            </span>
+            {chosen.length > 0 && (
+              <button type="button" onClick={() => setAskingAll(true)} style={{ ...secondaryButtonStyle, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <Icon name="mail" size={15} /> {t("sendArrivalAll", { count: chosen.length })}
+              </button>
+            )}
           </div>
           {mode === "card" ? (
             <div style={{ padding: "0 14px 14px" }}>
@@ -1024,7 +1114,8 @@ function TournamentDetail({
                           <RowActions
                             label={p.name}
                             onEdit={() => openParticipant(p)}
-                            onDelete={() => setDeletingParticipant(p)}
+                            /* A participant with a payment on file stays: payments are kept. */
+                            onDelete={p.payment ? undefined : () => setDeletingParticipant(p)}
                           />
                         ) : undefined
                       }
@@ -1046,14 +1137,45 @@ function TournamentDetail({
                fit, so the desk can check an entry the ID scan may have
                misread. Payment shows who still owes: an unpaid place is
                released when registration closes. */
-            columns={[t("entryNo"), t("registered"), t("player"), t("age"), t("category"), t("amount"), t("payment"), t("arrivalStatus"), tCommon("action")]}
+            columns={[
+              <input
+                key="all"
+                type="checkbox"
+                ref={(el) => {
+                  if (el) el.indeterminate = chosen.length > 0 && !allChosen;
+                }}
+                checked={allChosen}
+                disabled={askable.length === 0}
+                onChange={toggleAll}
+                aria-label={t("selectAllToAsk")}
+                title={t("selectAllToAsk")}
+                style={{ cursor: askable.length === 0 ? "default" : "pointer" }}
+              />,
+              t("entryNo"), t("registered"), t("player"),
+              <SortHeader key="age" label={t("age")} dir={sortDir("age")} onClick={() => setFilter({ sort: nextSort(filters.sort, "age") })} />,
+              t("category"),
+              <SortHeader key="amount" label={t("amount")} dir={sortDir("amount")} onClick={() => setFilter({ sort: nextSort(filters.sort, "amount") })} />,
+              t("payment"), t("arrivalStatus"), tCommon("action"),
+            ]}
             template={PARTICIPANT_TEMPLATE}
-            minWidth={1080}
+            minWidth={1120}
           >
             {pageRows.length === 0 && <EmptyRow>{t("noParticipants")}</EmptyRow>}
             {pageRows.map((p) => {
               return (
                 <TableRow key={p.name} template={PARTICIPANT_TEMPLATE} onClick={() => setDrawer(p)}>
+                  <span onClick={(e) => e.stopPropagation()}>
+                    {/* Only those the arrival email can still go to. */}
+                    {askable.includes(p) && (
+                      <input
+                        type="checkbox"
+                        checked={picked.includes(p.id!)}
+                        onChange={() => toggleOne(p.id!)}
+                        aria-label={t("selectToAsk", { name: p.name })}
+                        style={{ cursor: "pointer" }}
+                      />
+                    )}
+                  </span>
                   <span style={{ fontWeight: 700, color: COLORS.textSecondary }}>#{p.rank}</span>
                   <span style={{ color: COLORS.textSecondary }}>{p.registeredAt ? fmtDateTime(p.registeredAt) : "—"}</span>
                   <span style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
@@ -1110,7 +1232,7 @@ function TournamentDetail({
                       }
                       emailLabel={t("resendConfirmation", { name: p.name })}
                       onEdit={() => openParticipant(p)}
-                      onDelete={() => setDeletingParticipant(p)}
+                      onDelete={p.payment ? undefined : () => setDeletingParticipant(p)}
                     />
                   ) : (
                     <span />
@@ -1136,7 +1258,8 @@ function TournamentDetail({
                 <ActionButton
                   className="jt-btn-ghost"
                   style={{ ...secondaryButtonStyle, padding: "6px 12px" }}
-                  onClick={() => update("tournament-registrations", r.id, { status: "Approved" })}
+                  /* Back in, and asked again whether they are coming. */
+                  onClick={() => update("tournament-registrations", r.id, { status: "Approved", arrival_status: "Pending" })}
                 >
                   {t("restorePlace")}
                 </ActionButton>
@@ -1184,6 +1307,21 @@ function TournamentDetail({
         />
       )}
 
+      {askingAll && (
+        <ConfirmModal
+          title={t("sendArrivalAllTitle")}
+          prompt={t("sendArrivalAllPrompt", { count: chosen.length })}
+          confirmLabel={t("sendArrivalAllConfirm")}
+          failedText={t("resendFailed")}
+          onClose={() => setAskingAll(false)}
+          onConfirm={async () => {
+            await api.post(`tournaments/${tournament.id}/arrival-reminders`, { registration_ids: chosen.map((p) => p.id) });
+            setAskingAll(false);
+            setPicked([]);
+            await refresh();
+          }}
+        />
+      )}
       {/* Removing an age group somebody is already in. Staged like the rest of
           the edit — this agrees to the removal, Save is what commits it, and
           Cancel on the edit still discards the whole thing. */}
@@ -1322,7 +1460,7 @@ export function TournamentPage({
   const t = useTranslations("tournament");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
-  const { tournaments, batch, remove } = useData();
+  const { tournaments, raw, batch, remove } = useData();
   /* In the address bar, so a refresh, a shared link and the Back button all
      land on the tournament that was open rather than the list. */
   const [selectedId, setSelectedId] = useUrlBackedState<string>("id", detailId ?? "", TAB_PARAM, "push");
@@ -1374,6 +1512,18 @@ export function TournamentPage({
   );
 
   const selected = tournaments.find((t) => t.id === selectedId) ?? null;
+  /* Tournaments with any entry that was billed — paid, unpaid or void. Their
+     payments are kept for good, so they cannot be deleted, and offer no trash. */
+  const billed = useMemo(() => {
+    const regTournament = new Map(
+      (raw.tournamentRegistrations ?? []).map((r) => [String(r["tournament_registration_id"]), String(r["tournament_id"])]),
+    );
+    return new Set(
+      (raw.payments ?? [])
+        .map((p) => regTournament.get(String(p["tournament_registration_id"] ?? "")))
+        .filter((id): id is string => Boolean(id)),
+    );
+  }, [raw.tournamentRegistrations, raw.payments]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -1406,7 +1556,7 @@ export function TournamentPage({
           initialTab={detailTab}
           startInEditing={editFromList}
           onBack={() => setSelectedId("")}
-          onDelete={() => setDeleting(selected)}
+          onDelete={billed.has(selected.id) ? undefined : () => setDeleting(selected)}
         />
         {dialogs}
       </>
@@ -1473,7 +1623,7 @@ export function TournamentPage({
                           <UpdateResultsButton tournamentId={item.id} compact />
                         </>
                       ) : null}
-                      <RowActions label={item.name} onEdit={() => openEdit(item)} onDelete={() => setDeleting(item)} />
+                      <RowActions label={item.name} onEdit={() => openEdit(item)} onDelete={billed.has(item.id) ? undefined : () => setDeleting(item)} />
                     </span>
                   </TableRow>
                 );
@@ -1522,7 +1672,7 @@ export function TournamentPage({
                     <RowActions
                       label={item.name}
                       onEdit={() => openEdit(item)}
-                      onDelete={() => setDeleting(item)}
+                      onDelete={billed.has(item.id) ? undefined : () => setDeleting(item)}
                     />
                   </div>
                 </Card>

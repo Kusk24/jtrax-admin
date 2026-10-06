@@ -394,6 +394,56 @@ describe("editing a participant", () => {
     await waitFor(() => expect(update).toHaveBeenCalledWith("payments", "pay_1", { status: "Pending" }));
   });
 
+  it("offers no delete for a participant with a payment on file", async () => {
+    const t = withEntry();
+    t.participants = [
+      ...t.participants,
+      { ...t.participants[0], id: "treg_2", name: "Bob", payment: undefined, paymentStatus: "Pending" },
+    ] as Tournament["participants"];
+    tournaments = [t];
+    const user = openDetail();
+    await user.click(screen.getByRole("button", { name: /^participants/i }));
+    expect(screen.queryByRole("button", { name: /^Delete Alice/ })).toBeNull();
+    expect(screen.getByRole("button", { name: /^Delete Bob/ })).toBeTruthy();
+  });
+
+  it("ticks those still to answer and sends the arrival email to them", async () => {
+    const t = withEntry();
+    t.participants = [
+      ...t.participants,
+      { ...t.participants[0], id: "treg_2", name: "Bob", arrival: "Confirmed" },
+    ] as Tournament["participants"];
+    tournaments = [t];
+    post.mockClear();
+    const user = openDetail();
+    await user.click(screen.getByRole("button", { name: /^participants/i }));
+    expect(screen.queryByRole("checkbox", { name: "Select Bob" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Send arrival email/ })).toBeNull();
+    await user.click(screen.getByRole("checkbox", { name: en.tournament.selectAllToAsk }));
+    expect((screen.getByRole("checkbox", { name: "Select Alice" }) as HTMLInputElement).checked).toBe(true);
+    await user.click(screen.getByRole("button", { name: "Send arrival email (1)" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: en.tournament.sendArrivalAllConfirm }));
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith(`tournaments/${TOURNAMENT_ID}/arrival-reminders`, { registration_ids: ["treg_1"] }),
+    );
+  });
+
+  it("releases the place when the player is not attending", async () => {
+    tournaments = [withEntry()];
+    update.mockClear();
+    post.mockClear();
+    const user = openDetail();
+    await user.click(screen.getByRole("button", { name: /^participants/i }));
+    await user.click(screen.getByRole("button", { name: /^Edit Alice/ }));
+    const dialog = within(screen.getByRole("dialog"));
+    await user.selectOptions(dialog.getByLabelText(/^Attending/), "NotAttending");
+    expect(dialog.getByText(en.tournament.cancelReleases)).toBeTruthy();
+    await user.click(dialog.getByRole("button", { name: /^Save/ }));
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("tournament-registrations/treg_1/release", { reason: "notAttending" }),
+    );
+  });
+
   it("releases the place when the fee is cancelled", async () => {
     tournaments = [withEntry()];
     update.mockClear();
