@@ -357,6 +357,10 @@ function TournamentDetail({
               label: t("arrivalStatus"),
               kind: "select" as const,
               options: ARRIVAL.map((a) => ({ value: a, label: t(`arrival${a}`) })),
+              help:
+                participantValues.arrival_status === "NotAttending" && participantModal?.arrival !== "NotAttending"
+                  ? t("cancelReleases")
+                  : undefined,
             },
           ]
         : []),
@@ -676,6 +680,16 @@ function TournamentDetail({
                    the desk takes it, which needs how it was paid. */
                 if (!(DESK_METHODS as readonly string[]).includes(method)) throw new Error(t("needDeskMethod"));
                 await api.post(`tournament-registrations/${participantModal.id}/desk-payment`, { payment_method: method });
+                await refresh();
+              }
+              /* Not coming: the place goes to Released places, as a cancelled
+                 fee's does — paid or not; a paid fee stays paid. */
+              if (
+                entry.arrival_status === "NotAttending" &&
+                participantModal.arrival !== "NotAttending" &&
+                !(status === "Cancelled" && pay?.status !== "Cancelled")
+              ) {
+                await api.post(`tournament-registrations/${participantModal.id}/release`, { reason: "notAttending" });
                 await refresh();
               }
             }
@@ -1136,7 +1150,8 @@ function TournamentDetail({
                 <ActionButton
                   className="jt-btn-ghost"
                   style={{ ...secondaryButtonStyle, padding: "6px 12px" }}
-                  onClick={() => update("tournament-registrations", r.id, { status: "Approved" })}
+                  /* Back in, and asked again whether they are coming. */
+                  onClick={() => update("tournament-registrations", r.id, { status: "Approved", arrival_status: "Pending" })}
                 >
                   {t("restorePlace")}
                 </ActionButton>

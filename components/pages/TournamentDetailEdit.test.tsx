@@ -394,6 +394,22 @@ describe("editing a participant", () => {
     await waitFor(() => expect(update).toHaveBeenCalledWith("payments", "pay_1", { status: "Pending" }));
   });
 
+  it("releases the place when the player is not attending", async () => {
+    tournaments = [withEntry()];
+    update.mockClear();
+    post.mockClear();
+    const user = openDetail();
+    await user.click(screen.getByRole("button", { name: /^participants/i }));
+    await user.click(screen.getByRole("button", { name: /^Edit Alice/ }));
+    const dialog = within(screen.getByRole("dialog"));
+    await user.selectOptions(dialog.getByLabelText(/^Attending/), "NotAttending");
+    expect(dialog.getByText(en.tournament.cancelReleases)).toBeTruthy();
+    await user.click(dialog.getByRole("button", { name: /^Save/ }));
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("tournament-registrations/treg_1/release", { reason: "notAttending" }),
+    );
+  });
+
   it("releases the place when the fee is cancelled", async () => {
     tournaments = [withEntry()];
     update.mockClear();
