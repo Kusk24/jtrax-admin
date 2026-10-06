@@ -1087,7 +1087,18 @@
     "reviewCategoryCount": "{count, plural, one {# category} other {# categories}}",
     "reviewNoCategories": "No categories",
     "reviewAttached": "Regulation attached",
-    "reviewNoRegulation": "No regulation document"
+    "reviewNoRegulation": "No regulation document",
+    "filterAllCategories": "All categories",
+    "filterAllPayments": "All payments",
+    "filterAllAttending": "All attending",
+    "registeredFrom": "Registered from",
+    "registeredTo": "Registered to",
+    "clearFilters": "Clear filters",
+    "shownOf": "{shown} of {total}",
+    "sendArrivalAll": "Send arrival email ({count})",
+    "sendArrivalAllTitle": "Send arrival email",
+    "sendArrivalAllPrompt": "Ask {count} participants who have not answered yet?",
+    "sendArrivalAllConfirm": "Send"
   },
   "announcement": {
     "title": "Announcement",

@@ -1087,7 +1087,18 @@
     "reviewCategoryCount": "{count} รุ่น",
     "reviewNoCategories": "ยังไม่มีรุ่น",
     "reviewAttached": "แนบระเบียบการแล้ว",
-    "reviewNoRegulation": "ไม่มีเอกสารระเบียบการ"
+    "reviewNoRegulation": "ไม่มีเอกสารระเบียบการ",
+    "filterAllCategories": "ทุกรุ่น",
+    "filterAllPayments": "ทุกสถานะการชำระ",
+    "filterAllAttending": "ทุกสถานะการเข้าร่วม",
+    "registeredFrom": "ลงทะเบียนตั้งแต่",
+    "registeredTo": "ลงทะเบียนถึง",
+    "clearFilters": "ล้างตัวกรอง",
+    "shownOf": "{shown} จาก {total}",
+    "sendArrivalAll": "ส่งอีเมลยืนยันการเข้าร่วม ({count})",
+    "sendArrivalAllTitle": "ส่งอีเมลยืนยันการเข้าร่วม",
+    "sendArrivalAllPrompt": "ส่งถึงผู้เข้าแข่งขัน {count} คนที่ยังไม่ตอบ?",
+    "sendArrivalAllConfirm": "ส่ง"
   },
   "announcement": {
     "title": "ประกาศ",
