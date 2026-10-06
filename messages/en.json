@@ -406,9 +406,8 @@
     "consistentRule": "{days}+ of {window} days",
     "filterByCourse": "Filter by course",
     "classesThatWeek": "Classes that week",
-    "todayCharge": "−{credits} today",
-    "leftAfter": "{credits} left",
-    "usedToday": "{credits} used today"
+    "creditsUsing": "−{credits} using",
+    "creditsUsed": "−{credits} used"
   },
   "find": {
     "title": "Find a Student",

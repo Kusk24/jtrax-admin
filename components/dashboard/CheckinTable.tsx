@@ -261,10 +261,9 @@ export function CheckinTable() {
           {visible.map((row) => {
           /* In class: the balance before today, and what today costs after
              it ("20  − 1.5"). Checked out: the balance that is left. */
-          const charge = row.status === "In class" ? (row.charge ?? 0) : 0;
           const used = row.charge ?? 0;
-          const shown = row.credit + charge;
-          const credit = creditColors(shown);
+          /* The colour is the balance after today's class. */
+          const credit = creditColors(row.credit);
           const status = statusChipColors(row.status === "In class" ? "Ongoing" : "Dismissed");
           const canCheckOut = isToday && row.status === "In class" && Boolean(row.attendanceId);
           const ticked = Boolean(row.attendanceId) && chosen.includes(row.attendanceId!);
@@ -305,25 +304,22 @@ export function CheckinTable() {
                 </span>
               </span>
 
-              {/* Two lines: the balance in bold, and under it what today does —
-                  "−1.5 today → 18.5 left" while in class, "1.5 used today"
-                  once checked out. */}
+              {/* Two lines: before → after today's class, and under it what
+                  the class costs — "−2 using" while in class, "−2 used" once
+                  checked out. Nothing charged yet: just the balance. */}
               <span style={{ justifySelf: "start", display: "flex", flexDirection: "column", gap: 2, fontVariantNumeric: "tabular-nums", minWidth: 0 }}>
-                <span style={{ fontWeight: 700, color: credit.color }}>
-                  {tCommon("creditsCount", { count: fmtCredits(shown) })}
+                <span style={{ display: "inline-flex", alignItems: "baseline", gap: 6, whiteSpace: "nowrap" }}>
+                  {used > 0 && (
+                    <>
+                      <span style={{ color: COLORS.textSecondary }}>{fmtCredits(row.credit + used)}</span>
+                      <span aria-hidden style={{ color: COLORS.textSecondary }}>→</span>
+                    </>
+                  )}
+                  <span style={{ fontWeight: 700, color: credit.color }}>{fmtCredits(row.credit)}</span>
                 </span>
                 {used > 0 && (
                   <span style={{ fontSize: 12, color: COLORS.textSecondary, whiteSpace: "nowrap" }}>
-                    {charge > 0 ? (
-                      <>
-                        {t("todayCharge", { credits: fmtCredits(charge) })}{" → "}
-                        <span style={{ fontWeight: 600, color: row.credit < 0 ? COLORS.danger : COLORS.text }}>
-                          {t("leftAfter", { credits: fmtCredits(row.credit) })}
-                        </span>
-                      </>
-                    ) : (
-                      t("usedToday", { credits: fmtCredits(used) })
-                    )}
+                    {t(row.status === "In class" ? "creditsUsing" : "creditsUsed", { credits: fmtCredits(used) })}
                   </span>
                 )}
               </span>
