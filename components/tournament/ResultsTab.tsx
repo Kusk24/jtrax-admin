@@ -40,6 +40,8 @@ import { groupsIn, roundsInGroup, standingsInGroup } from "@/lib/tournament-roun
 import { primaryButtonStyle, secondaryButtonStyle } from "../page-kit";
 import { Badge, Card, SectionTitle } from "../ui";
 import { ParticipantProfile, type ProfileTarget, type ResultsLink } from "./ParticipantProfile";
+import { jcaByRow, withLinkedStudents } from "@/lib/participant-results";
+import { useSectionResults } from "@/lib/use-section-results";
 import { ResultsTable } from "./ResultsTable";
 
 export function ResultsTab({
@@ -117,6 +119,7 @@ export function ResultsTab({
         <ConnectedResults
           tournamentId={tournamentId}
           tournamentName={tournamentName}
+          participants={participants}
           sections={sections}
           registration={categories}
           totalRounds={sections.rounds || totalRounds}
@@ -257,6 +260,7 @@ function ConnectCard({
 function ConnectedResults({
   tournamentId,
   tournamentName,
+  participants,
   sections,
   registration,
   totalRounds,
@@ -268,6 +272,7 @@ function ConnectedResults({
 }: {
   tournamentId: string;
   tournamentName: string;
+  participants: Participant[];
   sections: ResultSections;
   registration: Array<{ id: string; name: string }>;
   totalRounds: number;
@@ -280,6 +285,12 @@ function ConnectedResults({
   onChecking: (on: boolean) => void;
 }) {
   const t = useTranslations("resultsLink");
+  /* Who is a JCA student in these results: a player linked to a participant
+     who is one — the profile's own matching, across every category. */
+  const { loaded } = useSectionResults(tournamentId);
+  const jca = useMemo(() => jcaByRow(participants, loaded?.data ?? []), [participants, loaded]);
+  /* A category's JCA students, by the same links. */
+  const jcaIn = (sectionId: number) => [...jca.keys()].filter((k) => k.startsWith(`${sectionId}|`)).length;
   const [changing, setChanging] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -415,12 +426,12 @@ function ConnectedResults({
               }}
             >
               {s.name}
-              {s.academyPlayers > 0 && (
+              {jcaIn(s.chessResultsId) > 0 && (
                 <span
-                  title={t("jcaCount", { count: s.academyPlayers })}
+                  title={t("jcaCount", { count: jcaIn(s.chessResultsId) })}
                   style={{ borderRadius: 999, padding: "1px 7px", fontSize: 11.5, fontWeight: 700, background: COLORS.successBg, color: COLORS.success }}
                 >
-                  {s.academyPlayers}
+                  {jcaIn(s.chessResultsId)}
                 </span>
               )}
             </button>
@@ -438,13 +449,21 @@ function ConnectedResults({
           sectionName={current.name}
           chessResultsId={current.chessResultsId}
           totalRounds={totalRounds}
+          jca={jca}
           onOpenPlayer={(name) => onOpenPlayer({ sectionId: current.chessResultsId, name })}
           onRefreshed={(r) =>
             onChange({
               ...sections,
               sections: sections.sections.map((s) =>
                 s.chessResultsId === current.chessResultsId
-                  ? { ...s, tracked: true, stage: r.stage, fetchedAt: r.fetchedAt, players: r.standings.length, academyPlayers: r.standings.filter((x) => x.studentId).length }
+                  ? {
+                      ...s,
+                      tracked: true,
+                      stage: r.stage,
+                      fetchedAt: r.fetchedAt,
+                      players: r.standings.length,
+                      academyPlayers: withLinkedStudents(r, current.chessResultsId, jca).standings.filter((x) => x.studentId).length,
+                    }
                   : s,
               ),
             })
@@ -480,6 +499,7 @@ function SectionResults({
   sectionName,
   chessResultsId,
   totalRounds,
+  jca,
   onRefreshed,
   onOpenPlayer,
 }: {
@@ -488,6 +508,8 @@ function SectionResults({
   sectionName: string;
   chessResultsId: number;
   totalRounds: number;
+  /** JCA students by category and name, from the participant links. */
+  jca: Map<string, string>;
   onRefreshed: (r: LinkedResults) => void;
   onOpenPlayer: (name: string) => void;
 }) {
@@ -527,8 +549,11 @@ function SectionResults({
     }
   }
 
-  const allStandings = useMemo(() => data?.standings ?? [], [data]);
-  const allRounds = useMemo(() => data?.rounds ?? [], [data]);
+  /* The results, with who is a JCA student taken from the participant links:
+     the highlight, the badge, the boards and the filter all read this. */
+  const marked = useMemo(() => (data ? withLinkedStudents(data, chessResultsId, jca) : data), [data, chessResultsId, jca]);
+  const allStandings = useMemo(() => marked?.standings ?? [], [marked]);
+  const allRounds = useMemo(() => marked?.rounds ?? [], [marked]);
   const groups = useMemo(() => groupsIn(allStandings), [allStandings]);
   const inGroup = group && groups.includes(group);
 
