@@ -319,7 +319,7 @@
     "createSessionSub": "เพิ่มคลาสใหม่ในตารางวันนี้",
     "todaysCheckin": "การเช็คอินวันนี้",
     "studentCount": "นักเรียน {count} คน",
-    "colCredit": "เครดิต",
+    "colCredit": "เครดิตคงเหลือ",
     "colArrival": "เวลาเข้า",
     "colDismissal": "เช็คเอาท์",
     "dismiss": "เช็คเอาท์",
@@ -405,7 +405,8 @@
     "playingConsistently": "เล่นสม่ำเสมอ",
     "consistentRule": "{days}+ จาก {window} วัน",
     "filterByCourse": "กรองตามคอร์ส",
-    "classesThatWeek": "คลาสในสัปดาห์นั้น"
+    "classesThatWeek": "คลาสในสัปดาห์นั้น",
+    "chargeToday": "{credits} เครดิตสำหรับคลาสวันนี้"
   },
   "find": {
     "title": "ค้นหานักเรียน",
@@ -501,7 +502,9 @@
     "durationMinutesRange": "นาทีต้องอยู่ระหว่าง 0 ถึง 59",
     "bookedCount": "จองไว้ ({count})",
     "bookedHelp": "ยังไม่ได้เช็คอิน ระบบจะเช็คอินและหักเครดิตเมื่อคลาสเริ่ม",
-    "bookingProblem": "เช็คอินไม่สำเร็จเมื่อคลาสเริ่ม: {reason}"
+    "bookingProblem": "เช็คอินไม่สำเร็จเมื่อคลาสเริ่ม: {reason}",
+    "checkInSelected": "เช็คอิน {count} คน",
+    "bookSelected": "จองให้ {count} คน"
   },
   "earlyCheckout": {
     "titleOne": "เช็คเอาท์ {name} ก่อนเวลาใช่ไหม?",

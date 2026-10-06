@@ -31,7 +31,7 @@ import { COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
    this file used to carry its own near-identical copies. */
 import { ActionButton } from "../crud";
 import { useData } from "../DataProvider";
-import { fieldStyle, labelStyle, Req, selectStyle } from "../page-kit";
+import { fieldStyle, labelStyle, primaryButtonStyle, Req, selectStyle } from "../page-kit";
 import { Avatar } from "../ui";
 import { useErrorToast } from "../ErrorToast";
 import { DurationField } from "./DurationField";
@@ -837,6 +837,9 @@ function ViewClass({ def: opened, onClose }: { def: ClassDef; onClose: () => voi
   const roster = def.roster;
   const [addOpen, setAddOpen] = useState(false);
   const [search, setSearch] = useState("");
+  /* Ticked in the Add Students list, added together with one press. */
+  const [toAdd, setToAdd] = useState<string[]>([]);
+  const [adding, setAdding] = useState(false);
   const status = statusChipColors(shownStatus);
 
   /* Latecomers are the point of this panel: a student who turns up after the
@@ -1028,6 +1031,7 @@ function ViewClass({ def: opened, onClose }: { def: ClassDef; onClose: () => voi
                   onClick={() => {
                     setAddOpen(false);
                     setSearch("");
+                    setToAdd([]);
                   }}
                   aria-label={tCommon("close")}
                   style={{ display: "inline-flex", border: "none", background: "transparent", cursor: "pointer", color: COLORS.textSecondary, padding: 0 }}
@@ -1055,11 +1059,18 @@ function ViewClass({ def: opened, onClose }: { def: ClassDef; onClose: () => voi
                   const insufficient =
                     !clash && !expired && cost > 0 && student.credit - cost < -creditRules.maxNegativeCredit;
                   const blocked = clash || expired || insufficient;
+                  /* Within the negative limit but short: a warning, as in Create Class. */
+                  const short = !blocked && cost > 0 && student.credit < cost;
+                  const ticked = toAdd.includes(student.id);
                   return (
-                    <ActionButton
+                    <button
                       key={student.id}
+                      type="button"
                       className="jt-find-row"
-                      disabled={blocked}
+                      role="checkbox"
+                      aria-checked={ticked}
+                      aria-label={student.name}
+                      disabled={blocked || adding}
                       title={
                         clash
                           ? t("inOtherClassTitle", { className: clashWith })
@@ -1067,30 +1078,13 @@ function ViewClass({ def: opened, onClose }: { def: ClassDef; onClose: () => voi
                           ? t("creditsExpiredTitle")
                           : insufficient
                             ? t("insufficientCreditsTitle", { credits: fmtCredits(student.credit) })
-                            : undefined
+                            : short
+                              ? t("willGoNegative", { credits: fmtCredits(student.credit) })
+                              : undefined
                       }
-                      onClick={async () => {
-                        try {
-                          if (booking) {
-                            await create("session-bookings", { student_id: student.id, session_id: def.id });
-                          } else {
-                            await create("attendance", {
-                              student_id: student.id,
-                              session_id: def.id,
-                              check_in_time: new Date().toISOString(),
-                            });
-                          }
-                        } catch (e) {
-                          /* The server itself refuses an expired or
-                             over-the-limit check-in now (chargeAttendance()
-                             in the backend's credits.go), so this UI-level
-                             disable is a courtesy, not the only guard — a
-                             race or a stale list still surfaces the server's
-                             own message here rather than swallowing it. */
-                          showError(tCommon("checkInFailed"), e);
-                        }
-                        setSearch("");
-                      }}
+                      onClick={() =>
+                        setToAdd((prev) => (prev.includes(student.id) ? prev.filter((x) => x !== student.id) : [...prev, student.id]))
+                      }
                       style={{
                         display: "flex",
                         alignItems: "center",
@@ -1098,17 +1092,34 @@ function ViewClass({ def: opened, onClose }: { def: ClassDef; onClose: () => voi
                         padding: "8px 10px",
                         borderRadius: 9,
                         border: "none",
-                        background: "transparent",
+                        background: ticked ? COLORS.light : "transparent",
                         cursor: blocked ? "not-allowed" : "pointer",
                         opacity: blocked ? 0.6 : 1,
                         textAlign: "left",
                       }}
                     >
+                      {/* The tick circle: empty, or filled with a check. */}
+                      <span
+                        aria-hidden
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          width: 20,
+                          height: 20,
+                          borderRadius: "50%",
+                          flexShrink: 0,
+                          border: `1.5px solid ${ticked ? COLORS.blue : COLORS.border}`,
+                          background: ticked ? COLORS.blue : COLORS.surface,
+                        }}
+                      >
+                        {ticked && <Icon name="check" size={12} color={COLORS.surface} />}
+                      </span>
                       <Avatar initials={initialsOf(student.name)} size={26} />
                       <span style={{ flex: 1, fontFamily: FONT, fontSize: 14, color: COLORS.text }}>
                         {student.name}
                       </span>
-                      {blocked ? (
+                      {blocked && (
                         <span style={{ fontFamily: FONT, fontSize: 12.5, fontWeight: 600, color: COLORS.danger }}>
                           {clash
                             ? t("inOtherClass", { className: clashWith })
@@ -1116,13 +1127,59 @@ function ViewClass({ def: opened, onClose }: { def: ClassDef; onClose: () => voi
                               ? t("creditsExpired")
                               : t("insufficientCredits")}
                         </span>
-                      ) : (
-                        <Icon name="plus" size={15} color={COLORS.blue} />
                       )}
-                    </ActionButton>
+                      {/* What they have to spend, as in Create Class. */}
+                      <span
+                        style={{
+                          fontFamily: FONT,
+                          fontSize: 12.5,
+                          fontWeight: short || blocked ? 600 : 400,
+                          color: short || blocked ? COLORS.danger : COLORS.textSecondary,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {tCommon("creditsCount", { count: fmtCredits(student.credit) })}
+                      </span>
+                    </button>
                   );
                 })}
               </div>
+              {toAdd.length > 0 && (
+                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
+                  <button
+                    type="button"
+                    className="jt-btn-primary"
+                    style={primaryButtonStyle}
+                    disabled={adding}
+                    onClick={async () => {
+                      setAdding(true);
+                      for (const studentId of toAdd) {
+                        try {
+                          if (booking) {
+                            await create("session-bookings", { student_id: studentId, session_id: def.id });
+                          } else {
+                            await create("attendance", {
+                              student_id: studentId,
+                              session_id: def.id,
+                              check_in_time: new Date().toISOString(),
+                            });
+                          }
+                        } catch (e) {
+                          /* The server refuses an expired or over-the-limit
+                             check-in itself (credits.go); its reason is shown
+                             rather than swallowed. The rest still go in. */
+                          showError(tCommon("checkInFailed"), e);
+                        }
+                      }
+                      setToAdd([]);
+                      setSearch("");
+                      setAdding(false);
+                    }}
+                  >
+                    {t(booking ? "bookSelected" : "checkInSelected", { count: toAdd.length })}
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <button type="button" className="jt-btn-ghost" style={ghostBtn} onClick={() => setAddOpen(true)}>

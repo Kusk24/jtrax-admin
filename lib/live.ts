@@ -674,12 +674,28 @@ export function toCheckins(c: LiveCollections, day = todayISO()): CheckinDef[] {
       const student = c.students.find((st) => s(st, "student_id") === studentId);
       const session = todaysSessions.find((x) => s(x, "session_id") === s(a, "session_id"));
       const cls = session ? c.classes.find((k) => s(k, "class_id") === s(session, "class_id")) : undefined;
-      const enr = c.enrollments.find((e) => s(e, "student_id") === studentId);
+      /* The balance of the course this class belongs to — the one the visit
+         is charged to — not whichever enrolment the child happens to have
+         first, which put one course's balance on every row. */
+      const classId = session ? s(session, "class_id") : "";
+      const mine = c.enrollments.filter((e) => s(e, "student_id") === studentId);
+      const enr =
+        mine.find((e) => s(e, "class_id") === classId && isActiveEnrolment(e)) ??
+        mine.find((e) => s(e, "class_id") === classId) ??
+        mine[0];
       const credit = enr
         ? c.creditTransactions
             .filter((t) => s(t, "enrollment_id") === s(enr, "enrollment_id"))
             .reduce((sum, t) => sum + n(t, "amount"), 0)
         : 0;
+      /* What this visit costs: charged at check-in (to the class's end), then
+         re-charged at check-out for the time actually attended. */
+      const charge = Math.max(
+        0,
+        -c.creditTransactions
+          .filter((t) => s(t, "attendance_id") === s(a, "attendance_id"))
+          .reduce((sum, t) => sum + n(t, "amount"), 0),
+      );
       const out = s(a, "check_out_time");
       return {
         attendanceId: s(a, "attendance_id"),
@@ -692,6 +708,7 @@ export function toCheckins(c: LiveCollections, day = todayISO()): CheckinDef[] {
         checkInAt: s(a, "check_in_time"),
         status: out ? "Dismissed" : "In class",
         credit,
+        charge,
       } satisfies CheckinDef;
     })
     .sort(byRegisterOrder);

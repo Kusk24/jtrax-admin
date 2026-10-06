@@ -259,7 +259,11 @@ export function CheckinTable() {
           minWidth={728}
         >
           {visible.map((row) => {
-          const credit = creditColors(row.credit);
+          /* In class: the balance before today, and what today costs after
+             it ("20  − 1.5"). Checked out: the balance that is left. */
+          const charge = row.status === "In class" ? (row.charge ?? 0) : 0;
+          const shown = row.credit + charge;
+          const credit = creditColors(shown);
           const status = statusChipColors(row.status === "In class" ? "Ongoing" : "Dismissed");
           const canCheckOut = isToday && row.status === "In class" && Boolean(row.attendanceId);
           const ticked = Boolean(row.attendanceId) && chosen.includes(row.attendanceId!);
@@ -300,9 +304,17 @@ export function CheckinTable() {
                 </span>
               </span>
 
-              <Badge color={credit.color} bg={credit.bg} style={{ justifySelf: "start" }}>
-                {fmtCredits(row.credit)}
-              </Badge>
+              <span
+                title={charge > 0 ? t("chargeToday", { credits: fmtCredits(charge) }) : undefined}
+                style={{ justifySelf: "start", display: "inline-flex", alignItems: "baseline", gap: 10, fontVariantNumeric: "tabular-nums" }}
+              >
+                <span style={{ fontWeight: 700, color: credit.color }}>
+                  {fmtCredits(shown)}
+                </span>
+                {charge > 0 && (
+                  <span style={{ fontSize: 12.5, color: COLORS.textSecondary }}>− {fmtCredits(charge)}</span>
+                )}
+              </span>
 
               <span style={{ display: "flex", alignItems: "center", color: COLORS.textSecondary }}>
                 <ClassDot color={classDotColor(row.class)} />

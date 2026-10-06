@@ -319,7 +319,7 @@
     "createSessionSub": "Put a new class on today's timetable",
     "todaysCheckin": "Today's Check-in",
     "studentCount": "{count} students",
-    "colCredit": "Credit",
+    "colCredit": "Credit Balance",
     "colArrival": "Arrival",
     "colDismissal": "Check-out",
     "dismiss": "Check Out",
@@ -405,7 +405,8 @@
     "playingConsistently": "Playing consistently",
     "consistentRule": "{days}+ of {window} days",
     "filterByCourse": "Filter by course",
-    "classesThatWeek": "Classes that week"
+    "classesThatWeek": "Classes that week",
+    "chargeToday": "{credits} credits for today's class"
   },
   "find": {
     "title": "Find a Student",
@@ -501,7 +502,9 @@
     "durationMinutesRange": "Minutes go from 0 to 59.",
     "bookedCount": "Booked ({count})",
     "bookedHelp": "Not checked in yet. They're checked in, and their credits used, when the class starts.",
-    "bookingProblem": "Not checked in at the start: {reason}"
+    "bookingProblem": "Not checked in at the start: {reason}",
+    "checkInSelected": "Check in {count, plural, one {# student} other {# students}}",
+    "bookSelected": "Book {count, plural, one {# student} other {# students}}"
   },
   "earlyCheckout": {
     "titleOne": "Check out {name} early?",
