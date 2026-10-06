@@ -48,7 +48,8 @@
     "Withdrawn": "ถอนการลงทะเบียน",
     "Scheduled": "ตามกำหนดการ",
     "Deleted": "ลบแล้ว",
-    "Cancelled": "ยกเลิกแล้ว"
+    "Cancelled": "ยกเลิกแล้ว",
+    "Unpaid": "ยังไม่ชำระ"
   },
   "classType": {
     "Private": "ตัวต่อตัว",
@@ -128,7 +129,7 @@
     "entryFee": "ค่าสมัคร",
     "payment": "การชำระเงิน",
     "paid": "ชำระแล้ว",
-    "unpaid": "รอชำระ",
+    "unpaid": "ยังไม่ชำระ",
     "rating": "เรตติ้ง {rating}",
     "onChessResults": "ชื่อบน Chess-Results: {name}",
     "jcaStudent": "นักเรียน JCA",
@@ -1010,7 +1011,7 @@
     "previewNoPortal": "ตัวอย่างต้องใช้ที่อยู่ของพอร์ทัล ตั้งค่า NEXT_PUBLIC_PORTAL_URL ใน .env.local (เช่น http://localhost:3001) แล้วรีสตาร์ทคอนโซล",
     "age": "อายุ",
     "paid": "ชำระแล้ว",
-    "unpaid": "รอชำระ",
+    "unpaid": "ยังไม่ชำระ",
     "ageCheckFlag": "ตรวจอายุ",
     "ageCheck": {
       "tooOld": "วันเกิดในแบบฟอร์มเกินเกณฑ์อายุของรุ่นนี้",
@@ -1055,11 +1056,21 @@
       "noResponse": "ไม่ตอบกลับ"
     },
     "paymentStatus": "สถานะการชำระเงิน",
-    "noPaymentYet": "ยังไม่มีการชำระ",
+    "noPaymentYet": "ยังไม่ชำระ",
     "ageFromDob": "คำนวณจากวันเกิด",
-    "needDeskMethod": "เลือกเงินสด พร้อมเพย์ หรือโอนเงิน เพื่อบันทึกว่าชำระแล้ว",
+    "needDeskMethod": "เลือกวิธีชำระ (บัตร เงินสด พร้อมเพย์ หรือโอนเงิน) เพื่อบันทึกว่าชำระแล้ว",
     "methodCreditCard": "บัตร",
-    "cancelled": "ยกเลิก"
+    "cancelled": "ยกเลิก",
+    "dupStudentEntered": "{name} สมัครรายการนี้แล้ว",
+    "dupStudentPending": "{name} มีใบสมัครรายการนี้ที่รอการอนุมัติอยู่แล้ว",
+    "dupStudentReleased": "สิทธิ์ของ {name} ในรายการนี้ถูกยกเลิกไปแล้ว กรุณากู้คืนจากรายการที่ยกเลิกแทน",
+    "thisPlayer": "ผู้เล่นคนนี้",
+    "feeReason_earlyBird": "ราคา early bird",
+    "feeReason_student": "ราคานักเรียน JCA (ลด {pct}%)",
+    "feeReason_studentEarlyBird": "ราคานักเรียน JCA แบบ early bird",
+    "feeReason_studentEarlyBirdDiscount": "ราคานักเรียน JCA แบบ early bird ลด {pct}%",
+    "cancelReleases": "ย้ายไปที่รายการที่ยกเลิกแล้ว",
+    "fullWarning": "รายการนี้เต็มแล้ว ({taken} / {max}) การเพิ่มจะเกินจำนวนที่กำหนด"
   },
   "announcement": {
     "title": "ประกาศ",

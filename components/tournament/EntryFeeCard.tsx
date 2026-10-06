@@ -78,7 +78,7 @@ export function EntryFeeCard({
           color={paid ? COLORS.success : COLORS.warning}
           bg={paid ? COLORS.successBg : COLORS.warningBg}
         >
-          {tStatus(paid ? "Paid" : "Pending")}
+          {tStatus(paid ? "Paid" : "Unpaid")}
         </Badge>
       </div>
 

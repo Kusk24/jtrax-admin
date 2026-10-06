@@ -55,3 +55,29 @@ export function ageCheck(opts: {
   if (opts.scannedDateOfBirth && opts.dateOfBirth && opts.scannedDateOfBirth !== opts.dateOfBirth) return "dobDiffers";
   return null;
 }
+
+/**
+ * The category to suggest for a date of birth: the youngest group the player
+ * can still enter by birth year. Nothing when two groups tie for that (U8
+ * Boys and U8 Girls — the desk knows which) or none fits. A tournament with
+ * no age groups at all, and a single open one, suggests that one.
+ */
+export function suggestCategory(
+  categories: Array<{ id: string; name: string }>,
+  dob: string,
+  startDate: string,
+): string {
+  if (!yearOf(dob)) return "";
+  const year = yearOf(startDate) || new Date().getFullYear();
+  const fits = categories.filter((c) => {
+    const limit = categoryAgeLimit(c.name);
+    return limit > 0 && yearOf(dob) >= year - limit;
+  });
+  if (fits.length > 0) {
+    const youngest = Math.min(...fits.map((c) => categoryAgeLimit(c.name)));
+    const best = fits.filter((c) => categoryAgeLimit(c.name) === youngest);
+    return best.length === 1 ? best[0].id : "";
+  }
+  const open = categories.filter((c) => categoryAgeLimit(c.name) === 0);
+  return open.length === 1 ? open[0].id : "";
+}

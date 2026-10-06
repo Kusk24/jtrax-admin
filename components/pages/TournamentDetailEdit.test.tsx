@@ -11,7 +11,7 @@
  * reading the code.
  */
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
@@ -83,12 +83,15 @@ const remove = vi.fn(async (_collection: string, _id: string) => undefined);
 const batch = vi.fn(async (job: () => Promise<unknown>) => job());
 
 let tournaments: Tournament[] = [makeTournament()];
+let registrations: Record<string, unknown>[] = [];
+let rawTournaments: Record<string, unknown>[] = [rawTournamentRow];
+let students: Array<Record<string, unknown>> = [];
 
 vi.mock("@/components/DataProvider", () => ({
   useData: () => ({
-    raw: { tournaments: [rawTournamentRow], tournamentCategories: [], tournamentRegistrations: [], students: [] },
+    raw: { tournaments: rawTournaments, tournamentCategories: [], tournamentRegistrations: registrations, students: [] },
     tournaments,
-    students: [],
+    students,
     create,
     update,
     remove,
@@ -96,6 +99,12 @@ vi.mock("@/components/DataProvider", () => ({
     refresh: vi.fn(),
   }),
 }));
+
+const { post } = vi.hoisted(() => ({ post: vi.fn(async (_path: string, _body: unknown) => ({})) }));
+vi.mock("@/lib/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api")>();
+  return { ...actual, api: { ...actual.api, post: (path: string, body: unknown) => post(path, body) } };
+});
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -356,7 +365,9 @@ describe("editing a participant", () => {
     const dialog = within(screen.getByRole("dialog"));
     expect((dialog.getByLabelText(/^Age/) as HTMLInputElement).readOnly).toBe(true);
     const statuses = Array.from((dialog.getByLabelText(/^Payment status/) as HTMLSelectElement).options).map((o) => o.value);
-    expect(statuses).toEqual(["", "Pending", "Paid", "Cancelled"]);
+    /* Pending and no payment are one choice to the desk: unpaid. */
+    expect(statuses).toEqual(["", "Paid", "Cancelled"]);
+    expect((dialog.getByLabelText(/^Payment status/) as HTMLSelectElement).value).toBe("");
     await user.selectOptions(dialog.getByLabelText(/^Payment status/), "Paid");
     await user.selectOptions(dialog.getByLabelText(/^Payment method/), "Cash");
     await user.selectOptions(dialog.getByLabelText(/^Attending/), "Confirmed");
@@ -366,6 +377,35 @@ describe("editing a participant", () => {
     const entry = update.mock.calls.find((c) => c[0] === "tournament-registrations")![2];
     expect(entry.arrival_status).toBe("Confirmed");
     expect(Object.keys(entry).some((k) => k.startsWith("pay_") || k.includes("age_shown"))).toBe(false);
+  });
+
+  it("puts a paid fee back to unpaid with No payment yet", async () => {
+    const paid = withEntry();
+    paid.participants[0] = { ...paid.participants[0], paymentStatus: "Paid", payment: { id: "pay_1", status: "Paid", method: "Cash" } };
+    tournaments = [paid];
+    update.mockClear();
+    const user = openDetail();
+    await user.click(screen.getByRole("button", { name: /^participants/i }));
+    await user.click(screen.getByRole("button", { name: /^Edit Alice/ }));
+    const dialog = within(screen.getByRole("dialog"));
+    expect((dialog.getByLabelText(/^Payment status/) as HTMLSelectElement).value).toBe("Paid");
+    await user.selectOptions(dialog.getByLabelText(/^Payment status/), "");
+    await user.click(dialog.getByRole("button", { name: /^Save/ }));
+    await waitFor(() => expect(update).toHaveBeenCalledWith("payments", "pay_1", { status: "Pending" }));
+  });
+
+  it("releases the place when the fee is cancelled", async () => {
+    tournaments = [withEntry()];
+    update.mockClear();
+    post.mockClear();
+    const user = openDetail();
+    await user.click(screen.getByRole("button", { name: /^participants/i }));
+    await user.click(screen.getByRole("button", { name: /^Edit Alice/ }));
+    const dialog = within(screen.getByRole("dialog"));
+    await user.selectOptions(dialog.getByLabelText(/^Payment status/), "Cancelled");
+    await user.click(dialog.getByRole("button", { name: /^Save/ }));
+    await waitFor(() => expect(post).toHaveBeenCalledWith("tournament-registrations/treg_1/release", {}));
+    expect(update.mock.calls.some((c) => c[0] === "payments")).toBe(false);
   });
 
   it("lays the form out in the desk's order, with no rating", async () => {
@@ -385,6 +425,36 @@ describe("editing a participant", () => {
     expect(labels).not.toContain(en.tournament.rating);
   });
 
+  it("lets one email enter another child, but says so for the same player and saves nothing", async () => {
+    tournaments = [withEntry()];
+    registrations = [
+      { tournament_registration_id: "treg_1", tournament_id: TOURNAMENT_ID, contact_email: "alice@example.com", participant_name: "Alice", participant_date_of_birth: "2019-03-01", status: "Approved" },
+      { tournament_registration_id: "treg_2", tournament_id: TOURNAMENT_ID, contact_email: "bob@example.com", participant_name: "Bob", participant_date_of_birth: "2019-03-01", status: "Approved" },
+    ];
+    update.mockClear();
+    const user = openDetail();
+    await user.click(screen.getByRole("button", { name: /^participants/i }));
+    await user.click(screen.getByRole("button", { name: /^Edit Alice/ }));
+    const dialog = within(screen.getByRole("dialog"));
+    const email = dialog.getByLabelText(/^Parent email/) as HTMLInputElement;
+    const name = dialog.getByLabelText(/^Name \(English\)/) as HTMLInputElement;
+    await user.clear(email);
+    await user.type(email, "BOB@example.com");
+    await user.clear(name);
+    await user.type(name, "bob");
+    await user.click(dialog.getByRole("button", { name: /^Save/ }));
+
+    expect(await dialog.findByText("Bob is already entered in this tournament.")).toBeDefined();
+    expect(update.mock.calls.some((c) => c[0] === "tournament-registrations")).toBe(false);
+
+    /* The same email for a different child is fine. */
+    await user.clear(name);
+    await user.type(name, "Alice");
+    await user.click(dialog.getByRole("button", { name: /^Save/ }));
+    await waitFor(() => expect(update.mock.calls.some((c) => c[0] === "tournament-registrations")).toBe(true));
+    registrations = [];
+  });
+
   it("can be started from the slide-in profile", async () => {
     tournaments = [withEntry()];
     const user = openDetail();
@@ -394,5 +464,78 @@ describe("editing a participant", () => {
     const edits = screen.getAllByRole("button", { name: en.common.edit });
     await user.click(edits[edits.length - 1]);
     expect(screen.getByRole("dialog").textContent).toContain(en.tournament.editParticipant);
+  });
+});
+
+/* The Add form fills the fee and the category in, and says why. */
+describe("adding a participant", () => {
+  const setUp = () => {
+    tournaments = [
+      makeTournament({
+        categoryRows: [{ id: "cat_8", name: "U8" }, { id: "cat_10", name: "U10" }],
+        categories: ["U8", "U10"],
+      }),
+    ];
+    rawTournaments = [{ ...rawTournamentRow, early_bird_deadline: "2099-01-01" }];
+    students = [{ id: "stu_penny", name: "Penny" }];
+  };
+  const tearDown = () => {
+    rawTournaments = [rawTournamentRow];
+    students = [];
+  };
+
+  it("fills the fee for who they are and the category from the date of birth", async () => {
+    setUp();
+    const user = openDetail();
+    await user.click(screen.getByRole("button", { name: /^participants/i }));
+    await user.click(screen.getByRole("button", { name: new RegExp(`^${en.tournament.addParticipant}`) }));
+    const dialog = within(screen.getByRole("dialog"));
+    const fee = dialog.getByLabelText(/^Fee charged/) as HTMLInputElement;
+
+    /* Paid at the desk's card machine, unless the desk says otherwise. */
+    expect((dialog.getByLabelText(/^Payment method/) as HTMLSelectElement).value).toBe("CreditCard");
+
+    /* Someone from outside, during the early bird. */
+    expect(fee.value).toBe("250");
+    expect(dialog.getByText(en.tournament.feeReason_earlyBird)).toBeDefined();
+
+    /* A JCA student: 20% off the regular 300. */
+    await user.selectOptions(dialog.getByLabelText(/^JCA student/), "stu_penny");
+    expect(fee.value).toBe("240");
+    expect(dialog.getByText("JCA student fee (20% off)")).toBeDefined();
+
+    /* Born 2019: U8 at an event this year. */
+    fireEvent.change(dialog.getByLabelText(/^Date of birth/), { target: { value: "2019-03-01" } });
+    expect((dialog.getByLabelText(/^Category/) as HTMLSelectElement).value).toBe("cat_8");
+    tearDown();
+  });
+
+  it("warns, but does not stop, when the tournament is full", async () => {
+    setUp();
+    tournaments = [{ ...tournaments[0], maxParticipants: 1 }];
+    registrations = [{ tournament_registration_id: "treg_1", tournament_id: TOURNAMENT_ID, participant_name: "Alice", status: "Approved" }];
+    const user = openDetail();
+    await user.click(screen.getByRole("button", { name: /^participants/i }));
+    await user.click(screen.getByRole("button", { name: new RegExp(`^${en.tournament.addParticipant}`) }));
+    const dialog = within(screen.getByRole("dialog"));
+    expect(dialog.getByText("This tournament is full (1 / 1). Adding goes over the limit.")).toBeDefined();
+    expect((dialog.getByRole("button", { name: /^Save/ }) as HTMLButtonElement).disabled).toBe(false);
+    registrations = [];
+    tearDown();
+  });
+
+  it("keeps a fee typed by hand", async () => {
+    setUp();
+    const user = openDetail();
+    await user.click(screen.getByRole("button", { name: /^participants/i }));
+    await user.click(screen.getByRole("button", { name: new RegExp(`^${en.tournament.addParticipant}`) }));
+    const dialog = within(screen.getByRole("dialog"));
+    const fee = dialog.getByLabelText(/^Fee charged/) as HTMLInputElement;
+    await user.clear(fee);
+    await user.type(fee, "100");
+    await user.selectOptions(dialog.getByLabelText(/^JCA student/), "stu_penny");
+    expect(fee.value).toBe("100");
+    expect(dialog.queryByText("JCA student fee (20% off)")).toBeNull();
+    tearDown();
   });
 });

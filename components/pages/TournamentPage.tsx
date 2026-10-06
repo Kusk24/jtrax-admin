@@ -1,13 +1,14 @@
 "use client";
 
 import { arrivalState, reminderDay, reminderDays, type ArrivalState } from "@/lib/arrival";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { ResultsTab } from "../tournament/ResultsTab";
 import { ExternalTournaments } from "../tournament/ExternalTournaments";
 import { ParticipantProfile, type ResultsLink } from "../tournament/ParticipantProfile";
 import { api } from "@/lib/api";
 import { fmtDate, fmtDateTime, fmtTHB, todayISO } from "@/lib/live";
-import { ageOn } from "@/lib/age-group";
+import { ageOn, suggestCategory } from "@/lib/age-group";
+import { entryFee, pricingFromRow } from "@/lib/entry-fee";
 import { RegistrationCard } from "../tournament/RegistrationCard";
 import { RegistrationQueue } from "../tournament/RegistrationQueue";
 import { RegulationCard } from "../tournament/RegulationCard";
@@ -16,6 +17,7 @@ import { TournamentBanner } from "../tournament/TournamentBanner";
 import { BannerCard } from "../tournament/BannerCard";
 import { mapEmbedUrl } from "@/lib/maps";
 import { useNewParticipants } from "@/lib/seen-participants";
+import { duplicateEntry } from "@/lib/duplicate-entry";
 import { useTranslations } from "next-intl";
 import { removeIfPresent } from "@/lib/credentials";
 import { type Participant, type Tournament } from "@/lib/data";
@@ -147,6 +149,9 @@ function TournamentDetail({
   );
   const [participantModal, setParticipantModal] = useState<"new" | Participant | null>(null);
   const [participantValues, setParticipantValues] = useState<CrudValues>({});
+  /* What the Add form last filled in by itself, so a value the desk typed
+     over is left alone. */
+  const autoFill = useRef({ fee: "", category: "" });
   const [deletingParticipant, setDeletingParticipant] = useState<Participant | null>(null);
 
   /* Editing the tournament's own fields, in place — see the Tournament
@@ -174,6 +179,16 @@ function TournamentDetail({
   /* Memoised because the participant field spec depends on it — a fresh []
      every render would rebuild that spec on every keystroke. */
   const categoryRows = useMemo(() => tournament.categoryRows ?? [], [tournament.categoryRows]);
+  /* The server's price rule (pricing.go), so the Add form can fill the fee. */
+  const pricing = useMemo(
+    () => pricingFromRow(raw.tournaments.find((r) => String(r["tournament_id"]) === tournament.id)),
+    [raw.tournaments, tournament.id],
+  );
+  const feeFor = useCallback(
+    (studentId: string) => entryFee(pricing, { student: studentId !== "", today: todayISO() }),
+    [pricing],
+  );
+  const feeText = (fee: number) => (fee > 0 ? String(fee) : "");
 
   function startEdit() {
     setDraft(draftFromRow(raw.tournaments.find((r) => String(r["tournament_id"]) === tournament.id)));
@@ -304,7 +319,19 @@ function TournamentDetail({
       },
       { name: "contact_email", label: t("parentEmail"), required: true, half: true },
       { name: "contact_phone", label: tCommon("phone"), required: true, half: true },
-      { name: "fee_charged", label: t("feeCharged"), kind: "number", min: 0 },
+      {
+        name: "fee_charged",
+        label: t("feeCharged"),
+        kind: "number",
+        min: 0,
+        /* Why it is that amount, while it is still the amount filled in. */
+        help: (() => {
+          if (participantModal !== "new") return undefined;
+          const { fee, reason } = feeFor(String(participantValues.student_id ?? ""));
+          if (reason === "regular" || String(participantValues.fee_charged ?? "") !== feeText(fee)) return undefined;
+          return t(`feeReason_${reason}`, { pct: pricing.discountPct });
+        })(),
+      },
       /* The entry's payment, editable here: how it was paid and its status. */
       ...(participantModal !== "new"
         ? [
@@ -322,6 +349,7 @@ function TournamentDetail({
               half: true,
               placeholder: t("noPaymentYet"),
               options: PAY_STATUSES.map((st) => ({ value: st, label: tStatus(st) })),
+              help: participantValues[PAY_STATUS] === "Cancelled" ? t("cancelReleases") : undefined,
             },
             /* The answer to the arrival reminder — or a phone call the desk took. */
             {
@@ -350,7 +378,7 @@ function TournamentDetail({
           ]
         : []),
     ],
-    [students, categoryRows, t, tCommon, tStatus, participantModal, participantValues],
+    [students, categoryRows, t, tCommon, tStatus, participantModal, participantValues, feeFor, pricing.discountPct],
   );
 
   /* Sends the confirmation email again to someone who has not answered. */
@@ -365,13 +393,16 @@ function TournamentDetail({
   }
 
   function openParticipant(p: Participant | "new") {
+    autoFill.current = { fee: feeText(feeFor("").fee), category: "" };
     setParticipantModal(p);
     setParticipantValues(
       p === "new"
         ? {
             student_id: "", participant_name: "", participant_name_th: "", nickname: "",
             participant_date_of_birth: "", contact_phone: "", contact_email: "",
-            tournament_category_id: "", fee_charged: "",
+            tournament_category_id: "", fee_charged: autoFill.current.fee,
+            /* Card machine by default; nothing to pay, nothing to take. */
+            [PAY_METHOD]: autoFill.current.fee ? "CreditCard" : "",
           }
         : {
             student_id: p.studentId ?? "",
@@ -386,7 +417,8 @@ function TournamentDetail({
             fee_charged: p.feeCharged ? String(p.feeCharged) : "",
             arrival_status: p.arrival ?? "Pending",
             [AGE]: p.dateOfBirth ? String(ageOn(p.dateOfBirth, tournament.startISO || todayISO())) : p.age ? String(p.age) : "",
-            [PAY_STATUS]: p.payment?.status ?? "",
+            /* Pending reads as "No payment yet", the same thing to the desk. */
+            [PAY_STATUS]: p.payment && p.payment.status !== "Pending" ? p.payment.status : "",
             [PAY_METHOD]: p.payment?.method ?? "",
           },
     );
@@ -510,6 +542,32 @@ function TournamentDetail({
           isEdit={participantModal !== "new"}
           fields={participantFields}
           values={participantValues}
+          /* The public form and the parent portal close when the tournament is
+             full; the desk may still add one more, but knowingly. Counted as
+             the server counts: entries approved or awaiting approval. */
+          extra={(() => {
+            if (participantModal !== "new" || !tournament.maxParticipants) return undefined;
+            const taken = raw.tournamentRegistrations.filter(
+              (r) => String(r["tournament_id"]) === tournament.id && ["Pending", "Approved", ""].includes(String(r["status"] ?? "")),
+            ).length;
+            if (taken < tournament.maxParticipants) return undefined;
+            return (
+              <div
+                role="note"
+                style={{
+                  padding: "9px 12px",
+                  borderRadius: 9,
+                  background: COLORS.warningBg,
+                  color: COLORS.warning,
+                  fontFamily: FONT,
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                }}
+              >
+                {t("fullWarning", { taken, max: tournament.maxParticipants })}
+              </div>
+            );
+          })()}
           onChange={(next) => {
             /* Picking a JCA student fills what their record already knows.
                Changing to another student replaces what the first one filled
@@ -529,10 +587,43 @@ function TournamentDetail({
               const dob = String(next.participant_date_of_birth ?? "");
               next = { ...next, [AGE]: dob ? String(ageOn(dob, tournament.startISO || todayISO())) : "" };
             }
+            /* A new entry's fee follows who they are (JCA student or not) and
+               the early-bird date; its category follows the date of birth.
+               Either one typed or picked by hand is kept. */
+            if (participantModal === "new" && next.student_id !== participantValues.student_id) {
+              const fee = feeText(feeFor(String(next.student_id ?? "")).fee);
+              const feeNow = String(next.fee_charged ?? "");
+              if (feeNow === "" || feeNow === autoFill.current.fee) next = { ...next, fee_charged: fee };
+              autoFill.current = { ...autoFill.current, fee };
+            }
+            if (participantModal === "new" && next.participant_date_of_birth !== participantValues.participant_date_of_birth) {
+              const category = suggestCategory(
+                categoryRows,
+                String(next.participant_date_of_birth ?? ""),
+                tournament.startISO || todayISO(),
+              );
+              const catNow = String(next.tournament_category_id ?? "");
+              if (catNow === "" || catNow === autoFill.current.category) next = { ...next, tournament_category_id: category };
+              autoFill.current = { ...autoFill.current, category };
+            }
             setParticipantValues(next);
           }}
           onClose={() => setParticipantModal(null)}
           onSubmit={async (payload) => {
+            /* One entry per player — one email may enter several children —
+               said in words, before the server refuses it. */
+            const dup = duplicateEntry(raw.tournamentRegistrations, {
+              tournamentId: tournament.id,
+              studentId: String(payload.student_id ?? ""),
+              email: String(payload.contact_email ?? ""),
+              name: String(payload.participant_name ?? ""),
+              dateOfBirth: String(payload.participant_date_of_birth ?? ""),
+              id: participantModal === "new" ? undefined : participantModal.id,
+            });
+            if (dup) {
+              const key = `dupStudent${dup.state[0].toUpperCase()}${dup.state.slice(1)}`;
+              throw new Error(t(key, { name: dup.name || t("thisPlayer") }));
+            }
             if (participantModal === "new") {
               /* The payment fields are not the entry's own columns. */
               const { [PAY_METHOD]: method, [PAY_REFERENCE]: reference, ...entry } = payload;
@@ -560,9 +651,17 @@ function TournamentDetail({
               const { [PAY_STATUS]: payStatus, [PAY_METHOD]: payMethod, ...entry } = payload;
               await update("tournament-registrations", participantModal.id!, entry);
               const pay = participantModal.payment;
-              const status = String(payStatus ?? "");
+              /* "No payment yet" on a payment that has one means it is unpaid:
+                 Pending, the payment row's own word for it. */
+              const status = String(payStatus ?? "") || (pay ? "Pending" : "");
               const method = String(payMethod ?? "");
-              if (pay) {
+              if (status === "Cancelled" && pay?.status !== "Cancelled") {
+                /* Cancelled takes the place out of the tournament, as closing
+                   does: it leaves this list for Released places, where it can
+                   be restored. */
+                await api.post(`tournament-registrations/${participantModal.id}/release`, {});
+                await refresh();
+              } else if (pay) {
                 if ((status && status !== pay.status) || (method && method !== pay.method)) {
                   await update("payments", pay.id, {
                     ...(status && status !== pay.status ? { status } : {}),
@@ -1191,13 +1290,16 @@ function studentFill(s: { name: string; dateOfBirth?: string; parentPhone?: stri
   };
 }
 /* Paying at sign-up, from the Add participant form. The names are the form's
-   own, not columns: they are taken out before the entry is saved. */
-const DESK_METHODS = ["Cash", "PromptPay", "BankTransfer"] as const;
-/* Every way an entry can have been paid, card included — for editing one. */
-const ALL_METHODS = ["Cash", "PromptPay", "BankTransfer", "CreditCard"] as const;
+   own, not columns: they are taken out before the entry is saved.
+   Card is the academy's own card machine, and the usual way at the desk. */
+const DESK_METHODS = ["CreditCard", "Cash", "PromptPay", "BankTransfer"] as const;
+/* Every way an entry can have been paid — for editing one. */
+const ALL_METHODS = DESK_METHODS;
 /* Entry fees are non-refundable (the terms), so there is no Refunded here. */
-/* Cancelled: not paid by the closing date, so the place was released. */
-const PAY_STATUSES = ["Pending", "Paid", "Cancelled"] as const;
+/* Cancelled: not paid by the closing date, so the place was released.
+   Not paid is the empty choice, "No payment yet": whether or not a Pending
+   payment row stands behind it, to the desk it is the same — unpaid. */
+const PAY_STATUSES = ["Paid", "Cancelled"] as const;
 const PAY_STATUS = "pay_status";
 const AGE = "participant_age_shown";
 const PAY_METHOD = "pay_method";

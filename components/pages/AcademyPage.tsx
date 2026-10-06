@@ -416,7 +416,21 @@ export function AcademyPage() {
                     </span>
                   )}
                 </div>
-                <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, lineHeight: 1.55, color: COLORS.textSecondary }}>
+                {/* Three lines at most; the full text is on hover and in the course. */}
+                <p
+                  title={c.desc}
+                  style={{
+                    margin: 0,
+                    fontFamily: FONT,
+                    fontSize: 13.5,
+                    lineHeight: 1.55,
+                    color: COLORS.textSecondary,
+                    display: "-webkit-box",
+                    WebkitBoxOrient: "vertical",
+                    WebkitLineClamp: 3,
+                    overflow: "hidden",
+                  }}
+                >
                   {c.desc}
                 </p>
               </div>
