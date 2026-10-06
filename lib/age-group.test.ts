@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ageCheck, categoryAgeLimit, suggestCategory } from "./age-group";
+import { ageCheck, categoryAgeLimit, dobTooYoung, latestBirthDate, suggestCategory } from "./age-group";
 
 describe("categoryAgeLimit", () => {
   it("reads the age group however the organiser wrote it", () => {
@@ -32,5 +32,18 @@ describe("the category suggested for a date of birth", () => {
     const split = [{ id: "b", name: "U8 Boys" }, { id: "g", name: "U8 Girls" }];
     expect(suggestCategory(split, "2019-01-01", "2026-11-01")).toBe("");
     expect(suggestCategory(cats, "", "2026-11-01")).toBe("");
+  });
+});
+
+describe("a date of birth's minimum age", () => {
+  it("is a year before today", () => {
+    expect(latestBirthDate("2026-10-06")).toBe("2025-10-06");
+    expect(latestBirthDate("2028-02-29")).toBe("2027-02-28");
+  });
+  it("refuses less than a year old, and the future", () => {
+    expect(dobTooYoung("2025-10-07", "2026-10-06")).toBe(true);
+    expect(dobTooYoung("2030-01-01", "2026-10-06")).toBe(true);
+    expect(dobTooYoung("2025-10-06", "2026-10-06")).toBe(false);
+    expect(dobTooYoung("", "2026-10-06")).toBe(false);
   });
 });

@@ -40,6 +40,9 @@ export function SettingsPage() {
      defaults over what is stored or trip the cascading-render rule; falling
      through to `creditRules` needs neither. */
   const [edited, setEdited] = useState<CreditRules | null>(null);
+  /* What is in a box while it is being typed in. A number box that snapped
+     back to 0 the moment it was emptied made typing "23" read "023". */
+  const [typing, setTyping] = useState<Partial<Record<keyof CreditRules, string>>>({});
   /* The Attendance Rounding explainer, drawn at the value being set. */
   const [explaining, setExplaining] = useState(false);
   const draft = edited ?? creditRules;
@@ -62,6 +65,7 @@ export function SettingsPage() {
     try {
       await saveCreditRules(rules);
       setEdited(null);
+      setTyping({});
       flash();
     } catch (e) {
       setError(errorText(e, tCommon("saveFailed")));
@@ -168,12 +172,15 @@ export function SettingsPage() {
                 id={`jtrax-rule-${rule.key}`}
                 type="number"
                 min={0}
-                value={draft[rule.key]}
+                value={typing[rule.key] ?? String(draft[rule.key])}
                 onChange={(e) => {
-                  /* Empty input parses to NaN; clamp to 0 so the field stays controlled. */
+                  /* The box may sit empty while typing; empty counts as 0. */
+                  setTyping({ ...typing, [rule.key]: e.target.value });
                   const next = Number.parseInt(e.target.value, 10);
                   setEdited({ ...draft, [rule.key]: Number.isNaN(next) ? 0 : Math.max(0, next) });
                 }}
+                /* Leaving it shows the number as saved: "" reads 0, "023" reads 23. */
+                onBlur={() => setTyping((t) => ({ ...t, [rule.key]: undefined }))}
                 style={{
                   width: 78,
                   padding: "8px 10px",
