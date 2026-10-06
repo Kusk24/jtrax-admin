@@ -1097,8 +1097,10 @@
     "shownOf": "{shown} of {total}",
     "sendArrivalAll": "Send arrival email ({count})",
     "sendArrivalAllTitle": "Send arrival email",
-    "sendArrivalAllPrompt": "Ask {count} participants who have not answered yet?",
-    "sendArrivalAllConfirm": "Send"
+    "sendArrivalAllPrompt": "Send the arrival email to {count} selected?",
+    "sendArrivalAllConfirm": "Send",
+    "selectAllToAsk": "Select all not answered",
+    "selectToAsk": "Select {name}"
   },
   "announcement": {
     "title": "Announcement",

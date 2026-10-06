@@ -71,7 +71,8 @@ import { refreshLinkedResults } from "@/lib/chess-results";
 
 /* Every column the same width, the office's own request — a grid that reads
    as a grid rather than a layout that happens to use one. */
-const PARTICIPANT_TEMPLATE = "repeat(9, 1fr)";
+/* A narrow first column for the tick box. */
+const PARTICIPANT_TEMPLATE = "36px repeat(9, 1fr)";
 
 /* Answers to the arrival reminder, in the order the desk reads them. */
 const ARRIVAL = ["Pending", "Confirmed", "NotAttending"] as const;
@@ -504,6 +505,16 @@ function TournamentDetail({
   const started = !!tournament.startISO && tournament.startISO < todayISO();
   const askable = started ? [] : filteredParticipants.filter((p) => p.id && (p.arrival ?? "Pending") === "Pending");
   const [askingAll, setAskingAll] = useState(false);
+  /* Ticked rows, as in the check-in table. Only those still shown count. */
+  const [picked, setPicked] = useState<string[]>([]);
+  const chosen = askable.filter((p) => picked.includes(p.id!));
+  const allChosen = askable.length > 0 && chosen.length === askable.length;
+  const toggleAll = () => {
+    const ids = askable.map((p) => p.id!);
+    setPicked((cur) => (allChosen ? cur.filter((id) => !ids.includes(id)) : [...new Set([...cur, ...ids])]));
+  };
+  const toggleOne = (id: string) =>
+    setPicked((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
   const filtering = JSON.stringify({ ...filters, sort: null }) !== JSON.stringify({ ...NO_FILTERS, sort: null });
 
   const { pageRows, totalPages, page: current } = paginate(filteredParticipants, page);
@@ -1079,9 +1090,9 @@ function TournamentDetail({
             <span style={{ marginLeft: "auto", fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
               {t("shownOf", { shown: filteredParticipants.length, total: tournament.participants.length })}
             </span>
-            {askable.length > 0 && (
+            {chosen.length > 0 && (
               <button type="button" onClick={() => setAskingAll(true)} style={{ ...secondaryButtonStyle, display: "inline-flex", alignItems: "center", gap: 6 }}>
-                <Icon name="mail" size={15} /> {t("sendArrivalAll", { count: askable.length })}
+                <Icon name="mail" size={15} /> {t("sendArrivalAll", { count: chosen.length })}
               </button>
             )}
           </div>
@@ -1127,6 +1138,19 @@ function TournamentDetail({
                misread. Payment shows who still owes: an unpaid place is
                released when registration closes. */
             columns={[
+              <input
+                key="all"
+                type="checkbox"
+                ref={(el) => {
+                  if (el) el.indeterminate = chosen.length > 0 && !allChosen;
+                }}
+                checked={allChosen}
+                disabled={askable.length === 0}
+                onChange={toggleAll}
+                aria-label={t("selectAllToAsk")}
+                title={t("selectAllToAsk")}
+                style={{ cursor: askable.length === 0 ? "default" : "pointer" }}
+              />,
               t("entryNo"), t("registered"), t("player"),
               <SortHeader key="age" label={t("age")} dir={sortDir("age")} onClick={() => setFilter({ sort: nextSort(filters.sort, "age") })} />,
               t("category"),
@@ -1134,12 +1158,24 @@ function TournamentDetail({
               t("payment"), t("arrivalStatus"), tCommon("action"),
             ]}
             template={PARTICIPANT_TEMPLATE}
-            minWidth={1080}
+            minWidth={1120}
           >
             {pageRows.length === 0 && <EmptyRow>{t("noParticipants")}</EmptyRow>}
             {pageRows.map((p) => {
               return (
                 <TableRow key={p.name} template={PARTICIPANT_TEMPLATE} onClick={() => setDrawer(p)}>
+                  <span onClick={(e) => e.stopPropagation()}>
+                    {/* Only those the arrival email can still go to. */}
+                    {askable.includes(p) && (
+                      <input
+                        type="checkbox"
+                        checked={picked.includes(p.id!)}
+                        onChange={() => toggleOne(p.id!)}
+                        aria-label={t("selectToAsk", { name: p.name })}
+                        style={{ cursor: "pointer" }}
+                      />
+                    )}
+                  </span>
                   <span style={{ fontWeight: 700, color: COLORS.textSecondary }}>#{p.rank}</span>
                   <span style={{ color: COLORS.textSecondary }}>{p.registeredAt ? fmtDateTime(p.registeredAt) : "—"}</span>
                   <span style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
@@ -1274,13 +1310,14 @@ function TournamentDetail({
       {askingAll && (
         <ConfirmModal
           title={t("sendArrivalAllTitle")}
-          prompt={t("sendArrivalAllPrompt", { count: askable.length })}
+          prompt={t("sendArrivalAllPrompt", { count: chosen.length })}
           confirmLabel={t("sendArrivalAllConfirm")}
           failedText={t("resendFailed")}
           onClose={() => setAskingAll(false)}
           onConfirm={async () => {
-            await api.post(`tournaments/${tournament.id}/arrival-reminders`, { registration_ids: askable.map((p) => p.id) });
+            await api.post(`tournaments/${tournament.id}/arrival-reminders`, { registration_ids: chosen.map((p) => p.id) });
             setAskingAll(false);
+            setPicked([]);
             await refresh();
           }}
         />

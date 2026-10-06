@@ -407,6 +407,27 @@ describe("editing a participant", () => {
     expect(screen.getByRole("button", { name: /^Delete Bob/ })).toBeTruthy();
   });
 
+  it("ticks those still to answer and sends the arrival email to them", async () => {
+    const t = withEntry();
+    t.participants = [
+      ...t.participants,
+      { ...t.participants[0], id: "treg_2", name: "Bob", arrival: "Confirmed" },
+    ] as Tournament["participants"];
+    tournaments = [t];
+    post.mockClear();
+    const user = openDetail();
+    await user.click(screen.getByRole("button", { name: /^participants/i }));
+    expect(screen.queryByRole("checkbox", { name: "Select Bob" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Send arrival email/ })).toBeNull();
+    await user.click(screen.getByRole("checkbox", { name: en.tournament.selectAllToAsk }));
+    expect((screen.getByRole("checkbox", { name: "Select Alice" }) as HTMLInputElement).checked).toBe(true);
+    await user.click(screen.getByRole("button", { name: "Send arrival email (1)" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: en.tournament.sendArrivalAllConfirm }));
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith(`tournaments/${TOURNAMENT_ID}/arrival-reminders`, { registration_ids: ["treg_1"] }),
+    );
+  });
+
   it("releases the place when the player is not attending", async () => {
     tournaments = [withEntry()];
     update.mockClear();

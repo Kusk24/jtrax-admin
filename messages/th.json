@@ -1097,8 +1097,10 @@
     "shownOf": "{shown} จาก {total}",
     "sendArrivalAll": "ส่งอีเมลยืนยันการเข้าร่วม ({count})",
     "sendArrivalAllTitle": "ส่งอีเมลยืนยันการเข้าร่วม",
-    "sendArrivalAllPrompt": "ส่งถึงผู้เข้าแข่งขัน {count} คนที่ยังไม่ตอบ?",
-    "sendArrivalAllConfirm": "ส่ง"
+    "sendArrivalAllPrompt": "ส่งอีเมลยืนยันการเข้าร่วมถึง {count} คนที่เลือก?",
+    "sendArrivalAllConfirm": "ส่ง",
+    "selectAllToAsk": "เลือกทุกคนที่ยังไม่ตอบ",
+    "selectToAsk": "เลือก {name}"
   },
   "announcement": {
     "title": "ประกาศ",
