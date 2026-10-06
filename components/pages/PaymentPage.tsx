@@ -14,7 +14,8 @@ import {
 } from "@/lib/payment-pairing";
 import { liveClasses, livePackages } from "@/lib/live";
 import { useData } from "@/components/DataProvider";
-import { CourseName } from "@/components/CourseName";
+import { CourseName, useCourseLabel } from "@/components/CourseName";
+import { classTypeOf, type ClassType } from "@/lib/class-face";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf } from "@/lib/theme";
 import {
@@ -77,6 +78,7 @@ type PackageOption = {
   id: string;
   classId: string;
   className: string;
+  classType?: ClassType;
   credits: number;
   price: number;
 };
@@ -131,6 +133,7 @@ export function RecordPaymentForm({
 }) {
   const { students, raw } = useData();
   const t = useTranslations("payment");
+  const courseLabel = useCourseLabel();
   const tCommon = useTranslations("common");
 
   /* The academy's own packages, priced per class — the form used to carry a
@@ -148,6 +151,7 @@ export function RecordPaymentForm({
           id: String(p["credit_package_id"]),
           classId: String(p["class_id"] ?? ""),
           className: cls ? String(cls["name"] ?? "") : "—",
+          classType: cls ? classTypeOf(cls["class_type"]) : undefined,
           credits: Number(p["credit_amount"] ?? 0),
           price: Number(p["standard_price"] ?? 0),
         };
@@ -197,6 +201,7 @@ export function RecordPaymentForm({
       liveClasses({ classes: raw.classes }).map((c) => ({
         id: String(c.class_id),
         name: String(c.name ?? ""),
+        classType: classTypeOf(c.class_type),
         pricePerCredit: Number(c.price_per_credit ?? 0) || 0,
       })),
     [raw.classes],
@@ -481,7 +486,7 @@ export function RecordPaymentForm({
               <option value={CUSTOM}>{t("customCredits")}</option>
               {packages.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {t("packageOption", { className: p.className, credits: p.credits })}
+                  {t("packageOption", { className: courseLabel(p.className, p.classType), credits: p.credits })}
                 </option>
               ))}
             </select>
@@ -500,7 +505,7 @@ export function RecordPaymentForm({
                   style={selectStyle}
                 >
                   {courses.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
+                    <option key={c.id} value={c.id}>{courseLabel(c.name, c.classType)}</option>
                   ))}
                 </select>
               </div>
@@ -528,7 +533,9 @@ export function RecordPaymentForm({
               id="pay-amount"
               type="number"
               min={0}
-              value={amount}
+              /* 0 shows as the hint, so typing does not start after a "0". */
+              value={amount || ""}
+              placeholder="0"
               onChange={(e) => {
                 setAmountTyped(true);
                 setAmount(Math.max(0, Number(e.target.value) || 0));
@@ -543,7 +550,8 @@ export function RecordPaymentForm({
               type="number"
               min={0}
               max={100}
-              value={discountPct}
+              value={discountPct || ""}
+              placeholder="0"
               onChange={(e) => setDiscountPct(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
               style={fieldStyle}
             />
@@ -673,7 +681,7 @@ export function PaymentDetail({
           subtitle={
             <span style={{ display: "inline-flex", alignItems: "center" }}>
               <ClassDot color={classDotColor(payment.className)} />
-              <CourseName name={payment.className} deleted={payment.courseDeleted} />
+              <CourseName name={payment.className} type={payment.classType} deleted={payment.courseDeleted} />
             </span>
           }
           badges={
@@ -709,7 +717,7 @@ export function PaymentDetail({
         <InfoGrid
           rows={[
             { label: t("colPaidBy"), value: payment.payer || "—" },
-            { label: tCommon("class"), value: <CourseName name={payment.className} deleted={payment.courseDeleted} /> },
+            { label: tCommon("class"), value: <CourseName name={payment.className} type={payment.classType} deleted={payment.courseDeleted} /> },
             { label: t("credits"), value: payment.credits },
             { label: t("amount"), value: payment.gross ?? payment.amount },
             { label: t("discount"), value: payment.discount ?? "—" },
@@ -1170,7 +1178,7 @@ export function PaymentPage({
                 subtitle={
                   <span style={{ display: "inline-flex", alignItems: "center" }}>
                     <ClassDot color={classDotColor(p.className)} />
-                    <CourseName name={p.className} deleted={p.courseDeleted} />
+                    <CourseName name={p.className} type={p.classType} deleted={p.courseDeleted} />
                     {p.detached && ` · ${t("studentRemoved")}`}
                     {p.publicEntry && ` · ${t("publicEntry")}`}
                   </span>
@@ -1238,7 +1246,7 @@ export function PaymentPage({
                 </span>
                 <span style={{ display: "flex", alignItems: "center", color: COLORS.textSecondary }}>
                   <ClassDot color={classDotColor(p.className)} />
-                  <CourseName name={p.className} deleted={p.courseDeleted} />
+                  <CourseName name={p.className} type={p.classType} deleted={p.courseDeleted} />
                 </span>
                 <span style={{ color: COLORS.success, fontWeight: 600 }}>{p.credits}</span>
                 <span style={{ fontWeight: 600 }}>{p.amount}</span>

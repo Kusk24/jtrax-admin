@@ -9,6 +9,7 @@
  *
  * These read the enrolments instead, which are the record of who is in what.
  */
+import { classTypeOf, type ClassType } from "./class-face";
 import { isActiveEnrolment, type Row } from "./live";
 
 const s = (row: Row, key: string): string => String(row[key] ?? "");
@@ -44,7 +45,7 @@ export function isInClass(enrollments: Row[], studentId: string, classId: string
 export function classFilterOptions(
   c: { classes: Row[]; enrollments: Row[] },
   studentIds: string[],
-): { id: string; name: string; count: number }[] {
+): { id: string; name: string; classType: ClassType; count: number }[] {
   const listed = new Set(studentIds);
   return c.classes
     .filter((k) => !s(k, "archived_at"))
@@ -56,7 +57,7 @@ export function classFilterOptions(
           .map((e) => s(e, "student_id"))
           .filter((sid) => listed.has(sid)),
       ).size;
-      return { id, name: s(k, "name"), count };
+      return { id, name: s(k, "name"), classType: classTypeOf(s(k, "class_type")), count };
     });
 }
 
@@ -88,7 +89,7 @@ export function classNamesOfStudent(
 export function creditsByClass(
   c: { classes: Row[]; enrollments: Row[]; creditTransactions: Row[] },
   studentId: string,
-): { className: string; balance: number }[] {
+): { className: string; classType?: ClassType; balance: number }[] {
   const balanceOf = (match: (t: Row) => boolean) =>
     c.creditTransactions.filter(match).reduce((sum, t) => sum + Number(t["amount"] ?? 0), 0);
   const courses = c.enrollments
@@ -97,6 +98,7 @@ export function creditsByClass(
       const cls = c.classes.find((k) => s(k, "class_id") === s(e, "class_id"));
       return {
         className: cls ? s(cls, "name") : "",
+        classType: cls ? classTypeOf(s(cls, "class_type")) : undefined,
         balance: balanceOf((t) => s(t, "enrollment_id") === s(e, "enrollment_id")),
       };
     })

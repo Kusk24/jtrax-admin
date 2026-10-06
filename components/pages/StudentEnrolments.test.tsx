@@ -246,7 +246,8 @@ function enrolmentRow(className: string): HTMLElement {
   const card = heading.closest("div")!.parentElement!;
   const find = () =>
     within(card)
-      .queryAllByText(className)
+      /* The name, then " · Group" or " · Private". */
+      .queryAllByText((_, el) => el?.tagName === "BUTTON" && (el.textContent === className || el.textContent?.startsWith(`${className} · `) === true))
       .map((n) => n.closest("[data-enrolment-row]"))
       .find(Boolean) as HTMLElement | undefined;
   /* Courses the child has left are under All. */
@@ -405,7 +406,7 @@ describe("the enrolment card's dates", () => {
     /* Anywhere on the row, not only the name. */
     await user.click(within(enrolmentRow("Beginner")).getByText(rowCredits(8)));
     const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByText("Beginner enrolment")).toBeTruthy();
+    expect(within(dialog).getByText("Beginner · Group enrolment")).toBeTruthy();
     expect(within(dialog).getByText("31 Dec 2026")).toBeTruthy();
     expect(within(dialog).getByText("8 credits")).toBeTruthy();
     expect(within(dialog).queryByRole("textbox")).toBeNull();
@@ -433,7 +434,7 @@ describe("the enrolment card's dates", () => {
 
     const dialog = await openEnrolment(user, "Beginner");
     await user.click(within(dialog).getByRole("button", { name: "Change Beginner to another course" }));
-    expect(screen.queryByText("Beginner enrolment")).toBeNull();
+    expect(screen.queryByText("Beginner · Group enrolment")).toBeNull();
     expect(screen.getByRole("dialog")).toBeDefined();
   });
 
@@ -490,7 +491,7 @@ describe("the enrolment card's dates", () => {
     await openStudent(user, "Anong");
 
     await user.click(actionsOf(enrolmentRow("Beginner")).getByRole("menuitem", { name: "Delete the enrolment in Beginner" }));
-    expect(screen.queryByText("Beginner enrolment")).toBeNull();
+    expect(screen.queryByText("Beginner · Group enrolment")).toBeNull();
   });
 
   /* Expired credit blocks Change Course, the same way it blocks check-in on
@@ -569,9 +570,9 @@ describe("filtering the roster by class", () => {
        filter you can pick even when it is empty. */
     expect(labels).toEqual([
       "All Courses",
-      "Beginner (2)",
-      "Intermediate (2)",
-      "Advanced (0)",
+      "Beginner · Group (2)",
+      "Intermediate · Group (2)",
+      "Advanced · Group (0)",
     ]);
   });
 
@@ -609,10 +610,10 @@ describe("filtering the roster by class", () => {
     /* The filtered class leads each row, so it shows even collapsed:
        Intermediate is on Anong's row and Boon's. Anong's other class waits
        behind "+1" until the row is opened. */
-    expect(screen.getAllByText("Intermediate")).toHaveLength(2);
-    expect(screen.queryByText("Beginner")).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Also in: Beginner" }));
-    expect(screen.getAllByText("Beginner")).toHaveLength(1);
+    expect(screen.getAllByText("Intermediate · Group")).toHaveLength(2);
+    expect(screen.queryByText("Beginner · Group")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Also in: Beginner · Group" }));
+    expect(screen.getAllByText("Beginner · Group")).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Show less" })).toBeTruthy();
   });
 });
@@ -662,7 +663,7 @@ describe("changing course", () => {
     const options = Array.from(
       (screen.getByLabelText(/^Move\ them\ to( \*)?$/) as HTMLSelectElement).options,
     ).map((o) => o.textContent);
-    expect(options).toEqual(["Advanced"]);
+    expect(options).toEqual(["Advanced · Group"]);
   });
 
   it("writes the new enrolment with the course they came from", async () => {

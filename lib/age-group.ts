@@ -81,3 +81,16 @@ export function suggestCategory(
   const open = categories.filter((c) => categoryAgeLimit(c.name) === 0);
   return open.length === 1 ? open[0].id : "";
 }
+
+/** The latest date of birth accepted: a year before `today` (YYYY-MM-DD). */
+export function latestBirthDate(today: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(today);
+  if (!m) return "";
+  return `${Number(m[1]) - 1}-${m[2]}-${m[3] === "29" && m[2] === "02" ? "28" : m[3]}`;
+}
+
+/** A date of birth less than a year ago — or in the future — is a typo. */
+export function dobTooYoung(dob: string, today: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}/.test(dob)) return false;
+  return dob.slice(0, 10) > latestBirthDate(today);
+}
