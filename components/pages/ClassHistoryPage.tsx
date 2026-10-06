@@ -903,7 +903,7 @@ export function ClassHistoryPage() {
               <span style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 600, minWidth: 0 }}>
                 <span style={{ display: "flex", alignItems: "center", ...fade }}>
                   <ClassDot color={classDotColor(row.className)} />
-                  <CourseName name={row.className} type={row.classType} deleted={row.removed} />
+                  <CourseName name={row.className} type={row.classType} deleted={row.removed} fadeType />
                 </span>
                 {cancelled && (
                   <Badge color={COLORS.danger} bg={COLORS.dangerBg}>{tStatus("Cancelled")}</Badge>

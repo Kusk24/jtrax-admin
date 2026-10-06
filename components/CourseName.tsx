@@ -11,12 +11,22 @@ import { useTranslations } from "next-intl";
 import type { ClassType } from "@/lib/class-face";
 import { COLORS } from "@/lib/theme";
 
-export function CourseName({ name, type, deleted }: { name: string; type?: ClassType; deleted?: boolean }) {
+export function CourseName({
+  name,
+  type,
+  deleted,
+  fadeType,
+}: {
+  name: string;
+  type?: ClassType;
+  deleted?: boolean;
+  /** Class History's course column only: " · Group" in a lighter grey. */
+  fadeType?: boolean;
+}) {
   const t = useTranslations("common");
   const tType = useTranslations("classType");
-  /* The type is the quieter half: "JCA Juniors" in full, " · Group" faded. */
   const typePart = name && type ? (
-    <span style={{ color: COLORS.textSecondary, fontWeight: 400 }}> · {tType(type)}</span>
+    fadeType ? <span style={{ color: COLORS.textSecondary, fontWeight: 400 }}> · {tType(type)}</span> : <> · {tType(type)}</>
   ) : null;
   if (!deleted) return name ? <>{name}{typePart}</> : <>—</>;
   return (
