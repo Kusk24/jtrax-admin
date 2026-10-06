@@ -116,7 +116,10 @@ export type CheckinDef = {
   /** The raw check-in time, ISO, for ordering — `timeIn` is display text. */
   checkInAt?: string;
   status: 'In class' | 'Dismissed';
+  /** The course's balance now — today's class already taken off. */
   credit: number;
+  /** What today's class costs (or, checked out, cost); 0 when not charged. */
+  charge?: number;
 };
 
 export type ClassDef = {

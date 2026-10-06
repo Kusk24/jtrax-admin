@@ -21,7 +21,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { Icon } from "@/lib/icons";
-import { fmtDate } from "@/lib/live";
+import { fmtDate, fmtTHB } from "@/lib/live";
 import { mapEmbedUrl } from "@/lib/maps";
 import { registrationUrl } from "@/lib/registration";
 import { COLORS, FONT } from "@/lib/theme";
@@ -112,7 +112,6 @@ export function CreateWizard({
   const [previewToken, setPreviewToken] = useState("");
   /* Bumped on every save, so the frame reloads and shows the edit. */
   const [previewVersion, setPreviewVersion] = useState(0);
-  const [previewWidth, setPreviewWidth] = useState<"desktop" | "phone">("desktop");
 
   /* Read by the unmount cleanup, which must see the latest values. */
   const live = useRef({ id: "", published: false });
@@ -271,6 +270,43 @@ export function CreateWizard({
     setTimeout(() => {
       document.getElementById(`tw-sec-${section}`)?.scrollIntoView?.({ behavior: "smooth", block: "start" });
     }, 0);
+  }
+
+  /* What one review tile says: its first line is the headline. A field left
+     empty reads "Not set", in grey, so a gap shows before publishing. */
+  function reviewLines(section: SectionId): Array<{ text: string; missing?: boolean }> {
+    const notSet = { text: t("reviewNotSet"), missing: true };
+    const money = (v: string) => (v ? fmtTHB(Number(v)) : "");
+    switch (section) {
+      case "banner":
+        return [banner || bannerSaved || bannerOnServer ? { text: t("reviewUploaded") } : { text: t("reviewNoBanner"), missing: true }];
+      case "info": {
+        const dates = [draft.startDate, draft.endDate].filter(Boolean).map(fmtDate).join(" – ");
+        return [draft.name ? { text: draft.name } : notSet, ...(dates ? [{ text: dates }] : [])];
+      }
+      case "venue":
+        return [draft.venue ? { text: draft.venue } : notSet];
+      case "pricing": {
+        const out: Array<{ text: string; missing?: boolean }> = [
+          draft.regularFee ? { text: money(draft.regularFee) } : { text: t("reviewFree") },
+        ];
+        if (draft.earlyBirdFee && draft.earlyBirdDeadline) {
+          out.push({ text: t("reviewEarlyBird", { fee: money(draft.earlyBirdFee), date: fmtDate(draft.earlyBirdDeadline) }) });
+        }
+        out.push(
+          draft.registrationDeadline
+            ? { text: t("reviewCloses", { date: fmtDate(draft.registrationDeadline), places: draft.maxParticipants || "—" }) }
+            : { text: t("reviewNoDeadline"), missing: true },
+        );
+        return out;
+      }
+      case "categories":
+        return categories.length > 0
+          ? [{ text: t("reviewCategoryCount", { count: categories.length }) }, { text: categories.join(", ") }]
+          : [{ text: t("reviewNoCategories"), missing: true }];
+      case "regulation":
+        return [regulation ? { text: regulation.name } : regulationSaved ? { text: t("reviewAttached") } : { text: t("reviewNoRegulation"), missing: true }];
+    }
   }
 
   const publicUrl = tournamentId ? registrationUrl(tournamentId) : "";
@@ -576,74 +612,86 @@ export function CreateWizard({
 
       {step === 2 && (
         <>
-          <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {/* What the tournament will say, section by section, each with its
+              own Edit — and the public page itself one press away. The page
+              is opened in a tab rather than framed here: the portal does not
+              allow being embedded, so a frame only ever showed an error. */}
+          <Card style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
               <div style={{ flex: "1 1 320px" }}>
                 <SectionTitle>{t("reviewTitle")}</SectionTitle>
                 {hint(t("reviewSub"))}
               </div>
-              <div role="group" aria-label={t("previewSize")} style={{ display: "inline-flex", border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: "hidden" }}>
-                {(["desktop", "phone"] as const).map((w) => (
-                  <button
-                    key={w}
-                    type="button"
-                    aria-pressed={previewWidth === w}
-                    onClick={() => setPreviewWidth(w)}
+              {previewUrl ? (
+                <a
+                  href={previewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="jt-btn-ghost"
+                  style={{ ...secondaryButtonStyle, display: "inline-flex", alignItems: "center", gap: 7, textDecoration: "none", color: COLORS.blue }}
+                >
+                  <Icon name="globe" size={15} color={COLORS.blue} /> {t("previewOpenTab")}
+                </a>
+              ) : (
+                <p role="alert" style={{ margin: 0, fontFamily: FONT, fontSize: 13, color: COLORS.warning }}>{t("previewNoPortal")}</p>
+              )}
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 12 }}>
+              {SECTIONS.map((sec) => {
+                const lines = reviewLines(sec.id);
+                return (
+                  <div
+                    key={sec.id}
                     style={{
-                      border: "none", padding: "7px 13px", cursor: "pointer", fontFamily: FONT, fontSize: 13, fontWeight: 600,
-                      background: previewWidth === w ? COLORS.blue : COLORS.surface,
-                      color: previewWidth === w ? COLORS.surface : COLORS.textSecondary,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 6,
+                      padding: "13px 14px",
+                      borderRadius: 12,
+                      border: `1px solid ${COLORS.border}`,
+                      background: COLORS.bg,
+                      minWidth: 0,
                     }}
                   >
-                    {t(w === "desktop" ? "previewDesktop" : "previewPhone")}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.textSecondary }}>{t("reviewEditLabel")}</span>
-              {SECTIONS.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  className="jt-btn-ghost"
-                  onClick={() => edit(s.id)}
-                  aria-label={t("reviewEditSection", { section: t(s.labelKey) })}
-                  style={{ ...secondaryButtonStyle, padding: "6px 11px", fontSize: 13 }}
-                >
-                  <Icon name="edit" size={12} /> {t(s.labelKey)}
-                </button>
-              ))}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                      <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", color: COLORS.textSecondary }}>
+                        {t(sec.labelKey)}
+                      </span>
+                      <button
+                        type="button"
+                        className="jt-btn-ghost"
+                        onClick={() => edit(sec.id)}
+                        aria-label={t("reviewEditSection", { section: t(sec.labelKey) })}
+                        style={{ ...secondaryButtonStyle, padding: "4px 9px", fontSize: 12.5, display: "inline-flex", alignItems: "center", gap: 5 }}
+                      >
+                        <Icon name="edit" size={12} /> {tCommon("edit")}
+                      </button>
+                    </div>
+                    {lines.map((line, k) => (
+                      <span
+                        key={k}
+                        style={{
+                          fontFamily: FONT,
+                          fontSize: k === 0 ? 14.5 : 13,
+                          fontWeight: k === 0 ? 600 : 400,
+                          color: line.missing ? COLORS.textSecondary : k === 0 ? COLORS.text : COLORS.textSecondary,
+                          fontStyle: line.missing ? "italic" : "normal",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                        title={line.text}
+                      >
+                        {line.text}
+                      </span>
+                    ))}
+                  </div>
+                );
+              })}
             </div>
             <p style={{ margin: 0, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>{t("reviewFixed")}</p>
           </Card>
-
-          {previewUrl ? (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-              <iframe
-                key={previewUrl}
-                title={t("previewFrameTitle")}
-                src={previewUrl}
-                style={{
-                  width: previewWidth === "phone" ? 390 : "100%",
-                  maxWidth: "100%",
-                  height: "78vh",
-                  minHeight: 520,
-                  border: `1px solid ${COLORS.border}`,
-                  borderRadius: 14,
-                  background: COLORS.surface,
-                  boxShadow: "0 10px 30px rgba(35,53,94,.10)",
-                }}
-              />
-              <a href={previewUrl} target="_blank" rel="noopener noreferrer" style={{ fontFamily: FONT, fontSize: 13, color: COLORS.blue }}>
-                {t("previewOpenTab")}
-              </a>
-            </div>
-          ) : (
-            <Card>
-              <p role="alert" style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.warning }}>{t("previewNoPortal")}</p>
-            </Card>
-          )}
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
             <button type="button" className="jt-btn-ghost" style={secondaryButtonStyle} onClick={() => setStep(1)}>

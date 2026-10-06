@@ -222,3 +222,29 @@ describe("a row of the register", () => {
     expect(push).not.toHaveBeenCalled();
   });
 });
+
+/* Before → after today's class, and under it what the class costs. */
+describe("the credit balance", () => {
+  it("reads '10 → 9' over '−1 using' in class, and '−1 used' once out", async () => {
+    /* Fon is still in class; Eak has gone home. */
+    (db.attendance as Record<string, unknown>[])[4].check_out_time = `${today}T03:00:00Z`;
+    db.enrollments = [
+      { enrollment_id: "e_fon", student_id: "stu_5", class_id: "cls_group", status: "Active" },
+      { enrollment_id: "e_eak", student_id: "stu_4", class_id: "cls_group", status: "Active" },
+    ];
+    db["credit-transactions"] = [
+      { credit_transaction_id: "t1", enrollment_id: "e_fon", amount: 10 },
+      { credit_transaction_id: "t2", enrollment_id: "e_fon", amount: -1, attendance_id: "att_5" },
+      { credit_transaction_id: "t3", enrollment_id: "e_eak", amount: 5 },
+      { credit_transaction_id: "t4", enrollment_id: "e_eak", amount: -2, attendance_id: "att_4" },
+    ];
+    const { user } = await renderTable();
+    const line = (text: string) => screen.getByText((_, el) => el?.textContent === text && el.tagName === "SPAN" && el.children.length > 1);
+    expect(line("10→9")).toBeTruthy();
+    expect(screen.getByText("−1 using")).toBeTruthy();
+    /* Gone home: below the five still in class, so open the list. */
+    await user.click(screen.getByRole("button", { name: en.common.viewAll }));
+    expect(line("5→3")).toBeTruthy();
+    expect(screen.getByText("−2 used")).toBeTruthy();
+  });
+});

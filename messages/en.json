@@ -320,7 +320,7 @@
     "createSessionSub": "Put a new class on today's timetable",
     "todaysCheckin": "Today's Check-in",
     "studentCount": "{count} students",
-    "colCredit": "Credit",
+    "colCredit": "Credit Balance",
     "colArrival": "Arrival",
     "colDismissal": "Check-out",
     "dismiss": "Check Out",
@@ -406,7 +406,9 @@
     "playingConsistently": "Playing consistently",
     "consistentRule": "{days}+ of {window} days",
     "filterByCourse": "Filter by course",
-    "classesThatWeek": "Classes that week"
+    "classesThatWeek": "Classes that week",
+    "creditsUsing": "−{credits} using",
+    "creditsUsed": "−{credits} used"
   },
   "find": {
     "title": "Find a Student",
@@ -502,7 +504,9 @@
     "durationMinutesRange": "Minutes go from 0 to 59.",
     "bookedCount": "Booked ({count})",
     "bookedHelp": "Not checked in yet. They're checked in, and their credits used, when the class starts.",
-    "bookingProblem": "Not checked in at the start: {reason}"
+    "bookingProblem": "Not checked in at the start: {reason}",
+    "checkInSelected": "Check in {count, plural, one {# student} other {# students}}",
+    "bookSelected": "Book {count, plural, one {# student} other {# students}}"
   },
   "earlyCheckout": {
     "titleOne": "Check out {name} early?",
@@ -1009,11 +1013,7 @@
     "reviewEditLabel": "Edit:",
     "reviewEditSection": "Edit {section}",
     "reviewFixed": "Terms & Conditions, the player information form and the card payment step are the same for every tournament.",
-    "previewSize": "Preview width",
-    "previewDesktop": "Desktop",
-    "previewPhone": "Phone",
     "previewOpenTab": "Open preview in a new tab",
-    "previewFrameTitle": "Preview of the public registration page",
     "previewNoPortal": "The preview needs the portal's address. Set NEXT_PUBLIC_PORTAL_URL in .env.local (for example http://localhost:3001) and restart the console.",
     "age": "Age",
     "paid": "Paid",
@@ -1076,7 +1076,18 @@
     "feeReason_studentEarlyBird": "JCA student, early-bird fee",
     "feeReason_studentEarlyBirdDiscount": "JCA student, early-bird fee with {pct}% off",
     "cancelReleases": "Moves them to Released places",
-    "fullWarning": "This tournament is full ({taken} / {max}). Adding goes over the limit."
+    "fullWarning": "This tournament is full ({taken} / {max}). Adding goes over the limit.",
+    "reviewNotSet": "Not set",
+    "reviewUploaded": "Banner uploaded",
+    "reviewNoBanner": "No banner — the default design is used",
+    "reviewFree": "Free entry",
+    "reviewEarlyBird": "Early bird {fee} until {date}",
+    "reviewCloses": "Closes {date} · {places} places",
+    "reviewNoDeadline": "No closing date",
+    "reviewCategoryCount": "{count, plural, one {# category} other {# categories}}",
+    "reviewNoCategories": "No categories",
+    "reviewAttached": "Regulation attached",
+    "reviewNoRegulation": "No regulation document"
   },
   "announcement": {
     "title": "Announcement",

@@ -320,7 +320,7 @@
     "createSessionSub": "เพิ่มคลาสใหม่ในตารางวันนี้",
     "todaysCheckin": "การเช็คอินวันนี้",
     "studentCount": "นักเรียน {count} คน",
-    "colCredit": "เครดิต",
+    "colCredit": "เครดิตคงเหลือ",
     "colArrival": "เวลาเข้า",
     "colDismissal": "เช็คเอาท์",
     "dismiss": "เช็คเอาท์",
@@ -406,7 +406,9 @@
     "playingConsistently": "เล่นสม่ำเสมอ",
     "consistentRule": "{days}+ จาก {window} วัน",
     "filterByCourse": "กรองตามคอร์ส",
-    "classesThatWeek": "คลาสในสัปดาห์นั้น"
+    "classesThatWeek": "คลาสในสัปดาห์นั้น",
+    "creditsUsing": "−{credits} กำลังใช้",
+    "creditsUsed": "−{credits} ใช้แล้ว"
   },
   "find": {
     "title": "ค้นหานักเรียน",
@@ -502,7 +504,9 @@
     "durationMinutesRange": "นาทีต้องอยู่ระหว่าง 0 ถึง 59",
     "bookedCount": "จองไว้ ({count})",
     "bookedHelp": "ยังไม่ได้เช็คอิน ระบบจะเช็คอินและหักเครดิตเมื่อคลาสเริ่ม",
-    "bookingProblem": "เช็คอินไม่สำเร็จเมื่อคลาสเริ่ม: {reason}"
+    "bookingProblem": "เช็คอินไม่สำเร็จเมื่อคลาสเริ่ม: {reason}",
+    "checkInSelected": "เช็คอิน {count} คน",
+    "bookSelected": "จองให้ {count} คน"
   },
   "earlyCheckout": {
     "titleOne": "เช็คเอาท์ {name} ก่อนเวลาใช่ไหม?",
@@ -1009,11 +1013,7 @@
     "reviewEditLabel": "แก้ไข:",
     "reviewEditSection": "แก้ไข{section}",
     "reviewFixed": "ข้อกำหนดและเงื่อนไข แบบฟอร์มข้อมูลผู้เล่น และขั้นตอนชำระเงินด้วยบัตร เหมือนกันทุกการแข่งขัน",
-    "previewSize": "ความกว้างตัวอย่าง",
-    "previewDesktop": "คอมพิวเตอร์",
-    "previewPhone": "โทรศัพท์",
     "previewOpenTab": "เปิดตัวอย่างในแท็บใหม่",
-    "previewFrameTitle": "ตัวอย่างหน้าสมัครสาธารณะ",
     "previewNoPortal": "ตัวอย่างต้องใช้ที่อยู่ของพอร์ทัล ตั้งค่า NEXT_PUBLIC_PORTAL_URL ใน .env.local (เช่น http://localhost:3001) แล้วรีสตาร์ทคอนโซล",
     "age": "อายุ",
     "paid": "ชำระแล้ว",
@@ -1076,7 +1076,18 @@
     "feeReason_studentEarlyBird": "ราคานักเรียน JCA แบบ early bird",
     "feeReason_studentEarlyBirdDiscount": "ราคานักเรียน JCA แบบ early bird ลด {pct}%",
     "cancelReleases": "ย้ายไปที่รายการที่ยกเลิกแล้ว",
-    "fullWarning": "รายการนี้เต็มแล้ว ({taken} / {max}) การเพิ่มจะเกินจำนวนที่กำหนด"
+    "fullWarning": "รายการนี้เต็มแล้ว ({taken} / {max}) การเพิ่มจะเกินจำนวนที่กำหนด",
+    "reviewNotSet": "ยังไม่ได้กรอก",
+    "reviewUploaded": "อัปโหลดแบนเนอร์แล้ว",
+    "reviewNoBanner": "ไม่มีแบนเนอร์ — ใช้ภาพเริ่มต้น",
+    "reviewFree": "สมัครฟรี",
+    "reviewEarlyBird": "Early bird {fee} ถึง {date}",
+    "reviewCloses": "ปิดรับสมัคร {date} · {places} ที่",
+    "reviewNoDeadline": "ไม่มีวันปิดรับสมัคร",
+    "reviewCategoryCount": "{count} รุ่น",
+    "reviewNoCategories": "ยังไม่มีรุ่น",
+    "reviewAttached": "แนบระเบียบการแล้ว",
+    "reviewNoRegulation": "ไม่มีเอกสารระเบียบการ"
   },
   "announcement": {
     "title": "ประกาศ",

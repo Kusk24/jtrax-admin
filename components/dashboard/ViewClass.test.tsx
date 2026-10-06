@@ -155,7 +155,11 @@ describe("who can be added to a running session", () => {
     const user = userEvent.setup();
     renderView();
     await openAddStudent(user);
-    await user.click(screen.getByText("Boon Mek"));
+    /* Ticking writes nothing; Check in does. */
+    await user.click(screen.getByRole("checkbox", { name: "Boon Mek" }));
+    expect(create).not.toHaveBeenCalled();
+    expect(screen.getByRole("checkbox", { name: "Boon Mek" }).getAttribute("aria-checked")).toBe("true");
+    await user.click(screen.getByRole("button", { name: "Check in 1 student" }));
 
     expect(create).toHaveBeenCalledTimes(1);
     const [path, body] = create.mock.calls[0] as unknown as [string, Record<string, unknown>];
@@ -174,7 +178,8 @@ describe("who can be added to a running session", () => {
     const user = userEvent.setup();
     const { rerender } = renderView();
     await openAddStudent(user);
-    await user.click(screen.getByText("Boon Mek"));
+    await user.click(screen.getByRole("checkbox", { name: "Boon Mek" }));
+    await user.click(screen.getByRole("button", { name: "Check in 1 student" }));
 
     /* What the refetch produces: the same session, one name longer. The panel
        is deliberately NOT re-mounted, and is still passed the stale snapshot
@@ -434,5 +439,19 @@ describe("once the slot has run out", () => {
     expect(screen.getByRole("button", { name: "Add Student" })).toBeTruthy();
     expect(durationPart("Hours")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Cancel class" })).toBeTruthy();
+  });
+});
+
+describe("the add-students list", () => {
+  it("shows what each child has to spend, and checks several in at once", async () => {
+    const user = userEvent.setup();
+    renderView();
+    await openAddStudent(user);
+    const row = screen.getByRole("checkbox", { name: "Boon Mek" });
+    expect(row.textContent).toMatch(/credits?/);
+    await user.click(row);
+    await user.click(row);
+    expect(row.getAttribute("aria-checked")).toBe("false");
+    expect(screen.queryByRole("button", { name: /^Check in \d/ })).toBeNull();
   });
 });

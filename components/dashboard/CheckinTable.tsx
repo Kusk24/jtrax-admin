@@ -261,6 +261,10 @@ export function CheckinTable() {
           minWidth={728}
         >
           {visible.map((row) => {
+          /* In class: the balance before today, and what today costs after
+             it ("20  − 1.5"). Checked out: the balance that is left. */
+          const used = row.charge ?? 0;
+          /* The colour is the balance after today's class. */
           const credit = creditColors(row.credit);
           const status = statusChipColors(row.status === "In class" ? "Ongoing" : "Dismissed");
           const canCheckOut = isToday && row.status === "In class" && Boolean(row.attendanceId);
@@ -302,9 +306,25 @@ export function CheckinTable() {
                 </span>
               </span>
 
-              <Badge color={credit.color} bg={credit.bg} style={{ justifySelf: "start" }}>
-                {fmtCredits(row.credit)}
-              </Badge>
+              {/* Two lines: before → after today's class, and under it what
+                  the class costs — "−2 using" while in class, "−2 used" once
+                  checked out. Nothing charged yet: just the balance. */}
+              <span style={{ justifySelf: "start", display: "flex", flexDirection: "column", gap: 2, fontVariantNumeric: "tabular-nums", minWidth: 0 }}>
+                <span style={{ display: "inline-flex", alignItems: "baseline", gap: 6, whiteSpace: "nowrap" }}>
+                  {used > 0 && (
+                    <>
+                      <span style={{ color: COLORS.textSecondary }}>{fmtCredits(row.credit + used)}</span>
+                      <span aria-hidden style={{ color: COLORS.textSecondary }}>→</span>
+                    </>
+                  )}
+                  <span style={{ fontWeight: 700, color: credit.color }}>{fmtCredits(row.credit)}</span>
+                </span>
+                {used > 0 && (
+                  <span style={{ fontSize: 12, color: COLORS.textSecondary, whiteSpace: "nowrap" }}>
+                    {t(row.status === "In class" ? "creditsUsing" : "creditsUsed", { credits: fmtCredits(used) })}
+                  </span>
+                )}
+              </span>
 
               <span style={{ display: "flex", alignItems: "center", color: COLORS.textSecondary }}>
                 <ClassDot color={classDotColor(row.class)} />

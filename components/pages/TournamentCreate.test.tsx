@@ -155,6 +155,23 @@ describe("the create wizard", () => {
     expect(await screen.findByText(en.tournament.viewTournament)).toBeTruthy();
   });
 
+  it("reviews each section in words, with an Edit for each and no framed preview", async () => {
+    const user = openWizard();
+    await user.click(screen.getByText(en.tournament.create));
+    await user.type(screen.getByLabelText(starred(en.tournament.fieldName)), "JCA Open");
+    const cat = screen.getByLabelText(starred(en.tournament.categoryPlaceholder));
+    await user.type(cat, "U8 Boys{Enter}");
+    await user.click(screen.getByText(en.tournament.continueToReview));
+    await waitFor(() => expect(screen.getByText(en.tournament.reviewTitle)).toBeTruthy());
+
+    expect(document.querySelector("iframe[title]:not([title*='map' i])")).toBeNull();
+    expect(screen.getByTitle("JCA Open")).toBeTruthy();
+    expect(screen.getByText("1 category")).toBeTruthy();
+    expect(screen.getByText(en.tournament.reviewNoRegulation)).toBeTruthy();
+    /* One Edit per section. */
+    expect(screen.getAllByRole("button", { name: /^Edit / }).length).toBeGreaterThanOrEqual(6);
+  });
+
   it("throws the draft away when the organiser leaves before publishing", async () => {
     post.mockClear();
     del.mockClear();
