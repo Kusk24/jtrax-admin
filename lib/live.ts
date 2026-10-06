@@ -219,6 +219,7 @@ export function toStudents(c: LiveCollections): Student[] {
          academy has ever had. */
       branch: s(st, "branch") || "Bangkok",
       className: cls ? s(cls, "name") : "—",
+      classType: cls ? classTypeOf(s(cls, "class_type")) : undefined,
       credit,
       expires: fmtDate(expiry),
       status: studentStatus(credit, expiry, s(st, "last_attended_date"), rules),
@@ -262,6 +263,7 @@ export function toParents(c: LiveCollections): ParentPerson[] {
           name: child?.name ?? s(sp, "student_id"),
           relation: rel ? rel[0].toUpperCase() + rel.slice(1) : "Guardian",
           className: child?.className ?? "—",
+          classType: child?.classType,
           credit: child?.credit ?? 0,
         };
       });
@@ -315,6 +317,7 @@ export function toPayments(c: LiveCollections): Payment[] {
         className: s(p, "class_name") || (cls ? s(cls, "name") : gone ? "" : "—"),
         /* Removed from the student, or archived by the academy. */
         courseDeleted: Boolean(gone) || isArchivedClass(cls),
+        classType: cls ? classTypeOf(s(cls, "class_type")) : undefined,
         payer: s(p, "parent_name") || (guardian ? s(guardian, "name") : ""),
         /* No student on a course payment means the student was deleted. A
            tournament payment with none is a public entrant who was never a
@@ -687,6 +690,7 @@ export function toCheckins(c: LiveCollections, day = todayISO()): CheckinDef[] {
         name: student ? s(student, "name") : studentId,
         /* The course's own name; its dot takes the level's colour. */
         class: cls ? s(cls, "name") : "—",
+        classType: cls ? classTypeOf(s(cls, "class_type")) : undefined,
         timeIn: clockOf(s(a, "check_in_time")),
         timeOut: out ? clockOf(out) : "—",
         checkInAt: s(a, "check_in_time"),

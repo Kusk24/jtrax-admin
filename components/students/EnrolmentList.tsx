@@ -10,6 +10,8 @@
    also says what last happened to it — joined, moved from one course, moved
    on to another, or left — and when. */
 import { useTranslations } from "next-intl";
+import type { ClassType } from "@/lib/class-face";
+import { useCourseLabel } from "../CourseName";
 import type { CreditMoveIn, EnrolmentEvent } from "@/lib/course-history";
 import type { Student } from "@/lib/data";
 import { fmtDate } from "@/lib/live";
@@ -23,6 +25,8 @@ import { CardGrid, ViewToggle } from "../view-mode";
 export type EnrolmentItem = {
   id: string;
   className: string;
+  /** Private or Group: the same name can run as both. */
+  classType?: ClassType;
   /** The enrolment's own status: Active, Withdrawn, Completed. */
   status: string;
   active: boolean;
@@ -147,6 +151,7 @@ export function EnrolmentList({
   actionsFor: (item: EnrolmentItem) => MoreMenuItem[];
 }) {
   const t = useTranslations("students");
+  const courseLabel = useCourseLabel();
   const tc = useTranslations("common");
   const tStatus = useTranslations("status");
   const [mode] = useEnrolmentView();
@@ -242,7 +247,7 @@ export function EnrolmentList({
           whiteSpace: "nowrap",
         }}
       >
-        {item.className}
+        {courseLabel(item.className, item.classType)}
       </button>
     </span>
   );

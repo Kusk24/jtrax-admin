@@ -106,17 +106,17 @@ describe("the Credit column", () => {
   const WITH_TXS = { ...RAW, creditTransactions: TXS };
 
   it("gives each course its own balance, not the first course's", () => {
-    expect(creditsByClass(WITH_TXS, "anong")).toEqual([
+    expect(creditsByClass(WITH_TXS, "anong")).toMatchObject([
       { className: "Beginner", balance: 8 },
       { className: "Intermediate", balance: 3 },
     ]);
   });
 
   it("leaves out courses the child has left", () => {
-    expect(creditsByClass(WITH_TXS, "boon")).toEqual([{ className: "Intermediate", balance: 4 }]);
+    expect(creditsByClass(WITH_TXS, "boon")).toMatchObject([{ className: "Intermediate", balance: 4 }]);
   });
 
   it("shows hours held outside any course, unnamed", () => {
-    expect(creditsByClass(WITH_TXS, "chai")).toEqual([{ className: "", balance: 2 }]);
+    expect(creditsByClass(WITH_TXS, "chai")).toMatchObject([{ className: "", balance: 2 }]);
   });
 });

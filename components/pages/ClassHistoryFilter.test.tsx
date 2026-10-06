@@ -101,7 +101,8 @@ beforeEach(() => useDataMock.mockReset());
 describe("the course filter", () => {
   it("offers the courses the academy still runs", () => {
     renderPage();
-    expect(optionLabels()).toContain("Beginner");
+    /* Named with how it is taught: "Beginner · Group". */
+    expect(optionLabels()).toContain("Beginner · Group");
   });
 
   it("does not offer a retired course by name", () => {

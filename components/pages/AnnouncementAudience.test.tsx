@@ -145,6 +145,7 @@ describe("the announcement list", () => {
       </NextIntlClientProvider>,
     );
     expect(screen.getByText(/To: All parents/)).toBeTruthy();
-    expect(screen.getByText(/To: Master, King Slayer/)).toBeTruthy();
+    /* Each course with how it is taught. */
+    expect(screen.getByText(/To: Master · Group, King Slayer · Group/)).toBeTruthy();
   });
 });

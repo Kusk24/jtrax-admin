@@ -21,6 +21,7 @@ export type Student = {
   accountId?: string;
   branch: string;
   className: string;
+  classType?: "Private" | "Group";
   credit: number;
   expires: string;
   status: 'Normal' | 'Low Credit' | 'Expiring' | 'Expired' | 'Inactive';
@@ -66,7 +67,7 @@ export type ParentPerson = {
   phone: string;
   email: string;
   lineId: string;
-  children: { id: string; name: string; relation: string; className: string; credit: number }[];
+  children: { id: string; name: string; relation: string; className: string; classType?: "Private" | "Group"; credit: number }[];
 };
 
 export type Payment = {
@@ -96,6 +97,8 @@ export type Payment = {
   publicEntry?: boolean;
   /** The course this paid for was deleted from the student. */
   courseDeleted?: boolean;
+  /** Private or Group, when the course is still known. */
+  classType?: "Private" | "Group";
   status: 'Paid' | 'Pending' | 'Cancelled';
   /** A tournament entry fee, or credits for a course. */
   kind?: 'tournament' | 'course';
@@ -107,6 +110,7 @@ export type CheckinDef = {
   studentId?: string;
   name: string;
   class: string;
+  classType?: "Private" | "Group";
   timeIn: string;
   timeOut: string;
   /** The raw check-in time, ISO, for ordering — `timeIn` is display text. */

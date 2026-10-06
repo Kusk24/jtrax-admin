@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useCourseLabel } from "@/components/CourseName";
 import { useRouter } from "next/navigation";
 import { byRegisterOrder, fmtCredits, fmtDate, toCheckins } from "@/lib/live";
 import { Icon } from "@/lib/icons";
@@ -28,6 +29,7 @@ function creditColors(credit: number) {
 export function CheckinTable() {
   const router = useRouter();
   const t = useTranslations("dashboard");
+  const courseLabel = useCourseLabel();
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
   const { raw, checkins, batch, update } = useData();
@@ -306,7 +308,7 @@ export function CheckinTable() {
 
               <span style={{ display: "flex", alignItems: "center", color: COLORS.textSecondary }}>
                 <ClassDot color={classDotColor(row.class)} />
-                {row.class}
+                {courseLabel(row.class, row.classType)}
               </span>
 
               <span style={{ color: COLORS.textSecondary }}>{row.timeIn}</span>

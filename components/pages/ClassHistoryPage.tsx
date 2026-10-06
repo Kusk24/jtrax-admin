@@ -2,11 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { classTypeOf, type ClassType } from "@/lib/class-face";
 import { useData } from "@/components/DataProvider";
 import { useErrorToast } from "@/components/ErrorToast";
 import { type ClassDef, type Student } from "@/lib/data";
 import { clockOf, fmtDate, isArchivedClass, liveClasses, todayISO, toTodaysClasses } from "@/lib/live";
-import { CourseName } from "@/components/CourseName";
+import { CourseName, useCourseLabel } from "@/components/CourseName";
 import { sessionFinished, useMinuteClock } from "@/lib/class-progress";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
@@ -81,6 +82,7 @@ type HistoryRow = {
   className: string;
   /** The academy archived this course. */
   removed: boolean;
+  classType?: ClassType;
   time: string;
   startTime: string;
   endTime: string;
@@ -298,11 +300,12 @@ function SessionCard({
   const t = useTranslations("classHistory");
   const tStatus = useTranslations("status");
   const tCommon = useTranslations("common");
+  const courseLabel = useCourseLabel();
   const chip = statusChipColors(row.status);
   return (
     <EntityCard
       onClick={onOpen}
-      title={row.removed ? `${row.className} · ${tCommon("removed")}` : row.className}
+      title={row.removed ? `${courseLabel(row.className, row.classType)} · ${tCommon("removed")}` : courseLabel(row.className, row.classType)}
       subtitle={`${row.date} · ${row.time}`}
       badges={
         <>
@@ -353,6 +356,7 @@ function SessionDetail({
   const tStatus = useTranslations("status");
   
   const tCommon = useTranslations("common");
+  const courseLabel = useCourseLabel();
   const chip = statusChipColors(row.status);
   return (
     <Modal title={t("sessionDetail")} onClose={onClose} width={560}>
@@ -373,7 +377,7 @@ function SessionDetail({
               <Icon name="history" size={22} color={classDotColor(row.className)} />
             </span>
           }
-          title={row.removed ? `${row.className} · ${tCommon("removed")}` : row.className}
+          title={row.removed ? `${courseLabel(row.className, row.classType)} · ${tCommon("removed")}` : courseLabel(row.className, row.classType)}
           subtitle={`${row.date} · ${row.time}`}
           badges={
             <>
@@ -530,6 +534,7 @@ function SessionDetail({
 export function ClassHistoryPage() {
   const t = useTranslations("classHistory");
   const tCommon = useTranslations("common");
+  const courseLabel = useCourseLabel();
   const tStatus = useTranslations("status");
   const { raw, students, batch, create, update, remove } = useData();
   const { showError } = useErrorToast();
@@ -588,6 +593,7 @@ export function ClassHistoryPage() {
           iso: date,
           date: fmtDate(date),
           className: cls ? String(cls["name"] ?? "") : "—",
+          classType: cls ? classTypeOf(cls["class_type"]) : undefined,
           removed: isArchivedClass(cls),
           time: start && end ? `${start} – ${end}` : start,
           startTime: start,
@@ -627,7 +633,7 @@ export function ClassHistoryPage() {
       { value: "", label: tCommon("allClasses") },
       ...liveClasses({ classes: raw.classes }).map((c) => ({
         value: String(c["class_id"]),
-        label: String(c["name"] ?? ""),
+        label: courseLabel(String(c["name"] ?? ""), classTypeOf(c["class_type"])),
       })),
     ];
     /* Only when something is actually in it. An academy that has never retired
@@ -636,7 +642,7 @@ export function ClassHistoryPage() {
       options.push({ value: OTHER_COURSES, label: t("otherCourses") });
     }
     return options;
-  }, [raw.classes, all, liveCourseIds, t, tCommon]);
+  }, [raw.classes, all, liveCourseIds, t, tCommon, courseLabel]);
 
   /* Add and Edit open the dashboard's own class panel, so a class is made
      and changed the same way everywhere. */
@@ -720,11 +726,11 @@ export function ClassHistoryPage() {
       filtered.map((row) => ({
         key: row.key,
         day: row.iso,
-        label: row.className,
+        label: courseLabel(row.className, row.classType),
         sub: row.time,
         tone: classDotColor(row.className),
       })),
-    [filtered],
+    [filtered, courseLabel],
   );
 
   const daySessions = useMemo(
@@ -897,7 +903,7 @@ export function ClassHistoryPage() {
               <span style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 600, minWidth: 0 }}>
                 <span style={{ display: "flex", alignItems: "center", ...fade }}>
                   <ClassDot color={classDotColor(row.className)} />
-                  <CourseName name={row.className} deleted={row.removed} />
+                  <CourseName name={row.className} type={row.classType} deleted={row.removed} fadeType />
                 </span>
                 {cancelled && (
                   <Badge color={COLORS.danger} bg={COLORS.dangerBg}>{tStatus("Cancelled")}</Badge>
