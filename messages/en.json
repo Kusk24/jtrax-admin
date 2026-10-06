@@ -48,7 +48,8 @@
     "Withdrawn": "Withdrawn",
     "Scheduled": "Scheduled",
     "Deleted": "Deleted",
-    "Cancelled": "Cancelled"
+    "Cancelled": "Cancelled",
+    "Unpaid": "Unpaid"
   },
   "classType": {
     "Private": "Private",
@@ -128,7 +129,7 @@
     "entryFee": "Entry fee",
     "payment": "Payment",
     "paid": "Paid",
-    "unpaid": "Pending",
+    "unpaid": "Unpaid",
     "rating": "Rating {rating}",
     "onChessResults": "On Chess-Results: {name}",
     "jcaStudent": "JCA student",
@@ -1010,7 +1011,7 @@
     "previewNoPortal": "The preview needs the portal's address. Set NEXT_PUBLIC_PORTAL_URL in .env.local (for example http://localhost:3001) and restart the console.",
     "age": "Age",
     "paid": "Paid",
-    "unpaid": "Pending",
+    "unpaid": "Unpaid",
     "ageCheckFlag": "Check age",
     "ageCheck": {
       "tooOld": "The date of birth on the form is too old for this category.",
@@ -1055,11 +1056,21 @@
       "noResponse": "No response"
     },
     "paymentStatus": "Payment status",
-    "noPaymentYet": "No payment yet",
+    "noPaymentYet": "Unpaid",
     "ageFromDob": "From the date of birth",
-    "needDeskMethod": "Choose Cash, PromptPay or Bank transfer to mark it paid.",
+    "needDeskMethod": "Choose how it was paid (Card, Cash, PromptPay or Bank transfer) to mark it paid.",
     "methodCreditCard": "Card",
-    "cancelled": "Cancelled"
+    "cancelled": "Cancelled",
+    "dupStudentEntered": "{name} is already entered in this tournament.",
+    "dupStudentPending": "{name} already has an entry waiting for approval in this tournament.",
+    "dupStudentReleased": "{name}'s place in this tournament was released. Restore it from Released places instead.",
+    "thisPlayer": "This player",
+    "feeReason_earlyBird": "Early-bird fee",
+    "feeReason_student": "JCA student fee ({pct}% off)",
+    "feeReason_studentEarlyBird": "JCA student, early-bird fee",
+    "feeReason_studentEarlyBirdDiscount": "JCA student, early-bird fee with {pct}% off",
+    "cancelReleases": "Moves them to Released places",
+    "fullWarning": "This tournament is full ({taken} / {max}). Adding goes over the limit."
   },
   "announcement": {
     "title": "Announcement",

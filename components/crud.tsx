@@ -9,7 +9,7 @@
  * screen and not the next, an error swallowed here and alerted there.
  */
 
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { ApiError } from "@/lib/api";
 import { Icon } from "@/lib/icons";
@@ -247,6 +247,12 @@ export function CrudFormModal({
   const t = useTranslations("common");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /* A long form is scrolled to its Save button; an error at the top would go
+     unseen and the form look stuck. */
+  const errorRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
+  }, [error]);
 
   async function submit() {
     const missing = firstMissing(fields, values);
@@ -288,7 +294,11 @@ export function CrudFormModal({
       }
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        {error && <ErrorNote>{error}</ErrorNote>}
+        {error && (
+          <div ref={errorRef}>
+            <ErrorNote>{error}</ErrorNote>
+          </div>
+        )}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 14 }}>
           {fields.map((f) => (
             <div key={f.name} style={{ gridColumn: f.half ? "span 1" : "span 2" }}>

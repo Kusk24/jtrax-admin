@@ -683,7 +683,10 @@ export function PaymentDetail({
               </span>
               {/* Only what is not money in the account says what it is:
                   Pending, or a tournament fee Cancelled at closing. */}
-              {payment.status !== "Paid" && <Badge {...statusChip(payment.status)}>{tStatus(payment.status)}</Badge>}
+              {payment.status !== "Paid" && (
+                /* A Pending payment reads "Unpaid": what the desk needs to know. */
+                <Badge {...statusChip(payment.status)}>{tStatus(payment.status === "Pending" ? "Unpaid" : payment.status)}</Badge>
+              )}
               {payment.credits !== "—" && (
                 <Badge color={COLORS.success} bg={COLORS.successBg}>
                   {payment.credits} {tCommon("credits")}
