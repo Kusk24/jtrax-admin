@@ -7,7 +7,7 @@ import { ExternalTournaments } from "../tournament/ExternalTournaments";
 import { ParticipantProfile, type ResultsLink } from "../tournament/ParticipantProfile";
 import { api } from "@/lib/api";
 import { fmtDate, fmtDateTime, fmtTHB, todayISO } from "@/lib/live";
-import { ageOn, suggestCategory } from "@/lib/age-group";
+import { ageOn, dobTooYoung, suggestCategory } from "@/lib/age-group";
 import { entryFee, pricingFromRow } from "@/lib/entry-fee";
 import { RegistrationCard } from "../tournament/RegistrationCard";
 import { RegistrationQueue } from "../tournament/RegistrationQueue";
@@ -610,6 +610,9 @@ function TournamentDetail({
           }}
           onClose={() => setParticipantModal(null)}
           onSubmit={async (payload) => {
+            if (dobTooYoung(String(payload.participant_date_of_birth ?? ""), todayISO())) {
+              throw new Error(tCommon("dobTooYoung"));
+            }
             /* One entry per player — one email may enter several children —
                said in words, before the server refuses it. */
             const dup = duplicateEntry(raw.tournamentRegistrations, {

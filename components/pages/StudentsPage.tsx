@@ -13,6 +13,7 @@ import { type Student } from "@/lib/data";
 import { useData } from "@/components/DataProvider";
 import { CourseName, useCourseLabel } from "@/components/CourseName";
 import { enrolmentStatus, isArchivedClass, isRevenue, fmtCredits, fmtDate, fmtSessionTime, fmtTHB, isActiveEnrolment, liveClasses, toDateInput, todayISO } from "@/lib/live";
+import { dobTooYoung, latestBirthDate } from "@/lib/age-group";
 import { creditsForValue, planTransfer, ratePerCredit, roundCredits, valueOfLots, type CreditRate } from "@/lib/credit-transfer";
 import { opensCreate } from "@/lib/quick-actions";
 import { createStudentAccount, isTakenIdError } from "@/lib/student-login-id";
@@ -1215,6 +1216,7 @@ function StudentDetail({
                   <input
                     id="ed-dob"
                     type="date"
+                    max={latestBirthDate(todayISO())}
                     value={draft.dateOfBirth}
                     onChange={(e) => setField("dateOfBirth", e.target.value)}
                     style={fieldStyle}
@@ -1346,6 +1348,10 @@ function StudentDetail({
               busyLabel={tCommon("saving")}
               onClick={async () => {
                 setSaveError(null);
+                if (dobTooYoung(draft.dateOfBirth, todayISO())) {
+                  setSaveError(tCommon("dobTooYoung"));
+                  return;
+                }
                 try {
                   /* The child and their guardian link in one act, so a
                      correction costs one refetch rather than three. */
@@ -2266,6 +2272,13 @@ class GuardianEmailTaken extends Error {
   }
 }
 
+/** The student's own email already has an account. */
+class StudentEmailTaken extends Error {
+  constructor(readonly email: string) {
+    super(`${email} already has an account`);
+  }
+}
+
 type Draft = {
   name: string;
   /* The course to enrol them in, by id: a course name can run as both a
@@ -2275,6 +2288,9 @@ type Draft = {
      collected neither, so a student added through the console read "0 yrs ·
      Beginner" beside imported ones that had both. */
   dateOfBirth: string;
+  /* Optional: an older student who signs in with their own address, and can
+     use Forgot password themselves. Blank, they get a username as before. */
+  studentEmail: string;
   level: string;
   branch: string;
   school: string;
@@ -2295,6 +2311,7 @@ const EMPTY_DRAFT: Draft = {
   name: "",
   classId: "",
   dateOfBirth: "",
+  studentEmail: "",
   level: LEVEL_OPTIONS[0],
   branch: BRANCH_OPTIONS[0],
   school: "",
@@ -2354,6 +2371,7 @@ function AddStudentWizard({
      this screen could not see (one made a moment ago, or out of this
      person's view). */
   const [takenOnServer, setTakenOnServer] = useState("");
+  const [studentTakenOnServer, setStudentTakenOnServer] = useState("");
 
   function set<K extends keyof Draft>(key: K, value: Draft[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
@@ -2402,8 +2420,24 @@ function AddStudentWizard({
     owner !== null ||
     (takenOnServer !== "" && takenOnServer === draft.parentEmail.trim().toLowerCase());
 
+  /* The student's own email, if given: an address, and nobody's already —
+     the guardian's included, since one address is one sign-in. */
+  const studentEmail = draft.studentEmail.trim().toLowerCase();
+  const studentEmailProblem =
+    studentEmail === ""
+      ? null
+      : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(studentEmail)
+        ? t("studentEmailInvalid")
+        : emailOwner(studentEmail) !== null ||
+            studentEmail === draft.parentEmail.trim().toLowerCase() ||
+            studentEmail === studentTakenOnServer
+          ? t("studentEmailTaken")
+          : null;
+
   const canSubmit =
     draft.name.trim() !== "" &&
+    studentEmailProblem === null &&
+    !dobTooYoung(draft.dateOfBirth, todayISO()) &&
     (draft.parentId !== "" ||
       (draft.parentName.trim() !== "" &&
         draft.parentPhone.trim() !== "" &&
@@ -2585,10 +2619,34 @@ function AddStudentWizard({
                 <input
                   id="w-dob"
                   type="date"
+                  max={latestBirthDate(todayISO())}
                   value={draft.dateOfBirth}
                   onChange={(e) => set("dateOfBirth", e.target.value)}
-                  style={fieldStyle}
+                  aria-invalid={dobTooYoung(draft.dateOfBirth, todayISO()) || undefined}
+                  style={{ ...fieldStyle, borderColor: dobTooYoung(draft.dateOfBirth, todayISO()) ? COLORS.danger : undefined }}
                 />
+                {dobTooYoung(draft.dateOfBirth, todayISO()) && (
+                  <span role="alert" style={{ display: "block", marginTop: 4, fontFamily: FONT, fontSize: 12.5, color: COLORS.danger }}>
+                    {tCommon("dobTooYoung")}
+                  </span>
+                )}
+              </div>
+              <div>
+                <label style={labelStyle} htmlFor="w-semail">{t("studentEmail")}</label>
+                <input
+                  id="w-semail"
+                  type="email"
+                  value={draft.studentEmail}
+                  onChange={(e) => set("studentEmail", e.target.value)}
+                  aria-invalid={studentEmailProblem ? true : undefined}
+                  style={{ ...fieldStyle, borderColor: studentEmailProblem ? COLORS.danger : undefined }}
+                />
+                <span
+                  role={studentEmailProblem ? "alert" : undefined}
+                  style={{ display: "block", marginTop: 4, fontFamily: FONT, fontSize: 12.5, color: studentEmailProblem ? COLORS.danger : COLORS.textSecondary }}
+                >
+                  {studentEmailProblem ?? t("studentEmailHelp")}
+                </span>
               </div>
               <div>
                 <label style={labelStyle} htmlFor="w-level">{t("level")}</label>
@@ -2777,6 +2835,7 @@ function AddStudentWizard({
                   /* The one refusal this form can fix itself: stay, keep
                      everything typed, and point at the email. */
                   if (e instanceof GuardianEmailTaken) setTakenOnServer(e.email.toLowerCase());
+                  else if (e instanceof StudentEmailTaken) setStudentTakenOnServer(e.email.toLowerCase());
                   else throw e;
                 } finally {
                   setSaving(false);
@@ -3018,7 +3077,25 @@ export function StudentsPage({
            shown once, at the end. */
         /* Readable: a child types it, and the desk reads it out. */
         const studentPassword = generateReadablePassword();
-        const studentAccount = await createStudentAccount(create, draft.name, studentPassword);
+        /* Their own email when given — they sign in with it — else a
+           username built from their name. */
+        const ownEmail = draft.studentEmail.trim().toLowerCase();
+        const studentAccount = ownEmail
+          ? await (async () => {
+              try {
+                const account = await create("user-accounts", {
+                  email: ownEmail,
+                  password: studentPassword,
+                  role: "Student",
+                  display_name: draft.name.trim(),
+                });
+                return { accountId: String(account.user_account_id), loginId: ownEmail };
+              } catch (e) {
+                if (isTakenIdError(e)) throw new StudentEmailTaken(ownEmail);
+                throw e;
+              }
+            })()
+          : await createStudentAccount(create, draft.name, studentPassword);
         childLogin = { name: draft.name.trim(), loginId: studentAccount.loginId, password: studentPassword };
         const created = await create("students", {
           user_account_id: studentAccount.accountId,
@@ -3213,7 +3290,10 @@ export function StudentsPage({
                      address at a domain that receives nothing, which told the
                      desk to send the password to a mailbox that was never
                      going to exist. */
-                  { label: t("loginId"), value: <strong>{createdLogins.student.email}</strong> },
+                  {
+                    label: createdLogins.student.email.includes("@") ? tCommon("email") : t("loginId"),
+                    value: <strong>{createdLogins.student.email}</strong>,
+                  },
                   {
                     label: t("tempPassword"),
                     value: <strong style={{ letterSpacing: "0.04em" }}>{createdLogins.student.password}</strong>,
@@ -3221,7 +3301,7 @@ export function StudentsPage({
                 ]}
               />
               <p style={{ margin: "8px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-                {t("studentLoginIdHint")}
+                {createdLogins.student.email.includes("@") ? t("studentOwnEmailHint") : t("studentLoginIdHint")}
               </p>
             </div>
             {createdLogins.parent && (

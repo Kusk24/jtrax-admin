@@ -123,7 +123,8 @@
     "regulationUploadFailed": "สร้างรายการแข่งขันแล้ว แต่แนบไฟล์ระเบียบการไม่สำเร็จ",
     "saveChanges": "บันทึกการเปลี่ยนแปลง",
     "removeThing": "ลบ {what}",
-    "removed": "นำออกแล้ว"
+    "removed": "นำออกแล้ว",
+    "dobTooYoung": "วันเกิดต้องย้อนหลังอย่างน้อย 1 ปี"
   },
   "participantProfile": {
     "entryFee": "ค่าสมัคร",
@@ -713,7 +714,12 @@
     "chargePart": "คิดตามเวลาที่เรียนจริง {from} – {to} ({attended}) = {credits} เครดิต",
     "chargePartRounded": "คิดตามเวลาที่เรียนจริง {from} – {to} ({attended}) ปัดเป็นทุก {step} นาที ({charged}) = {credits} เครดิต",
     "chargeDiffers": "รายการนี้บันทึก {credits} เครดิต — มีการแก้ไขหลังจบคลาส",
-    "chargeNoVisit": "ไม่พบข้อมูลการเข้าเรียนของรายการนี้แล้ว"
+    "chargeNoVisit": "ไม่พบข้อมูลการเข้าเรียนของรายการนี้แล้ว",
+    "studentEmail": "อีเมลนักเรียน (ไม่บังคับ)",
+    "studentEmailHelp": "สำหรับนักเรียนที่เข้าสู่ระบบด้วยอีเมลของตนเอง",
+    "studentEmailInvalid": "กรุณากรอกอีเมลให้ถูกต้อง",
+    "studentEmailTaken": "อีเมลนี้มีบัญชีอยู่แล้ว",
+    "studentOwnEmailHint": "นักเรียนเข้าสู่ระบบด้วยอีเมลของตนเอง และรีเซ็ตรหัสผ่านเองได้ผ่าน ลืมรหัสผ่าน"
   },
   "parents": {
     "title": "ผู้ปกครอง",

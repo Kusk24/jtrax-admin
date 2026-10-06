@@ -533,7 +533,9 @@ export function RecordPaymentForm({
               id="pay-amount"
               type="number"
               min={0}
-              value={amount}
+              /* 0 shows as the hint, so typing does not start after a "0". */
+              value={amount || ""}
+              placeholder="0"
               onChange={(e) => {
                 setAmountTyped(true);
                 setAmount(Math.max(0, Number(e.target.value) || 0));
@@ -548,7 +550,8 @@ export function RecordPaymentForm({
               type="number"
               min={0}
               max={100}
-              value={discountPct}
+              value={discountPct || ""}
+              placeholder="0"
               onChange={(e) => setDiscountPct(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
               style={fieldStyle}
             />
