@@ -121,6 +121,8 @@ export type ClassDef = {
   id?: string;
   classId?: string;
   category: string;
+  /** Private or Group — the same course name prices very differently. */
+  classType?: "Private" | "Group";
   name: string;
   time: string;
   /* Scheduled comes from the dashboard's own reading of the clock: before its

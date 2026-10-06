@@ -4,6 +4,7 @@ import { api, ApiError } from "@/lib/api";
 import { cancelFailure } from "@/lib/cancel-class";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { classTypeOf } from "@/lib/class-face";
 import { busyStudents } from "@/lib/class-clash";
 import { classStatusNow, useMinuteClock } from "@/lib/class-progress";
 import { type ClassDef } from "@/lib/data";
@@ -302,8 +303,15 @@ function CreateSession({
 
   /* Only classes the academy still runs: an archived one cannot take a new
      session, though its finished ones keep its name. */
+  const tClassType = useTranslations("classType");
   const classes = useMemo(
-    () => liveClasses({ classes: raw.classes }).map((c) => ({ id: String(c.class_id), name: String(c.name ?? "") })),
+    () =>
+      liveClasses({ classes: raw.classes }).map((c) => ({
+        id: String(c.class_id),
+        name: String(c.name ?? ""),
+        /* Private or Group: the same course name prices very differently. */
+        type: classTypeOf(c.class_type),
+      })),
     [raw.classes],
   );
 
@@ -515,7 +523,7 @@ function CreateSession({
             >
               {classes.length === 0 && <option value="">{t("noClasses")}</option>}
               {classes.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+                <option key={c.id} value={c.id}>{`${c.name} · ${tClassType(c.type)}`}</option>
               ))}
             </select>
           </div>
