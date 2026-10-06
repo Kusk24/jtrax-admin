@@ -145,3 +145,28 @@ describe("a new guardian's invite", () => {
     expect(await screen.findByText(/with Uri Tan's student login/)).toBeDefined();
   });
 });
+
+describe("the course a new student joins", () => {
+  it("is the one picked, even when two courses share a name", async () => {
+    raw.classes = [
+      { class_id: "nxt_group", name: "JCA NXT", class_type: "Group" },
+      { class_id: "nxt_private", name: "JCA NXT", class_type: "Private" },
+    ];
+    create.mockImplementation(async (path: string, body: Row) => {
+      if (path === "user-accounts") return { user_account_id: body.role === "Parent" ? "usr_sandy" : "usr_uri", ...body };
+      if (path === "students") return { student_id: "stu_uri" };
+      if (path === "parents") return { parent_id: "par_sandy" };
+      return {};
+    });
+    const user = renderForm();
+    const course = screen.getByLabelText(/^Course( \*)?$/) as HTMLSelectElement;
+    expect(Array.from(course.options).map((o) => o.textContent)).toEqual(["JCA NXT · Group", "JCA NXT · Private"]);
+    await user.selectOptions(course, "nxt_private");
+    await fillGuardian(user, "sandy@example.com");
+    await user.click(submit());
+
+    const enrol = create.mock.calls.find((c) => c[0] === "enrollments");
+    expect(enrol?.[1].class_id).toBe("nxt_private");
+    raw.classes = [];
+  });
+});

@@ -6,6 +6,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useCourseLabel } from "@/components/CourseName";
 import { generateHiddenPassword, removeIfPresent } from "@/lib/credentials";
 import { type ParentPerson } from "@/lib/data";
 import { useData } from "@/components/DataProvider";
@@ -93,6 +94,7 @@ function ParentDetail({
   const t = useTranslations("parents");
   const tCommon = useTranslations("common");
   const tMsg = useTranslations("messages");
+  const courseLabel = useCourseLabel();
   const { update } = useData();
   const { showError } = useErrorToast();
   const [linking, setLinking] = useState(false);
@@ -308,7 +310,7 @@ function ParentDetail({
                         {child.name}
                       </button>
                       <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-                        {child.relation} · {child.className}
+                        {child.relation} · {courseLabel(child.className, child.classType)}
                       </span>
                     </span>
                     <Badge color={chip.color} bg={chip.bg}>

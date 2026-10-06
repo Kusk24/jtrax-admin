@@ -3,6 +3,7 @@
 import { useMemo, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { classTypeOf } from "@/lib/class-face";
 import { api, ApiError } from "@/lib/api";
 import { generateHiddenPassword, generateReadablePassword } from "@/lib/credentials";
 import { classesJoined, hoursJoined, creditsSinceTopUp } from "@/lib/enrolment-stats";
@@ -10,7 +11,7 @@ import { InviteButton, InviteOutcomeNote, inviteOutcome, type InviteOutcome } fr
 import type { StudentLogin } from "@/lib/invite";
 import { type Student } from "@/lib/data";
 import { useData } from "@/components/DataProvider";
-import { CourseName } from "@/components/CourseName";
+import { CourseName, useCourseLabel } from "@/components/CourseName";
 import { enrolmentStatus, isArchivedClass, isRevenue, fmtCredits, fmtDate, fmtSessionTime, fmtTHB, isActiveEnrolment, liveClasses, toDateInput, todayISO } from "@/lib/live";
 import { creditsForValue, planTransfer, ratePerCredit, roundCredits, valueOfLots, type CreditRate } from "@/lib/credit-transfer";
 import { opensCreate } from "@/lib/quick-actions";
@@ -73,7 +74,6 @@ import { LineChatLink, useLineChat } from "../messages/LineChatLink";
 const TEMPLATE = equalTemplate(5, 90);
 const VIEWS = ["list", "card"] as const;
 const ATTENDANCE_TEMPLATE = "minmax(90px, 0.8fr) minmax(130px, 1.1fr) minmax(140px, 1.4fr) minmax(90px, 0.7fr)";
-const CLASS_OPTIONS = ["Group Class", "Private Class", "Master Class", "Weekend Class"];
 
 /* One branch today, and the academy expects more. It is asked at registration
    rather than after a second site exists, because reconstructing where every
@@ -155,7 +155,9 @@ function expiryOf(transactions: Record<string, unknown>[], enrolmentId: string):
   );
 }
 
-type CourseCredit = { label: string; balance: number; loose: boolean };
+/* `label` is what is shown ("JCA NXT · Private"); `name` alone picks the
+   course's colour dot. */
+type CourseCredit = { label: string; name?: string; balance: number; loose: boolean };
 
 /* The credit figure in plain text colour: the Status column already says when
    credit is low, so the number does not need to say it again. */
@@ -205,7 +207,7 @@ function CourseCreditList({
               color: c.loose ? COLORS.textSecondary : COLORS.text,
             }}
           >
-            {!c.loose && <ClassDot color={classDotColor(c.label)} />}
+            {!c.loose && <ClassDot color={classDotColor(c.name ?? c.label)} />}
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.label}</span>
           </span>
           {c.label !== "—" && (
@@ -282,6 +284,7 @@ function StudentDetail({
     setDraft((d) => ({ ...d, [key]: value }));
   }
   const { raw, creditRules, batch, create, update, remove } = useData();
+  const courseLabel = useCourseLabel();
   const tMsg = useTranslations("messages");
   /* Theirs, else their parent's — the chat linked from Messages. */
   const lineChat = useLineChat({ studentId: student.id, parentId: student.parentId });
@@ -340,6 +343,7 @@ function StudentDetail({
           end: session ? String(session["end_time"] ?? "") : "",
           classId: cls ? String(cls["class_id"]) : "",
           className: cls ? String(cls["name"] ?? "") : "—",
+          classType: cls ? classTypeOf(cls["class_type"]) : undefined,
           /* Archived by the academy, or removed from this student (only a
              deleted enrolment left for that course). */
           removed:
@@ -407,6 +411,7 @@ function StudentDetail({
         id: String(tx["credit_transaction_id"]),
         enrollmentId: String(tx["enrollment_id"] ?? ""),
         className: cls ? String(cls["name"] ?? "") : "",
+        classType: cls ? classTypeOf(cls["class_type"]) : undefined,
         /* Held outside any course (its enrolment was deleted), or for a
            course the academy archived. */
         removed: !enrolment || isArchivedClass(cls),
@@ -440,6 +445,7 @@ function StudentDetail({
             id: String(e["enrollment_id"]),
             classId: String(e["class_id"] ?? ""),
             className: cls ? String(cls["name"] ?? "") : "—",
+            classType: cls ? classTypeOf(cls["class_type"]) : undefined,
             enrolledDate: String(e["enrolled_date"] ?? ""),
             status: String(e["status"] ?? ""),
             movedFrom: fromCls ? String(fromCls["name"] ?? "") : "",
@@ -780,7 +786,7 @@ function StudentDetail({
       enrolments.filter((e) => isActiveEnrolment({ status: e.status })).map((e) => e.classId),
     );
     return liveClasses({ classes: raw.classes })
-      .map((c) => ({ id: String(c["class_id"]), name: String(c["name"] ?? "") }))
+      .map((c) => ({ id: String(c["class_id"]), name: courseLabel(String(c["name"] ?? ""), classTypeOf(c["class_type"])) }))
       .filter((c) => c.id !== from.classId && !alreadyIn.has(c.id));
   }
 
@@ -1009,6 +1015,7 @@ function StudentDetail({
           return {
             id: String(p["payment_id"]),
             className: cls ? String(cls["name"] ?? "") : String(p["class_name"] ?? "") || (gone ? "" : "—"),
+            classType: cls ? classTypeOf(cls["class_type"]) : undefined,
             courseDeleted: Boolean(gone) || isArchivedClass(cls),
             credits:
               Number(p["credit_amount"] ?? 0) > 0
@@ -1629,6 +1636,7 @@ function StudentDetail({
                 return {
                   id: e.id,
                   className: e.className,
+                  classType: e.classType,
                   status: e.deletedDate ? "Deleted" : e.status,
                   active,
                   deleted: !!e.deletedDate,
@@ -1751,7 +1759,7 @@ function StudentDetail({
                   style={selectStyle}
                 >
                   {activeEnrolmentTargets.map((e) => (
-                    <option key={e.id} value={e.id}>{e.className}</option>
+                    <option key={e.id} value={e.id}>{courseLabel(e.className, e.classType)}</option>
                   ))}
                 </select>
               </div>
@@ -2027,7 +2035,7 @@ function StudentDetail({
                 <span style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
                   <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     {row.className && <ClassDot color={classDotColor(row.className)} />}
-                    <CourseName name={row.className} deleted={row.removed} />
+                    <CourseName name={row.className} type={row.classType} deleted={row.removed} />
                   </span>
                 </span>
                 <span>{t(`creditType_${row.type}`)}</span>
@@ -2065,7 +2073,7 @@ function StudentDetail({
               <InfoGrid
                 rows={[
                   { label: tCommon("date"), value: fmtDate(row.date) },
-                  { label: tCommon("class"), value: row.className ? <CourseName name={row.className} deleted={row.removed} /> : "—" },
+                  { label: tCommon("class"), value: row.className ? <CourseName name={row.className} type={row.classType} deleted={row.removed} /> : "—" },
                   { label: t("creditType"), value: t(`creditType_${row.type}`) },
                   {
                     label: tCommon("amount"),
@@ -2204,7 +2212,7 @@ function StudentDetail({
                   <span style={{ color: COLORS.textSecondary }}>{fmtSessionTime(row.start, row.end)}</span>
                   <span style={{ display: "flex", alignItems: "center" }}>
                     <ClassDot color={classDotColor(row.className)} />
-                    <CourseName name={row.className} deleted={row.removed} />
+                    <CourseName name={row.className} type={row.classType} deleted={row.removed} />
                   </span>
                   <span style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>
                     {row.creditsUsed === null ? "—" : `−${fmtCredits(-row.creditsUsed)}`}
@@ -2232,7 +2240,7 @@ function StudentDetail({
               <TableRow key={p.id} template={equalTemplate(5, 80)}>
                 <span style={{ display: "flex", alignItems: "center" }}>
                   <ClassDot color={classDotColor(p.className)} />
-                  <CourseName name={p.className} deleted={p.courseDeleted} />
+                  <CourseName name={p.className} type={p.classType} deleted={p.courseDeleted} />
                 </span>
                 <span style={{ color: COLORS.success, fontWeight: 600 }}>{p.credits}</span>
                 <span style={{ fontWeight: 600 }}>{p.amount}</span>
@@ -2260,7 +2268,9 @@ class GuardianEmailTaken extends Error {
 
 type Draft = {
   name: string;
-  className: string;
+  /* The course to enrol them in, by id: a course name can run as both a
+     Private and a Group class, so a name alone could enrol the wrong one. */
+  classId: string;
   /* The list and the cards show age and level on every student. Registration
      collected neither, so a student added through the console read "0 yrs ·
      Beginner" beside imported ones that had both. */
@@ -2283,7 +2293,7 @@ type Draft = {
 
 const EMPTY_DRAFT: Draft = {
   name: "",
-  className: "Group Class",
+  classId: "",
   dateOfBirth: "",
   level: LEVEL_OPTIONS[0],
   branch: BRANCH_OPTIONS[0],
@@ -2311,7 +2321,7 @@ function AddStudentWizard({
      longer match what the school teaches, so registering someone silently
      enrolled them in nothing — and nothing is what the payment form then had
      to price. */
-  classOptions: string[];
+  classOptions: Array<{ value: string; label: string }>;
   /* Every guardian already on file, so a second child joins the first one's
      parent rather than getting a duplicate account. */
   parentOptions: Array<{ id: string; name: string }>;
@@ -2326,7 +2336,7 @@ function AddStudentWizard({
   const [draft, setDraft] = useState<Draft>({
     ...EMPTY_DRAFT,
     name: initialName,
-    className: classOptions[0] ?? "",
+    classId: classOptions[0]?.value ?? "",
   });
   const [docName, setDocName] = useState("");
   const [extracting, setExtracting] = useState(false);
@@ -2563,9 +2573,10 @@ function AddStudentWizard({
               </div>
               <div>
                 <label style={labelStyle} htmlFor="w-class">{tCommon("class")}</label>
-                <select id="w-class" value={draft.className} onChange={(e) => set("className", e.target.value)} style={selectStyle}>
+                <select id="w-class" value={draft.classId} onChange={(e) => set("classId", e.target.value)} style={selectStyle}>
+                  {classOptions.length === 0 && <option value="">—</option>}
                   {classOptions.map((c) => (
-                    <option key={c} value={c}>{c}</option>
+                    <option key={c.value} value={c.value}>{c.label}</option>
                   ))}
                 </select>
               </div>
@@ -2801,6 +2812,7 @@ export function StudentsPage({
 }) {
   const t = useTranslations("students");
   const tCommon = useTranslations("common");
+  const courseLabel = useCourseLabel();
   const { showError } = useErrorToast();
   const tStatus = useTranslations("status");
   const { students, raw, batch, create, update, remove, removePerson, loading, error } = useData();
@@ -2876,10 +2888,10 @@ export function StudentsPage({
       { value: "", label: tCommon("allClasses") },
       ...classFilterOptions(raw, students.map((s) => s.id)).map((c) => ({
         value: c.id,
-        label: `${c.name} (${c.count})`,
+        label: `${courseLabel(c.name, c.classType)} (${c.count})`,
       })),
     ],
-    [tCommon, raw, students],
+    [tCommon, raw, students, courseLabel],
   );
 
   const filtered = useMemo(() => {
@@ -2916,7 +2928,12 @@ export function StudentsPage({
     const rows = creditsByClass(raw, studentId);
     /* No course and nothing held: a dash, as the Class column always said. */
     if (rows.length === 1 && !rows[0].className && rows[0].balance === 0) return [{ label: "—", balance: 0, loose: true }];
-    return rows.map((c) => ({ label: c.className || t("notInACourse"), balance: c.balance, loose: !c.className }));
+    return rows.map((c) => ({
+      label: c.className ? courseLabel(c.className, c.classType) : t("notInACourse"),
+      name: c.className,
+      balance: c.balance,
+      loose: !c.className,
+    }));
   }
 
   const { pageRows, totalPages, page: current } = paginate(filtered, page);
@@ -2942,10 +2959,14 @@ export function StudentsPage({
 
   /* Falls back to the design's list only while the classes are still loading,
      so the picker is never empty. */
-  const classNames = useMemo(() => {
-    const live = liveClasses({ classes: raw.classes }).map((c) => String(c["name"] ?? "")).filter(Boolean);
-    return live.length > 0 ? live : CLASS_OPTIONS;
-  }, [raw.classes]);
+  /* The courses a new student can join: "JCA NXT · Private", by id. */
+  const classNames = useMemo(
+    () =>
+      liveClasses({ classes: raw.classes })
+        .filter((c) => String(c["name"] ?? ""))
+        .map((c) => ({ value: String(c["class_id"]), label: courseLabel(String(c["name"]), classTypeOf(c["class_type"])) })),
+    [raw.classes, courseLabel],
+  );
 
   function toPayment(studentId: string) {
     setCreatedLogins(null);
@@ -3013,7 +3034,7 @@ export function StudentsPage({
           fide_rating: draft.fideRating ? Number(draft.fideRating) : null,
         });
 
-        const cls = raw.classes.find((c) => String(c.name) === draft.className);
+        const cls = raw.classes.find((c) => String(c["class_id"]) === draft.classId);
         if (cls) {
           await create("enrollments", {
             student_id: created.student_id,
@@ -3321,7 +3342,8 @@ export function StudentsPage({
                 ? String(raw.classes.find((c) => String(c["class_id"]) === classId)?.["name"] ?? "")
                 : "";
               const allCredits = [...creditsOf(s.id)].sort(
-                (a, b) => Number(b.label === filteredName) - Number(a.label === filteredName),
+                /* By the course's own name: the label also carries its type. */
+                (a, b) => Number((b.name ?? b.label) === filteredName) - Number((a.name ?? a.label) === filteredName),
               );
               const expanded = openCourses.has(s.id);
               const hidden = expanded ? [] : allCredits.slice(1);
@@ -3339,7 +3361,7 @@ export function StudentsPage({
                   <span style={COURSE_LINES}>
                     {credits.map((c, i) => (
                       <span key={`${c.label}-${i}`} style={{ ...COURSE_LINE, gap: 6, color: COLORS.textSecondary }}>
-                        {c.label !== "—" && <ClassDot color={classDotColor(c.label)} />}
+                        {c.label !== "—" && <ClassDot color={classDotColor(c.name ?? c.label)} />}
                         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.label}</span>
                         {/* On the first line: how many more courses there
                             are, and a press to show them. Named in the

@@ -11,6 +11,8 @@
    because each of those moves credits, which a field edit must not. */
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import type { ClassType } from "@/lib/class-face";
+import { useCourseLabel } from "../CourseName";
 import { fmtDate, todayISO } from "@/lib/live";
 import { COLORS, FONT, statusChipColors } from "@/lib/theme";
 import type { Student } from "@/lib/data";
@@ -23,6 +25,7 @@ import { Badge } from "../ui";
 export type EnrolmentSummary = {
   id: string;
   className: string;
+  classType?: ClassType;
   status: string;
   enrolledDate: string;
   /** ISO date, or "" for never expires. */
@@ -59,6 +62,7 @@ export function EnrolmentModal({
   onSave: (edits: EnrolmentEdits) => Promise<void>;
 }) {
   const t = useTranslations("students");
+  const courseLabel = useCourseLabel();
   const tc = useTranslations("common");
   const tStatus = useTranslations("status");
   const [draft, setDraft] = useState<EnrolmentEdits>({
@@ -149,7 +153,7 @@ export function EnrolmentModal({
   const muted = { color: COLORS.textSecondary };
 
   return (
-    <Modal title={t("enrolmentTitle", { className: enrolment.className })} onClose={onClose} footer={footer} width={600}>
+    <Modal title={t("enrolmentTitle", { className: courseLabel(enrolment.className, enrolment.classType) })} onClose={onClose} footer={footer} width={600}>
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         {problem && <ErrorNote>{problem}</ErrorNote>}
 

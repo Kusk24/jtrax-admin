@@ -66,6 +66,8 @@ type CreditPackage = {
   id: string;
   classId: string;
   className: string;
+  /** How the course is taught; prices differ by it. */
+  classType: ClassType;
   creditAmount: number;
   price: number;
   /* Null when the office never answered — distinct from an explicit 0, even
@@ -75,7 +77,7 @@ type CreditPackage = {
   validityDays: number | null;
 };
 
-const PACKAGE_TEMPLATE = equalTemplate(5, 90);
+const PACKAGE_TEMPLATE = equalTemplate(6, 90);
 
 function IconPicker({ value, onChange }: { value: IconName; onChange: (i: IconName) => void }) {
   return (
@@ -168,6 +170,7 @@ export function AcademyPage() {
       id: String(p.credit_package_id),
       classId: String(p.class_id ?? ""),
       className: cls ? String(cls.name ?? "") : "—",
+      classType: classTypeOf(cls?.class_type),
       creditAmount: Number(p.credit_amount ?? 0),
       price: Number(p.standard_price ?? 0),
       validityDays: p.validity_days == null ? null : Number(p.validity_days),
@@ -497,7 +500,7 @@ export function AcademyPage() {
               {packages.map((p) => (
                 <EntityCard
                   key={p.id}
-                  title={p.className}
+                  title={`${p.className} · ${tClassType(p.classType)}`}
                   subtitle={validityLabel(p.validityDays)}
                   badges={
                     <>
@@ -523,7 +526,7 @@ export function AcademyPage() {
         ) : (
           <Card style={{ padding: 0, overflow: "hidden", marginTop: 12 }}>
             <Table
-              columns={[tCommon("class"), t("creditAmount"), t("price"), t("validity"), tCommon("action")]}
+              columns={[tCommon("class"), t("classType"), t("creditAmount"), t("price"), t("validity"), tCommon("action")]}
               template={PACKAGE_TEMPLATE}
               minWidth={720}
             >
@@ -531,6 +534,7 @@ export function AcademyPage() {
               {packages.map((p) => (
                 <TableRow key={p.id} template={PACKAGE_TEMPLATE}>
                   <span style={{ fontWeight: 600 }}>{p.className}</span>
+                  <span>{tClassType(p.classType)}</span>
                   <span style={{ color: COLORS.success, fontWeight: 600 }}>+{p.creditAmount}</span>
                   <span>{fmtTHB(p.price)}</span>
                   <span style={{ color: COLORS.textSecondary }}>{validityLabel(p.validityDays)}</span>

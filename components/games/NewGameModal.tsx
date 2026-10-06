@@ -11,6 +11,7 @@
    it), so rated needs one; on an unrated game it is a label the coach times by. */
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useCourseLabel } from "../CourseName";
 import { COLORS, FONT } from "@/lib/theme";
 import { RATED_CLOCKS, openRoom, type GameRoom } from "@/lib/games";
 import { useData } from "../DataProvider";
@@ -32,6 +33,7 @@ export function NewGameModal({
 }) {
   const t = useTranslations("games");
   const tc = useTranslations("games.create");
+  const courseLabel = useCourseLabel();
   const { students } = useData();
   const [mode, setMode] = useState<Mode>("players");
   const [white, setWhite] = useState("");
@@ -58,8 +60,8 @@ export function NewGameModal({
     () =>
       [...students]
         .sort((a, b) => a.name.localeCompare(b.name))
-        .map((s) => ({ id: s.id, name: s.name, className: s.className, canSit: Boolean(s.accountId) })),
-    [students],
+        .map((s) => ({ id: s.id, name: s.name, className: courseLabel(s.className, s.classType), canSit: Boolean(s.accountId) })),
+    [students, courseLabel],
   );
   const nameOf = (id: string) => options.find((o) => o.id === id)?.name ?? "";
 
