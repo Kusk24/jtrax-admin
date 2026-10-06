@@ -134,7 +134,9 @@ function TournamentDetail({
      it exists to get here, not to look around first. */
   startInEditing?: boolean;
   onBack: () => void;
-  onDelete: () => void;
+  /** Absent when the tournament cannot be deleted: payments are kept for
+      good, so one with any entry that was billed stays. */
+  onDelete?: () => void;
 }) {
   const t = useTranslations("tournament");
   const tCommon = useTranslations("common");
@@ -532,7 +534,7 @@ function TournamentDetail({
           ) : (
             <>
               <EditButton onClick={startEdit} />
-              <DeleteButton onClick={onDelete} />
+              {onDelete && <DeleteButton onClick={onDelete} />}
             </>
           )
         }
@@ -1038,7 +1040,8 @@ function TournamentDetail({
                           <RowActions
                             label={p.name}
                             onEdit={() => openParticipant(p)}
-                            onDelete={() => setDeletingParticipant(p)}
+                            /* A participant with a payment on file stays: payments are kept. */
+                            onDelete={p.payment ? undefined : () => setDeletingParticipant(p)}
                           />
                         ) : undefined
                       }
@@ -1124,7 +1127,7 @@ function TournamentDetail({
                       }
                       emailLabel={t("resendConfirmation", { name: p.name })}
                       onEdit={() => openParticipant(p)}
-                      onDelete={() => setDeletingParticipant(p)}
+                      onDelete={p.payment ? undefined : () => setDeletingParticipant(p)}
                     />
                   ) : (
                     <span />
@@ -1337,7 +1340,7 @@ export function TournamentPage({
   const t = useTranslations("tournament");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
-  const { tournaments, batch, remove } = useData();
+  const { tournaments, raw, batch, remove } = useData();
   /* In the address bar, so a refresh, a shared link and the Back button all
      land on the tournament that was open rather than the list. */
   const [selectedId, setSelectedId] = useUrlBackedState<string>("id", detailId ?? "", TAB_PARAM, "push");
@@ -1389,6 +1392,18 @@ export function TournamentPage({
   );
 
   const selected = tournaments.find((t) => t.id === selectedId) ?? null;
+  /* Tournaments with any entry that was billed — paid, unpaid or void. Their
+     payments are kept for good, so they cannot be deleted, and offer no trash. */
+  const billed = useMemo(() => {
+    const regTournament = new Map(
+      (raw.tournamentRegistrations ?? []).map((r) => [String(r["tournament_registration_id"]), String(r["tournament_id"])]),
+    );
+    return new Set(
+      (raw.payments ?? [])
+        .map((p) => regTournament.get(String(p["tournament_registration_id"] ?? "")))
+        .filter((id): id is string => Boolean(id)),
+    );
+  }, [raw.tournamentRegistrations, raw.payments]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -1421,7 +1436,7 @@ export function TournamentPage({
           initialTab={detailTab}
           startInEditing={editFromList}
           onBack={() => setSelectedId("")}
-          onDelete={() => setDeleting(selected)}
+          onDelete={billed.has(selected.id) ? undefined : () => setDeleting(selected)}
         />
         {dialogs}
       </>
@@ -1488,7 +1503,7 @@ export function TournamentPage({
                           <UpdateResultsButton tournamentId={item.id} compact />
                         </>
                       ) : null}
-                      <RowActions label={item.name} onEdit={() => openEdit(item)} onDelete={() => setDeleting(item)} />
+                      <RowActions label={item.name} onEdit={() => openEdit(item)} onDelete={billed.has(item.id) ? undefined : () => setDeleting(item)} />
                     </span>
                   </TableRow>
                 );
@@ -1537,7 +1552,7 @@ export function TournamentPage({
                     <RowActions
                       label={item.name}
                       onEdit={() => openEdit(item)}
-                      onDelete={() => setDeleting(item)}
+                      onDelete={billed.has(item.id) ? undefined : () => setDeleting(item)}
                     />
                   </div>
                 </Card>

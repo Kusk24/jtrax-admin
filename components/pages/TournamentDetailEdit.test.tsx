@@ -394,6 +394,19 @@ describe("editing a participant", () => {
     await waitFor(() => expect(update).toHaveBeenCalledWith("payments", "pay_1", { status: "Pending" }));
   });
 
+  it("offers no delete for a participant with a payment on file", async () => {
+    const t = withEntry();
+    t.participants = [
+      ...t.participants,
+      { ...t.participants[0], id: "treg_2", name: "Bob", payment: undefined, paymentStatus: "Pending" },
+    ] as Tournament["participants"];
+    tournaments = [t];
+    const user = openDetail();
+    await user.click(screen.getByRole("button", { name: /^participants/i }));
+    expect(screen.queryByRole("button", { name: /^Delete Alice/ })).toBeNull();
+    expect(screen.getByRole("button", { name: /^Delete Bob/ })).toBeTruthy();
+  });
+
   it("releases the place when the player is not attending", async () => {
     tournaments = [withEntry()];
     update.mockClear();
