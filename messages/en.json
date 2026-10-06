@@ -123,7 +123,8 @@
     "regulationUploadFailed": "Tournament created, but the regulation could not be attached.",
     "saveChanges": "Save Changes",
     "removeThing": "Remove {what}",
-    "removed": "Removed"
+    "removed": "Removed",
+    "dobTooYoung": "Date of birth must be at least 1 year ago."
   },
   "participantProfile": {
     "entryFee": "Entry fee",
@@ -713,7 +714,12 @@
     "chargePart": "Charged for the time attended, {from} – {to} ({attended}) = {credits, plural, one {# credit} other {# credits}}.",
     "chargePartRounded": "Charged for the time attended, {from} – {to} ({attended}), rounded to the nearest {step} min ({charged}) = {credits, plural, one {# credit} other {# credits}}.",
     "chargeDiffers": "The entry records {credits, plural, one {# credit} other {# credits}} — it was changed after the class.",
-    "chargeNoVisit": "The class visit for this charge is no longer on record."
+    "chargeNoVisit": "The class visit for this charge is no longer on record.",
+    "studentEmail": "Student email (optional)",
+    "studentEmailHelp": "For a student who signs in with their own email",
+    "studentEmailInvalid": "Enter a valid email address",
+    "studentEmailTaken": "This email already has an account",
+    "studentOwnEmailHint": "They sign in with their own email, and can reset the password themselves with Forgot password."
   },
   "parents": {
     "title": "Parents",

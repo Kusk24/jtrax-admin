@@ -8,7 +8,8 @@
  * server knows, writes nothing and says so on the form.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { todayISO } from "@/lib/live";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
@@ -143,5 +144,46 @@ describe("a new guardian's invite", () => {
     expect(logins[0].loginId).toMatch(/^stu_uri_tan/);
     expect(logins[0].password).toMatch(/^[a-z]+-[a-z]+-\d{2}$/);
     expect(await screen.findByText(/with Uri Tan's student login/)).toBeDefined();
+  });
+});
+
+describe("the student's own email", () => {
+  it("signs them in with it, instead of a username", async () => {
+    create.mockImplementation(async (path: string, body: Row) => {
+      if (path === "user-accounts") return { user_account_id: body.role === "Parent" ? "usr_sandy" : "usr_uri", ...body };
+      if (path === "students") return { student_id: "stu_uri" };
+      if (path === "parents") return { parent_id: "par_sandy" };
+      return {};
+    });
+    const user = renderForm();
+    await user.type(screen.getByLabelText(/^Student email/), "Uri.Tan@school.th");
+    await fillGuardian(user, "sandy@example.com");
+    await user.click(submit());
+
+    const student = create.mock.calls.find((c) => c[0] === "user-accounts" && c[1].role === "Student");
+    expect(student?.[1].email).toBe("uri.tan@school.th");
+  });
+
+  it("cannot be the guardian's, nor not an address", async () => {
+    const user = renderForm();
+    await fillGuardian(user, "sandy@example.com");
+    await user.type(screen.getByLabelText(/^Student email/), "sandy@example.com");
+    expect(screen.getByText("This email already has an account")).toBeDefined();
+    expect(submit().disabled).toBe(true);
+    await user.clear(screen.getByLabelText(/^Student email/));
+    await user.type(screen.getByLabelText(/^Student email/), "not-an-email");
+    expect(screen.getByText("Enter a valid email address")).toBeDefined();
+    expect(submit().disabled).toBe(true);
+  });
+});
+
+describe("the date of birth", () => {
+  it("must be at least a year ago", async () => {
+    const user = renderForm();
+    await fillGuardian(user, "sandy@example.com");
+    fireEvent.change(screen.getByLabelText(/^Date of birth/i), { target: { value: todayISO() } });
+    expect(screen.getByText("Date of birth must be at least 1 year ago.")).toBeDefined();
+    expect(submit().disabled).toBe(true);
+    void user;
   });
 });
