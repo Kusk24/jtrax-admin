@@ -14,12 +14,20 @@ import { COLORS } from "@/lib/theme";
 export function CourseName({ name, type, deleted }: { name: string; type?: ClassType; deleted?: boolean }) {
   const t = useTranslations("common");
   const tType = useTranslations("classType");
-  const typed = name && type ? `${name} · ${tType(type)}` : name;
-  if (!deleted) return <>{typed || "—"}</>;
+  /* The type is the quieter half: "JCA Juniors" in full, " · Group" faded. */
+  const typePart = name && type ? (
+    <span style={{ color: COLORS.textSecondary, fontWeight: 400 }}> · {tType(type)}</span>
+  ) : null;
+  if (!deleted) return name ? <>{name}{typePart}</> : <>—</>;
   return (
     <span style={{ color: COLORS.textSecondary, opacity: 0.75 }}>
-      {typed && <span style={{ textDecoration: "none" }}>{typed}</span>}
-      <span style={{ fontSize: "0.9em" }}>{typed ? " · " : ""}{t("removed")}</span>
+      {name && (
+        <span style={{ textDecoration: "none" }}>
+          {name}
+          {typePart}
+        </span>
+      )}
+      <span style={{ fontSize: "0.9em" }}>{name ? " · " : ""}{t("removed")}</span>
     </span>
   );
 }
