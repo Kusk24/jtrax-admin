@@ -10,6 +10,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
+import type { Participant } from "@/lib/data";
 import en from "@/messages/en.json";
 import type { LinkedResults, ResultSections } from "@/lib/chess-results";
 import { starred } from "@/lib/starred-label";
@@ -76,7 +77,13 @@ const REGISTRATION = [
   { id: "c4", name: "U14" },
 ];
 
-function renderTab() {
+/* Pavatt is entered as a JCA student; Kritthad entered from outside JCA. */
+const PARTICIPANTS = [
+  { id: "treg_p", name: "Pavatt Uapongkitikul", studentId: "stu_p" },
+  { id: "treg_k", name: "Kritthad Udomjitpithaya" },
+] as unknown as Participant[];
+
+function renderTab(participants: Participant[] = PARTICIPANTS) {
   return render(
     <NextIntlClientProvider locale="en" messages={en}>
       <ResultsTab
@@ -86,6 +93,7 @@ function renderTab() {
         totalRounds={5}
         resultsPublic
         onPublishChange={async () => undefined}
+        participants={participants}
       />
     </NextIntlClientProvider>,
   );
@@ -146,13 +154,32 @@ describe("results tabs", () => {
     expect(ranked().getByText("Uapongkitikul, Pavatt")).toBeTruthy();
   });
 
+  /* JCA is the participant's link, not the server matching a name: with
+     nobody entered as a JCA student, the server's own guess counts for
+     nothing. */
+  it("count only players linked to a JCA participant as JCA", async () => {
+    /* Each player in one category only, as in a real event: a name found in
+       two categories is never linked to a participant. */
+    getSection.mockImplementation(async (_t: string, id: number) => (id === 1193901 ? U14 : null));
+    renderTab([]);
+    await openStandings();
+    await waitFor(() => expect(ranked().getByText("Uapongkitikul, Pavatt")).toBeTruthy());
+    fireEvent.click(screen.getByLabelText(starred(en.resultsLink.jcaOnly)));
+    await waitFor(() => expect(ranked().queryByText("Uapongkitikul, Pavatt")).toBeNull());
+  });
+
   it("narrow to JCA students on request", async () => {
+    /* Each player in one category only, as in a real event: a name found in
+       two categories is never linked to a participant. */
+    getSection.mockImplementation(async (_t: string, id: number) => (id === 1193901 ? U14 : null));
     renderTab();
     await openStandings();
     await waitFor(() => expect(ranked().getByText("Seng, Rosslyn")).toBeTruthy());
     fireEvent.click(screen.getByLabelText(starred(en.resultsLink.jcaOnly)));
     await waitFor(() => expect(ranked().queryByText("Seng, Rosslyn")).toBeNull());
-    expect(ranked().getByText("Uapongkitikul, Pavatt")).toBeTruthy();
+    /* Entered as a JCA student, so in; entered from outside JCA, so out. */
+    await waitFor(() => expect(ranked().getByText("Uapongkitikul, Pavatt")).toBeTruthy());
+    expect(ranked().queryByText("Udomjitpithaya, Kritthad")).toBeNull();
   });
 
   it("start with the standings folded, and open and close them like a round", async () => {

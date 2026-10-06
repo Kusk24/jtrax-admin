@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 import type { LinkedResults, ResultSection } from "./chess-results";
 import type { Participant } from "./data";
-import { matchParticipants, nameWords, participantForRow, unlinkedRows, type SectionResults } from "./participant-results";
+import { jcaByRow, matchParticipants, nameWords, participantForRow, unlinkedRows, withLinkedStudents, type SectionResults } from "./participant-results";
 
 const section = (id: number, name: string): ResultSection => ({
   chessResultsId: id, name, position: 0, url: "", players: 0, academyPlayers: 0, tracked: true,
@@ -72,5 +72,32 @@ describe("matching an entry to its chess-results row", () => {
     expect(participantForRow(m, people, 12, "Chen, Wei")).toBeUndefined();
     const free = unlinkedRows(DATA, m).find((x) => x.section.chessResultsId === 10)!.players.map((p) => p.name);
     expect(free).toEqual(["Srisuk, Kittipong", "Chen, Wei"]);
+  });
+});
+
+describe("JCA status in the results", () => {
+  const results: LinkedResults = {
+    source: "chess-results",
+    url: "",
+    chessResultsId: 9,
+    standings: [
+      /* The server's own name guess, which no longer decides. */
+      { rank: 1, name: "Tan, Pim", points: 2, studentId: "stu_guess" },
+      { rank: 2, name: "Somchai, Boy", points: 1 },
+      { rank: 3, name: "Stranger, A", points: 0 },
+    ],
+    rounds: [{ round: 1, played: true, pairings: [{ board: 1, white: "Tan, Pim", black: "Somchai, Boy", result: "1-0" }] }],
+  };
+  const data: SectionResults[] = [{ section: { chessResultsId: 9, name: "Open" } as ResultSection, results }];
+
+  it("is the linked participant's student — by name, or picked by hand under another spelling", () => {
+    const participants = [
+      { id: "r1", name: "Pim Tan" }, // entered from outside JCA
+      { id: "r2", name: "Boy S.", studentId: "stu_boy", resultsSectionId: 9, resultsPlayerName: "Somchai, Boy" },
+    ] as unknown as Participant[];
+    const jca = jcaByRow(participants, data);
+    const marked = withLinkedStudents(results, 9, jca);
+    expect(marked.standings.map((s) => s.studentId)).toEqual([undefined, "stu_boy", undefined]);
+    expect(marked.rounds![0].pairings[0]).toMatchObject({ whiteStudentId: undefined, blackStudentId: "stu_boy" });
   });
 });

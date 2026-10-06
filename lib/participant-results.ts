@@ -124,3 +124,32 @@ export function unlinkedRows(data: SectionResults[], matches: Map<string, Result
     players: results.standings.filter((s) => !taken.has(rowKey(section.chessResultsId, s.name))),
   }));
 }
+
+/**
+ * Which results rows are JCA students: those linked to a participant who is
+ * one — by the same links as above, so the Results tab, its "JCA students
+ * only" filter and the profile all agree with the Participants tab. Keyed by
+ * category and name; the value is the student's id.
+ */
+export function jcaByRow(participants: Participant[], data: SectionResults[]): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const [id, m] of matchParticipants(participants, data)) {
+    const studentId = participants.find((p) => p.id === id)?.studentId;
+    if (studentId) out.set(rowKey(m.sectionId, m.standing.name), studentId);
+  }
+  return out;
+}
+
+/** One category's results, its players and board seats marked JCA by the
+    participant links rather than by the server's own name guess. */
+export function withLinkedStudents(results: LinkedResults, sectionId: number, jca: Map<string, string>): LinkedResults {
+  const of = (name: string) => jca.get(rowKey(sectionId, name));
+  return {
+    ...results,
+    standings: results.standings.map((s) => ({ ...s, studentId: of(s.name) })),
+    rounds: (results.rounds ?? []).map((r) => ({
+      ...r,
+      pairings: r.pairings.map((p) => ({ ...p, whiteStudentId: of(p.white), blackStudentId: of(p.black) })),
+    })),
+  };
+}

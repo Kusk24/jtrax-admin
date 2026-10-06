@@ -13,10 +13,10 @@
  * Opened from a results row that is nobody's entry — a player from another
  * school — it shows the results alone.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { getResultSection, getResultSections } from "@/lib/chess-results";
+import { useSectionResults } from "@/lib/use-section-results";
 import type { Participant } from "@/lib/data";
 import { Icon } from "@/lib/icons";
 import {
@@ -25,7 +25,6 @@ import {
   participantForRow,
   rowFor,
   unlinkedRows,
-  type SectionResults,
 } from "@/lib/participant-results";
 import { COLORS, FONT } from "@/lib/theme";
 import { initialsOf, roundViews } from "@/lib/tournament-rounds";
@@ -42,29 +41,6 @@ export type ProfileTarget = { participantId: string } | { sectionId: number; nam
 /** A chess-results player picked for an entry, or null to match by name again. */
 export type ResultsLink = { sectionId: number; name: string } | null;
 
-type Loaded = { connected: boolean; rounds: number; data: SectionResults[] };
-
-/** Every results category of the tournament, with what was read from each. */
-function useSectionResults(tournamentId: string) {
-  const [loaded, setLoaded] = useState<Loaded | null>(null);
-  const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const s = await getResultSections(tournamentId);
-      if (!s.connected) return { connected: false, rounds: 0, data: [] };
-      const read = await Promise.all(s.sections.map((section) => getResultSection(tournamentId, section.chessResultsId)));
-      const data = s.sections.flatMap((section, i) => (read[i] ? [{ section, results: read[i]! }] : []));
-      return { connected: true, rounds: s.rounds ?? 0, data };
-    })()
-      .then((l) => !cancelled && setLoaded(l))
-      .catch(() => !cancelled && setFailed(true));
-    return () => {
-      cancelled = true;
-    };
-  }, [tournamentId]);
-  return { loaded, failed };
-}
 
 export function ParticipantProfile({
   tournamentId,
@@ -105,7 +81,9 @@ export function ParticipantProfile({
   const standing = match?.standing;
   const manual = participant?.id ? (matches.get(participant.id)?.manual ?? false) : false;
 
-  const studentId = participant?.studentId || standing?.studentId;
+  /* A JCA student by the participant's own student record — the link the
+     Participants tab shows — not by the server matching a name. */
+  const studentId = participant?.studentId;
   const student = studentId ? students.find((s) => s.id === studentId) : undefined;
   const name = participant?.name ?? standing?.name ?? ("name" in target ? target.name : "");
   const views = match ? roundViews(match.results.rounds ?? [], loaded?.rounds ?? 0) : [];
