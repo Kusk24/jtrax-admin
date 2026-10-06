@@ -222,3 +222,28 @@ describe("a row of the register", () => {
     expect(push).not.toHaveBeenCalled();
   });
 });
+
+/* The balance in bold, and under it what today does. */
+describe("the credit balance", () => {
+  it("reads '−1 today → 9 left' while in class, and '1 used today' once out", async () => {
+    /* Fon is still in class; Eak has gone home. */
+    (db.attendance as Record<string, unknown>[])[4].check_out_time = `${today}T03:00:00Z`;
+    db.enrollments = [
+      { enrollment_id: "e_fon", student_id: "stu_5", class_id: "cls_group", status: "Active" },
+      { enrollment_id: "e_eak", student_id: "stu_4", class_id: "cls_group", status: "Active" },
+    ];
+    db["credit-transactions"] = [
+      { credit_transaction_id: "t1", enrollment_id: "e_fon", amount: 10 },
+      { credit_transaction_id: "t2", enrollment_id: "e_fon", amount: -1, attendance_id: "att_5" },
+      { credit_transaction_id: "t3", enrollment_id: "e_eak", amount: 5 },
+      { credit_transaction_id: "t4", enrollment_id: "e_eak", amount: -1, attendance_id: "att_4" },
+    ];
+    const { user } = await renderTable();
+    expect(screen.getByText("10 credits")).toBeTruthy();
+    expect(screen.getByText((_, el) => el?.textContent === "−1 today → 9 left" && el.children.length === 1)).toBeTruthy();
+    /* Gone home: below the five still in class, so open the list. */
+    await user.click(screen.getByRole("button", { name: en.common.viewAll }));
+    expect(screen.getByText("4 credits")).toBeTruthy();
+    expect(screen.getByText("1 used today")).toBeTruthy();
+  });
+});

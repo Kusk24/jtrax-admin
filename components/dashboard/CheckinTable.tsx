@@ -262,6 +262,7 @@ export function CheckinTable() {
           /* In class: the balance before today, and what today costs after
              it ("20  − 1.5"). Checked out: the balance that is left. */
           const charge = row.status === "In class" ? (row.charge ?? 0) : 0;
+          const used = row.charge ?? 0;
           const shown = row.credit + charge;
           const credit = creditColors(shown);
           const status = statusChipColors(row.status === "In class" ? "Ongoing" : "Dismissed");
@@ -304,15 +305,26 @@ export function CheckinTable() {
                 </span>
               </span>
 
-              <span
-                title={charge > 0 ? t("chargeToday", { credits: fmtCredits(charge) }) : undefined}
-                style={{ justifySelf: "start", display: "inline-flex", alignItems: "baseline", gap: 10, fontVariantNumeric: "tabular-nums" }}
-              >
+              {/* Two lines: the balance in bold, and under it what today does —
+                  "−1.5 today → 18.5 left" while in class, "1.5 used today"
+                  once checked out. */}
+              <span style={{ justifySelf: "start", display: "flex", flexDirection: "column", gap: 2, fontVariantNumeric: "tabular-nums", minWidth: 0 }}>
                 <span style={{ fontWeight: 700, color: credit.color }}>
-                  {fmtCredits(shown)}
+                  {tCommon("creditsCount", { count: fmtCredits(shown) })}
                 </span>
-                {charge > 0 && (
-                  <span style={{ fontSize: 12.5, color: COLORS.textSecondary }}>− {fmtCredits(charge)}</span>
+                {used > 0 && (
+                  <span style={{ fontSize: 12, color: COLORS.textSecondary, whiteSpace: "nowrap" }}>
+                    {charge > 0 ? (
+                      <>
+                        {t("todayCharge", { credits: fmtCredits(charge) })}{" → "}
+                        <span style={{ fontWeight: 600, color: row.credit < 0 ? COLORS.danger : COLORS.text }}>
+                          {t("leftAfter", { credits: fmtCredits(row.credit) })}
+                        </span>
+                      </>
+                    ) : (
+                      t("usedToday", { credits: fmtCredits(used) })
+                    )}
+                  </span>
                 )}
               </span>
 

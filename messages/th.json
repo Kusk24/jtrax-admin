@@ -406,7 +406,9 @@
     "consistentRule": "{days}+ จาก {window} วัน",
     "filterByCourse": "กรองตามคอร์ส",
     "classesThatWeek": "คลาสในสัปดาห์นั้น",
-    "chargeToday": "{credits} เครดิตสำหรับคลาสวันนี้"
+    "todayCharge": "−{credits} วันนี้",
+    "leftAfter": "เหลือ {credits}",
+    "usedToday": "ใช้ไป {credits} วันนี้"
   },
   "find": {
     "title": "ค้นหานักเรียน",
