@@ -30,19 +30,34 @@ async function open(s: Student, c: LineConversation | null = null) {
 }
 
 describe("the Contact menu", () => {
-  it("lists phone, email and LINE when the parent gave all three", async () => {
+  it("lists phone, email and LINE as an icon and the value", async () => {
     const { items } = await open(student({ parentPhone: "081 234 5678", parentEmail: "polly@mail.com" }), chat);
-    expect(items).toEqual(["Phone: 081 234 5678", "Email: polly@mail.com", "LINE: Polly"]);
+    expect(items).toEqual(["081 234 5678", "polly@mail.com", "Polly"]);
+    /* The button is a word, not a phone: it is not only for calling. */
+    expect(screen.getByRole("button", { name: /Contact/ }).querySelectorAll("svg")).toHaveLength(1);
   });
 
   it("leaves out what was not given", async () => {
     const { items } = await open(student({ parentEmail: "polly@mail.com" }));
-    expect(items).toEqual(["Email: polly@mail.com"]);
+    expect(items).toEqual(["polly@mail.com"]);
   });
 
-  it("shows the LINE ID when no chat is linked", async () => {
-    const { items } = await open(student({ parentLineId: "polly.line" }));
-    expect(items).toEqual(["LINE: polly.line"]);
+  it("has no LINE item until a chat is linked, since LINE opens the chat", async () => {
+    const { items } = await open(student({ parentPhone: "0812345678", parentLineId: "polly.line" }));
+    expect(items).toEqual(["0812345678"]);
+  });
+
+  it("calls the phone and writes to the email", async () => {
+    const location = { href: "" };
+    vi.stubGlobal("location", location);
+    Object.defineProperty(window, "location", { value: location, configurable: true });
+    const { user } = await open(student({ parentPhone: "081 234-5678", parentEmail: "polly@mail.com" }));
+    await user.click(screen.getByRole("menuitem", { name: /Phone/ }));
+    expect(location.href).toBe("tel:0812345678");
+    await user.click(screen.getByRole("button", { name: /Contact/ }));
+    await user.click(screen.getByRole("menuitem", { name: /Email/ }));
+    expect(location.href).toBe("mailto:polly@mail.com");
+    vi.unstubAllGlobals();
   });
 
   it("opens the parent's chat in Messages", async () => {

@@ -6,9 +6,10 @@ import type { Student } from "@/lib/data";
 import type { LineConversation } from "@/lib/line";
 import { MoreMenu, type MoreMenuItem } from "./MoreMenu";
 
-/** The parent's ways in, as a menu: only the ones they gave — phone, email,
-    and LINE (the chat linked in Messages, else their LINE ID). Nothing at
-    all when they gave none. Its clicks never reach the row behind it. */
+/** The parent's ways in, as a menu of what they gave, each an icon and the
+    value: phone (calls), email (a new mail), LINE (their chat, opened in
+    Messages — so only once a chat is linked). Nothing given, no menu. Its
+    clicks never reach the row behind it. */
 export function ContactMenu({ student, chat }: { student: Student; chat: LineConversation | null }) {
   const t = useTranslations("students");
   const tCommon = useTranslations("common");
@@ -17,26 +18,31 @@ export function ContactMenu({ student, chat }: { student: Student; chat: LineCon
   const items: MoreMenuItem[] = [];
   const phone = (student.parentPhone ?? "").trim();
   const email = (student.parentEmail ?? "").trim();
-  const lineId = (student.parentLineId ?? "").trim();
   if (phone) {
-    items.push({ label: `${tCommon("phone")}: ${phone}`, icon: "phone", onSelect: () => { window.location.href = `tel:${phone.replace(/\s/g, "")}`; } });
+    items.push({
+      label: phone,
+      ariaLabel: `${tCommon("phone")} ${phone}`,
+      icon: "phone",
+      onSelect: () => { window.location.href = `tel:${phone.replace(/[^\d+]/g, "")}`; },
+    });
   }
   if (email) {
-    items.push({ label: `${tCommon("email")}: ${email}`, icon: "mail", onSelect: () => { window.location.href = `mailto:${email}`; } });
+    items.push({
+      label: email,
+      ariaLabel: `${tCommon("email")} ${email}`,
+      icon: "mail",
+      onSelect: () => { window.location.href = `mailto:${email}`; },
+    });
   }
   if (chat) {
+    const name = chat.displayName || tMsg("unnamedContact");
     items.push({
-      label: `LINE: ${chat.displayName || tMsg("unnamedContact")}`,
+      label: name,
+      ariaLabel: `${tMsg("lineChat")} ${name}`,
       icon: "chat",
       onSelect: () => router.push(`/chat?id=${encodeURIComponent(chat.lineUserId)}`),
     });
-  } else if (lineId) {
-    items.push({
-      label: `LINE: ${lineId}`,
-      icon: "chat",
-      onSelect: () => window.open(`https://line.me/R/ti/p/~${encodeURIComponent(lineId)}`, "_blank", "noopener"),
-    });
   }
   if (items.length === 0) return null;
-  return <MoreMenu label={t("contact")} text={t("contact")} icon="phone" items={items} />;
+  return <MoreMenu label={t("contact")} text={t("contact")} items={items} />;
 }
