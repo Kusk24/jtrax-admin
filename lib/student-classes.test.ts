@@ -7,7 +7,7 @@
  * opened for.
  */
 import { describe, expect, it } from "vitest";
-import { classFilterOptions, classNamesOfStudent, creditsByClass, isInClass } from "./student-classes";
+import { classFilterOptions, classNamesOfStudent, creditsByClass, isInClass, studentHasRecords } from "./student-classes";
 
 /* Anong is in two classes. Boon left Beginner for Intermediate. Chai finished
    Beginner. Dao is in a class the academy has since retired. */
@@ -118,5 +118,19 @@ describe("the Credit column", () => {
 
   it("shows hours held outside any course, unnamed", () => {
     expect(creditsByClass(WITH_TXS, "chai")).toMatchObject([{ className: "", balance: 2 }]);
+  });
+});
+
+describe("studentHasRecords", () => {
+  const base = { enrollments: [{ enrollment_id: "e1", student_id: "s1" }], creditTransactions: [] as Record<string, unknown>[] };
+  it("is false for a student with nothing but an enrolment", () => {
+    expect(studentHasRecords(base, "s1")).toBe(false);
+  });
+  it("is true once there is attendance, a credit, a payment or a tournament entry", () => {
+    expect(studentHasRecords({ ...base, attendance: [{ student_id: "s1" }] }, "s1")).toBe(true);
+    expect(studentHasRecords({ ...base, creditTransactions: [{ enrollment_id: "e1", amount: 5 }] }, "s1")).toBe(true);
+    expect(studentHasRecords({ ...base, payments: [{ student_id: "s1" }] }, "s1")).toBe(true);
+    expect(studentHasRecords({ ...base, tournamentRegistrations: [{ student_id: "s1" }] }, "s1")).toBe(true);
+    expect(studentHasRecords({ ...base, attendance: [{ student_id: "other" }] }, "s1")).toBe(false);
   });
 });

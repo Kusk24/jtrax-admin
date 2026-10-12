@@ -1808,3 +1808,35 @@ describe("archiving a student who left", () => {
     }
   });
 });
+
+describe("deleting a student", () => {
+  it("is not offered once they have anything on record", async () => {
+    const saved = { e: raw.enrollments, c: raw.creditTransactions };
+    raw.enrollments = [{ enrollment_id: "e_anong_beg", student_id: "anong", class_id: "beg", status: "Active", enrolled_date: "2026-01-06" }];
+    raw.creditTransactions = [
+      { credit_transaction_id: "t1", enrollment_id: "e_anong_beg", amount: 20, transaction_date: "2026-01-06", transaction_type: "purchase" },
+    ];
+    try {
+      const user = renderList();
+      await openStudent(user, "Anong");
+      expect(screen.queryByRole("button", { name: en.common.delete })).toBeNull();
+    } finally {
+      raw.enrollments = saved.e;
+      raw.creditTransactions = saved.c;
+    }
+  });
+
+  it("is offered for a student with nothing on record", async () => {
+    const saved = { e: raw.enrollments, c: raw.creditTransactions };
+    raw.enrollments = [{ enrollment_id: "e_chai_beg", student_id: "chai", class_id: "beg", status: "Active", enrolled_date: "2026-08-22" }];
+    raw.creditTransactions = [];
+    try {
+      const user = renderList();
+      await openStudent(user, "Chai");
+      expect(screen.getByRole("button", { name: en.common.delete })).toBeDefined();
+    } finally {
+      raw.enrollments = saved.e;
+      raw.creditTransactions = saved.c;
+    }
+  });
+});
