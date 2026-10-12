@@ -16,7 +16,7 @@ import { enrolmentStatus, isArchivedClass, isRevenue, fmtCredits, fmtDate, fmtSe
 import { dobTooYoung, latestBirthDate } from "@/lib/age-group";
 import { creditsForValue, planTransfer, ratePerCredit, roundCredits, valueOfLots, type CreditRate } from "@/lib/credit-transfer";
 import { opensCreate } from "@/lib/quick-actions";
-import { createStudentAccount, isTakenIdError } from "@/lib/student-login-id";
+import { assignStudentLoginId, createStudentAccount, isTakenIdError } from "@/lib/student-login-id";
 import { classFilterOptions, classNamesOfStudent, creditsByClass, isInClass } from "@/lib/student-classes";
 import { draftFromScan, type ScanResult } from "@/lib/scan-to-draft";
 import { Icon } from "@/lib/icons";
@@ -270,6 +270,11 @@ function StudentDetail({
   const [tab, setTab] = useState<DetailTab>("Overview");
   const [editing, setEditing] = useState(startEditing);
   const [draft, setDraft] = useState<Student>(student);
+  /* Their own email, which is what they sign in with when they have one; a
+     child on a sign-in ID starts blank. Shown on every edit, so an email can
+     be added once they have one. */
+  const ownEmailOf = (st: Student) => (st.email?.includes("@") ? st.email : "");
+  const [emailDraft, setEmailDraft] = useState(ownEmailOf(student));
   const [deleteConfirm, setDeleteConfirm] = useState(startDeleting);
   const [alsoParent, setAlsoParent] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -301,6 +306,35 @@ function StudentDetail({
    * is visibly changing them. This is the half that genuinely belongs to the
    * child: whose child they are.
    */
+  /**
+   * Their own email is their sign-in. Added: it replaces the sign-in ID (or
+   * makes them an account, if they had none, ready for a password link).
+   * Taken off: they get a sign-in ID from their name again.
+   */
+  async function saveOwnEmail() {
+    const next = emailDraft.trim().toLowerCase();
+    const before = ownEmailOf(student).toLowerCase();
+    if (next === before) return;
+    try {
+      if (next && student.accountId) {
+        await update("user-accounts", student.accountId, { email: next });
+      } else if (next) {
+        const account = await create("user-accounts", {
+          email: next,
+          password: generateHiddenPassword(),
+          role: "Student",
+          display_name: student.name,
+        });
+        await update("students", student.id, { user_account_id: String(account.user_account_id) });
+      } else if (student.accountId) {
+        await assignStudentLoginId(update, student.accountId, student.name);
+      }
+    } catch (e) {
+      if (next && isTakenIdError(e)) throw new Error(t("studentEmailTaken"));
+      throw e;
+    }
+  }
+
   async function saveGuardianLink(next: Student) {
     const chosen = next.parentId;
     const before = student.parentId;
@@ -1094,6 +1128,7 @@ function StudentDetail({
               <EditButton
                 onClick={() => {
                   setDraft(student);
+                  setEmailDraft(ownEmailOf(student));
                   setDeleteConfirm(false);
                   setTab("Overview");
                   setEditing(true);
@@ -1254,6 +1289,16 @@ function StudentDetail({
                   <label style={labelStyle} htmlFor="ed-fide">{t("fideId")}</label>
                   <input id="ed-fide" value={draft.fideId} onChange={(e) => setField("fideId", e.target.value)} style={fieldStyle} />
                 </div>
+                <div>
+                  <label style={labelStyle} htmlFor="ed-email">{t("studentEmail")}</label>
+                  <input id="ed-email" type="email" value={emailDraft} onChange={(e) => setEmailDraft(e.target.value)} style={fieldStyle} />
+                  <span style={{ display: "block", marginTop: 4, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+                    {/* Saying what changes: the email becomes how they sign in. */}
+                    {emailDraft.trim() && student.email && !student.email.includes("@")
+                      ? t("emailReplacesId", { id: student.email })
+                      : t("studentEmailHelp")}
+                  </span>
+                </div>
                 {/* The student's own LINE ID was a field with nothing behind
                     it in either direction — `toStudents` sets it to "" every
                     time, and there is no column to write it to. A box that is
@@ -1352,12 +1397,17 @@ function StudentDetail({
                   setSaveError(tCommon("dobTooYoung"));
                   return;
                 }
+                if (emailDraft.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailDraft.trim())) {
+                  setSaveError(t("studentEmailInvalid"));
+                  return;
+                }
                 try {
                   /* The child and their guardian link in one act, so a
                      correction costs one refetch rather than three. */
                   await batch(async () => {
                     await onSave(draft);
                     await saveGuardianLink(draft);
+                    await saveOwnEmail();
                   });
                 } catch (e) {
                   /* The form stays open, with what went wrong written on it.
