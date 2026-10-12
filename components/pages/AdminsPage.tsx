@@ -28,7 +28,7 @@ import {
 } from "../page-kit";
 import { Avatar, Badge, Card, SectionTitle } from "../ui";
 import { DangerPanel, DeleteButton, DetailHeader, EditButton } from "../detail";
-import { ResetPasswordButton } from "../ResetPassword";
+import { PasswordMenu } from "../PasswordMenu";
 import { CardGrid, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 import { useErrorToast } from "../ErrorToast";
@@ -217,40 +217,30 @@ export function AdminsPage({ level = 1 }: { level?: 1 | 2 }) {
               }
               actions={
                 <>
-                  <button
-                    type="button"
-                    className="jt-act-reset"
-                    style={{ ...secondaryButtonStyle, opacity: resetting ? 0.75 : 1 }}
-                    disabled={resetting}
-                    onClick={() => {
-                      /* This said "a reset link has been sent" while sending
-                         nothing. The server action behind the sign-in page's
-                         own Forgot-password link does send one, so it is what
-                         the button calls now. */
-                      setResetting(true);
-                      const body = new FormData();
-                      body.set("email", detail.email);
-                      void requestPasswordReset({}, body)
-                        .then((r) => {
-                          if (r.error) showError(tCommon("saveFailed"));
-                          else setResetShown(true);
-                        })
-                        .finally(() => setResetting(false));
-                    }}
-                  >
-                    {t("sendResetLink")}
-                  </button>
-                  {/* Two routes, because they fail in different ways. The link
-                      is better — it never puts a password in a colleague's
-                      hands — but it needs a mailbox the person can actually
-                      reach, and "I never got the email" is why somebody is
-                      standing at the desk. */}
-                  <ResetPasswordButton
+                  {/* Two routes, because they fail in different ways: the link
+                      never puts a password in a colleague's hands, but needs a
+                      mailbox they can reach. */}
+                  <PasswordMenu
                     accountId={detail.accountId ?? ""}
                     identifier={detail.email}
                     name={detail.name}
                     update={update}
                     onError={(e) => showError(tCommon("saveFailed"), e)}
+                    sendLink={{
+                      busy: resetting,
+                      /* The sign-in page's own Forgot-password email. */
+                      run: () => {
+                        setResetting(true);
+                        const body = new FormData();
+                        body.set("email", detail.email);
+                        void requestPasswordReset({}, body)
+                          .then((r) => {
+                            if (r.error) showError(tCommon("saveFailed"));
+                            else setResetShown(true);
+                          })
+                          .finally(() => setResetting(false));
+                      },
+                    }}
                   />
                   <EditButton
                     onClick={() => {

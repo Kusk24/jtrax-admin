@@ -29,13 +29,7 @@ import { InfoGrid, Modal, primaryButtonStyle, secondaryButtonStyle } from "./pag
 
 type UpdateFn = (path: string, id: string, body: Record<string, unknown>) => Promise<Record<string, unknown>>;
 
-export function ResetPasswordButton({
-  accountId,
-  identifier,
-  name,
-  update,
-  onError,
-}: {
+type ResetProps = {
   /** `user_account_id`. Absent when the person has no login at all. */
   accountId: string;
   /** Their ID or address — shown with the new password, because a password on
@@ -44,7 +38,11 @@ export function ResetPasswordButton({
   name: string;
   update: UpdateFn;
   onError: (e: unknown) => void;
-}) {
+};
+
+/** Setting a new password for someone: whether it applies, the act (which
+    asks first), and the dialogs. */
+export function useResetPassword({ accountId, identifier, name, update, onError }: ResetProps) {
   const t = useTranslations("resetPassword");
   const { role } = useJtrax();
   const [confirming, setConfirming] = useState(false);
@@ -65,7 +63,7 @@ export function ResetPasswordButton({
     }
   }
 
-  if (role !== "Admin" || !accountId) return null;
+  const available = role === "Admin" && !!accountId;
 
   async function reset() {
     setWorking(true);
@@ -85,16 +83,8 @@ export function ResetPasswordButton({
     }
   }
 
-  return (
+  const modal = (
     <>
-      <button
-        type="button"
-        className="jt-act-reset"
-        style={secondaryButtonStyle}
-        onClick={() => setConfirming(true)}
-      >
-        <Icon name="lock" size={14} /> {t("action")}
-      </button>
 
       {/* Confirmed first, because it cannot be undone: the old password is a
           hash and is gone the moment this runs. Someone who is signed in on a
@@ -179,6 +169,21 @@ export function ResetPasswordButton({
           </div>
         </Modal>
       )}
+    </>
+  );
+  return { available, start: () => setConfirming(true), modal };
+}
+
+export function ResetPasswordButton(props: ResetProps) {
+  const t = useTranslations("resetPassword");
+  const reset = useResetPassword(props);
+  if (!reset.available) return null;
+  return (
+    <>
+      <button type="button" className="jt-act-reset" style={secondaryButtonStyle} onClick={reset.start}>
+        <Icon name="lock" size={14} /> {t("action")}
+      </button>
+      {reset.modal}
     </>
   );
 }
