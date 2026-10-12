@@ -47,7 +47,7 @@ Set `JTRAX_API_URL` to point somewhere else — see `.env.example`.
 ## Sign in
 
 `/login` is the way in; everything else lives in the `app/(app)` route group, whose layout
-redirects there when the `jtrax_session` cookie is missing. Signing in sets that cookie to
+redirects there when the `jtrax_admin_session` cookie is missing. Signing in sets that cookie to
 the admin's id, so the app opens as whoever signed in, and the sidebar's Logout clears it.
 
 Authentication is **mocked to match the mock data**: the four seed admins in `lib/data.ts`
