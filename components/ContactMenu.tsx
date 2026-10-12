@@ -7,7 +7,7 @@ import type { LineConversation } from "@/lib/line";
 import { MoreMenu, type MoreMenuItem } from "./MoreMenu";
 
 /** The parent's ways in, as a menu of what they gave, each an icon and the
-    value: phone (calls), email (a new mail), LINE (their chat, opened in
+    value: phone (calls), email (a Gmail draft), LINE (their chat, opened in
     Messages — so only once a chat is linked). Nothing given, no menu. Its
     clicks never reach the row behind it. */
 export function ContactMenu({ student, chat }: { student: Student; chat: LineConversation | null }) {
@@ -31,7 +31,11 @@ export function ContactMenu({ student, chat }: { student: Student; chat: LineCon
       label: email,
       ariaLabel: `${tCommon("email")} ${email}`,
       icon: "mail",
-      onSelect: () => { window.location.href = `mailto:${email}`; },
+      /* A Gmail draft in a new tab, not mailto: — the office works in Gmail,
+         and a mailto: link does nothing on a computer with no mail app set. */
+      onSelect: () => {
+        window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}`, "_blank", "noopener");
+      },
     });
   }
   if (chat) {

@@ -47,17 +47,22 @@ describe("the Contact menu", () => {
     expect(items).toEqual(["0812345678"]);
   });
 
-  it("calls the phone and writes to the email", async () => {
+  it("calls the phone", async () => {
     const location = { href: "" };
-    vi.stubGlobal("location", location);
     Object.defineProperty(window, "location", { value: location, configurable: true });
-    const { user } = await open(student({ parentPhone: "081 234-5678", parentEmail: "polly@mail.com" }));
+    const { user } = await open(student({ parentPhone: "081 234-5678" }));
     await user.click(screen.getByRole("menuitem", { name: /Phone/ }));
     expect(location.href).toBe("tel:0812345678");
-    await user.click(screen.getByRole("button", { name: /Contact/ }));
+  });
+
+  it("opens a Gmail draft to the email in a new tab", async () => {
+    const opened = vi.spyOn(window, "open").mockReturnValue(null);
+    const { user } = await open(student({ parentEmail: "polly+jca@mail.com" }));
     await user.click(screen.getByRole("menuitem", { name: /Email/ }));
-    expect(location.href).toBe("mailto:polly@mail.com");
-    vi.unstubAllGlobals();
+    expect(opened).toHaveBeenCalledWith(
+      "https://mail.google.com/mail/?view=cm&fs=1&to=polly%2Bjca%40mail.com", "_blank", "noopener",
+    );
+    opened.mockRestore();
   });
 
   it("opens the parent's chat in Messages", async () => {
