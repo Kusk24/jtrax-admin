@@ -7,7 +7,7 @@ import { classTypeOf } from "@/lib/class-face";
 import { api, ApiError } from "@/lib/api";
 import { generateHiddenPassword, generateReadablePassword } from "@/lib/credentials";
 import { classesJoined, hoursJoined, creditsSinceTopUp } from "@/lib/enrolment-stats";
-import { InviteButton, InviteOutcomeNote, inviteOutcome, type InviteOutcome } from "../InviteButton";
+import { InviteOutcomeNote, inviteOutcome, type InviteOutcome } from "../InviteButton";
 import type { StudentLogin } from "@/lib/invite";
 import { type Student } from "@/lib/data";
 import { useData } from "@/components/DataProvider";
@@ -55,7 +55,7 @@ import {
 } from "../page-kit";
 import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
 import { BackLink, DangerPanel, DeleteButton, DetailHeader, EditButton } from "../detail";
-import { ResetPasswordButton } from "../ResetPassword";
+import { PasswordMenu } from "../PasswordMenu";
 import { EnrolmentModal, type EnrolmentEdits } from "../students/EnrolmentModal";
 import type { MoreMenuItem } from "../MoreMenu";
 import { explainCharge, fmtMinutes } from "@/lib/charge-explain";
@@ -1098,15 +1098,10 @@ function StudentDetail({
         actions={
           !editing && (
             <>
-              {/* An older student who signs in with their own email gets a
-                  link to choose a password, as a parent does. Hidden for a
-                  child's login ID, which has no mailbox. */}
-              {/* An archived student cannot sign in: no invite or reset. */}
-              {!student.archivedAt && <InviteButton accountId={student.accountId ?? ""} email={student.email ?? ""} />}
-              {/* A child's ID has no mailbox, so the forgot-password link that
-                  serves everyone else cannot reach them. This is the only way
-                  back in, and it is why it sits on the child's own card. */}
-              {!student.archivedAt && <ResetPasswordButton
+              {/* Send a link (a real email only) or set a new password — for a
+                  child's ID the reset is the only way back in. None for an
+                  archived student, who cannot sign in. */}
+              {!student.archivedAt && <PasswordMenu
                 accountId={student.accountId ?? ""}
                 identifier={student.email ?? ""}
                 name={student.name}

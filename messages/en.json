@@ -1857,5 +1857,12 @@
     "Beginner": "Beginner",
     "Intermediate": "Intermediate",
     "Advanced": "Advanced"
+  },
+  "passwordMenu": {
+    "button": "Password",
+    "label": "Password options for {name}",
+    "sendLink": "Send password link",
+    "reset": "Reset password",
+    "sending": "Sending…"
   }
 }

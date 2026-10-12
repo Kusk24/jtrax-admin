@@ -97,8 +97,9 @@ describe("a parent who lost their password", () => {
   it("can be sent a link from their page, beside the office's own reset", async () => {
     post.mockResolvedValue({ email: "malee@example.com", delivered: true });
     const user = renderPage("par_malee");
-    expect(screen.getByRole("button", { name: /Reset password/ })).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: "Send password link" }));
+    await user.click(screen.getByRole("button", { name: en.passwordMenu.button }));
+    expect(screen.getByRole("menuitem", { name: /Reset password/ })).toBeTruthy();
+    await user.click(screen.getByRole("menuitem", { name: "Send password link" }));
     expect(post).toHaveBeenCalledWith("user-accounts/usr_malee/invite", {});
     expect(await screen.findByText(/Password link sent to malee@example.com/)).toBeDefined();
   });

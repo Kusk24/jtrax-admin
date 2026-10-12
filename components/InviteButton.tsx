@@ -59,43 +59,52 @@ export async function inviteOutcome(accountId: string, studentLogins: StudentLog
   }
 }
 
-export function InviteButton({ accountId, email }: { accountId: string; email: string }) {
+/** Sending someone a link to choose their password: whether it applies,
+    the act, and the dialog that reports what happened. */
+export function useInvite(accountId: string, email: string) {
   const t = useTranslations("invite");
   const { role } = useJtrax();
   const [working, setWorking] = useState(false);
   const [outcome, setOutcome] = useState<InviteOutcome | null>(null);
+  const available = (role === "Admin" || role === "Receptionist") && !!accountId && email.includes("@");
+  async function send() {
+    setWorking(true);
+    setOutcome(await inviteOutcome(accountId));
+    setWorking(false);
+  }
+  const modal = outcome && (
+    <Modal
+      title={t("resultTitle")}
+      width={420}
+      onClose={() => setOutcome(null)}
+      footer={
+        <button type="button" className="jt-btn-primary" style={primaryButtonStyle} onClick={() => setOutcome(null)}>
+          {t("done")}
+        </button>
+      }
+    >
+      <InviteOutcomeNote outcome={outcome} email={email} resent />
+    </Modal>
+  );
+  return { available, working, send, modal };
+}
 
-  if ((role !== "Admin" && role !== "Receptionist") || !accountId || !email.includes("@")) return null;
-
+export function InviteButton({ accountId, email }: { accountId: string; email: string }) {
+  const t = useTranslations("invite");
+  const invite = useInvite(accountId, email);
+  if (!invite.available) return null;
   return (
     <>
       <button
         type="button"
         className="jt-btn-ghost"
-        style={{ ...secondaryButtonStyle, opacity: working ? 0.75 : 1 }}
-        disabled={working}
-        onClick={async () => {
-          setWorking(true);
-          setOutcome(await inviteOutcome(accountId));
-          setWorking(false);
-        }}
+        style={{ ...secondaryButtonStyle, opacity: invite.working ? 0.75 : 1 }}
+        disabled={invite.working}
+        onClick={() => void invite.send()}
       >
-        <Icon name="mail" size={14} /> {working ? t("sending") : t("resend")}
+        <Icon name="mail" size={14} /> {invite.working ? t("sending") : t("resend")}
       </button>
-      {outcome && (
-        <Modal
-          title={t("resultTitle")}
-          width={420}
-          onClose={() => setOutcome(null)}
-          footer={
-            <button type="button" className="jt-btn-primary" style={primaryButtonStyle} onClick={() => setOutcome(null)}>
-              {t("done")}
-            </button>
-          }
-        >
-          <InviteOutcomeNote outcome={outcome} email={email} resent />
-        </Modal>
-      )}
+      {invite.modal}
     </>
   );
 }
