@@ -1127,7 +1127,19 @@
     "noParentMatches": "ไม่พบผู้ปกครองที่ตรงกัน",
     "parentOf": "ผู้ปกครองของ {children}",
     "chooseAClass": "กรุณาเลือกอย่างน้อยหนึ่งคลาส",
-    "chooseAParent": "กรุณาเลือกผู้ปกครองอย่างน้อยหนึ่งคน"
+    "chooseAParent": "กรุณาเลือกผู้ปกครองอย่างน้อยหนึ่งคน",
+    "showFrom": "แสดงตั้งแต่",
+    "showUntil": "แสดงถึง",
+    "showFromHelp": "เว้นว่าง: ตั้งแต่ตอนนี้",
+    "showUntilHelp": "เว้นว่าง: ไม่มีวันสิ้นสุด",
+    "endBeforeStart": "เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่ม",
+    "window_scheduled": "ตั้งเวลาไว้",
+    "window_showing": "กำลังแสดง",
+    "window_ended": "สิ้นสุดแล้ว",
+    "windowBoth": "{from} – {until}",
+    "windowFrom": "ตั้งแต่ {from}",
+    "windowUntil": "ถึง {until}",
+    "schedule": "ตั้งเวลา"
   },
   "messages": {
     "conversations": "การสนทนา",

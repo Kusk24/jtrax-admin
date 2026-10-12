@@ -389,6 +389,8 @@ export function toAnnouncements(c: LiveCollections): Announcement[] {
       audienceIds: idsOf(s(a, "audience_ids")),
       date: fmtDate(s(a, "posted_at")),
       body: s(a, "body"),
+      showFrom: s(a, "show_from"),
+      showUntil: s(a, "show_until"),
     }));
 }
 
