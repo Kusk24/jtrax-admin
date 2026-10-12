@@ -97,3 +97,28 @@ export async function createStudentAccount(
   }
   throw lastError;
 }
+
+type UpdateFn = (path: string, id: string, body: Record<string, unknown>) => Promise<Record<string, unknown>>;
+
+/**
+ * Gives an existing account a sign-in ID built from the name, stepping along
+ * until one is free — for a student whose own email is taken off.
+ */
+export async function assignStudentLoginId(
+  update: UpdateFn,
+  accountId: string,
+  name: string,
+): Promise<string> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= MAX_LOGIN_ID_ATTEMPTS; attempt++) {
+    const loginId = studentLoginIdFor(name, attempt);
+    try {
+      await update("user-accounts", accountId, { email: loginId });
+      return loginId;
+    } catch (e) {
+      lastError = e;
+      if (!isTakenIdError(e)) throw e;
+    }
+  }
+  throw lastError;
+}

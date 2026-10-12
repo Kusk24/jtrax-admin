@@ -732,7 +732,8 @@
     "archiveTitle": "Archive {name}?",
     "archiveBody": "Hidden from classes and check-in, and can't sign in. All records are kept.",
     "archiveReason": "Reason (optional)",
-    "archiveConfirm": "Archive student"
+    "archiveConfirm": "Archive student",
+    "emailReplacesId": "They'll sign in with this email instead of {id}"
   },
   "parents": {
     "title": "Parents",
