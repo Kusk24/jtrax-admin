@@ -68,12 +68,15 @@ vi.mock("@/components/DataProvider", () => ({
 
 const { PaymentPage } = await import("./PaymentPage");
 const { ErrorToastProvider } = await import("@/components/ErrorToast");
+const { SignedInAs } = await import("./signed-in-as");
 
 function renderPaymentFor(studentId: string, classId?: string) {
   render(
     <NextIntlClientProvider locale="en" messages={en}>
       <ErrorToastProvider>
-        <PaymentPage startStudentId={studentId} startClassId={classId} />
+        <SignedInAs>
+          <PaymentPage startStudentId={studentId} startClassId={classId} />
+        </SignedInAs>
       </ErrorToastProvider>
     </NextIntlClientProvider>,
   );

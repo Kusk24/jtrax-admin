@@ -49,7 +49,8 @@
     "Scheduled": "Scheduled",
     "Deleted": "Deleted",
     "Cancelled": "Cancelled",
-    "Unpaid": "Unpaid"
+    "Unpaid": "Unpaid",
+    "Voided": "Voided"
   },
   "classType": {
     "Private": "Private",
@@ -1896,5 +1897,36 @@
     "confirm": "Mark as Certified",
     "empty": "No certificate courses yet",
     "failed": "Could not load certificates"
+  },
+  "voidPayment": {
+    "title": "Void payment",
+    "body": "It stays on record as Voided and no longer counts as revenue. Credits it bought are taken back. This is not a refund.",
+    "reason": "Reason",
+    "reason_duplicate": "Duplicate record",
+    "reason_wrong_payer": "Wrong student or payer",
+    "reason_other": "Other",
+    "otherLabel": "Reason for voiding",
+    "cancel": "Cancel",
+    "confirm": "Void payment",
+    "working": "Voiding…",
+    "failed": "Could not void the payment",
+    "action": "Void payment",
+    "voidThing": "Void {what}",
+    "voided": "Voided",
+    "voidedOn": "Voided {date}",
+    "history": "History",
+    "editedBy": "Edited by {name}",
+    "voidedBy": "Voided by {name}",
+    "creditsReversed": "{credits} credits taken back",
+    "enrolmentEnded": "Enrolment ended",
+    "field_amount": "Amount",
+    "field_discount": "Discount",
+    "field_finalAmount": "Final amount",
+    "field_method": "Method",
+    "field_status": "Status",
+    "field_date": "Date",
+    "field_reference": "Reference",
+    "field_credits": "Credits",
+    "voidedNote": "(voided)"
   }
 }

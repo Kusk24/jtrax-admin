@@ -103,7 +103,11 @@ export type Payment = {
   courseDeleted?: boolean;
   /** Private or Group, when the course is still known. */
   classType?: "Private" | "Group";
-  status: 'Paid' | 'Pending' | 'Cancelled';
+  status: 'Paid' | 'Pending' | 'Cancelled' | 'Voided';
+  /** Set once voided: when, and the reason as stored ("duplicate", or
+      "other: …" with the admin's words). */
+  voidedAt?: string;
+  voidReason?: string;
   /** A tournament entry fee, or credits for a course. */
   kind?: 'tournament' | 'course';
 };

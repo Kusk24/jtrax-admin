@@ -437,10 +437,13 @@ export function TableRow({
   template,
   children,
   onClick,
+  faded = false,
 }: {
   template: string;
   children: ReactNode;
   onClick?: () => void;
+  /* A row kept for the record but no longer in effect (a voided payment). */
+  faded?: boolean;
 }) {
   return (
     <div
@@ -461,6 +464,7 @@ export function TableRow({
         fontFamily: FONT,
         fontSize: 14,
         color: COLORS.text,
+        opacity: faded ? 0.5 : undefined,
       }}
     >
       {children}

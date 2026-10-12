@@ -59,7 +59,8 @@ export function ChartsRow() {
   /* This month's payments only — the card sits under a revenue chart that is
      also this month, and mixing a lifetime total in would not be comparable. */
   const month = new Date().toISOString().slice(0, 7);
-  const thisMonth = payments.filter((p) => (p.isoDate ?? "").startsWith(month));
+  /* Money taken only: not a pending transfer, a cancelled fee or a void. */
+  const thisMonth = payments.filter((p) => (p.status || "Paid") === "Paid" && (p.isoDate ?? "").startsWith(month));
   const methods = byMethod(thisMonth);
 
   return (
