@@ -1877,5 +1877,25 @@
     "sendLink": "Send password link",
     "reset": "Reset password",
     "sending": "Sending…"
+  },
+  "certificates": {
+    "title": "Certificates",
+    "courseField": "Certificate course",
+    "courseFieldHelp": "Its hours count toward this certificate",
+    "none": "None",
+    "course_starters": "JCA Starters (Beginner)",
+    "course_juniors": "JCA Juniors (Intermediate)",
+    "course_nxt": "JCA NXT (Advanced)",
+    "inProgress": "In Progress",
+    "certified": "Certified",
+    "hoursOf": "{hours} / {required} h",
+    "markCertified": "Mark as Certified",
+    "certifiedOn": "Certified {date}",
+    "needsHours": "Needs {required} h first",
+    "confirmTitle": "Certify {name}?",
+    "confirmBody": "{course}: {hours} h. Only after the assessment is passed. This can't be undone.",
+    "confirm": "Mark as Certified",
+    "empty": "No certificate courses yet",
+    "failed": "Could not load certificates"
   }
 }

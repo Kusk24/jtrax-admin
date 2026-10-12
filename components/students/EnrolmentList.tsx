@@ -37,10 +37,8 @@ export type EnrolmentItem = {
   creditsOf: number | null;
   /** Classes of this course the child was checked in to. */
   classes: number;
-  /** Hours of this course attended, and the academy's milestone for a
-      course (Settings → Certificate Milestone). */
+  /** Hours of this class attended. */
   hours: number;
-  hoursGoal: number;
   /** This course's own condition; null for a course the child has left. */
   creditStatus: Student["status"] | null;
   enrolledDate: string;
@@ -58,18 +56,13 @@ const TEMPLATE_ACTIVE = `${equalTemplate(7, 120)} 76px`;
 /* All adds the timeline rail and what happened. */
 const TEMPLATE_ALL = `22px ${equalTemplate(8, 120)} 76px`;
 
-/** Hours against the milestone — "32.5 / 50 h", and a tick once reached. */
+/** Hours attended in this class. Progress toward a certificate is per
+    course (private and group together), on the Certificates card. */
 function HoursFigure({ item }: { item: EnrolmentItem }) {
   const t = useTranslations("students");
-  const reached = item.hoursGoal > 0 && item.hours >= item.hoursGoal;
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontVariantNumeric: "tabular-nums" }}>
-      <span style={{ color: COLORS.text }}>{t("hoursOf", { hours: item.hours, goal: item.hoursGoal })}</span>
-      {reached && (
-        <Badge color={COLORS.success} bg={COLORS.successBg}>
-          {t("hoursReached", { goal: item.hoursGoal })}
-        </Badge>
-      )}
+    <span style={{ color: COLORS.text, fontVariantNumeric: "tabular-nums" }}>
+      {t("hoursShort", { hours: item.hours })}
     </span>
   );
 }
