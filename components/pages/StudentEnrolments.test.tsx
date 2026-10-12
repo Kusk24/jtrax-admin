@@ -1777,6 +1777,9 @@ describe("the roster's hours column", () => {
       raw.attendance = [];
       raw.enrollments = saved.e;
       raw.creditTransactions = saved.c;
+    }
+  });
+});
 
 describe("archiving a student who left", () => {
   it("archives from the student's page, with an optional reason", async () => {
@@ -1789,7 +1792,7 @@ describe("archiving a student who left", () => {
   });
 
   it("lists archived students only under Archived, and offers Restore", async () => {
-    const chai = STUDENTS.find((s) => s.id === "chai")!;
+    const chai = STUDENTS.find((s) => s.id === "chai")! as (typeof STUDENTS)[number] & { archivedAt?: string };
     chai.archivedAt = "2026-10-12";
     try {
       const user = renderList();
