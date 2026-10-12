@@ -1927,6 +1927,7 @@
     "field_status": "สถานะ",
     "field_date": "วันที่",
     "field_reference": "เลขอ้างอิง",
-    "field_credits": "เครดิต"
+    "field_credits": "เครดิต",
+    "voidedNote": "(ยกเลิกแล้ว)"
   }
 }

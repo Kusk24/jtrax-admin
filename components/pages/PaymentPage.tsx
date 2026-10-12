@@ -1213,8 +1213,8 @@ export function PaymentPage({
           <CardGrid>
             {pageRows.length === 0 && <EmptyCards>{t("empty")}</EmptyCards>}
             {pageRows.map((p, i) => (
+              <div key={p.id ?? `${p.name}-${p.date}-${i}`} style={p.status === "Voided" ? { opacity: 0.5 } : undefined}>
               <EntityCard
-                key={p.id ?? `${p.name}-${p.date}-${i}`}
                 onClick={() => setDetail(p)}
                 avatar={<Avatar initials={initialsOf(p.name)} size={44} />}
                 title={p.name}
@@ -1232,7 +1232,7 @@ export function PaymentPage({
                       {p.amount}
                     </span>
                     {p.status === "Voided" ? (
-                      <Badge {...statusChip("Voided")}>{tVoid("voided")}</Badge>
+                      <span style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textSecondary }}>{tVoid("voidedNote")}</span>
                     ) : p.credits !== "—" && (
                       <Badge color={COLORS.success} bg={COLORS.successBg}>
                         {p.credits} {tCommon("credits")}
@@ -1256,6 +1256,7 @@ export function PaymentPage({
                   { label: t("colPaidBy"), value: p.payer || "—" },
                 ]}
               />
+              </div>
             ))}
           </CardGrid>
           <Pagination page={current} totalPages={totalPages} onChange={setPage} />
@@ -1272,7 +1273,7 @@ export function PaymentPage({
           {pageRows.length === 0 && <EmptyRow>{t("empty")}</EmptyRow>}
           {pageRows.map((p, i) => {
             return (
-              <TableRow key={p.id ?? `${p.name}-${p.date}-${i}`} template={TEMPLATE} onClick={() => setDetail(p)}>
+              <TableRow key={p.id ?? `${p.name}-${p.date}-${i}`} template={TEMPLATE} onClick={() => setDetail(p)} faded={p.status === "Voided"}>
                 <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                   <Avatar initials={initialsOf(p.name)} size={30} />
                   <span style={{ minWidth: 0 }}>
@@ -1296,10 +1297,12 @@ export function PaymentPage({
                   <CourseName name={p.className} type={p.classType} deleted={p.courseDeleted} />
                 </span>
                 <span style={{ color: COLORS.success, fontWeight: 600 }}>{p.credits}</span>
-                {/* A voided payment keeps its figure, struck through and labelled. */}
-                <span style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                  <span style={{ fontWeight: 600, ...(p.status === "Voided" ? { textDecoration: "line-through", color: COLORS.textSecondary } : {}) }}>{p.amount}</span>
-                  {p.status === "Voided" && <Badge {...statusChip("Voided")}>{tVoid("voided")}</Badge>}
+                {/* A voided payment keeps its figure, faded, with "(voided)" under it. */}
+                <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                  <span style={{ fontWeight: 600 }}>{p.amount}</span>
+                  {p.status === "Voided" && (
+                    <span style={{ fontSize: 12, color: COLORS.textSecondary }}>{tVoid("voidedNote")}</span>
+                  )}
                 </span>
                 <span style={{ color: COLORS.textSecondary }}>{p.date}</span>
                 <span style={{ color: COLORS.textSecondary }}>{p.method}</span>

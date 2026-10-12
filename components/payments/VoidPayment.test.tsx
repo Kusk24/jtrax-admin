@@ -103,7 +103,7 @@ describe("the Payments page", () => {
     const user = show("Admin");
     const voidButtons = screen.getAllByRole("button", { name: /^Void / });
     expect(voidButtons).toHaveLength(1);
-    expect(screen.getAllByText(tv.voided).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(tv.voidedNote).length).toBeGreaterThan(0);
     await user.click(voidButtons[0]);
     const dialog = within(screen.getByRole("dialog"));
     expect(dialog.getByLabelText(tv.reason_duplicate)).toBeTruthy();

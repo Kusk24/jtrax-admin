@@ -1927,6 +1927,7 @@
     "field_status": "Status",
     "field_date": "Date",
     "field_reference": "Reference",
-    "field_credits": "Credits"
+    "field_credits": "Credits",
+    "voidedNote": "(voided)"
   }
 }
