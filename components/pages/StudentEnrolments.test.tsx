@@ -1752,3 +1752,31 @@ describe("a credit entry's detail", () => {
   });
 });
 
+
+describe("archiving a student who left", () => {
+  it("archives from the student's page, with an optional reason", async () => {
+    const user = renderList();
+    await openStudent(user, "Chai");
+    await user.click(screen.getByRole("button", { name: en.students.archiveStudent }));
+    await user.type(screen.getByLabelText(en.students.archiveReason), "Moved away");
+    await user.click(screen.getByRole("button", { name: en.students.archiveConfirm }));
+    expect(update).toHaveBeenCalledWith("students", "chai", { archived_at: expect.any(String), archived_reason: "Moved away" });
+  });
+
+  it("lists archived students only under Archived, and offers Restore", async () => {
+    const chai = STUDENTS.find((s) => s.id === "chai")!;
+    chai.archivedAt = "2026-10-12";
+    try {
+      const user = renderList();
+      await user.selectOptions(screen.getByRole("combobox", { name: en.common.status }), "Archived");
+      expect(screen.getByText("Chai")).toBeDefined();
+      expect(screen.queryByText("Boon")).toBeNull();
+      await openStudent(user, "Chai");
+      expect(screen.getByText(/Archived on/)).toBeDefined();
+      await user.click(screen.getByRole("button", { name: en.students.restoreStudent }));
+      expect(update).toHaveBeenCalledWith("students", "chai", { archived_at: null, archived_reason: null });
+    } finally {
+      delete chai.archivedAt;
+    }
+  });
+});

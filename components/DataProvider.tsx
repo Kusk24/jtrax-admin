@@ -56,7 +56,10 @@ type DataContextValue = {
   error: string | null;
   raw: LiveCollections;
   meAccountId: string;
+  /** Current students: every picker, roster and count. */
   students: Student[];
+  /** Archived ones too, for their own page and for history. */
+  allStudents: Student[];
   parents: ParentPerson[];
   payments: Payment[];
   admins: AdminPerson[];
@@ -223,12 +226,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     });
   }, [batch, setConfig]);
 
+  const allStudents = useMemo(() => toStudents(raw), [raw]);
   const value = useMemo<DataContextValue>(() => ({
     loading,
     error,
     raw,
     meAccountId,
-    students: toStudents(raw),
+    students: allStudents.filter((st) => !st.archivedAt),
+    allStudents,
     parents: toParents(raw),
     payments: toPayments(raw),
     admins: toAdmins(raw),
@@ -250,7 +255,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     remove,
     removePerson,
     setConfig,
-  }), [loading, error, raw, meAccountId, creditRules, saveCreditRules, refresh, batch, create, update, remove, removePerson, setConfig]);
+  }), [loading, error, raw, allStudents, meAccountId, creditRules, saveCreditRules, refresh, batch, create, update, remove, removePerson, setConfig]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }

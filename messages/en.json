@@ -723,7 +723,15 @@
     "studentEmailHelp": "For a student who signs in with their own email",
     "studentEmailInvalid": "Enter a valid email address",
     "studentEmailTaken": "This email already has an account",
-    "studentOwnEmailHint": "They sign in with their own email, and can reset the password themselves with Forgot password."
+    "studentOwnEmailHint": "They sign in with their own email, and can reset the password themselves with Forgot password.",
+    "archiveStudent": "Archive",
+    "restoreStudent": "Restore",
+    "archived": "Archived",
+    "archivedOn": "Archived on {date}",
+    "archiveTitle": "Archive {name}?",
+    "archiveBody": "Hidden from classes and check-in, and can't sign in. All records are kept.",
+    "archiveReason": "Reason (optional)",
+    "archiveConfirm": "Archive student"
   },
   "parents": {
     "title": "Parents",

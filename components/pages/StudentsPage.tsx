@@ -83,6 +83,8 @@ const ATTENDANCE_TEMPLATE = "minmax(90px, 0.8fr) minmax(130px, 1.1fr) minmax(140
    threw the answer away, which is why it was removed in #92. */
 const BRANCH_OPTIONS = ["Bangkok"];
 const STATUS_VALUES = ["Normal", "Low Credit", "Expiring", "Expired", "Inactive"] as const;
+/** The status filter's value for students who have left. */
+const ARCHIVED = "Archived";
 const LEVEL_OPTIONS = ["Beginner", "Intermediate", "Advanced"];
 const RELATION_OPTIONS = ["Mother", "Father", "Guardian"];
 
@@ -285,6 +287,24 @@ function StudentDetail({
     setDraft((d) => ({ ...d, [key]: value }));
   }
   const { raw, creditRules, batch, create, update, remove } = useData();
+  /* Left the academy: archived, records kept, restorable. */
+  const [archiving, setArchiving] = useState(false);
+  const [archiveReason, setArchiveReason] = useState("");
+  const [archiveBusy, setArchiveBusy] = useState(false);
+  async function setArchived(on: boolean) {
+    setArchiveBusy(true);
+    try {
+      await update("students", student.id, on
+        ? { archived_at: todayISO(), archived_reason: archiveReason.trim() || null }
+        : { archived_at: null, archived_reason: null });
+      setArchiving(false);
+      setArchiveReason("");
+    } catch (e) {
+      showError(tCommon("saveFailed"), e);
+    } finally {
+      setArchiveBusy(false);
+    }
+  }
   const courseLabel = useCourseLabel();
   const tMsg = useTranslations("messages");
   /* Theirs, else their parent's — the chat linked from Messages. */
@@ -1080,17 +1100,29 @@ function StudentDetail({
               {/* An older student who signs in with their own email gets a
                   link to choose a password, as a parent does. Hidden for a
                   child's login ID, which has no mailbox. */}
-              <InviteButton accountId={student.accountId ?? ""} email={student.email ?? ""} />
+              {/* An archived student cannot sign in: no invite or reset. */}
+              {!student.archivedAt && <InviteButton accountId={student.accountId ?? ""} email={student.email ?? ""} />}
               {/* A child's ID has no mailbox, so the forgot-password link that
                   serves everyone else cannot reach them. This is the only way
                   back in, and it is why it sits on the child's own card. */}
-              <ResetPasswordButton
+              {!student.archivedAt && <ResetPasswordButton
                 accountId={student.accountId ?? ""}
                 identifier={student.email ?? ""}
                 name={student.name}
                 update={update}
                 onError={(e) => showError(tCommon("saveFailed"), e)}
-              />
+              />}
+              {student.archivedAt ? (
+                <button type="button" className="jt-btn-ghost" style={{ ...secondaryButtonStyle, display: "inline-flex", alignItems: "center", gap: 6 }}
+                  disabled={archiveBusy} onClick={() => void setArchived(false)}>
+                  <Icon name="userCheck" size={15} /> {t("restoreStudent")}
+                </button>
+              ) : (
+                <button type="button" className="jt-btn-ghost" style={{ ...secondaryButtonStyle, display: "inline-flex", alignItems: "center", gap: 6 }}
+                  onClick={() => { setDeleteConfirm(false); setArchiving(true); }}>
+                  <Icon name="userX" size={15} /> {t("archiveStudent")}
+                </button>
+              )}
               <EditButton
                 onClick={() => {
                   setDraft(student);
@@ -1099,11 +1131,38 @@ function StudentDetail({
                   setEditing(true);
                 }}
               />
-              <DeleteButton onClick={() => setDeleteConfirm(true)} />
+              <DeleteButton onClick={() => { setArchiving(false); setDeleteConfirm(true); }} />
             </>
           )
         }
       />
+
+      {student.archivedAt && (
+        <div role="status" style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 12, background: COLORS.light, border: `1px solid ${COLORS.border}`, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
+          <Icon name="userX" size={15} />
+          <span>
+            <strong style={{ color: COLORS.text }}>{t("archivedOn", { date: fmtDate(student.archivedAt) })}</strong>
+            {student.archivedReason ? ` · ${student.archivedReason}` : ""}
+          </span>
+        </div>
+      )}
+
+      {archiving && (
+        <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ fontFamily: FONT, fontSize: 14.5, fontWeight: 700, color: COLORS.text }}>{t("archiveTitle", { name: student.name })}</div>
+          <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>{t("archiveBody")}</p>
+          <label style={{ display: "flex", flexDirection: "column", gap: 5, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
+            {t("archiveReason")}
+            <input value={archiveReason} onChange={(e) => setArchiveReason(e.target.value)} maxLength={200} style={fieldStyle} />
+          </label>
+          <div style={{ display: "flex", gap: 9 }}>
+            <button type="button" style={secondaryButtonStyle} onClick={() => setArchiving(false)}>{tCommon("cancel")}</button>
+            <button type="button" className="jt-btn-primary" style={primaryButtonStyle} disabled={archiveBusy} onClick={() => void setArchived(true)}>
+              {t("archiveConfirm")}
+            </button>
+          </div>
+        </Card>
+      )}
 
       {deleteConfirm && (
         <DangerPanel title={t("deleteTitle", { name: student.name })} body={t("deleteBody")}>
@@ -2874,7 +2933,10 @@ export function StudentsPage({
   const courseLabel = useCourseLabel();
   const { showError } = useErrorToast();
   const tStatus = useTranslations("status");
-  const { students, raw, batch, create, update, remove, removePerson, loading, error } = useData();
+  const { students, allStudents: everyone, raw, batch, create, update, remove, removePerson, loading, error } = useData();
+  /* Archived ones too: their own page and the Archived filter. */
+  const allStudents = everyone ?? students;
+  const archived = useMemo(() => allStudents.filter((s) => s.archivedAt), [allStudents]);
   const [view, setView] = useState<View>(
     opensCreate(startWizard)
       ? { kind: "wizard" }
@@ -2898,7 +2960,7 @@ export function StudentsPage({
      `?status=`; anything the list does not know is ignored rather than
      silently emptying the screen. */
   const [status, setStatus] = useState(
-    STATUS_VALUES.includes(startStatus as (typeof STATUS_VALUES)[number]) ? startStatus! : "",
+    STATUS_VALUES.includes(startStatus as (typeof STATUS_VALUES)[number]) || startStatus === ARCHIVED ? startStatus! : "",
   );
   const [branch, setBranch] = useState("");
   /* By class id, not by name: two classes can share a name, and the id is what
@@ -2935,8 +2997,10 @@ export function StudentsPage({
         value: v,
         label: `${tStatus(v)} (${students.filter((s) => s.status === v).length})`,
       })),
+      /* Left the academy: only here, never in the other statuses. */
+      { value: ARCHIVED, label: `${t("archived")} (${archived.length})` },
     ],
-    [tCommon, tStatus, students],
+    [tCommon, tStatus, t, students, archived],
   );
 
   /* Read off the enrolments rather than the row's single `className`, which is
@@ -2955,8 +3019,8 @@ export function StudentsPage({
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return students.filter((s) => {
-      if (status && s.status !== status) return false;
+    return (status === ARCHIVED ? archived : students).filter((s) => {
+      if (status && status !== ARCHIVED && s.status !== status) return false;
       if (branch && s.branch !== branch) return false;
       if (!isInClass(raw.enrollments, s.id, classId)) return false;
       /* The ID is searchable because it is now the thing a family arrives
@@ -2973,7 +3037,7 @@ export function StudentsPage({
       }
       return true;
     });
-  }, [students, search, status, branch, classId, raw.enrollments]);
+  }, [students, archived, search, status, branch, classId, raw.enrollments]);
 
   /* Every class a child is in, so a row that turns up under a class filter
      says why it did rather than naming a different class. */
@@ -3189,7 +3253,7 @@ export function StudentsPage({
   }
 
   if (view.kind === "detail") {
-    const student = students.find((s) => s.id === view.id);
+    const student = allStudents.find((s) => s.id === view.id);
     if (student)
       return (
         <StudentDetail
@@ -3374,14 +3438,14 @@ export function StudentsPage({
               <EmptyCards>{loading ? tCommon("loading") : error ? error : t("empty")}</EmptyCards>
             )}
             {pageRows.map((s) => {
-              const chip = statusChipColors(s.status);
+              const chip = s.archivedAt ? { color: COLORS.textSecondary, bg: COLORS.light } : statusChipColors(s.status);
               return (
                 <EntityCard
                   key={s.id}
                   onClick={() => setView({ kind: "detail", id: s.id })}
                   avatar={<Avatar initials={initialsOf(s.name)} size={44} />}
                   title={s.name}
-                  titleBadge={<Badge color={chip.color} bg={chip.bg}>{tStatus(s.status)}</Badge>}
+                  titleBadge={<Badge color={chip.color} bg={chip.bg}>{s.archivedAt ? t("archived") : tStatus(s.status)}</Badge>}
                   /* Name, then the courses: each on its own line with its
                      balance, rather than every class name run into one
                      line under the name. */
@@ -3415,7 +3479,7 @@ export function StudentsPage({
               <EmptyRow>{loading ? tCommon("loading") : error ? error : t("empty")}</EmptyRow>
             )}
             {pageRows.map((s) => {
-              const chip = statusChipColors(s.status);
+              const chip = s.archivedAt ? { color: COLORS.textSecondary, bg: COLORS.light } : statusChipColors(s.status);
               /* Filtered to one class: that class leads the row, so a
                  collapsed row still says why the child is on this list. */
               const filteredName = classId
@@ -3508,7 +3572,7 @@ export function StudentsPage({
                     ))}
                   </span>
                   <Badge color={chip.color} bg={chip.bg} style={{ justifySelf: "start" }}>
-                    {tStatus(s.status)}
+                    {s.archivedAt ? t("archived") : tStatus(s.status)}
                   </Badge>
                   <ContactPill phone={s.parentPhone} label={t("contact")} style={{ justifySelf: "start" }} />
                 </TableRow>
