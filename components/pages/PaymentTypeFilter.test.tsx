@@ -26,13 +26,16 @@ vi.mock("@/components/DataProvider", () => ({
 
 const { PaymentPage } = await import("./PaymentPage");
 const { ErrorToastProvider } = await import("@/components/ErrorToast");
+const { SignedInAs } = await import("./signed-in-as");
 
 describe("filtering payments by type", () => {
   it("shows only tournament fees, or only course payments", async () => {
     render(
       <NextIntlClientProvider locale="en" messages={en}>
         <ErrorToastProvider>
-          <PaymentPage />
+          <SignedInAs>
+            <PaymentPage />
+          </SignedInAs>
         </ErrorToastProvider>
       </NextIntlClientProvider>,
     );

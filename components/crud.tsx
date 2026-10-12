@@ -458,10 +458,15 @@ export function RowActions({
   onDelete,
   onEmail,
   emailLabel,
+  onVoid,
+  voidLabel,
   label,
 }: {
   onEdit?: () => void;
   onDelete?: () => void;
+  /* Voiding a record that is kept rather than deleted (a payment). */
+  onVoid?: () => void;
+  voidLabel?: string;
   /* An extra "send email" action, before Edit. */
   onEmail?: () => void;
   emailLabel?: string;
@@ -497,6 +502,18 @@ export function RowActions({
           style={iconButtonStyle}
         >
           <Icon name="edit" size={14} color={COLORS.textSecondary} />
+        </button>
+      )}
+      {onVoid && (
+        <button
+          type="button"
+          className="jt-btn-ghost"
+          aria-label={voidLabel}
+          title={voidLabel}
+          onClick={(e) => stop(e, onVoid)}
+          style={iconButtonStyle}
+        >
+          <Icon name="x" size={14} color={COLORS.danger} />
         </button>
       )}
       {onDelete && (

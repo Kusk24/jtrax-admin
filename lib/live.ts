@@ -339,6 +339,8 @@ export function toPayments(c: LiveCollections): Payment[] {
            academy has been promised, and one recorded as Refunded is money it
            gave back — calling both of them Paid put them in Total Revenue. */
         status: (s(p, "status") || "Paid") as Payment["status"],
+        voidedAt: s(p, "voided_at"),
+        voidReason: s(p, "void_reason"),
       };
     });
 }
@@ -447,10 +449,10 @@ export function toTournaments(c: LiveCollections): Tournament[] {
          place was released. Anything else is Pending — including an entry
          with no payment row yet. */
       paymentStatus: ((status) => (status === "Paid" || status === "Cancelled" ? status : "Pending"))(
-        s(c.payments.find((p) => s(p, "tournament_registration_id") === s(r, "tournament_registration_id")) ?? {}, "status"),
+        s(c.payments.find((p) => s(p, "tournament_registration_id") === s(r, "tournament_registration_id") && s(p, "status") !== "Voided") ?? {}, "status"),
       ),
       payment: (() => {
-        const pay = c.payments.find((p) => s(p, "tournament_registration_id") === s(r, "tournament_registration_id"));
+        const pay = c.payments.find((p) => s(p, "tournament_registration_id") === s(r, "tournament_registration_id") && s(p, "status") !== "Voided");
         return pay ? { id: s(pay, "payment_id"), status: s(pay, "status"), method: s(pay, "payment_method") } : undefined;
       })(),
       /* On the tournament's first day, from the date of birth given; the age

@@ -12,7 +12,7 @@ import {
   type FamilyLink,
   type Pair,
 } from "@/lib/payment-pairing";
-import { liveClasses, livePackages } from "@/lib/live";
+import { fmtDateTime, liveClasses, livePackages } from "@/lib/live";
 import { useData } from "@/components/DataProvider";
 import { CourseName, useCourseLabel } from "@/components/CourseName";
 import { classTypeOf, type ClassType } from "@/lib/class-face";
@@ -51,6 +51,9 @@ import { DetailHeader, EditButton } from "../detail";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 import { useErrorToast } from "../ErrorToast";
+import { useJtrax } from "../JtraxContext";
+import { VoidPaymentModal } from "../payments/VoidPaymentModal";
+import { PaymentHistory } from "../payments/PaymentHistory";
 
 const TEMPLATE = equalTemplate(8, 76);
 const VIEWS = ["list", "card"] as const;
@@ -71,6 +74,8 @@ function expiryFrom(isoDate: string, validityDays: number): string | null {
 function statusChip(status: Payment["status"]): { color: string; bg: string } {
   if (status === "Pending") return { color: COLORS.warning, bg: COLORS.warningBg };
   if (status === "Cancelled") return { color: COLORS.danger, bg: COLORS.dangerBg };
+  /* Voided: a record made in error, kept for the history, not money. */
+  if (status === "Voided") return { color: COLORS.textSecondary, bg: COLORS.neutralBg };
   return { color: COLORS.success, bg: COLORS.successBg };
 }
 
@@ -643,11 +648,15 @@ export function PaymentDetail({
   payment,
   onClose,
   onEdit,
+  onVoid,
 }: {
   payment: Payment;
   onClose: () => void;
   onEdit: () => void;
+  /** Admins only, and only while it is not voided already. */
+  onVoid?: () => void;
 }) {
+  const tVoid = useTranslations("voidPayment");
   const t = useTranslations("payment");
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
@@ -708,12 +717,31 @@ export function PaymentDetail({
             </>
           }
           actions={
-            payment.id ? (
-              /* Edit only: a payment is corrected, never deleted. */
-              <EditButton onClick={onEdit} />
+            payment.id && payment.status !== "Voided" ? (
+              /* Corrected or voided, never deleted. */
+              <>
+                <EditButton onClick={onEdit} />
+                {onVoid && (
+                  <button
+                    type="button"
+                    className="jt-btn-ghost"
+                    style={{ ...secondaryButtonStyle, color: COLORS.danger, display: "inline-flex", alignItems: "center", gap: 6 }}
+                    onClick={onVoid}
+                  >
+                    <Icon name="x" size={14} color={COLORS.danger} /> {tVoid("action")}
+                  </button>
+                )}
+              </>
             ) : undefined
           }
         />
+        {payment.status === "Voided" && (
+          <div role="status" style={{ padding: "10px 14px", borderRadius: 11, background: COLORS.neutralBg, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
+            <strong style={{ color: COLORS.text }}>
+              {payment.voidedAt ? tVoid("voidedOn", { date: fmtDateTime(payment.voidedAt) }) : tVoid("voided")}
+            </strong>
+          </div>
+        )}
         <InfoGrid
           rows={[
             { label: t("colPaidBy"), value: payment.payer || "—" },
@@ -794,6 +822,7 @@ export function PaymentDetail({
           </div>
         )}
       </div>
+      {payment.id && <div style={{ marginTop: 16 }}><PaymentHistory paymentId={payment.id} refreshKey={payment.status} /></div>}
     </Modal>
   );
 }
@@ -816,7 +845,12 @@ export function PaymentPage({
   const t = useTranslations("payment");
   const tCommon = useTranslations("common");
   const { showError } = useErrorToast();
-  const { payments, raw, batch, create, update, loading } = useData();
+  const { payments, raw, batch, create, update, loading, refresh } = useData();
+  /* Voiding is an admin's act; the server refuses anyone else too. */
+  const { role } = useJtrax();
+  const canVoid = role === "Admin";
+  const [voiding, setVoiding] = useState<Payment | null>(null);
+  const tVoid = useTranslations("voidPayment");
   /* Arriving with a student means the wizard just registered them and the next
      thing the desk does is take their money. */
   const [formOpen, setFormOpen] = useState(Boolean(startStudentId) || Boolean(startNew));
@@ -1093,6 +1127,15 @@ export function PaymentPage({
           payment={detail}
           onClose={() => setDetail(null)}
           onEdit={() => { openEdit(detail); setDetail(null); }}
+          onVoid={canVoid ? () => { setVoiding(detail); setDetail(null); } : undefined}
+        />
+      )}
+      {voiding?.id && (
+        <VoidPaymentModal
+          paymentId={voiding.id}
+          label={`${voiding.amount} · ${voiding.name}`}
+          onClose={() => setVoiding(null)}
+          onVoided={refresh}
         />
       )}
 
@@ -1188,7 +1231,9 @@ export function PaymentPage({
                     <span style={{ fontFamily: FONT, fontSize: 17, fontWeight: 700, color: COLORS.text }}>
                       {p.amount}
                     </span>
-                    {p.credits !== "—" && (
+                    {p.status === "Voided" ? (
+                      <Badge {...statusChip("Voided")}>{tVoid("voided")}</Badge>
+                    ) : p.credits !== "—" && (
                       <Badge color={COLORS.success} bg={COLORS.successBg}>
                         {p.credits} {tCommon("credits")}
                       </Badge>
@@ -1196,10 +1241,12 @@ export function PaymentPage({
                   </>
                 }
                 actions={
-                  p.id ? (
+                  p.id && p.status !== "Voided" ? (
                     <RowActions
                       label={t("paymentFor", { name: p.name, amount: p.amount })}
                       onEdit={() => openEdit(p)}
+                      onVoid={canVoid ? () => setVoiding(p) : undefined}
+                      voidLabel={tVoid("voidThing", { what: t("paymentFor", { name: p.name, amount: p.amount }) })}
                     />
                   ) : undefined
                 }
@@ -1249,13 +1296,19 @@ export function PaymentPage({
                   <CourseName name={p.className} type={p.classType} deleted={p.courseDeleted} />
                 </span>
                 <span style={{ color: COLORS.success, fontWeight: 600 }}>{p.credits}</span>
-                <span style={{ fontWeight: 600 }}>{p.amount}</span>
+                {/* A voided payment keeps its figure, struck through and labelled. */}
+                <span style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                  <span style={{ fontWeight: 600, ...(p.status === "Voided" ? { textDecoration: "line-through", color: COLORS.textSecondary } : {}) }}>{p.amount}</span>
+                  {p.status === "Voided" && <Badge {...statusChip("Voided")}>{tVoid("voided")}</Badge>}
+                </span>
                 <span style={{ color: COLORS.textSecondary }}>{p.date}</span>
                 <span style={{ color: COLORS.textSecondary }}>{p.method}</span>
-                {p.id ? (
+                {p.id && p.status !== "Voided" ? (
                   <RowActions
                     label={t("paymentFor", { name: p.name, amount: p.amount })}
                     onEdit={() => openEdit(p)}
+                    onVoid={canVoid ? () => setVoiding(p) : undefined}
+                    voidLabel={tVoid("voidThing", { what: t("paymentFor", { name: p.name, amount: p.amount }) })}
                   />
                 ) : (
                   <span />

@@ -49,7 +49,8 @@
     "Scheduled": "ตามกำหนดการ",
     "Deleted": "ลบแล้ว",
     "Cancelled": "ยกเลิกแล้ว",
-    "Unpaid": "ยังไม่ชำระ"
+    "Unpaid": "ยังไม่ชำระ",
+    "Voided": "ยกเลิกแล้ว"
   },
   "classType": {
     "Private": "ตัวต่อตัว",
@@ -1896,5 +1897,36 @@
     "confirm": "ยืนยันการได้รับใบประกาศ",
     "empty": "ยังไม่มีหลักสูตรใบประกาศ",
     "failed": "โหลดใบประกาศไม่สำเร็จ"
+  },
+  "voidPayment": {
+    "title": "ยกเลิกรายการชำระเงิน",
+    "body": "รายการยังเก็บไว้ในสถานะยกเลิก และไม่นับเป็นรายได้ เครดิตที่ซื้อจะถูกหักคืน ไม่ใช่การคืนเงิน",
+    "reason": "เหตุผล",
+    "reason_incorrect_amount": "จำนวนเงินไม่ถูกต้อง",
+    "reason_duplicate": "บันทึกซ้ำ",
+    "reason_wrong_payer": "นักเรียนหรือผู้ชำระไม่ถูกต้อง",
+    "reason_other": "อื่น ๆ",
+    "otherLabel": "เหตุผลในการยกเลิก",
+    "cancel": "ยกเลิก",
+    "confirm": "ยกเลิกรายการ",
+    "working": "กำลังยกเลิก…",
+    "failed": "ยกเลิกรายการไม่สำเร็จ",
+    "action": "ยกเลิกรายการ",
+    "voidThing": "ยกเลิก {what}",
+    "voided": "ยกเลิกแล้ว",
+    "voidedOn": "ยกเลิกเมื่อ {date}",
+    "history": "ประวัติ",
+    "editedBy": "แก้ไขโดย {name}",
+    "voidedBy": "ยกเลิกโดย {name}",
+    "creditsReversed": "หักเครดิตคืน {credits}",
+    "enrolmentEnded": "สิ้นสุดการลงทะเบียน",
+    "field_amount": "จำนวนเงิน",
+    "field_discount": "ส่วนลด",
+    "field_finalAmount": "ยอดสุทธิ",
+    "field_method": "วิธีชำระ",
+    "field_status": "สถานะ",
+    "field_date": "วันที่",
+    "field_reference": "เลขอ้างอิง",
+    "field_credits": "เครดิต"
   }
 }
