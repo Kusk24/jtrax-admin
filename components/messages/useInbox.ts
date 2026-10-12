@@ -22,7 +22,9 @@ import {
 
 export type SendResult = "" | LineFailureReason;
 
-export function useInbox() {
+/** `initialId` is the chat to open first — a record's "LINE chat" link —
+    in place of the top of the list. */
+export function useInbox(initialId?: string) {
   const [conversations, setConversations] = useState<LineConversation[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [thread, setThread] = useState<LineThread | null>(null);
@@ -71,7 +73,11 @@ export function useInbox() {
         if (cancelled) return;
         setConversations(list);
         setError("");
-        if (list.length > 0) open(list[0].lineUserId);
+        // The chat a record's link asked for, if it is in the inbox; otherwise
+        // the top of the list. Opened here, once the list is in, so the list
+        // arriving cannot replace it with the first row.
+        const first = list.find((c) => c.lineUserId === initialId) ?? list[0];
+        if (first) open(first.lineUserId);
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "failed");
       } finally {
@@ -82,7 +88,7 @@ export function useInbox() {
       cancelled = true;
     };
     // Runs once: `open` is stable and re-selecting on every change would fight
-    // the user's own choice of thread.
+    // the user's own choice of thread. A new `initialId` remounts the page.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -71,7 +71,9 @@ import { byLatestEvent, creditMoves, enrolmentEvents } from "@/lib/course-histor
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 import { useErrorToast } from "../ErrorToast";
-import { LineChatLink, useLineChat } from "../messages/LineChatLink";
+import { LineChatLink, useLineChat, useLineChats } from "../messages/LineChatLink";
+import { chatFor } from "@/lib/line";
+import { ContactMenu } from "../ContactMenu";
 
 const TEMPLATE = equalTemplate(6, 90);
 const VIEWS = ["list", "card"] as const;
@@ -2988,6 +2990,8 @@ export function StudentsPage({
   const courseLabel = useCourseLabel();
   const { showError } = useErrorToast();
   const tStatus = useTranslations("status");
+  /* For the Contact menu's LINE item: the chats the office has linked. */
+  const lineChats = useLineChats();
   const { students, allStudents: everyone, raw, batch, create, update, remove, removePerson, loading, error } = useData();
   /* Archived ones too: their own page and the Archived filter. */
   const allStudents = everyone ?? students;
@@ -3514,13 +3518,7 @@ export function StudentsPage({
                       />
                       {/* No edit or delete here, as in the list: both are on
                           the student's page, which the card opens. */}
-                      {s.parentPhone && (
-                        <ContactPill
-                          phone={s.parentPhone}
-                          label={t("contact")}
-                          style={{ justifyContent: "center" }}
-                        />
-                      )}
+                      <ContactMenu student={s} chat={chatFor(lineChats, { studentId: s.id, parentId: s.parentId })} />
                     </>
                   }
                 />
@@ -3639,7 +3637,9 @@ export function StudentsPage({
                   <Badge color={chip.color} bg={chip.bg} style={{ justifySelf: "start" }}>
                     {s.archivedAt ? t("archived") : tStatus(s.status)}
                   </Badge>
-                  <ContactPill phone={s.parentPhone} label={t("contact")} style={{ justifySelf: "start" }} />
+                  <span style={{ justifySelf: "start" }}>
+                    <ContactMenu student={s} chat={chatFor(lineChats, { studentId: s.id, parentId: s.parentId })} />
+                  </span>
                 </TableRow>
               );
             })}
@@ -3650,43 +3650,6 @@ export function StudentsPage({
     </div>
   );
 }
-
-/** Tel link styled as a pill. Its click never reaches the row behind it. */
-function ContactPill({
-  phone,
-  label,
-  style,
-}: {
-  phone: string;
-  label: string;
-  style?: React.CSSProperties;
-}) {
-  return (
-    <a
-      href={`tel:${phone.replace(/\s/g, "")}`}
-      onClick={(e) => e.stopPropagation()}
-      className="jt-qa-call"
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        padding: "6px 12px",
-        borderRadius: 999,
-        border: `1px solid ${COLORS.border}`,
-        fontFamily: FONT,
-        fontSize: 13,
-        fontWeight: 600,
-        color: COLORS.text,
-        textDecoration: "none",
-        transition: "all 160ms ease",
-        ...style,
-      }}
-    >
-      <Icon name="phone" size={12} /> {label}
-    </a>
-  );
-}
-
 
 /** A student's ID, set in a monospace face so 0 and O, 1 and l are told
     apart when it is read down the phone, with an icon that copies it and

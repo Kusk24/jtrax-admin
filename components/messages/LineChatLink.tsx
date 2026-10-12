@@ -27,6 +27,23 @@ export function useLineChat(who: { studentId?: string; parentId?: string }) {
   return state;
 }
 
+/** Every linked LINE chat, read once for a whole list — the student table's
+    Contact menu — rather than once per row. Empty when the inbox cannot be
+    read, so the menu simply has no LINE item. */
+export function useLineChats(): LineConversation[] {
+  const [list, setList] = useState<LineConversation[]>([]);
+  useEffect(() => {
+    let alive = true;
+    listConversations()
+      .then((all) => alive && setList(all))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return list;
+}
+
 export function LineChatLink({ chat }: { chat: LineConversation | null }) {
   const t = useTranslations("messages");
   const router = useRouter();
