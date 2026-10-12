@@ -64,6 +64,12 @@ describe("the Void payment dialog", () => {
   }
   const confirm = () => screen.getByRole("button", { name: tv.confirm }) as HTMLButtonElement;
 
+  it("offers Duplicate record, Wrong student or payer and Other", () => {
+    open();
+    expect(screen.getAllByRole("radio")).toHaveLength(3);
+    expect(screen.queryByLabelText("Incorrect amount")).toBeNull();
+  });
+
   it("cannot be confirmed until a reason is chosen", async () => {
     const { user } = open();
     expect(confirm().disabled).toBe(true);
@@ -79,7 +85,7 @@ describe("the Void payment dialog", () => {
     expect(confirm().disabled).toBe(true);
     await user.type(box, "Entered for the wrong family");
     expect(confirm().disabled).toBe(false);
-    await user.click(screen.getByLabelText(tv.reason_incorrect_amount));
+    await user.click(screen.getByLabelText(tv.reason_wrong_payer));
     expect(screen.queryByLabelText(tv.otherLabel)).toBeNull();
   });
 

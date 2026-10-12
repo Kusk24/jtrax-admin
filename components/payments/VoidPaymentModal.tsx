@@ -12,7 +12,7 @@ import { api, ApiError } from "@/lib/api";
 import { COLORS, FONT } from "@/lib/theme";
 import { dangerSolidButtonStyle, fieldStyle, Modal, secondaryButtonStyle } from "../page-kit";
 
-export const VOID_REASONS = ["incorrect_amount", "duplicate", "wrong_payer", "other"] as const;
+export const VOID_REASONS = ["duplicate", "wrong_payer", "other"] as const;
 export type VoidReason = (typeof VOID_REASONS)[number];
 
 /** Shortest explanation the server accepts for "Other". */

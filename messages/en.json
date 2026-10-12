@@ -1902,7 +1902,6 @@
     "title": "Void payment",
     "body": "It stays on record as Voided and no longer counts as revenue. Credits it bought are taken back. This is not a refund.",
     "reason": "Reason",
-    "reason_incorrect_amount": "Incorrect amount",
     "reason_duplicate": "Duplicate record",
     "reason_wrong_payer": "Wrong student or payer",
     "reason_other": "Other",
