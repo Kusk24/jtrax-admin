@@ -10,6 +10,7 @@
    also says what last happened to it — joined, moved from one course, moved
    on to another, or left — and when. */
 import { useTranslations } from "next-intl";
+import { fmtHours } from "@/lib/certificates";
 import type { ClassType } from "@/lib/class-face";
 import { useCourseLabel } from "../CourseName";
 import type { CreditMoveIn, EnrolmentEvent } from "@/lib/course-history";
@@ -62,7 +63,7 @@ function HoursFigure({ item }: { item: EnrolmentItem }) {
   const t = useTranslations("students");
   return (
     <span style={{ color: COLORS.text, fontVariantNumeric: "tabular-nums" }}>
-      {t("hoursShort", { hours: item.hours })}
+      {t("hoursShort", { hours: fmtHours(item.hours) })}
     </span>
   );
 }

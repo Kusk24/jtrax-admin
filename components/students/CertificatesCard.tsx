@@ -83,16 +83,17 @@ export function CertificatesCard({ studentId, studentName }: { studentId: string
               ) : (
                 <>
                   <Badge color={COLORS.blue} bg={COLORS.light}>{t("inProgress")}</Badge>
-                  <button
-                    type="button"
-                    className="jt-btn-primary"
-                    style={{ ...primaryButtonStyle, padding: "6px 13px", fontSize: 12.5, opacity: enough ? 1 : 0.5 }}
-                    disabled={!enough}
-                    title={enough ? undefined : t("needsHours", { required: fmtHours(required) })}
-                    onClick={() => setAsking(c)}
-                  >
-                    {t("markCertified")}
-                  </button>
+                  {/* Only once the bar is full; the assessment comes first. */}
+                  {enough && (
+                    <button
+                      type="button"
+                      className="jt-btn-primary"
+                      style={{ ...primaryButtonStyle, padding: "6px 13px", fontSize: 12.5 }}
+                      onClick={() => setAsking(c)}
+                    >
+                      {t("markCertified")}
+                    </button>
+                  )}
                 </>
               )}
             </div>

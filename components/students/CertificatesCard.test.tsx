@@ -43,7 +43,7 @@ beforeEach(() => {
 describe("the Certificates card", () => {
   it("shows each course's hours, bar and status", async () => {
     show();
-    expect(await screen.findByText("JCA Starters (Beginner)")).toBeTruthy();
+    expect(await screen.findByText("JCA Starters")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("students/stu_1/certificates");
     expect(screen.getByText("50 / 50 h")).toBeTruthy();
     expect(screen.getByText("12.3 / 50 h")).toBeTruthy();
@@ -53,14 +53,11 @@ describe("the Certificates card", () => {
     expect(screen.getAllByRole("progressbar")).toHaveLength(3);
   });
 
-  it("offers Mark as Certified only once the hours are in", async () => {
+  it("offers Mark as Certified only once the bar is full", async () => {
     show();
-    await screen.findByText("JCA Starters (Beginner)");
-    const buttons = screen.getAllByRole("button", { name: en.certificates.markCertified }) as HTMLButtonElement[];
-    // Starters (50 h) and Juniors (12 h); NXT is already certified.
-    expect(buttons).toHaveLength(2);
-    expect(buttons[0].disabled).toBe(false);
-    expect(buttons[1].disabled).toBe(true);
+    await screen.findByText("JCA Starters");
+    // Starters has its 50 h; Juniors (12 h) does not; NXT is already certified.
+    expect(screen.getAllByRole("button", { name: en.certificates.markCertified })).toHaveLength(1);
   });
 
   it("asks first, then certifies and shows the result", async () => {
@@ -69,10 +66,10 @@ describe("the Certificates card", () => {
       courses: DATA.courses.map((c) => (c.course === "starters" ? { ...c, status: "certified", certified_at: "2026-10-12" } : c)),
     });
     const user = show();
-    await screen.findByText("JCA Starters (Beginner)");
+    await screen.findByText("JCA Starters");
     await user.click(screen.getAllByRole("button", { name: en.certificates.markCertified })[0]);
     const dialog = within(screen.getByRole("dialog"));
-    expect(dialog.getByText(/JCA Starters \(Beginner\): 50 h/)).toBeTruthy();
+    expect(dialog.getByText(/JCA Starters: 50 h/)).toBeTruthy();
     expect(post).not.toHaveBeenCalled();
     await user.click(dialog.getByRole("button", { name: en.certificates.confirm }));
     await waitFor(() => expect(post).toHaveBeenCalledWith("students/stu_1/certificates", { course: "starters" }));
