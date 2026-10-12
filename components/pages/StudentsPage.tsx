@@ -72,7 +72,7 @@ import { useViewMode } from "@/lib/view-mode";
 import { useErrorToast } from "../ErrorToast";
 import { LineChatLink, useLineChat } from "../messages/LineChatLink";
 
-const TEMPLATE = equalTemplate(5, 90);
+const TEMPLATE = equalTemplate(6, 90);
 const VIEWS = ["list", "card"] as const;
 const ATTENDANCE_TEMPLATE = "minmax(90px, 0.8fr) minmax(130px, 1.1fr) minmax(140px, 1.4fr) minmax(90px, 0.7fr)";
 
@@ -158,7 +158,8 @@ function expiryOf(transactions: Record<string, unknown>[], enrolmentId: string):
 
 /* `label` is what is shown ("JCA NXT · Private"); `name` alone picks the
    course's colour dot. */
-type CourseCredit = { label: string; name?: string; balance: number; loose: boolean };
+/* `hours` is time attended in that course; none for unassigned credits. */
+type CourseCredit = { label: string; name?: string; balance: number; loose: boolean; hours?: number };
 
 /* The credit figure in plain text colour: the Status column already says when
    credit is low, so the number does not need to say it again. */
@@ -2992,6 +2993,7 @@ export function StudentsPage({
       name: c.className,
       balance: c.balance,
       loose: !c.className,
+      hours: c.className && c.classId ? hoursJoined(raw, studentId, c.classId) : undefined,
     }));
   }
 
@@ -3328,13 +3330,14 @@ export function StudentsPage({
           <>
             <ExportButton
               filename="students"
-              columns={[tCommon("student"), tCommon("class"), tCommon("branch"), t("colCredit"), tCommon("status"), tCommon("phone")]}
+              columns={[tCommon("student"), tCommon("class"), tCommon("branch"), t("colCredit"), t("colHours"), tCommon("status"), tCommon("phone")]}
               rows={() =>
                 filtered.map((s) => [
                   s.name,
                   classesOf(s.id, s.className).join(", "),
                   s.branch,
                   creditsOf(s.id).map((c) => `${c.label}: ${fmtCredits(c.balance)}`).join(", "),
+                  creditsOf(s.id).filter((c) => c.hours !== undefined).map((c) => `${c.label}: ${c.hours} h`).join(", "),
                   s.status,
                   s.parentPhone,
                 ])
@@ -3410,7 +3413,7 @@ export function StudentsPage({
         </>
       ) : (
         <Card style={{ padding: 0, overflow: "hidden" }}>
-          <Table columns={[tCommon("student"), tCommon("class"), t("colCredit"), tCommon("status"), tCommon("action")]} template={TEMPLATE} minWidth={760}>
+          <Table columns={[tCommon("student"), tCommon("class"), t("colCredit"), t("colHours"), tCommon("status"), tCommon("action")]} template={TEMPLATE} minWidth={860}>
             {pageRows.length === 0 && (
               <EmptyRow>{loading ? tCommon("loading") : error ? error : t("empty")}</EmptyRow>
             )}
@@ -3504,6 +3507,14 @@ export function StudentsPage({
                         ) : (
                           <span style={creditFigure}>{fmtCredits(c.balance)}</span>
                         )}
+                      </span>
+                    ))}
+                  </span>
+                  {/* Hours attended, on the same line as each course. */}
+                  <span style={COURSE_LINES}>
+                    {credits.map((c, i) => (
+                      <span key={`${c.label}-${i}`} style={{ ...COURSE_LINE, color: c.hours === undefined ? COLORS.textSecondary : COLORS.text }}>
+                        {c.hours === undefined ? "—" : t("hoursShort", { hours: c.hours })}
                       </span>
                     ))}
                   </span>

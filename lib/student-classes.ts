@@ -89,7 +89,7 @@ export function classNamesOfStudent(
 export function creditsByClass(
   c: { classes: Row[]; enrollments: Row[]; creditTransactions: Row[] },
   studentId: string,
-): { className: string; classType?: ClassType; balance: number }[] {
+): { className: string; classId?: string; classType?: ClassType; balance: number }[] {
   const balanceOf = (match: (t: Row) => boolean) =>
     c.creditTransactions.filter(match).reduce((sum, t) => sum + Number(t["amount"] ?? 0), 0);
   const courses = c.enrollments
@@ -98,6 +98,7 @@ export function creditsByClass(
       const cls = c.classes.find((k) => s(k, "class_id") === s(e, "class_id"));
       return {
         className: cls ? s(cls, "name") : "",
+        classId: s(e, "class_id"),
         classType: cls ? classTypeOf(s(cls, "class_type")) : undefined,
         balance: balanceOf((t) => s(t, "enrollment_id") === s(e, "enrollment_id")),
       };

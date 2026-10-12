@@ -1752,3 +1752,31 @@ describe("a credit entry's detail", () => {
   });
 });
 
+
+describe("the roster's hours column", () => {
+  it("shows hours attended beside each course's credits", async () => {
+    /* Set outright: other tests in this file swap the enrolments. */
+    const saved = { e: raw.enrollments, c: raw.creditTransactions };
+    raw.enrollments = [
+      { enrollment_id: "e_chai_beg", student_id: "chai", class_id: "beg", status: "Active", enrolled_date: "2026-08-22" },
+    ];
+    raw.classSessions = [
+      { session_id: "s1", class_id: "beg", session_date: "2026-08-24", start_time: "10:00", end_time: "12:00" },
+    ] as never;
+    raw.attendance = [
+      { attendance_id: "a1", student_id: "chai", session_id: "s1", check_in_time: "2026-08-24T10:00:00+07:00", check_out_time: "2026-08-24T12:00:00+07:00" },
+    ] as never;
+    try {
+      renderList();
+      expect(screen.getByText(en.students.colHours)).toBeDefined();
+      // Chai's two hours in Beginner.
+      expect(screen.getByText("2 h")).toBeDefined();
+      expect(screen.getByText("Chai")).toBeDefined();
+    } finally {
+      raw.classSessions = [];
+      raw.attendance = [];
+      raw.enrollments = saved.e;
+      raw.creditTransactions = saved.c;
+    }
+  });
+});

@@ -695,7 +695,7 @@
     "topUp": "Add credits",
     "topUpCourse": "Add credits for {className}",
     "adjustCredits": "Adjust Credits",
-    "notInACourse": "Removed from student",
+    "notInACourse": "Unassigned credits",
     "guardianEmailIsParent": "This email already belongs to {name}, who is a guardian here.",
     "guardianEmailTaken": "This email is already used by another account. Use a different email.",
     "useExistingGuardian": "Link {name} as the guardian instead",
@@ -723,7 +723,8 @@
     "studentEmailHelp": "For a student who signs in with their own email",
     "studentEmailInvalid": "Enter a valid email address",
     "studentEmailTaken": "This email already has an account",
-    "studentOwnEmailHint": "They sign in with their own email, and can reset the password themselves with Forgot password."
+    "studentOwnEmailHint": "They sign in with their own email, and can reset the password themselves with Forgot password.",
+    "hoursShort": "{hours} h"
   },
   "parents": {
     "title": "Parents",
