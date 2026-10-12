@@ -695,7 +695,7 @@
     "topUp": "Add credits",
     "topUpCourse": "Add credits for {className}",
     "adjustCredits": "Adjust Credits",
-    "notInACourse": "Removed from student",
+    "notInACourse": "Unassigned credits",
     "guardianEmailIsParent": "This email already belongs to {name}, who is a guardian here.",
     "guardianEmailTaken": "This email is already used by another account. Use a different email.",
     "useExistingGuardian": "Link {name} as the guardian instead",
@@ -723,7 +723,17 @@
     "studentEmailHelp": "For a student who signs in with their own email",
     "studentEmailInvalid": "Enter a valid email address",
     "studentEmailTaken": "This email already has an account",
-    "studentOwnEmailHint": "They sign in with their own email, and can reset the password themselves with Forgot password."
+    "studentOwnEmailHint": "They sign in with their own email, and can reset the password themselves with Forgot password.",
+    "hoursShort": "{hours} h",
+    "archiveStudent": "Archive",
+    "restoreStudent": "Restore",
+    "archived": "Archived",
+    "archivedOn": "Archived on {date}",
+    "archiveTitle": "Archive {name}?",
+    "archiveBody": "Hidden from classes and check-in, and can't sign in. All records are kept.",
+    "archiveReason": "Reason (optional)",
+    "archiveConfirm": "Archive student",
+    "emailReplacesId": "They'll sign in with this email instead of {id}"
   },
   "parents": {
     "title": "Parents",
@@ -1127,7 +1137,19 @@
     "noParentMatches": "No parent matches.",
     "parentOf": "Parent of {children}",
     "chooseAClass": "Choose at least one class.",
-    "chooseAParent": "Choose at least one parent."
+    "chooseAParent": "Choose at least one parent.",
+    "showFrom": "Show from",
+    "showUntil": "Show until",
+    "showFromHelp": "Blank: from now",
+    "showUntilHelp": "Blank: no end",
+    "endBeforeStart": "The end must be after the start",
+    "window_scheduled": "Scheduled",
+    "window_showing": "Showing",
+    "window_ended": "Ended",
+    "windowBoth": "{from} – {until}",
+    "windowFrom": "From {from}",
+    "windowUntil": "Until {until}",
+    "schedule": "Schedule"
   },
   "messages": {
     "conversations": "Conversations",
@@ -1578,17 +1600,6 @@
     "colShowFewer": "Show fewer",
     "colPrev": "Earlier rounds",
     "colNext": "Later rounds",
-    "raceTitle": "Standings race",
-    "raceSub": "Position by points after each round; official tiebreaks decide only the final standings.",
-    "raceOursColoured": "Academy students are in colour.",
-    "raceLeadersColoured": "The leaders are in colour.",
-    "raceShow": "Show standings race",
-    "raceHide": "Hide standings race",
-    "racePlace": "{n, selectordinal, one {#st} two {#nd} few {#rd} other {#th}}",
-    "raceRound": "R{n}",
-    "racePoints": "{points} pts",
-    "raceDot": "{name} · round {round}: {place}, {points} pts",
-    "raceAria": "Standings race: position of {players} players after each of {rounds} rounds",
     "bye": "bye",
     "noMirroredRounds": "Round pairings will appear here after the arbiter publishes them.",
     "points": "Points",
@@ -1859,5 +1870,12 @@
     "Beginner": "Beginner",
     "Intermediate": "Intermediate",
     "Advanced": "Advanced"
+  },
+  "passwordMenu": {
+    "button": "Password",
+    "label": "Password options for {name}",
+    "sendLink": "Send password link",
+    "reset": "Reset password",
+    "sending": "Sending…"
   }
 }

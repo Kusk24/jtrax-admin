@@ -107,34 +107,41 @@ async function openTheChild(role: JtraxRole) {
   return user;
 }
 
-const resetButton = () => screen.queryByRole("button", { name: en.resetPassword.action });
+/* Reset sits in the Password menu: open it, then the item. */
+const passwordButton = () => screen.queryByRole("button", { name: en.passwordMenu.button });
+const resetItem = () => screen.queryByRole("menuitem", { name: en.passwordMenu.reset });
+async function chooseReset(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(passwordButton()!);
+  await user.click(resetItem()!);
+}
 const accountWrites = () => writes.filter((w) => w.path.startsWith("user-accounts/"));
 
 describe("an admin looking at a child", () => {
   it("is offered the reset, because a child's ID cannot be sent a link", async () => {
-    await openTheChild("Admin");
-    expect(resetButton()).toBeTruthy();
+    const user = await openTheChild("Admin");
+    await user.click(passwordButton()!);
+    expect(resetItem()).toBeTruthy();
   });
 
   /* Confirmed first: the old password is a hash and is gone the moment this
      runs, so there is nothing to undo it with. */
   it("is asked to confirm before anything is written", async () => {
     const user = await openTheChild("Admin");
-    await user.click(resetButton()!);
+    await chooseReset(user);
     expect(screen.getByText(en.resetPassword.confirmTitle)).toBeTruthy();
     expect(accountWrites()).toHaveLength(0);
   });
 
   it("can back out, and nothing has changed", async () => {
     const user = await openTheChild("Admin");
-    await user.click(resetButton()!);
+    await chooseReset(user);
     await user.click(screen.getByRole("button", { name: en.resetPassword.cancel }));
     expect(accountWrites()).toHaveLength(0);
   });
 
   it("writes the new password to the child's own account", async () => {
     const user = await openTheChild("Admin");
-    await user.click(resetButton()!);
+    await chooseReset(user);
     await user.click(screen.getByRole("button", { name: en.resetPassword.confirm }));
 
     await waitFor(() => expect(accountWrites()).toHaveLength(1));
@@ -154,7 +161,7 @@ describe("an admin looking at a child", () => {
      shown again. */
   it("shows the new password beside the ID it goes with", async () => {
     const user = await openTheChild("Admin");
-    await user.click(resetButton()!);
+    await chooseReset(user);
     await user.click(screen.getByRole("button", { name: en.resetPassword.confirm }));
 
     await waitFor(() => expect(screen.getByText(en.resetPassword.doneTitle)).toBeTruthy());
@@ -169,7 +176,7 @@ describe("an admin looking at a child", () => {
   it("does not claim success when the server refused", async () => {
     refuseAccountWrite = "not allowed";
     const user = await openTheChild("Admin");
-    await user.click(resetButton()!);
+    await chooseReset(user);
     await user.click(screen.getByRole("button", { name: en.resetPassword.confirm }));
 
     await waitFor(() => expect(screen.queryByText(en.resetPassword.confirmTitle)).toBeNull());
@@ -185,7 +192,7 @@ describe("a receptionist looking at the same child", () => {
      the answer is not something the front desk can fix. */
   it("is not offered the reset at all", async () => {
     await openTheChild("Receptionist");
-    expect(resetButton()).toBeNull();
+    expect(passwordButton()).toBeNull();
   });
 
   it("keeps the edits that are theirs to make", async () => {

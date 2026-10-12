@@ -223,6 +223,8 @@ export function toStudents(c: LiveCollections): Student[] {
       credit,
       expires: fmtDate(expiry),
       status: studentStatus(credit, expiry, s(st, "last_attended_date"), rules),
+      archivedAt: s(st, "archived_at"),
+      archivedReason: s(st, "archived_reason"),
       age: age(s(st, "date_of_birth")),
       /* Normalised here rather than at the form, so every reader gets the same
          shape and the edit field can actually show what is on file. */
@@ -389,6 +391,8 @@ export function toAnnouncements(c: LiveCollections): Announcement[] {
       audienceIds: idsOf(s(a, "audience_ids")),
       date: fmtDate(s(a, "posted_at")),
       body: s(a, "body"),
+      showFrom: s(a, "show_from"),
+      showUntil: s(a, "show_until"),
     }));
 }
 

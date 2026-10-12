@@ -16,7 +16,7 @@ import { Icon } from "@/lib/icons";
 import { COLORS, FONT } from "@/lib/theme";
 import { fieldStyle, labelStyle, Modal, primaryButtonStyle, secondaryButtonStyle, selectStyle } from "./page-kit";
 
-export type FieldKind = "text" | "number" | "date" | "time" | "select" | "textarea" | "checkbox";
+export type FieldKind = "text" | "number" | "date" | "time" | "datetime" | "select" | "textarea" | "checkbox";
 
 export type CrudField = {
   name: string;
@@ -184,7 +184,7 @@ function Field({
     ) : (
       <input
         id={id}
-        type={kind === "number" ? "number" : kind === "date" ? "date" : kind === "time" ? "time" : "text"}
+        type={kind === "number" ? "number" : kind === "date" ? "date" : kind === "time" ? "time" : kind === "datetime" ? "datetime-local" : "text"}
         value={String(value)}
         placeholder={field.placeholder}
         min={field.min}

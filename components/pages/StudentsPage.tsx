@@ -7,7 +7,7 @@ import { classTypeOf } from "@/lib/class-face";
 import { api, ApiError } from "@/lib/api";
 import { generateHiddenPassword, generateReadablePassword } from "@/lib/credentials";
 import { classesJoined, hoursJoined, creditsSinceTopUp } from "@/lib/enrolment-stats";
-import { InviteButton, InviteOutcomeNote, inviteOutcome, type InviteOutcome } from "../InviteButton";
+import { InviteOutcomeNote, inviteOutcome, type InviteOutcome } from "../InviteButton";
 import type { StudentLogin } from "@/lib/invite";
 import { type Student } from "@/lib/data";
 import { useData } from "@/components/DataProvider";
@@ -16,7 +16,7 @@ import { enrolmentStatus, isArchivedClass, isRevenue, fmtCredits, fmtDate, fmtSe
 import { dobTooYoung, latestBirthDate } from "@/lib/age-group";
 import { creditsForValue, planTransfer, ratePerCredit, roundCredits, valueOfLots, type CreditRate } from "@/lib/credit-transfer";
 import { opensCreate } from "@/lib/quick-actions";
-import { createStudentAccount, isTakenIdError } from "@/lib/student-login-id";
+import { assignStudentLoginId, createStudentAccount, isTakenIdError } from "@/lib/student-login-id";
 import { classFilterOptions, classNamesOfStudent, creditsByClass, isInClass } from "@/lib/student-classes";
 import { draftFromScan, type ScanResult } from "@/lib/scan-to-draft";
 import { Icon } from "@/lib/icons";
@@ -55,7 +55,7 @@ import {
 } from "../page-kit";
 import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
 import { BackLink, DangerPanel, DeleteButton, DetailHeader, EditButton } from "../detail";
-import { ResetPasswordButton } from "../ResetPassword";
+import { PasswordMenu } from "../PasswordMenu";
 import { EnrolmentModal, type EnrolmentEdits } from "../students/EnrolmentModal";
 import type { MoreMenuItem } from "../MoreMenu";
 import { explainCharge, fmtMinutes } from "@/lib/charge-explain";
@@ -72,7 +72,7 @@ import { useViewMode } from "@/lib/view-mode";
 import { useErrorToast } from "../ErrorToast";
 import { LineChatLink, useLineChat } from "../messages/LineChatLink";
 
-const TEMPLATE = equalTemplate(5, 90);
+const TEMPLATE = equalTemplate(6, 90);
 const VIEWS = ["list", "card"] as const;
 const ATTENDANCE_TEMPLATE = "minmax(90px, 0.8fr) minmax(130px, 1.1fr) minmax(140px, 1.4fr) minmax(90px, 0.7fr)";
 
@@ -83,6 +83,8 @@ const ATTENDANCE_TEMPLATE = "minmax(90px, 0.8fr) minmax(130px, 1.1fr) minmax(140
    threw the answer away, which is why it was removed in #92. */
 const BRANCH_OPTIONS = ["Bangkok"];
 const STATUS_VALUES = ["Normal", "Low Credit", "Expiring", "Expired", "Inactive"] as const;
+/** The status filter's value for students who have left. */
+const ARCHIVED = "Archived";
 const LEVEL_OPTIONS = ["Beginner", "Intermediate", "Advanced"];
 const RELATION_OPTIONS = ["Mother", "Father", "Guardian"];
 
@@ -158,7 +160,8 @@ function expiryOf(transactions: Record<string, unknown>[], enrolmentId: string):
 
 /* `label` is what is shown ("JCA NXT · Private"); `name` alone picks the
    course's colour dot. */
-type CourseCredit = { label: string; name?: string; balance: number; loose: boolean };
+/* `hours` is time attended in that course; none for unassigned credits. */
+type CourseCredit = { label: string; name?: string; balance: number; loose: boolean; hours?: number };
 
 /* The credit figure in plain text colour: the Status column already says when
    credit is low, so the number does not need to say it again. */
@@ -270,6 +273,11 @@ function StudentDetail({
   const [tab, setTab] = useState<DetailTab>("Overview");
   const [editing, setEditing] = useState(startEditing);
   const [draft, setDraft] = useState<Student>(student);
+  /* Their own email, which is what they sign in with when they have one; a
+     child on a sign-in ID starts blank. Shown on every edit, so an email can
+     be added once they have one. */
+  const ownEmailOf = (st: Student) => (st.email?.includes("@") ? st.email : "");
+  const [emailDraft, setEmailDraft] = useState(ownEmailOf(student));
   const [deleteConfirm, setDeleteConfirm] = useState(startDeleting);
   const [alsoParent, setAlsoParent] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -285,6 +293,24 @@ function StudentDetail({
     setDraft((d) => ({ ...d, [key]: value }));
   }
   const { raw, creditRules, batch, create, update, remove } = useData();
+  /* Left the academy: archived, records kept, restorable. */
+  const [archiving, setArchiving] = useState(false);
+  const [archiveReason, setArchiveReason] = useState("");
+  const [archiveBusy, setArchiveBusy] = useState(false);
+  async function setArchived(on: boolean) {
+    setArchiveBusy(true);
+    try {
+      await update("students", student.id, on
+        ? { archived_at: todayISO(), archived_reason: archiveReason.trim() || null }
+        : { archived_at: null, archived_reason: null });
+      setArchiving(false);
+      setArchiveReason("");
+    } catch (e) {
+      showError(tCommon("saveFailed"), e);
+    } finally {
+      setArchiveBusy(false);
+    }
+  }
   const courseLabel = useCourseLabel();
   const tMsg = useTranslations("messages");
   /* Theirs, else their parent's — the chat linked from Messages. */
@@ -301,6 +327,35 @@ function StudentDetail({
    * is visibly changing them. This is the half that genuinely belongs to the
    * child: whose child they are.
    */
+  /**
+   * Their own email is their sign-in. Added: it replaces the sign-in ID (or
+   * makes them an account, if they had none, ready for a password link).
+   * Taken off: they get a sign-in ID from their name again.
+   */
+  async function saveOwnEmail() {
+    const next = emailDraft.trim().toLowerCase();
+    const before = ownEmailOf(student).toLowerCase();
+    if (next === before) return;
+    try {
+      if (next && student.accountId) {
+        await update("user-accounts", student.accountId, { email: next });
+      } else if (next) {
+        const account = await create("user-accounts", {
+          email: next,
+          password: generateHiddenPassword(),
+          role: "Student",
+          display_name: student.name,
+        });
+        await update("students", student.id, { user_account_id: String(account.user_account_id) });
+      } else if (student.accountId) {
+        await assignStudentLoginId(update, student.accountId, student.name);
+      }
+    } catch (e) {
+      if (next && isTakenIdError(e)) throw new Error(t("studentEmailTaken"));
+      throw e;
+    }
+  }
+
   async function saveGuardianLink(next: Student) {
     const chosen = next.parentId;
     const before = student.parentId;
@@ -1077,33 +1132,68 @@ function StudentDetail({
         actions={
           !editing && (
             <>
-              {/* An older student who signs in with their own email gets a
-                  link to choose a password, as a parent does. Hidden for a
-                  child's login ID, which has no mailbox. */}
-              <InviteButton accountId={student.accountId ?? ""} email={student.email ?? ""} />
-              {/* A child's ID has no mailbox, so the forgot-password link that
-                  serves everyone else cannot reach them. This is the only way
-                  back in, and it is why it sits on the child's own card. */}
-              <ResetPasswordButton
+              {/* Send a link (a real email only) or set a new password — for a
+                  child's ID the reset is the only way back in. None for an
+                  archived student, who cannot sign in. */}
+              {!student.archivedAt && <PasswordMenu
                 accountId={student.accountId ?? ""}
                 identifier={student.email ?? ""}
                 name={student.name}
                 update={update}
                 onError={(e) => showError(tCommon("saveFailed"), e)}
-              />
+              />}
+              {student.archivedAt ? (
+                <button type="button" className="jt-btn-ghost" style={{ ...secondaryButtonStyle, display: "inline-flex", alignItems: "center", gap: 6 }}
+                  disabled={archiveBusy} onClick={() => void setArchived(false)}>
+                  <Icon name="userCheck" size={15} /> {t("restoreStudent")}
+                </button>
+              ) : (
+                <button type="button" className="jt-btn-ghost" style={{ ...secondaryButtonStyle, display: "inline-flex", alignItems: "center", gap: 6 }}
+                  onClick={() => { setDeleteConfirm(false); setArchiving(true); }}>
+                  <Icon name="userX" size={15} /> {t("archiveStudent")}
+                </button>
+              )}
               <EditButton
                 onClick={() => {
                   setDraft(student);
+                  setEmailDraft(ownEmailOf(student));
                   setDeleteConfirm(false);
                   setTab("Overview");
                   setEditing(true);
                 }}
               />
-              <DeleteButton onClick={() => setDeleteConfirm(true)} />
+              <DeleteButton onClick={() => { setArchiving(false); setDeleteConfirm(true); }} />
             </>
           )
         }
       />
+
+      {student.archivedAt && (
+        <div role="status" style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 12, background: COLORS.light, border: `1px solid ${COLORS.border}`, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>
+          <Icon name="userX" size={15} />
+          <span>
+            <strong style={{ color: COLORS.text }}>{t("archivedOn", { date: fmtDate(student.archivedAt) })}</strong>
+            {student.archivedReason ? ` · ${student.archivedReason}` : ""}
+          </span>
+        </div>
+      )}
+
+      {archiving && (
+        <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ fontFamily: FONT, fontSize: 14.5, fontWeight: 700, color: COLORS.text }}>{t("archiveTitle", { name: student.name })}</div>
+          <p style={{ margin: 0, fontFamily: FONT, fontSize: 13.5, color: COLORS.textSecondary }}>{t("archiveBody")}</p>
+          <label style={{ display: "flex", flexDirection: "column", gap: 5, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
+            {t("archiveReason")}
+            <input value={archiveReason} onChange={(e) => setArchiveReason(e.target.value)} maxLength={200} style={fieldStyle} />
+          </label>
+          <div style={{ display: "flex", gap: 9 }}>
+            <button type="button" style={secondaryButtonStyle} onClick={() => setArchiving(false)}>{tCommon("cancel")}</button>
+            <button type="button" className="jt-btn-primary" style={primaryButtonStyle} disabled={archiveBusy} onClick={() => void setArchived(true)}>
+              {t("archiveConfirm")}
+            </button>
+          </div>
+        </Card>
+      )}
 
       {deleteConfirm && (
         <DangerPanel title={t("deleteTitle", { name: student.name })} body={t("deleteBody")}>
@@ -1254,6 +1344,16 @@ function StudentDetail({
                   <label style={labelStyle} htmlFor="ed-fide">{t("fideId")}</label>
                   <input id="ed-fide" value={draft.fideId} onChange={(e) => setField("fideId", e.target.value)} style={fieldStyle} />
                 </div>
+                <div>
+                  <label style={labelStyle} htmlFor="ed-email">{t("studentEmail")}</label>
+                  <input id="ed-email" type="email" value={emailDraft} onChange={(e) => setEmailDraft(e.target.value)} style={fieldStyle} />
+                  <span style={{ display: "block", marginTop: 4, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+                    {/* Saying what changes: the email becomes how they sign in. */}
+                    {emailDraft.trim() && student.email && !student.email.includes("@")
+                      ? t("emailReplacesId", { id: student.email })
+                      : t("studentEmailHelp")}
+                  </span>
+                </div>
                 {/* The student's own LINE ID was a field with nothing behind
                     it in either direction — `toStudents` sets it to "" every
                     time, and there is no column to write it to. A box that is
@@ -1352,12 +1452,17 @@ function StudentDetail({
                   setSaveError(tCommon("dobTooYoung"));
                   return;
                 }
+                if (emailDraft.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailDraft.trim())) {
+                  setSaveError(t("studentEmailInvalid"));
+                  return;
+                }
                 try {
                   /* The child and their guardian link in one act, so a
                      correction costs one refetch rather than three. */
                   await batch(async () => {
                     await onSave(draft);
                     await saveGuardianLink(draft);
+                    await saveOwnEmail();
                   });
                 } catch (e) {
                   /* The form stays open, with what went wrong written on it.
@@ -2874,7 +2979,10 @@ export function StudentsPage({
   const courseLabel = useCourseLabel();
   const { showError } = useErrorToast();
   const tStatus = useTranslations("status");
-  const { students, raw, batch, create, update, remove, removePerson, loading, error } = useData();
+  const { students, allStudents: everyone, raw, batch, create, update, remove, removePerson, loading, error } = useData();
+  /* Archived ones too: their own page and the Archived filter. */
+  const allStudents = everyone ?? students;
+  const archived = useMemo(() => allStudents.filter((s) => s.archivedAt), [allStudents]);
   const [view, setView] = useState<View>(
     opensCreate(startWizard)
       ? { kind: "wizard" }
@@ -2898,7 +3006,7 @@ export function StudentsPage({
      `?status=`; anything the list does not know is ignored rather than
      silently emptying the screen. */
   const [status, setStatus] = useState(
-    STATUS_VALUES.includes(startStatus as (typeof STATUS_VALUES)[number]) ? startStatus! : "",
+    STATUS_VALUES.includes(startStatus as (typeof STATUS_VALUES)[number]) || startStatus === ARCHIVED ? startStatus! : "",
   );
   const [branch, setBranch] = useState("");
   /* By class id, not by name: two classes can share a name, and the id is what
@@ -2935,8 +3043,10 @@ export function StudentsPage({
         value: v,
         label: `${tStatus(v)} (${students.filter((s) => s.status === v).length})`,
       })),
+      /* Left the academy: only here, never in the other statuses. */
+      { value: ARCHIVED, label: `${t("archived")} (${archived.length})` },
     ],
-    [tCommon, tStatus, students],
+    [tCommon, tStatus, t, students, archived],
   );
 
   /* Read off the enrolments rather than the row's single `className`, which is
@@ -2955,8 +3065,8 @@ export function StudentsPage({
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return students.filter((s) => {
-      if (status && s.status !== status) return false;
+    return (status === ARCHIVED ? archived : students).filter((s) => {
+      if (status && status !== ARCHIVED && s.status !== status) return false;
       if (branch && s.branch !== branch) return false;
       if (!isInClass(raw.enrollments, s.id, classId)) return false;
       /* The ID is searchable because it is now the thing a family arrives
@@ -2973,7 +3083,7 @@ export function StudentsPage({
       }
       return true;
     });
-  }, [students, search, status, branch, classId, raw.enrollments]);
+  }, [students, archived, search, status, branch, classId, raw.enrollments]);
 
   /* Every class a child is in, so a row that turns up under a class filter
      says why it did rather than naming a different class. */
@@ -2992,6 +3102,7 @@ export function StudentsPage({
       name: c.className,
       balance: c.balance,
       loose: !c.className,
+      hours: c.className && c.classId ? hoursJoined(raw, studentId, c.classId) : undefined,
     }));
   }
 
@@ -3189,7 +3300,7 @@ export function StudentsPage({
   }
 
   if (view.kind === "detail") {
-    const student = students.find((s) => s.id === view.id);
+    const student = allStudents.find((s) => s.id === view.id);
     if (student)
       return (
         <StudentDetail
@@ -3328,13 +3439,14 @@ export function StudentsPage({
           <>
             <ExportButton
               filename="students"
-              columns={[tCommon("student"), tCommon("class"), tCommon("branch"), t("colCredit"), tCommon("status"), tCommon("phone")]}
+              columns={[tCommon("student"), tCommon("class"), tCommon("branch"), t("colCredit"), t("colHours"), tCommon("status"), tCommon("phone")]}
               rows={() =>
                 filtered.map((s) => [
                   s.name,
                   classesOf(s.id, s.className).join(", "),
                   s.branch,
                   creditsOf(s.id).map((c) => `${c.label}: ${fmtCredits(c.balance)}`).join(", "),
+                  creditsOf(s.id).filter((c) => c.hours !== undefined).map((c) => `${c.label}: ${c.hours} h`).join(", "),
                   s.status,
                   s.parentPhone,
                 ])
@@ -3374,14 +3486,14 @@ export function StudentsPage({
               <EmptyCards>{loading ? tCommon("loading") : error ? error : t("empty")}</EmptyCards>
             )}
             {pageRows.map((s) => {
-              const chip = statusChipColors(s.status);
+              const chip = s.archivedAt ? { color: COLORS.textSecondary, bg: COLORS.light } : statusChipColors(s.status);
               return (
                 <EntityCard
                   key={s.id}
                   onClick={() => setView({ kind: "detail", id: s.id })}
                   avatar={<Avatar initials={initialsOf(s.name)} size={44} />}
                   title={s.name}
-                  titleBadge={<Badge color={chip.color} bg={chip.bg}>{tStatus(s.status)}</Badge>}
+                  titleBadge={<Badge color={chip.color} bg={chip.bg}>{s.archivedAt ? t("archived") : tStatus(s.status)}</Badge>}
                   /* Name, then the courses: each on its own line with its
                      balance, rather than every class name run into one
                      line under the name. */
@@ -3410,12 +3522,12 @@ export function StudentsPage({
         </>
       ) : (
         <Card style={{ padding: 0, overflow: "hidden" }}>
-          <Table columns={[tCommon("student"), tCommon("class"), t("colCredit"), tCommon("status"), tCommon("action")]} template={TEMPLATE} minWidth={760}>
+          <Table columns={[tCommon("student"), tCommon("class"), t("colCredit"), t("colHours"), tCommon("status"), tCommon("action")]} template={TEMPLATE} minWidth={860}>
             {pageRows.length === 0 && (
               <EmptyRow>{loading ? tCommon("loading") : error ? error : t("empty")}</EmptyRow>
             )}
             {pageRows.map((s) => {
-              const chip = statusChipColors(s.status);
+              const chip = s.archivedAt ? { color: COLORS.textSecondary, bg: COLORS.light } : statusChipColors(s.status);
               /* Filtered to one class: that class leads the row, so a
                  collapsed row still says why the child is on this list. */
               const filteredName = classId
@@ -3507,8 +3619,16 @@ export function StudentsPage({
                       </span>
                     ))}
                   </span>
+                  {/* Hours attended, on the same line as each course. */}
+                  <span style={COURSE_LINES}>
+                    {credits.map((c, i) => (
+                      <span key={`${c.label}-${i}`} style={{ ...COURSE_LINE, color: c.hours === undefined ? COLORS.textSecondary : COLORS.text }}>
+                        {c.hours === undefined ? "—" : t("hoursShort", { hours: c.hours })}
+                      </span>
+                    ))}
+                  </span>
                   <Badge color={chip.color} bg={chip.bg} style={{ justifySelf: "start" }}>
-                    {tStatus(s.status)}
+                    {s.archivedAt ? t("archived") : tStatus(s.status)}
                   </Badge>
                   <ContactPill phone={s.parentPhone} label={t("contact")} style={{ justifySelf: "start" }} />
                 </TableRow>

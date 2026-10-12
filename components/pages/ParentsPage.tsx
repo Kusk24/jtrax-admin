@@ -43,8 +43,8 @@ import {
 import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
 import { BackLink, DeleteButton, DetailHeader, EditButton } from "../detail";
 import { useErrorToast } from "../ErrorToast";
-import { InviteButton, InviteOutcomeNote, inviteOutcome, type InviteOutcome } from "../InviteButton";
-import { ResetPasswordButton } from "../ResetPassword";
+import { InviteOutcomeNote, inviteOutcome, type InviteOutcome } from "../InviteButton";
+import { PasswordMenu } from "../PasswordMenu";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 import { LineChatLink, useLineChat } from "../messages/LineChatLink";
@@ -149,15 +149,9 @@ function ParentDetail({
         }
         actions={
           <>
-            {/* A link to choose their own password — the same one a new
-                parent is invited with — for a lost invite, an expired link,
-                or a corrected address. They can also use Forgot password. */}
-            <InviteButton accountId={parent.accountId ?? ""} email={parent.loginEmail} />
-            {/* Some parent rows still carry the invented @parent.jca.ac.th
-                address from before registration asked for a real one (see the
-                warning below) — a link to that address goes nowhere. This is
-                the same office-set-and-read-out path students use. */}
-            <ResetPasswordButton
+            {/* A link to choose their own password, or a new one read out —
+                some rows still carry an invented address a link cannot reach. */}
+            <PasswordMenu
               accountId={parent.accountId ?? ""}
               identifier={parent.loginEmail}
               name={parent.name}

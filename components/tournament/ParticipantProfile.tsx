@@ -63,7 +63,9 @@ export function ParticipantProfile({
   const t = useTranslations("participantProfile");
   const tT = useTranslations("tournament");
   const router = useRouter();
-  const { students } = useData();
+  /* An entry's student may have left since: archived ones still count. */
+  const { students: current, allStudents } = useData();
+  const students = allStudents ?? current;
   const { loaded, failed } = useSectionResults(tournamentId);
 
   const matches = useMemo(() => matchParticipants(participants, loaded?.data ?? []), [participants, loaded]);
@@ -184,25 +186,30 @@ export function ParticipantProfile({
           </button>
         </div>
       )}
+      {/* Link appears once a name is picked from the list. */}
+      {(chosen || match) && (
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <button
-          type="button"
-          className="jt-btn-primary"
-          style={primaryButtonStyle}
-          disabled={busy || !choice}
-          onClick={() => {
-            const cut = choice.indexOf("|");
-            void saveLink({ sectionId: Number(choice.slice(0, cut)), name: choice.slice(cut + 1) });
-          }}
-        >
-          <Icon name="link" size={14} color={COLORS.surface} /> {t("link")}
-        </button>
+        {chosen && (
+          <button
+            type="button"
+            className="jt-btn-primary"
+            style={primaryButtonStyle}
+            disabled={busy}
+            onClick={() => {
+              const cut = choice.indexOf("|");
+              void saveLink({ sectionId: Number(choice.slice(0, cut)), name: choice.slice(cut + 1) });
+            }}
+          >
+            <Icon name="link" size={14} color={COLORS.surface} /> {t("link")}
+          </button>
+        )}
         {match && (
           <button type="button" className="jt-btn-ghost" style={secondaryButtonStyle} disabled={busy} onClick={() => setPicking(false)}>
             {t("cancel")}
           </button>
         )}
       </div>
+      )}
     </div>
   );
 

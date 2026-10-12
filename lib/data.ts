@@ -25,6 +25,10 @@ export type Student = {
   credit: number;
   expires: string;
   status: 'Normal' | 'Low Credit' | 'Expiring' | 'Expired' | 'Inactive';
+  /** Left the academy (YYYY-MM-DD), and why; empty while they are a student.
+      Archived students keep every record but are out of the day-to-day. */
+  archivedAt?: string;
+  archivedReason?: string;
   age: number;
   /** `YYYY-MM-DD`, normalised by `toDateInput` from whatever shape the row
       holds, so the edit form's date input can show it; `age` is it worked
@@ -178,6 +182,10 @@ export type Announcement = {
   audienceIds: string[];
   date: string;
   body: string;
+  /** When parents see it, "YYYY-MM-DDTHH:MM" on the academy's clock; blank
+      is from posting / no end. */
+  showFrom: string;
+  showUntil: string;
 };
 
 export type AnnouncementAudience = "all" | "classes" | "parents";

@@ -6,6 +6,7 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { Icon, type IconName } from "@/lib/icons";
 import { COLORS, FONT } from "@/lib/theme";
+import { secondaryButtonStyle } from "./page-kit";
 
 export type MoreMenuItem = {
   label: string;
@@ -18,7 +19,18 @@ export type MoreMenuItem = {
   onSelect: () => void;
 };
 
-export function MoreMenu({ label, items }: { label: string; items: MoreMenuItem[] }) {
+export function MoreMenu({
+  label,
+  items,
+  text,
+  icon,
+}: {
+  label: string;
+  items: MoreMenuItem[];
+  /** A worded button ("Password ⌄") instead of the row's quiet "⋯". */
+  text?: string;
+  icon?: IconName;
+}) {
   const [open, setOpen] = useState(false);
   const menuId = useId();
   const box = useRef<HTMLSpanElement>(null);
@@ -62,12 +74,12 @@ export function MoreMenu({ label, items }: { label: string; items: MoreMenuItem[
         ref={trigger}
         type="button"
         className="jt-btn-ghost"
-        aria-label={label}
+        aria-label={text ? undefined : label}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         onClick={() => setOpen((v) => !v)}
-        style={{
+        style={text ? { ...secondaryButtonStyle, display: "inline-flex", alignItems: "center", gap: 6 } : {
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
@@ -80,7 +92,17 @@ export function MoreMenu({ label, items }: { label: string; items: MoreMenuItem[
           cursor: "pointer",
         }}
       >
-        <Icon name="moreHorizontal" size={17} />
+        {text ? (
+          <>
+            {icon && <Icon name={icon} size={14} />}
+            {text}
+            <span aria-hidden style={{ display: "inline-flex", transform: open ? "rotate(180deg)" : undefined }}>
+              <Icon name="chevronDown" size={14} />
+            </span>
+          </>
+        ) : (
+          <Icon name="moreHorizontal" size={17} />
+        )}
       </button>
       {open && (
         <div

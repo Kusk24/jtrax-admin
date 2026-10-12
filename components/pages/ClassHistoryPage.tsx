@@ -104,7 +104,9 @@ function AttendeeModal({
   const tCommon = useTranslations("common");
   const tStatus = useTranslations("status");
   const tStudents = useTranslations("students");
-  const { students } = useData();
+  /* Archived students still appear in the classes they came to. */
+  const { students: current, allStudents } = useData();
+  const students = allStudents ?? current;
   /* An attendance row can outlive the student it points at, so the profile
      block is conditional rather than assumed. */
   const student: Student | undefined = students.find((s) => s.name === name);
@@ -536,7 +538,8 @@ export function ClassHistoryPage() {
   const tCommon = useTranslations("common");
   const courseLabel = useCourseLabel();
   const tStatus = useTranslations("status");
-  const { raw, students, batch, create, update, remove } = useData();
+  const { raw, students: currentStudents, allStudents, batch, create, update, remove } = useData();
+  const students = allStudents ?? currentStudents;
   const { showError } = useErrorToast();
   const [mode, setMode] = useViewMode("classhistory", VIEWS);
   /* The calendar opens on the current month; `weekendOnly` starts on because

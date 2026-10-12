@@ -361,49 +361,9 @@ describe("a column's names and what is folded away", () => {
 });
 
 describe("the standings race", () => {
-  /** The race card, found by its heading — the board rows name the same
-      players, so the chips are only findable inside it. */
-  const raceCard = () => within(screen.getByText(en.results.raceTitle).closest("section")!);
-
-  /* An addition above the rounds, never in place of them: the rounds are the
-     record, and the race is one picture of it. */
-  it("is drawn above the rounds once two rounds are played, with our student named", () => {
+  it("is not shown above the results", () => {
     renderTable();
-    expect(raceCard().getByText(en.results.raceOursColoured, { exact: false })).toBeDefined();
-    const chip = raceCard().getByRole("button", { name: /Stancec, Nikolaus/ });
-    // A win in round 1 and a draw in round 2: 1½, first of the two in the group.
-    expect(chip.textContent).toContain("1st");
-    expect(chip.textContent).toContain("1½ pts");
-    // The rounds are all still there under it, in whichever view the screen
-    // remembers — a round card in the list, or the side-by-side columns.
-    expect(roundHeader(1) ?? screen.queryByRole("region", { name: en.results.columnsRegion })).toBeTruthy();
-  });
-
-  it("opens that player's event when their name is clicked", () => {
-    renderTable();
-    fireEvent.click(raceCard().getByRole("button", { name: /Stancec, Nikolaus/ }));
-    expect(screen.getByText(en.results.filteredBy)).toBeDefined();
-  });
-
-  /* Remembered through `useShown`, which writes localStorage in a browser; the
-     assertion here is the behaviour, a fresh render keeping the choice. */
-  it("can be switched off, and stays off until switched back on", () => {
-    renderTable();
-    fireEvent.click(screen.getByRole("button", { name: en.results.raceHide }));
-    expect(screen.queryByText(en.results.raceTitle)).toBeNull();
-
-    cleanup();
-    renderTable();
-    expect(screen.queryByText(en.results.raceTitle)).toBeNull();
-
-    fireEvent.click(screen.getByRole("button", { name: en.results.raceShow }));
-    expect(screen.getByText(en.results.raceTitle)).toBeDefined();
-  });
-
-  it("is not offered before two rounds have results", () => {
-    renderTable([ROUNDS[0], ROUNDS[2]]);
-    expect(screen.queryByText(en.results.raceTitle)).toBeNull();
-    expect(screen.queryByRole("button", { name: en.results.raceHide })).toBeNull();
-    expect(screen.queryByRole("button", { name: en.results.raceShow })).toBeNull();
+    expect(screen.queryByText("Standings race")).toBeNull();
+    expect(screen.queryByRole("button", { name: /standings race/i })).toBeNull();
   });
 });
