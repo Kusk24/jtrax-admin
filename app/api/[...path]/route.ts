@@ -59,6 +59,13 @@ async function forward(req: NextRequest, params: Promise<{ path: string[] }>) {
     });
   }
 
+  // A reply with no body (204) must be passed on with none: a Response given
+  // even "" for one of these statuses throws, and the browser sees a 500 for
+  // a change that was in fact made.
+  if (upstream.status === 204 || upstream.status === 205 || upstream.status === 304) {
+    return new NextResponse(null, { status: upstream.status });
+  }
+
   // Almost every reply is JSON, but a tournament regulation is a PDF or a
   // photo. Reading those with text() corrupts them, and answering
   // application/json makes the browser save the bytes instead of showing
