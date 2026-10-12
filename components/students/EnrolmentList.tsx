@@ -51,11 +51,13 @@ export type EnrolmentItem = {
 export type EnrolmentFilter = "active" | "all";
 
 const VIEWS = ["list", "card"] as const;
-/* Every column the same width; only the Action column (and, under All, the
-   timeline rail) stays narrow. */
-const TEMPLATE_ACTIVE = `${equalTemplate(7, 120)} 76px`;
+/* The course name gets twice the room, since course names run long; the
+   other columns share the rest equally, and the Action column (and, under
+   All, the timeline rail) stays narrow. */
+const COURSE_COLUMN = "minmax(220px, 2fr)";
+const TEMPLATE_ACTIVE = `${COURSE_COLUMN} ${equalTemplate(6, 110)} 76px`;
 /* All adds the timeline rail and what happened. */
-const TEMPLATE_ALL = `22px ${equalTemplate(8, 120)} 76px`;
+const TEMPLATE_ALL = `22px ${COURSE_COLUMN} ${equalTemplate(7, 110)} 76px`;
 
 /** Hours attended in this class. Progress toward a certificate is per
     course (private and group together), on the Certificates card. */
@@ -336,7 +338,7 @@ export function EnrolmentList({
     tc("action"),
   ];
   return (
-    <Table columns={columns} template={template} minWidth={all ? 1100 : 930}>
+    <Table columns={columns} template={template} minWidth={all ? 1120 : 980}>
       {shown.map((item, i) => (
         <div key={item.id} data-enrolment-row={item.id} style={{ opacity: item.active ? 1 : 0.8 }}>
           <TableRow template={template} onClick={() => onOpen(item.id)}>
