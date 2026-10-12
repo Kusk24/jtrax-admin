@@ -9,7 +9,10 @@
 import type { AdminPerson } from "./data";
 import type { JtraxRole } from "./theme";
 
-export const SESSION_COOKIE = "jtrax_session";
+/* Its own name, not the portal's "jtrax_session": on localhost the two apps
+   share cookies across ports, and signing into the portal replaced the
+   console's login, so saves went out as a parent and were refused (403). */
+export const SESSION_COOKIE = "jtrax_admin_session";
 
 /** "Keep me signed in" swaps the browser-session cookie for a week-long one. */
 export const SESSION_MAX_AGE = 60 * 60 * 24 * 7;
