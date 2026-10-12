@@ -63,7 +63,9 @@ export function ParticipantProfile({
   const t = useTranslations("participantProfile");
   const tT = useTranslations("tournament");
   const router = useRouter();
-  const { students } = useData();
+  /* An entry's student may have left since: archived ones still count. */
+  const { students: current, allStudents } = useData();
+  const students = allStudents ?? current;
   const { loaded, failed } = useSectionResults(tournamentId);
 
   const matches = useMemo(() => matchParticipants(participants, loaded?.data ?? []), [participants, loaded]);

@@ -724,7 +724,15 @@
     "studentEmailInvalid": "กรุณากรอกอีเมลให้ถูกต้อง",
     "studentEmailTaken": "อีเมลนี้มีบัญชีอยู่แล้ว",
     "studentOwnEmailHint": "นักเรียนเข้าสู่ระบบด้วยอีเมลของตนเอง และรีเซ็ตรหัสผ่านเองได้ผ่าน ลืมรหัสผ่าน",
-    "hoursShort": "{hours} ชม."
+    "hoursShort": "{hours} ชม.",
+    "archiveStudent": "เก็บถาวร",
+    "restoreStudent": "กู้คืน",
+    "archived": "เก็บถาวร",
+    "archivedOn": "เก็บถาวรเมื่อ {date}",
+    "archiveTitle": "เก็บถาวร {name}?",
+    "archiveBody": "ซ่อนจากคลาสและการเช็กอิน และเข้าสู่ระบบไม่ได้ ข้อมูลทั้งหมดยังเก็บไว้",
+    "archiveReason": "เหตุผล (ไม่บังคับ)",
+    "archiveConfirm": "เก็บถาวรนักเรียน"
   },
   "parents": {
     "title": "ผู้ปกครอง",
