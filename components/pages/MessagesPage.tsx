@@ -11,7 +11,7 @@
  * row — the `line_id` the ER model carries is a display handle and cannot be
  * used to send, so the right-hand panel shows the contact rather than a family.
  */
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { chatTime, dayKey, type LineConversation, type LineMessage } from "@/lib/line";
 import { Icon } from "@/lib/icons";
@@ -57,12 +57,8 @@ function ContactAvatar({ contact, size }: { contact: LineConversation; size: num
 export function MessagesPage({ detailId }: { detailId?: string } = {}) {
   const t = useTranslations("messages");
   const tCommon = useTranslations("common");
-  const { conversations, selectedId, thread, loading, error, connection, unreadTotal, open, send, relinked } = useInbox();
-
-  /* Arriving with ?id= opens that chat, once. */
-  useEffect(() => {
-    if (detailId) open(detailId);
-  }, [detailId, open]);
+  /* Arriving with ?id= opens that chat. */
+  const { conversations, selectedId, thread, loading, error, connection, unreadTotal, open, send, relinked } = useInbox(detailId);
 
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
