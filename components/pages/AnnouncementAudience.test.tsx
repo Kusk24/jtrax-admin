@@ -3,7 +3,7 @@
  * some classes, or particular parents found by name.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
@@ -147,5 +147,44 @@ describe("the announcement list", () => {
     expect(screen.getByText(/To: All parents/)).toBeTruthy();
     /* Each course with how it is taught. */
     expect(screen.getByText(/To: Master · Group, King Slayer · Group/)).toBeTruthy();
+  });
+});
+
+describe("when parents see it", () => {
+  it("can be scheduled for later, and the button says so", async () => {
+    const user = compose();
+    await write(user);
+    fireEvent.change(screen.getByLabelText(en.announcement.showFrom), { target: { value: "2099-01-01T09:00" } });
+    fireEvent.change(screen.getByLabelText(en.announcement.showUntil), { target: { value: "2099-01-08T18:00" } });
+    await user.click(screen.getByRole("button", { name: en.announcement.schedule }));
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0][1]).toMatchObject({ show_from: "2099-01-01T09:00", show_until: "2099-01-08T18:00" });
+  });
+
+  it("refuses an end before the start", async () => {
+    const user = compose();
+    await write(user);
+    fireEvent.change(screen.getByLabelText(en.announcement.showFrom), { target: { value: "2099-01-08T09:00" } });
+    fireEvent.change(screen.getByLabelText(en.announcement.showUntil), { target: { value: "2099-01-01T09:00" } });
+    await user.click(screen.getByRole("button", { name: en.announcement.schedule }));
+    expect(await screen.findByText(en.announcement.endBeforeStart)).toBeTruthy();
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("shows whether each is scheduled, showing or ended", () => {
+    announcements.rows = [
+      { id: "a1", title: "Later", audienceKind: "all", audienceIds: [], date: "1 Sep 2026", body: "", showFrom: "2099-01-01T09:00", showUntil: "" },
+      { id: "a2", title: "Over", audienceKind: "all", audienceIds: [], date: "2 Sep 2026", body: "", showFrom: "", showUntil: "2000-01-01T09:00" },
+      { id: "a3", title: "Now", audienceKind: "all", audienceIds: [], date: "3 Sep 2026", body: "", showFrom: "2000-01-01T09:00", showUntil: "2099-01-01T09:00" },
+    ];
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <AnnouncementPage />
+      </NextIntlClientProvider>,
+    );
+    expect(screen.getByText(en.announcement.window_scheduled)).toBeTruthy();
+    expect(screen.getByText(en.announcement.window_ended)).toBeTruthy();
+    expect(screen.getByText(en.announcement.window_showing)).toBeTruthy();
+    expect(screen.getByText("From 1 Jan 2099, 09:00")).toBeTruthy();
   });
 });

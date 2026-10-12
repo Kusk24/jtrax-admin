@@ -1136,7 +1136,19 @@
     "noParentMatches": "No parent matches.",
     "parentOf": "Parent of {children}",
     "chooseAClass": "Choose at least one class.",
-    "chooseAParent": "Choose at least one parent."
+    "chooseAParent": "Choose at least one parent.",
+    "showFrom": "Show from",
+    "showUntil": "Show until",
+    "showFromHelp": "Blank: from now",
+    "showUntilHelp": "Blank: no end",
+    "endBeforeStart": "The end must be after the start",
+    "window_scheduled": "Scheduled",
+    "window_showing": "Showing",
+    "window_ended": "Ended",
+    "windowBoth": "{from} – {until}",
+    "windowFrom": "From {from}",
+    "windowUntil": "Until {until}",
+    "schedule": "Schedule"
   },
   "messages": {
     "conversations": "Conversations",

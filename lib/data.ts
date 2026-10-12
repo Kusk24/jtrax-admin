@@ -182,6 +182,10 @@ export type Announcement = {
   audienceIds: string[];
   date: string;
   body: string;
+  /** When parents see it, "YYYY-MM-DDTHH:MM" on the academy's clock; blank
+      is from posting / no end. */
+  showFrom: string;
+  showUntil: string;
 };
 
 export type AnnouncementAudience = "all" | "classes" | "parents";

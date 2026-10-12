@@ -7,7 +7,7 @@ import { useCourseLabel } from "../CourseName";
 import { useData } from "@/components/DataProvider";
 import type { Announcement, AnnouncementAudience } from "@/lib/data";
 import { Icon } from "@/lib/icons";
-import { liveClasses } from "@/lib/live";
+import { fmtDate, liveClasses } from "@/lib/live";
 import { COLORS, FONT } from "@/lib/theme";
 import {
   AddButton, ConfirmDeleteModal, CrudFormModal, RowActions,
@@ -15,14 +15,47 @@ import {
 } from "../crud";
 import { MultiSearchSelect } from "../MultiSearchSelect";
 import { EmptyRow, ExportButton, PageHeader, labelStyle, selectStyle } from "../page-kit";
-import { Card } from "../ui";
+import { Badge, Card } from "../ui";
+
+function WindowBadge({ state }: { state: "scheduled" | "showing" | "ended" }) {
+  const t = useTranslations("announcement");
+  const look = {
+    scheduled: { color: COLORS.warning, bg: COLORS.warningBg },
+    showing: { color: COLORS.success, bg: COLORS.successBg },
+    ended: { color: COLORS.textSecondary, bg: COLORS.light },
+  }[state];
+  return <Badge color={look.color} bg={look.bg}>{t(`window_${state}`)}</Badge>;
+}
 
 const AUDIENCES: AnnouncementAudience[] = ["all", "classes", "parents"];
 
 const FIELDS = (t: (k: string) => string): CrudField[] => [
   { name: "title", label: t("titleField"), required: true },
   { name: "body", label: t("message"), kind: "textarea", required: true },
+  /* When parents see it; blank is now / no end. */
+  { name: "show_from", label: t("showFrom"), kind: "datetime", half: true, help: t("showFromHelp") },
+  { name: "show_until", label: t("showUntil"), kind: "datetime", half: true, help: t("showUntilHelp") },
 ];
+
+/** Where an announcement stands for parents right now. */
+export function windowState(a: { showFrom: string; showUntil: string }, now: string): "scheduled" | "showing" | "ended" {
+  if (a.showFrom && a.showFrom > now) return "scheduled";
+  if (a.showUntil && a.showUntil <= now) return "ended";
+  return "showing";
+}
+
+/** Now as "YYYY-MM-DDTHH:MM", the shape the window is stored in. */
+function nowMinute(): string {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+/** "12 Oct 2026, 09:00". */
+function fmtWhen(v: string): string {
+  const [day, time] = v.split("T");
+  return `${fmtDate(day)}, ${time}`;
+}
 
 type Editing = { mode: "create" } | { mode: "edit"; id: string };
 
@@ -38,6 +71,7 @@ export function AnnouncementPage({
   const { announcements: rows, meAccountId, create, update, remove, raw } = useData();
 
   const fields = FIELDS(t);
+  const now = nowMinute();
   const [editing, setEditing] = useState<Editing | null>(startNew ? { mode: "create" } : null);
   const [values, setValues] = useState<CrudValues>(() => emptyValues(fields));
   const [deleting, setDeleting] = useState<{ id: string; title: string } | null>(null);
@@ -101,7 +135,7 @@ export function AnnouncementPage({
 
   function openEdit(row: (typeof rows)[number]) {
     if (!row.id) return;
-    setValues(valuesFrom(fields, { title: row.title, body: row.body }));
+    setValues(valuesFrom(fields, { title: row.title, body: row.body, show_from: row.showFrom, show_until: row.showUntil }));
     setEditing({ mode: "edit", id: row.id });
   }
 
@@ -130,7 +164,11 @@ export function AnnouncementPage({
           values={values}
           onChange={setValues}
           onClose={() => setEditing(null)}
-          submitLabel={editing.mode === "create" ? t("send") : tCommon("save")}
+          submitLabel={
+            editing.mode !== "create" ? tCommon("save")
+              : String(values.show_from ?? "") > now ? t("schedule")
+              : t("send")
+          }
           extra={
             editing.mode === "create" ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -180,6 +218,8 @@ export function AnnouncementPage({
             )
           }
           onSubmit={async (payload) => {
+            const from = String(payload.show_from ?? ""), until = String(payload.show_until ?? "");
+            if (from && until && until <= from) throw new Error(t("endBeforeStart"));
             if (editing.mode === "create") {
               if (audience !== "all" && audienceIds.length === 0) {
                 throw new Error(audience === "classes" ? t("chooseAClass") : t("chooseAParent"));
@@ -237,6 +277,18 @@ export function AnnouncementPage({
                   <div style={{ marginTop: 2, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
                     {t("toAudience", { audience: audienceLabel(a) })} · {a.date}
                   </div>
+                  {(a.showFrom || a.showUntil) && (
+                    <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+                      <WindowBadge state={windowState(a, now)} />
+                      <span>
+                        {a.showFrom && a.showUntil
+                          ? t("windowBoth", { from: fmtWhen(a.showFrom), until: fmtWhen(a.showUntil) })
+                          : a.showFrom
+                            ? t("windowFrom", { from: fmtWhen(a.showFrom) })
+                            : t("windowUntil", { until: fmtWhen(a.showUntil) })}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
               {a.id && (
