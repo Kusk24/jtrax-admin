@@ -112,10 +112,13 @@ describe("a name spelled differently on chess-results", () => {
     expect(screen.getByText("srisuk@example.com")).toBeDefined();
     // Typed, not scrolled for: part of a name is enough, in either order.
     const search = screen.getByRole("textbox", { name: en.participantProfile.pickHint });
+    // No Link button until a name is picked from the list.
+    expect(screen.queryByRole("button", { name: new RegExp(`^${en.participantProfile.link}$`) })).toBeNull();
     fireEvent.change(search, { target: { value: "stancec" } });
     // Nikolaus is already somebody's; he is not offered.
     expect(screen.getByText(/No player on Chess-Results matches/)).toBeDefined();
     fireEvent.change(search, { target: { value: "kitti srisuk" } });
+    expect(screen.queryByRole("button", { name: new RegExp(`^${en.participantProfile.link}$`) })).toBeNull();
     fireEvent.click(screen.getByRole("option", { name: /Srisuk, Kittipong/ }));
     expect(screen.queryByRole("listbox")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: new RegExp(`^${en.participantProfile.link}$`) }));
