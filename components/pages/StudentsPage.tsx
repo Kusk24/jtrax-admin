@@ -17,7 +17,7 @@ import { dobTooYoung, latestBirthDate } from "@/lib/age-group";
 import { creditsForValue, planTransfer, ratePerCredit, roundCredits, valueOfLots, type CreditRate } from "@/lib/credit-transfer";
 import { opensCreate } from "@/lib/quick-actions";
 import { assignStudentLoginId, createStudentAccount, isTakenIdError } from "@/lib/student-login-id";
-import { classFilterOptions, classNamesOfStudent, creditsByClass, isInClass } from "@/lib/student-classes";
+import { classFilterOptions, classNamesOfStudent, creditsByClass, isInClass, studentHasRecords } from "@/lib/student-classes";
 import { draftFromScan, type ScanResult } from "@/lib/scan-to-draft";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
@@ -294,6 +294,8 @@ function StudentDetail({
     setDraft((d) => ({ ...d, [key]: value }));
   }
   const { raw, creditRules, batch, create, update, remove } = useData();
+  /* Records are kept: only a student with nothing on record can be deleted. */
+  const hasRecords = studentHasRecords(raw, student.id);
   /* Left the academy: archived, records kept, restorable. */
   const [archiving, setArchiving] = useState(false);
   const [archiveReason, setArchiveReason] = useState("");
@@ -1163,7 +1165,11 @@ function StudentDetail({
                   setEditing(true);
                 }}
               />
-              <DeleteButton onClick={() => { setArchiving(false); setDeleteConfirm(true); }} />
+              {/* Only for a student with nothing on record — a registration
+                  made by mistake. Anyone with history is archived instead. */}
+              {!hasRecords && (
+                <DeleteButton onClick={() => { setArchiving(false); setDeleteConfirm(true); }} />
+              )}
             </>
           )
         }
@@ -1196,7 +1202,7 @@ function StudentDetail({
         </Card>
       )}
 
-      {deleteConfirm && (
+      {deleteConfirm && !hasRecords && (
         <DangerPanel title={t("deleteTitle", { name: student.name })} body={t("deleteBody")}>
           {/* Only when this is the guardian's last child. With siblings left
               the guardian is simply kept, and there is nothing to ask. */}

@@ -107,3 +107,22 @@ export function creditsByClass(
   const loose = balanceOf((t) => !s(t, "enrollment_id") && s(t, "student_id") === studentId);
   return loose !== 0 || courses.length === 0 ? [...courses, { className: "", balance: loose }] : courses;
 }
+
+/**
+ * Whether a student has anything on record — a class attended, credits,
+ * a payment, a tournament entry. Records are kept, so such a student is
+ * archived rather than deleted; only an empty one (a registration made by
+ * mistake) can be.
+ */
+export function studentHasRecords(
+  c: { attendance?: Row[]; enrollments: Row[]; creditTransactions: Row[]; payments?: Row[]; tournamentRegistrations?: Row[] },
+  studentId: string,
+): boolean {
+  const enrolments = new Set(c.enrollments.filter((e) => s(e, "student_id") === studentId).map((e) => s(e, "enrollment_id")));
+  return (
+    (c.attendance ?? []).some((a) => s(a, "student_id") === studentId) ||
+    c.creditTransactions.some((t) => s(t, "student_id") === studentId || enrolments.has(s(t, "enrollment_id"))) ||
+    (c.payments ?? []).some((p) => s(p, "student_id") === studentId || enrolments.has(s(p, "enrollment_id"))) ||
+    (c.tournamentRegistrations ?? []).some((r) => s(r, "student_id") === studentId)
+  );
+}
