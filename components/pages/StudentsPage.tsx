@@ -57,6 +57,7 @@ import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
 import { BackLink, DangerPanel, DeleteButton, DetailHeader, EditButton } from "../detail";
 import { PasswordMenu } from "../PasswordMenu";
 import { EnrolmentModal, type EnrolmentEdits } from "../students/EnrolmentModal";
+import { CertificatesCard } from "../students/CertificatesCard";
 import type { MoreMenuItem } from "../MoreMenu";
 import { explainCharge, fmtMinutes } from "@/lib/charge-explain";
 import { PracticeTab, useStreak } from "../students/PracticeTab";
@@ -1757,7 +1758,6 @@ function StudentDetail({
                   ),
                   classes: classesJoined(raw, student.id, e.classId),
                   hours: hoursJoined(raw, student.id, e.classId),
-                  hoursGoal: creditRules.certHours,
                   /* This course's own condition — never the student's. */
                   creditStatus: active ? enrolmentStatus(raw, e.id, creditRules).status : null,
                   enrolledDate: e.enrolledDate,
@@ -1771,6 +1771,9 @@ function StudentDetail({
           )}
         </Card>
       )}
+
+      {/* Below the enrolments: hours toward each course's certificate. */}
+      {tab === "Overview" && !editing && <CertificatesCard studentId={student.id} studentName={student.name} />}
 
       {viewingEnrolment && (() => {
         const e = allEnrolments.find((x) => x.id === viewingEnrolment.id);

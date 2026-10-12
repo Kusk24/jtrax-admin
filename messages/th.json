@@ -1877,5 +1877,24 @@
     "sendLink": "ส่งลิงก์ตั้งรหัสผ่าน",
     "reset": "รีเซ็ตรหัสผ่าน",
     "sending": "กำลังส่ง…"
+  },
+  "certificates": {
+    "title": "ใบประกาศนียบัตร",
+    "courseField": "หลักสูตรใบประกาศ",
+    "courseFieldHelp": "ชั่วโมงเรียนนับรวมในใบประกาศนี้",
+    "none": "ไม่มี",
+    "course_starters": "JCA Starters",
+    "course_juniors": "JCA Juniors",
+    "course_nxt": "JCA NXT",
+    "inProgress": "กำลังเรียน",
+    "certified": "ได้รับใบประกาศแล้ว",
+    "hoursOf": "{hours} / {required} ชม.",
+    "markCertified": "ยืนยันการได้รับใบประกาศ",
+    "certifiedOn": "ได้รับเมื่อ {date}",
+    "confirmTitle": "ยืนยันใบประกาศของ {name}?",
+    "confirmBody": "{course}: {hours} ชม. ทำหลังผ่านการประเมินแล้วเท่านั้น ยกเลิกไม่ได้",
+    "confirm": "ยืนยันการได้รับใบประกาศ",
+    "empty": "ยังไม่มีหลักสูตรใบประกาศ",
+    "failed": "โหลดใบประกาศไม่สำเร็จ"
   }
 }

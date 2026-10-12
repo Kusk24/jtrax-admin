@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { CERTIFICATE_COURSES, isCertificateCourse, type CertificateCourse } from "@/lib/certificates";
 import { useData } from "@/components/DataProvider";
 import { fmtTHB, liveClasses, livePackages } from "@/lib/live";
 import { CLASS_ICONS, CLASS_LEVELS, CLASS_TYPES, classTypeOf, iconOf, levelOf, type ClassLevel, type ClassType } from "@/lib/class-face";
@@ -60,6 +61,8 @@ type Course = {
   id: string; name: string; desc: string; level: ClassLevel | ""; icon: IconName; classType: ClassType;
   /** The usual price of one credit, "" when unset — a starting value for new prices. */
   pricePerCredit: string;
+  /** Which certificate its hours count toward; "" for none. */
+  certificateCourse: CertificateCourse | "";
 };
 type Teacher = { id: string; name: string; email: string; phone: string; lineId: string; status: string };
 type CreditPackage = {
@@ -118,6 +121,7 @@ export function AcademyPage() {
   const tStatus = useTranslations("status");
   const tClassType = useTranslations("classType");
   const tLevel = useTranslations("courseLevel");
+  const tCert = useTranslations("certificates");
   const { raw, batch, create, update, remove } = useData();
 
   /* 0 and blank both mean "never expires" — the same convention the backend's
@@ -148,6 +152,7 @@ export function AcademyPage() {
     pricePerCredit: c.price_per_credit == null ? "" : String(c.price_per_credit),
     icon: iconOf(c.icon, String(c.class_type ?? "")),
     classType: classTypeOf(c.class_type),
+    certificateCourse: isCertificateCourse(c.certificate_course) ? c.certificate_course : "",
   }));
   const teachers: Teacher[] = raw.teachers.map((t) => ({
     id: String(t.teacher_id),
@@ -237,6 +242,7 @@ export function AcademyPage() {
     icon: "group",
     classType: "Group",
     pricePerCredit: "",
+    certificateCourse: "",
   });
   /* A class with no package cannot be sold, cannot be paid for and cannot give
      anyone credits — so its first one is asked for here rather than left as a
@@ -274,7 +280,7 @@ export function AcademyPage() {
       setFirstPriceTyped(false);
     }
     setCourseDraft(
-      course === "new" ? { name: "", desc: "", level: "", icon: "group", classType: "Group", pricePerCredit: "" } : { ...course },
+      course === "new" ? { name: "", desc: "", level: "", icon: "group", classType: "Group", pricePerCredit: "", certificateCourse: "" } : { ...course },
     );
   }
 
@@ -671,6 +677,7 @@ export function AcademyPage() {
               rows={[
                 { label: t("level"), value: courseDetail.level ? tLevel(courseDetail.level) : "—" },
                 { label: t("classType"), value: tClassType(courseDetail.classType) },
+                { label: tCert("courseField"), value: courseDetail.certificateCourse ? tCert(`course_${courseDetail.certificateCourse}`) : "—" },
               ]}
             />
           </div>
@@ -775,6 +782,7 @@ export function AcademyPage() {
                              sent. Without them the picker is decoration. */
                           icon: courseDraft.icon,
                           level: courseDraft.level,
+                          ...(courseDraft.certificateCourse ? { certificate_course: courseDraft.certificateCourse } : {}),
                           ...(courseDraft.pricePerCredit.trim() !== "" ? { price_per_credit: Number(courseDraft.pricePerCredit) } : {}),
                         });
                         await create("credit-packages", {
@@ -796,6 +804,7 @@ export function AcademyPage() {
                         class_type: courseDraft.classType,
                         icon: courseDraft.icon,
                         level: courseDraft.level,
+                        certificate_course: courseDraft.certificateCourse || null,
                         /* Only when it changed: an edit that leaves it alone
                            does not depend on the server knowing the field. */
                         ...(courseDraft.pricePerCredit.trim() !== courseModal.pricePerCredit.trim()
@@ -852,6 +861,22 @@ export function AcademyPage() {
             <p style={{ margin: "-6px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
               {t("classTypeHelp")}
             </p>
+            {/* Private and group classes of one course share a certificate. */}
+            <div>
+              <label style={labelStyle} htmlFor="co-cert">{tCert("courseField")}</label>
+              <select
+                id="co-cert"
+                value={courseDraft.certificateCourse}
+                onChange={(e) => setCourseDraft({ ...courseDraft, certificateCourse: e.target.value as CertificateCourse | "" })}
+                style={selectStyle}
+              >
+                <option value="">{tCert("none")}</option>
+                {CERTIFICATE_COURSES.map((c) => (
+                  <option key={c} value={c}>{tCert(`course_${c}`)}</option>
+                ))}
+              </select>
+              <p style={{ margin: "4px 0 0", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>{tCert("courseFieldHelp")}</p>
+            </div>
             <div>
               <label style={labelStyle} htmlFor="co-ppc">{t("pricePerCredit")}</label>
               <input
