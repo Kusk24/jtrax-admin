@@ -10,7 +10,7 @@
    also says what last happened to it — joined, moved from one course, moved
    on to another, or left — and when. */
 import { useTranslations } from "next-intl";
-import { fmtHours } from "@/lib/certificates";
+import { useHoursText } from "@/components/useHoursText";
 import type { ClassType } from "@/lib/class-face";
 import { useCourseLabel } from "../CourseName";
 import type { CreditMoveIn, EnrolmentEvent } from "@/lib/course-history";
@@ -62,10 +62,10 @@ const TEMPLATE_ALL = `22px ${COURSE_COLUMN} ${equalTemplate(7, 110)} 76px`;
 /** Hours attended in this class. Progress toward a certificate is per
     course (private and group together), on the Certificates card. */
 function HoursFigure({ item }: { item: EnrolmentItem }) {
-  const t = useTranslations("students");
+  const hoursText = useHoursText();
   return (
     <span style={{ color: COLORS.text, fontVariantNumeric: "tabular-nums" }}>
-      {t("hoursShort", { hours: fmtHours(item.hours) })}
+      {hoursText(item.hours)}
     </span>
   );
 }

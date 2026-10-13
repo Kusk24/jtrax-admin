@@ -29,5 +29,3 @@ export function isCertificateCourse(v: unknown): v is CertificateCourse {
   return typeof v === "string" && (CERTIFICATE_COURSES as readonly string[]).includes(v);
 }
 
-/** 35.5, not 35.50 or 35.4999. */
-export const fmtHours = (h: number) => String(Math.round(h * 10) / 10);

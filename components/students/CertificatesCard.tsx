@@ -9,7 +9,8 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useData } from "@/components/DataProvider";
-import { certify, fmtHours, getCertificates, type CourseCertificate, type StudentCertificates } from "@/lib/certificates";
+import { useHoursText } from "@/components/useHoursText";
+import { certify, getCertificates, type CourseCertificate, type StudentCertificates } from "@/lib/certificates";
 import { fmtDate } from "@/lib/live";
 import { COLORS, FONT } from "@/lib/theme";
 import { ConfirmModal } from "../crud";
@@ -18,6 +19,7 @@ import { Badge, Card, SectionTitle } from "../ui";
 
 export function CertificatesCard({ studentId, studentName }: { studentId: string; studentName: string }) {
   const t = useTranslations("certificates");
+  const hoursText = useHoursText();
   const { raw } = useData();
   const [data, setData] = useState<StudentCertificates | null>(null);
   const [failed, setFailed] = useState(false);
@@ -56,7 +58,7 @@ export function CertificatesCard({ studentId, studentName }: { studentId: string
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
                 <span style={{ fontFamily: FONT, fontSize: 14.5, fontWeight: 600, color: COLORS.text }}>{t(`course_${c.course}`)}</span>
                 <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary, fontVariantNumeric: "tabular-nums" }}>
-                  {t("hoursOf", { hours: fmtHours(c.hours), required: fmtHours(required) })}
+                  {t("hoursOf", { hours: hoursText(c.hours), required: hoursText(required) })}
                 </span>
               </div>
               <div
@@ -103,7 +105,7 @@ export function CertificatesCard({ studentId, studentName }: { studentId: string
       {asking && (
         <ConfirmModal
           title={t("confirmTitle", { name: studentName })}
-          prompt={t("confirmBody", { course: t(`course_${asking.course}`), hours: fmtHours(asking.hours) })}
+          prompt={t("confirmBody", { course: t(`course_${asking.course}`), hours: hoursText(asking.hours) })}
           confirmLabel={t("confirm")}
           failedText={t("failed")}
           onClose={() => setAsking(null)}

@@ -7,6 +7,7 @@ import { classTypeOf } from "@/lib/class-face";
 import { api, ApiError } from "@/lib/api";
 import { generateHiddenPassword, generateReadablePassword } from "@/lib/credentials";
 import { classesJoined, hoursJoined, creditsSinceTopUp } from "@/lib/enrolment-stats";
+import { useHoursText } from "@/components/useHoursText";
 import { InviteOutcomeNote, inviteOutcome, type InviteOutcome } from "../InviteButton";
 import type { StudentLogin } from "@/lib/invite";
 import { type Student } from "@/lib/data";
@@ -2992,6 +2993,7 @@ export function StudentsPage({
   const tStatus = useTranslations("status");
   /* For the Contact menu's LINE item: the chats the office has linked. */
   const lineChats = useLineChats();
+  const hoursText = useHoursText();
   const { students, allStudents: everyone, raw, batch, create, update, remove, removePerson, loading, error } = useData();
   /* Archived ones too: their own page and the Archived filter. */
   const allStudents = everyone ?? students;
@@ -3459,7 +3461,7 @@ export function StudentsPage({
                   classesOf(s.id, s.className).join(", "),
                   s.branch,
                   creditsOf(s.id).map((c) => `${c.label}: ${fmtCredits(c.balance)}`).join(", "),
-                  creditsOf(s.id).filter((c) => c.hours !== undefined).map((c) => `${c.label}: ${c.hours} h`).join(", "),
+                  creditsOf(s.id).filter((c) => c.hours !== undefined).map((c) => `${c.label}: ${hoursText(c.hours!)}`).join(", "),
                   s.status,
                   s.parentPhone,
                 ])
@@ -3630,7 +3632,7 @@ export function StudentsPage({
                   <span style={COURSE_LINES}>
                     {credits.map((c, i) => (
                       <span key={`${c.label}-${i}`} style={{ ...COURSE_LINE, color: c.hours === undefined ? COLORS.textSecondary : COLORS.text }}>
-                        {c.hours === undefined ? "—" : t("hoursShort", { hours: c.hours })}
+                        {c.hours === undefined ? "—" : hoursText(c.hours)}
                       </span>
                     ))}
                   </span>
