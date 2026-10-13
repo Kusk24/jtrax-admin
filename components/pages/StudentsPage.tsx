@@ -20,6 +20,7 @@ import { opensCreate } from "@/lib/quick-actions";
 import { assignStudentLoginId, createStudentAccount, isTakenIdError } from "@/lib/student-login-id";
 import { classFilterOptions, classNamesOfStudent, creditsByClass, isInClass, studentHasRecords } from "@/lib/student-classes";
 import { draftFromScan, type ScanResult } from "@/lib/scan-to-draft";
+import { scanErrorText } from "@/lib/scan-error";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
 import {
@@ -2514,7 +2515,9 @@ function AddStudentWizard({
       /* Straight to the form on failure rather than a dead end: the point of
          scanning is to save typing, and not saving any is not a reason to stop
          registering the child. */
-      setScanError(err instanceof ApiError ? err.message : t("scanFailed"));
+      /* The reason and its code, so whoever is at the desk can say exactly
+         what went wrong. */
+      setScanError(scanErrorText(err, t));
       setStage("form");
     } finally {
       setExtracting(false);

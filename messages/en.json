@@ -650,7 +650,22 @@
     "looseNeedsCourse": "Add this child to a course first, then their credits can be moved into it.",
     "noEnrolmentsYetCredits": "Not in any course yet. Their credits are waiting above — add a course and move them in.",
     "moveCreditsTo": "Move them to",
-    "scanFailed": "Could not read that photo — try a clearer, straighter one, or type the details below.",
+    "scanWhy": {
+      "model_unavailable": "Could not read the form: the scan model isn't available. An admin can choose another under Settings → Form scanning. You can type the details below.",
+      "key_rejected": "Could not read the form: the scan service refused the server's key. You can type the details below.",
+      "quota": "Could not read the form: the scan service's limit is used up. Try again later, or type the details below.",
+      "provider_error": "Could not read the form: the scan service had an error. Try again, or type the details below.",
+      "unreachable": "Could not read the form: the scan service could not be reached. Try again, or type the details below.",
+      "no_answer": "Nothing could be read from that photo. Try a clearer, straighter one, or type the details below.",
+      "not_configured": "Form scanning isn't set up on this server. Type the details below.",
+      "too_large": "The photo is too large to send. Try a smaller one, or type the details below.",
+      "no_image": "The photo didn't arrive. Choose it again, or type the details below.",
+      "not_an_image": "That file isn't a photo. Upload a JPEG, PNG, WebP or HEIC photo of the form, or type the details below.",
+      "busy": "Too many scans. Wait a minute and try again, or type the details below.",
+      "server": "Could not read that photo. Try again, or type the details below.",
+      "unsent": "The photo could not be sent. Check the connection and try again, or type the details below."
+    },
+    "scanErrorCode": "error: {code}",
     "checkFields": "Please check: {fields}",
     "alsoOnForm": "Also on the form (not saved here yet)",
     "scanField": {
