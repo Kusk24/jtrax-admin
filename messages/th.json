@@ -1080,7 +1080,12 @@
     "confirmationEmail": "อีเมลยืนยัน",
     "confirmationEmailOn": "{days} วันก่อนแข่ง ({date})",
     "confirmationEmailOff": "ปิด",
-    "resendConfirmation": "ส่งอีเมลยืนยันอีกครั้งถึง {name}",
+    "emailSendTip": "ส่งอีเมลยืนยันการเข้าร่วมถึง {name}",
+    "emailAlreadySentTip": "ส่งแล้วเมื่อ {date}",
+    "emailAlreadySent": "ส่งแล้วเมื่อ {date}",
+    "emailSendAgain": "ส่งอีกครั้ง",
+    "emailCancel": "ยกเลิก",
+    "emailJustSent": "ส่งอีเมลแล้ว",
     "resendFailed": "ส่งอีเมลไม่สำเร็จ",
     "arrivalState": {
       "notSent": "ยังไม่ส่ง",

@@ -1080,7 +1080,12 @@
     "confirmationEmail": "Confirmation email",
     "confirmationEmailOn": "{days} days before ({date})",
     "confirmationEmailOff": "Off",
-    "resendConfirmation": "Send confirmation email again to {name}",
+    "emailSendTip": "Send attendance email to {name}",
+    "emailAlreadySentTip": "Already sent {date}",
+    "emailAlreadySent": "Already sent on {date}.",
+    "emailSendAgain": "Send again",
+    "emailCancel": "Cancel",
+    "emailJustSent": "Email sent",
     "resendFailed": "Could not send the email",
     "arrivalState": {
       "notSent": "Not sent",

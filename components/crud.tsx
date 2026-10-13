@@ -438,7 +438,7 @@ export function ConfirmDeleteModal({
   );
 }
 
-const iconButtonStyle = {
+export const iconButtonStyle = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
