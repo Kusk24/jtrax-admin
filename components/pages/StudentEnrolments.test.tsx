@@ -1766,6 +1766,11 @@ describe("the roster's hours column", () => {
     raw.attendance = [
       { attendance_id: "a1", student_id: "chai", session_id: "s1", check_in_time: "2026-08-24T10:00:00+07:00", check_out_time: "2026-08-24T12:00:00+07:00" },
     ] as never;
+    /* Hours are what the class charged: 2 credits for the two hours. */
+    raw.creditTransactions = [
+      { credit_transaction_id: "ct_a1", enrollment_id: "e_chai_beg", student_id: "chai", class_id: "beg",
+        transaction_type: "consumption", amount: -2, transaction_date: "2026-08-24", attendance_id: "a1" },
+    ] as never;
     try {
       renderList();
       expect(screen.getByText(en.students.colHours)).toBeDefined();

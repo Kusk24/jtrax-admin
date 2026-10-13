@@ -45,8 +45,9 @@ describe("the Certificates card", () => {
     show();
     expect(await screen.findByText("JCA Starters")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("students/stu_1/certificates");
-    expect(screen.getByText("50 / 50 h")).toBeTruthy();
-    expect(screen.getByText("12.3 / 50 h")).toBeTruthy();
+    expect(screen.getByText("50 h / 50 h")).toBeTruthy();
+    // 12.25 credits used: 12 h 15 min.
+    expect(screen.getByText("12 h 15 min / 50 h")).toBeTruthy();
     expect(screen.getAllByText(en.certificates.inProgress)).toHaveLength(2);
     expect(screen.getByText(en.certificates.certified)).toBeTruthy();
     expect(screen.getByText("Certified 1 Oct 2026")).toBeTruthy();
