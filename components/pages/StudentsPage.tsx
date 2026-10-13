@@ -21,6 +21,7 @@ import { assignStudentLoginId, createStudentAccount, isTakenIdError } from "@/li
 import { classFilterOptions, classNamesOfStudent, creditsByClass, isInClass, studentHasRecords } from "@/lib/student-classes";
 import { draftFromScan, type ScanResult } from "@/lib/scan-to-draft";
 import { scanErrorText } from "@/lib/scan-error";
+import { shrinkImage } from "@/lib/shrink-image";
 import { Icon } from "@/lib/icons";
 import { classDotColor, COLORS, FONT, initialsOf, statusChipColors } from "@/lib/theme";
 import {
@@ -2504,7 +2505,9 @@ function AddStudentWizard({
     setExtracting(true);
     try {
       const body = new FormData();
-      body.append("image", file);
+      // Shrunk first: a phone photo of the page is several megabytes, too
+      // large for the server to take (lib/shrink-image).
+      body.append("image", await shrinkImage(file));
       const result = await api.upload<ScanResult>("registrations/scan", body);
       const { patch, needsCheck, unmapped } = draftFromScan(result.fields, LEVEL_OPTIONS);
       setDraft((d) => ({ ...d, ...patch }));
