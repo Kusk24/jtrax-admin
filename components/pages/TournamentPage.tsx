@@ -68,6 +68,7 @@ import { useErrorToast } from "../ErrorToast";
 import { useUrlBackedState } from "@/lib/url-state";
 import { ApiError } from "@/lib/api";
 import { refreshLinkedResults } from "@/lib/chess-results";
+import { ArrivalEmailButton } from "../tournament/ArrivalEmailButton";
 
 /* Every column the same width, the office's own request — a grid that reads
    as a grid rather than a layout that happens to use one. */
@@ -394,14 +395,17 @@ function TournamentDetail({
     [students, categoryRows, t, tCommon, tStatus, participantModal, participantValues, feeFor, pricing.discountPct],
   );
 
-  /* Sends the confirmation email again to someone who has not answered. */
-  async function resendArrival(p: Participant) {
-    if (!p.id) return;
+  /* Sends the confirmation email (again) to someone who has not answered.
+     True when it went, so the button can say so. */
+  async function resendArrival(p: Participant): Promise<boolean> {
+    if (!p.id) return false;
     try {
       await api.post(`tournament-registrations/${p.id}/arrival-reminder`, {});
       await refresh();
+      return true;
     } catch (e) {
       toastError(t("resendFailed"), e);
+      return false;
     }
   }
 
@@ -1222,18 +1226,17 @@ function TournamentDetail({
                   </span>
                   <ArrivalBadge state={arrivalState(p.arrival, p.arrivalRemindedAt)} />
                   {p.id ? (
-                    <RowActions
-                      label={p.name}
-                      /* Only while they have not answered, and before the day. */
-                      onEmail={
-                        (p.arrival ?? "Pending") === "Pending" && !(tournament.startISO && tournament.startISO < todayISO())
-                          ? () => resendArrival(p)
-                          : undefined
-                      }
-                      emailLabel={t("resendConfirmation", { name: p.name })}
-                      onEdit={() => openParticipant(p)}
-                      onDelete={p.payment ? undefined : () => setDeletingParticipant(p)}
-                    />
+                    <span style={{ display: "flex", gap: 7 }}>
+                      {/* Only while they have not answered, and before the day. */}
+                      {(p.arrival ?? "Pending") === "Pending" && !(tournament.startISO && tournament.startISO < todayISO()) && (
+                        <ArrivalEmailButton name={p.name} remindedAt={p.arrivalRemindedAt} onSend={() => resendArrival(p)} />
+                      )}
+                      <RowActions
+                        label={p.name}
+                        onEdit={() => openParticipant(p)}
+                        onDelete={p.payment ? undefined : () => setDeletingParticipant(p)}
+                      />
+                    </span>
                   ) : (
                     <span />
                   )}
