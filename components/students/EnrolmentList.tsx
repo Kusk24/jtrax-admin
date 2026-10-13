@@ -15,7 +15,7 @@ import type { ClassType } from "@/lib/class-face";
 import { useCourseLabel } from "../CourseName";
 import type { CreditMoveIn, EnrolmentEvent } from "@/lib/course-history";
 import type { Student } from "@/lib/data";
-import { fmtDate } from "@/lib/live";
+import { fmtCredits, fmtDate } from "@/lib/live";
 import { classDotColor, COLORS, FONT, statusChipColors } from "@/lib/theme";
 import { useViewMode } from "@/lib/view-mode";
 import { MoreMenu, type MoreMenuItem } from "../MoreMenu";
@@ -167,9 +167,9 @@ export function EnrolmentList({
       <span style={{ fontFamily: FONT, fontSize: size, fontWeight: 700, color: creditTone(item), fontVariantNumeric: "tabular-nums" }}>
         {/* Left, then what the last top-up brought it to: "12 / 15". The
             column's header already says these are credits. */}
-        {item.balance}
+        {fmtCredits(item.balance)}
         {item.creditsOf !== null && (
-          <span style={{ fontWeight: 500, color: COLORS.textSecondary }}> / {item.creditsOf}</span>
+          <span style={{ fontWeight: 500, color: COLORS.textSecondary }}> / {fmtCredits(item.creditsOf)}</span>
         )}
       </span>
     ) : (
