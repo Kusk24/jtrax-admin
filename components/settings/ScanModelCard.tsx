@@ -19,6 +19,7 @@ import {
   getScanSettings,
   isValidModelName,
   listScanModels,
+  perThousandScans,
   saveScanModel,
   SCAN_MODELS,
   testScanModel,
@@ -26,6 +27,7 @@ import {
   type ScanPrice,
   type ScanSettings,
   type ScanTestResult,
+  type ScanUsage,
 } from "@/lib/ocr";
 import { COLORS, FONT } from "@/lib/theme";
 import { ErrorNote, errorText } from "../crud";
@@ -95,8 +97,12 @@ export function ScanModelCard() {
     new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" }).format(new Date(`${iso}T00:00:00`));
   /* "$0.75 / $3.75", for a picker line. */
   const shortPrice = (p: ScanPrice) => t("scanPriceShort", { input: usd(p.inputPerMillion), output: usd(p.outputPerMillion) });
+  /* Per thousand scans once this academy has scanned, which is what an admin
+     can weigh; per million tokens before that. */
   const optionLabel = (name: string) => {
     const price = priceOf(name)?.price;
+    const thousand = perThousandScans(price, settings?.usage);
+    if (thousand !== null) return `${name} · ${t("scanPerThousandShort", { cost: usd(thousand) })}`;
     return price ? `${name} · ${shortPrice(price)}` : name;
   };
 
@@ -216,11 +222,25 @@ export function ScanModelCard() {
       )}
 
       {settings?.model && (
-        <div style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
-          {t("scanInUse")}{" "}
-          <code style={{ fontSize: 12.5, color: COLORS.text }}>{settings.model}</code>
+        <div style={{ display: "flex", flexDirection: "column", gap: 3, fontFamily: FONT, fontSize: 13, lineHeight: 1.5, color: COLORS.textSecondary }}>
+          <span>
+            {t("scanInUse")}{" "}
+            <code style={{ fontSize: 12.5, color: COLORS.text }}>{settings.model}</code>
+          </span>
+          {/* One choice for the whole academy, so it is said whose it is. */}
+          <span>{t("scanForEveryone")}</span>
+          {settings.savedBy && settings.savedAt && (
+            <span>
+              {t("scanChosenBy", {
+                name: settings.savedBy,
+                when: new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(settings.savedAt)),
+              })}
+            </span>
+          )}
         </div>
       )}
+
+      {settings?.usage && <ScanCostLine usage={settings.usage} usd={usd} day={day} />}
 
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 260px", minWidth: 0 }}>
@@ -282,6 +302,7 @@ export function ScanModelCard() {
           name={model || settings.defaultModel}
           list={list}
           listFailed={listFailed}
+          usage={settings.usage}
           usd={usd}
           day={day}
         />
@@ -342,11 +363,12 @@ export function ScanModelCard() {
    next, and the date the prices were copied. Said plainly when there is no
    price, or when Google's list could not be loaded. */
 function ScanPriceNote({
-  name, list, listFailed, usd, day,
+  name, list, listFailed, usage, usd, day,
 }: {
   name: string;
   list: ScanModelList | null;
   listFailed: boolean;
+  usage?: ScanUsage;
   usd: (amount: number) => string;
   day: (iso: string) => string;
 }) {
@@ -359,6 +381,14 @@ function ScanPriceNote({
   } else if (list) {
     if (entry?.price) {
       lines.push(t("scanPrice", { input: usd(entry.price.inputPerMillion), output: usd(entry.price.outputPerMillion) }));
+      const thousand = perThousandScans(entry.price, usage);
+      if (thousand !== null && usage) {
+        lines.push(t("scanPerThousand", {
+          cost: usd(thousand),
+          input: usage.avgScanInputTokens,
+          output: usage.avgScanOutputTokens,
+        }));
+      }
       if (entry.nextPrice?.from) {
         lines.push(t("scanPriceNext", {
           date: day(entry.nextPrice.from),
@@ -384,6 +414,21 @@ function ScanPriceNote({
           </a>
         </span>
       )}
+    </div>
+  );
+}
+
+/* This month so far: how many scans, and about what they cost. An estimate
+   from Google's published prices; Google's billing page is the bill. */
+function ScanCostLine({ usage, usd, day }: { usage: ScanUsage; usd: (amount: number) => string; day: (iso: string) => string }) {
+  const t = useTranslations("settings");
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 3, fontFamily: FONT, fontSize: 13, lineHeight: 1.5, color: COLORS.textSecondary }}>
+      <span>
+        {t("scanCostMonth", { since: day(usage.since), scans: usage.scans, tests: usage.tests, cost: usd(usage.costUSD) })}
+      </span>
+      {usage.unpricedCalls > 0 && <span>{t("scanCostUnpriced", { calls: usage.unpricedCalls })}</span>}
+      <span style={{ fontSize: 12 }}>{t("scanCostEstimate")}</span>
     </div>
   );
 }

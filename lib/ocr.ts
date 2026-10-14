@@ -7,6 +7,22 @@
  */
 import { api } from "./api";
 
+/** What scanning has cost this month (academy time), from the tokens Google
+    reported for each call, priced on the day. An estimate of the bill. */
+export type ScanUsage = {
+  since: string;
+  scans: number;
+  tests: number;
+  inputTokens: number;
+  outputTokens: number;
+  costUSD: number;
+  /** Calls on a model with no published price, left out of costUSD. */
+  unpricedCalls: number;
+  /** The average scan over the last 90 days; 0 before the first. */
+  avgScanInputTokens: number;
+  avgScanOutputTokens: number;
+};
+
 export type ScanSettings = {
   /** False when the server has no key, so scanning is off whatever the model. */
   configured: boolean;
@@ -16,6 +32,10 @@ export type ScanSettings = {
   defaultModel: string;
   /** Saved in Settings. Empty when the server's default is in use. */
   savedModel: string;
+  /** Who last chose the model here, and when (RFC 3339). Empty before anyone has. */
+  savedBy?: string;
+  savedAt?: string;
+  usage?: ScanUsage;
 };
 
 export type ScanTestReason =
@@ -82,6 +102,13 @@ export function formatUSD(amount: number, locale: string): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: amount > 0 && amount < 1 ? 4 : 2,
   }).format(amount);
+}
+
+/** What a thousand scans would cost on a model, at this academy's average
+    scan size. null before there is an average, or without a price. */
+export function perThousandScans(price: ScanPrice | undefined, usage: ScanUsage | undefined): number | null {
+  if (!price || !usage || usage.avgScanInputTokens + usage.avgScanOutputTokens === 0) return null;
+  return ((usage.avgScanInputTokens * price.inputPerMillion + usage.avgScanOutputTokens * price.outputPerMillion) / 1e6) * 1000;
 }
 
 export const getScanSettings = () => api.get<ScanSettings>("ocr");

@@ -139,4 +139,32 @@ describe("the scanning card", () => {
     const labels = Array.from(picker().options).map((o) => o.value);
     expect(labels).toContain("gemini-3.8-flash");
   });
+
+  it("says what scanning has cost this month, and what a thousand scans cost on each model", async () => {
+    getScanSettings.mockResolvedValueOnce({
+      ...state,
+      usage: {
+        since: "2026-10-01", scans: 42, tests: 2, inputTokens: 56_574, outputTokens: 25_074, costUSD: 0.1364,
+        unpricedCalls: 0, avgScanInputTokens: 1347, avgScanOutputTokens: 597,
+      },
+    });
+    renderCard();
+    expect(await screen.findByText("Since Oct 1, 2026: 42 scans and 2 tests, about $0.1364.")).toBeDefined();
+    expect(screen.getByText(en.settings.scanCostEstimate)).toBeDefined();
+    // (1347 × $0.75 + 597 × $3.75) per million tokens, times a thousand.
+    await waitFor(() =>
+      expect(Array.from(picker().options).map((o) => o.textContent)).toContain("gemini-3.8-flash · ≈ $3.25 per 1,000 scans"),
+    );
+    fireEvent.change(picker(), { target: { value: "gemini-3.8-flash" } });
+    expect(await screen.findByText(/About \$3\.25 per 1,000 scans, at this academy's average scan of 1,347 input/)).toBeDefined();
+  });
+
+  it("says the choice is everyone's, and whose it is", async () => {
+    getScanSettings.mockResolvedValueOnce({ ...state, savedModel: "gemini-3.8-flash", model: "gemini-3.8-flash",
+      savedBy: "JCA Head Office", savedAt: "2026-10-14T09:30:00Z" });
+    renderCard();
+    expect(await screen.findByText(en.settings.scanForEveryone)).toBeDefined();
+    expect(screen.getByText(/^Chosen by JCA Head Office, Oct 14, 2026/)).toBeDefined();
+  });
 });
+
