@@ -190,6 +190,25 @@ describe("registering with a brand-new guardian email", () => {
   });
 });
 
+describe("the guardian's LINE ID", () => {
+  it("is optional, and saved with their contacts when given", async () => {
+    create.mockImplementation(async (path: string, body: Row) => {
+      if (path === "user-accounts") return { user_account_id: body.role === "Parent" ? "usr_sandy" : "usr_uri", ...body };
+      if (path === "students") return { student_id: "stu_uri" };
+      if (path === "parents") return { parent_id: "par_sandy" };
+      return {};
+    });
+    const user = renderForm();
+    await fillGuardian(user, "sandy@example.com");
+    expect(submit().disabled).toBe(false);
+    await user.type(screen.getByLabelText("LINE ID (optional)"), "sandy.line");
+    await user.click(submit());
+
+    const contacts = create.mock.calls.filter((c) => c[0] === "parent-contacts").map((c) => c[1]);
+    expect(contacts).toContainEqual({ parent_id: "par_sandy", contact_type: "line_id", value: "sandy.line" });
+  });
+});
+
 describe("the course a new student joins", () => {
   it("is the one picked, even when two courses share a name", async () => {
     raw.classes = [

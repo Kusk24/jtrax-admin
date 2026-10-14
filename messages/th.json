@@ -747,6 +747,7 @@
     "studentEmailInvalid": "กรุณากรอกอีเมลให้ถูกต้อง",
     "emailIsArchivedStudent": "อีเมลนี้เป็นของ {name} ซึ่งถูกเก็บถาวรแล้ว กรุณากู้คืนแทน",
     "openArchivedStudent": "เปิด {name}",
+    "lineIdOptional": "LINE ID (ไม่บังคับ)",
     "studentEmailTaken": "อีเมลนี้มีบัญชีอยู่แล้ว",
     "studentOwnEmailHint": "นักเรียนเข้าสู่ระบบด้วยอีเมลของตนเอง และรีเซ็ตรหัสผ่านเองได้ผ่าน ลืมรหัสผ่าน",
     "hoursShort": "{hours} ชม.",

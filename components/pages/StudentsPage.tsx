@@ -2965,6 +2965,16 @@ function AddStudentWizard({
                     </p>
                   )}
                 </div>
+                <div>
+                  <label style={labelStyle} htmlFor="w-pline">{t("lineIdOptional")}</label>
+                  <input
+                    id="w-pline"
+                    value={draft.parentLineId}
+                    onChange={(e) => set("parentLineId", e.target.value)}
+                    autoComplete="off"
+                    style={fieldStyle}
+                  />
+                </div>
               </div>
             )}
           </Card>

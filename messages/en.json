@@ -747,6 +747,7 @@
     "studentEmailInvalid": "Enter a valid email address",
     "emailIsArchivedStudent": "This email belongs to {name}, who is archived. Restore them instead.",
     "openArchivedStudent": "Open {name}",
+    "lineIdOptional": "LINE ID (optional)",
     "studentEmailTaken": "This email already has an account",
     "studentOwnEmailHint": "They sign in with their own email, and can reset the password themselves with Forgot password.",
     "hoursShort": "{hours} h",
