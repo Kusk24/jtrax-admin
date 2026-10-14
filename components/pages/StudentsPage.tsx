@@ -2382,7 +2382,29 @@ function StudentDetail({
 
 /* ---------------------------------------------------------------- wizard --- */
 
-type EmailOwner = { parentId: string | null; name: string };
+type EmailOwner = {
+  parentId: string | null;
+  name: string;
+  /** Set when the email is an archived student's own: Restore them instead. */
+  archivedStudentId?: string;
+};
+
+/** "Open Sunny": to the archived student's page, where Restore is. */
+function ArchivedOwnerLink({ owner }: { owner: EmailOwner | null }) {
+  const t = useTranslations("students");
+  const router = useRouter();
+  if (!owner?.archivedStudentId) return null;
+  return (
+    <button
+      type="button"
+      className="jt-btn-ghost"
+      onClick={() => router.push(`/students?id=${encodeURIComponent(owner.archivedStudentId!)}`)}
+      style={{ ...secondaryButtonStyle, alignSelf: "flex-start", marginTop: 6, padding: "5px 11px", fontSize: 12.5 }}
+    >
+      {t("openArchivedStudent", { name: owner.name })}
+    </button>
+  );
+}
 
 /** The guardian's email already has an account; the form shows it, not a toast. */
 class GuardianEmailTaken extends Error {
@@ -2551,7 +2573,9 @@ function AddStudentWizard({
       ? null
       : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(studentEmail)
         ? t("studentEmailInvalid")
-        : emailOwner(studentEmail) !== null ||
+        : emailOwner(studentEmail)?.archivedStudentId
+          ? t("emailIsArchivedStudent", { name: emailOwner(studentEmail)!.name })
+          : emailOwner(studentEmail) !== null ||
             studentEmail === draft.parentEmail.trim().toLowerCase() ||
             studentEmail === studentTakenOnServer
           ? t("studentEmailTaken")
@@ -2770,6 +2794,7 @@ function AddStudentWizard({
                 >
                   {studentEmailProblem ?? t("studentEmailHelp")}
                 </span>
+                <ArchivedOwnerLink owner={studentEmail ? emailOwner(studentEmail) : null} />
               </div>
               <div>
                 <label style={labelStyle} htmlFor="w-level">{t("level")}</label>
@@ -2909,8 +2934,11 @@ function AddStudentWizard({
                       <span>
                         {owner?.parentId
                           ? t("guardianEmailIsParent", { name: owner.name })
-                          : t("guardianEmailTaken")}
+                          : owner?.archivedStudentId
+                            ? t("emailIsArchivedStudent", { name: owner.name })
+                            : t("guardianEmailTaken")}
                       </span>
+                      <ArchivedOwnerLink owner={owner} />
                       {/* The fix, one click away: this is the child's guardian
                           already, so link them rather than make a second. */}
                       {owner?.parentId && (
@@ -3143,9 +3171,12 @@ export function StudentsPage({
     const account = raw.accounts.find((a) => String(a["email"] ?? "").trim().toLowerCase() === wanted);
     if (!account) return null;
     const parent = raw.parents.find((p) => String(p["user_account_id"] ?? "") === String(account["user_account_id"]));
-    return parent
-      ? { parentId: String(parent["parent_id"]), name: String(parent["name"] ?? "") }
-      : { parentId: null, name: String(account["display_name"] ?? "") };
+    if (parent) return { parentId: String(parent["parent_id"]), name: String(parent["name"] ?? "") };
+    /* A student who left keeps their sign-in, so Restore brings them back
+       whole; the office is pointed there rather than at a dead end. */
+    const archived = everyone.find((st) => st.accountId === String(account["user_account_id"]) && st.archivedAt);
+    if (archived) return { parentId: null, name: archived.name, archivedStudentId: archived.id };
+    return { parentId: null, name: String(account["display_name"] ?? "") };
   }
 
   /* Falls back to the design's list only while the classes are still loading,
