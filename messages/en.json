@@ -761,6 +761,13 @@
     "emailReplacesId": "They'll sign in with this email instead of {id}"
   },
   "parents": {
+    "archive": "Archive",
+    "archiveTitle": "Archive {name}?",
+    "archiveBody": "They can't sign in or get announcements. Their records are kept.",
+    "alsoArchiveChild": "Also archive {name}",
+    "archiveConfirm": "Archive",
+    "archiveThing": "Archive {name}",
+    "restoreThing": "Restore {name}",
     "archived": "Archived",
     "restoreParent": "Restore",
     "title": "Parents",

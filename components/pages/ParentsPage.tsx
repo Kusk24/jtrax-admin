@@ -33,6 +33,7 @@ import {
   PageHeader,
   paginate,
   Pagination,
+  primaryButtonStyle,
   SearchInput,
   SelectFilter,
   secondaryButtonStyle,
@@ -43,6 +44,7 @@ import {
 import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
 import { BackLink, DeleteButton, DetailHeader, EditButton } from "../detail";
 import { useErrorToast } from "../ErrorToast";
+import { todayISO } from "@/lib/live";
 import { InviteOutcomeNote, inviteOutcome, type InviteOutcome } from "../InviteButton";
 import { PasswordMenu } from "../PasswordMenu";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
@@ -75,6 +77,7 @@ function ParentDetail({
   onBack,
   onEdit,
   onDelete,
+  onArchive,
   unlinkedStudents,
   onLinkChild,
   onUnlinkChild,
@@ -83,6 +86,7 @@ function ParentDetail({
   onBack: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onArchive: () => void;
   /* Students with no parent yet — linking one that already has a parent would
      silently move them, so they are not offered. */
   unlinkedStudents: Array<{ id: string; name: string }>;
@@ -174,7 +178,19 @@ function ParentDetail({
               onError={(e) => showError(tCommon("saveFailed"), e)}
             />
             <EditButton onClick={onEdit} />
-            <DeleteButton onClick={onDelete} />
+            {!parent.archivedAt && (
+              <button
+                type="button"
+                className="jt-btn-ghost"
+                onClick={onArchive}
+                style={{ ...secondaryButtonStyle, display: "inline-flex", alignItems: "center", gap: 6 }}
+              >
+                <Icon name="userX" size={15} /> {t("archive")}
+              </button>
+            )}
+            {/* Delete only for a guardian with no children: one added by
+                mistake. Anyone else is archived, records kept. */}
+            {parent.children.length === 0 && <DeleteButton onClick={onDelete} />}
           </>
         }
       />
@@ -395,6 +411,7 @@ export function ParentsPage({ detailId }: { detailId?: string }) {
      that string already lives. */
   const tCommon = useTranslations("common");
   const { parents, students, raw, loading, error, batch, create, update, remove, removePerson } = useData();
+  const { showError } = useErrorToast();
   const [view, setView] = useState<View>(detailId ? { kind: "detail", id: detailId } : { kind: "list" });
   const [mode, setMode] = useViewMode("parents", VIEWS);
   const [search, setSearch] = useState("");
@@ -411,6 +428,10 @@ export function ParentsPage({ detailId }: { detailId?: string }) {
   const [editing, setEditing] = useState<{ mode: "create" } | { mode: "edit"; parent: ParentPerson } | null>(null);
   const [values, setValues] = useState<CrudValues>({});
   const [deleting, setDeleting] = useState<ParentPerson | null>(null);
+  /* Archiving a guardian who has left, and which of their children go too. */
+  const [archivingParent, setArchivingParent] = useState<ParentPerson | null>(null);
+  const [archiveKids, setArchiveKids] = useState<string[]>([]);
+  const [archiveBusy, setArchiveBusy] = useState(false);
   /* Off by default: a parent leaving does not mean the children are leaving.
      Usually another guardian is linked to them afterwards. */
   const [deleteChildren, setDeleteChildren] = useState(false);
@@ -524,6 +545,47 @@ export function ParentsPage({ detailId }: { detailId?: string }) {
     setEditing({ mode: "create" });
   }
 
+  /* Their children still here (not archived): the ones archiving offers. */
+  const activeChildren = (parent: ParentPerson) =>
+    parent.children.filter((c) => students.some((st) => st.id === c.id));
+
+  function openArchive(parent: ParentPerson) {
+    setArchiveKids([]);
+    setArchivingParent(parent);
+  }
+
+  async function archiveParent(parent: ParentPerson) {
+    setArchiveBusy(true);
+    try {
+      const day = todayISO();
+      await update("parents", parent.id, { archived_at: day });
+      for (const studentId of archiveKids) {
+        await update("students", studentId, { archived_at: day, archived_reason: null });
+      }
+      setArchivingParent(null);
+      setArchiveKids([]);
+    } catch (e) {
+      showError(tCommon("saveFailed"), e);
+    } finally {
+      setArchiveBusy(false);
+    }
+  }
+
+  async function restoreParent(parent: ParentPerson) {
+    try {
+      await update("parents", parent.id, { archived_at: null });
+    } catch (e) {
+      showError(tCommon("saveFailed"), e);
+    }
+  }
+
+  /* Archive in the row, Restore once archived. */
+  const archiveAction = (p: ParentPerson) => ({
+    onArchive: () => (p.archivedAt ? void restoreParent(p) : openArchive(p)),
+    archiveLabel: p.archivedAt ? t("restoreThing", { name: p.name }) : t("archiveThing", { name: p.name }),
+    archived: Boolean(p.archivedAt),
+  });
+
   function openDelete(parent: ParentPerson) {
     setDeleteChildren(false);
     setDeleting(parent);
@@ -546,6 +608,7 @@ export function ParentsPage({ detailId }: { detailId?: string }) {
       { value: "", label: t("allParents") },
       { value: "linked", label: t("withChildren") },
       { value: "unlinked", label: t("withoutChildren") },
+      { value: "archived", label: t("archived") },
     ],
     [t],
   );
@@ -553,6 +616,9 @@ export function ParentsPage({ detailId }: { detailId?: string }) {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return parents.filter((p) => {
+      /* Archived guardians are out of the list unless asked for. */
+      if (linked === "archived") return Boolean(p.archivedAt);
+      if (p.archivedAt) return false;
       if (linked === "linked" && p.children.length === 0) return false;
       if (linked === "unlinked" && p.children.length > 0) return false;
       if (!q) return true;
@@ -621,6 +687,41 @@ export function ParentsPage({ detailId }: { detailId?: string }) {
         />
       )}
 
+      {archivingParent && (
+        <Modal title={t("archiveTitle", { name: archivingParent.name })} width={440} onClose={() => setArchivingParent(null)}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, fontFamily: FONT }}>
+            <p style={{ margin: 0, fontSize: 13.5, color: COLORS.textSecondary }}>{t("archiveBody")}</p>
+            {/* Each child still here, one box each: archived with them only
+                when ticked. */}
+            {activeChildren(archivingParent).map((c) => (
+              <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 13.5, color: COLORS.text, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={archiveKids.includes(c.id)}
+                  onChange={(e) => setArchiveKids((list) => (e.target.checked ? [...list, c.id] : list.filter((id) => id !== c.id)))}
+                  style={{ width: 16, height: 16, cursor: "pointer" }}
+                />
+                {t("alsoArchiveChild", { name: c.name })}
+              </label>
+            ))}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 9 }}>
+              <button type="button" className="jt-btn-ghost" style={secondaryButtonStyle} onClick={() => setArchivingParent(null)}>
+                {tCommon("cancel")}
+              </button>
+              <button
+                type="button"
+                className="jt-btn-primary"
+                style={primaryButtonStyle}
+                disabled={archiveBusy}
+                onClick={() => void archiveParent(archivingParent)}
+              >
+                {t("archiveConfirm")}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {deleting && (
         <ConfirmDeleteModal
           what={deleting.name}
@@ -677,6 +778,7 @@ export function ParentsPage({ detailId }: { detailId?: string }) {
             onBack={() => setView({ kind: "list" })}
             onEdit={() => openEdit(parent)}
             onDelete={() => openDelete(parent)}
+            onArchive={() => openArchive(parent)}
             unlinkedStudents={unlinkedStudents}
             onLinkChild={(studentId, relation) =>
               create("student-parents", {
@@ -749,7 +851,7 @@ export function ParentsPage({ detailId }: { detailId?: string }) {
                 avatar={<Avatar initials={initialsOf(p.name)} size={44} />}
                 title={p.name}
                 subtitle={p.archivedAt ? `${t("archived")} · ${t("childCount", { count: p.children.length })}` : t("childCount", { count: p.children.length })}
-                actions={<RowActions label={p.name} onEdit={() => openEdit(p)} onDelete={() => openDelete(p)} />}
+                actions={<RowActions label={p.name} onEdit={() => openEdit(p)} {...archiveAction(p)} />}
                 rows={[
                   { label: tCommon("email"), value: p.loginEmail || p.email || "—" },
                   { label: tCommon("phone"), value: p.phone || "—" },
@@ -861,7 +963,7 @@ export function ParentsPage({ detailId }: { detailId?: string }) {
               ) : (
                 <span style={{ color: COLORS.textSecondary }}>—</span>
               )}
-              <RowActions label={p.name} onEdit={() => openEdit(p)} onDelete={() => openDelete(p)} />
+              <RowActions label={p.name} onEdit={() => openEdit(p)} {...archiveAction(p)} />
             </TableRow>
           ))}
         </Table>
