@@ -436,6 +436,10 @@
     "notEnrolledToday": "วันนี้ไม่มีคลาสที่นักเรียนคนนี้ลงทะเบียนไว้ กรุณาเพิ่มหรือเปลี่ยนคอร์สในหน้าข้อมูลนักเรียน"
   },
   "session": {
+    "checkInFailed": "เช็คอิน {name} ไม่สำเร็จ",
+    "checkInBooked": "เช็คอิน {name}",
+    "checkIn": "เช็คอิน",
+    "bookedHelpRunning": "เช็คอินแต่ละคนเมื่อมาถึง",
     "createTitle": "สร้างคลาส",
     "sessionDetails": "รายละเอียดคลาส",
     "className": "คอร์ส",
@@ -506,7 +510,7 @@
     "durationSegmentTitle": "คลิกเพื่อเลือก ดับเบิลคลิกเพื่อพิมพ์ค่าเอง",
     "durationMinutesRange": "นาทีต้องอยู่ระหว่าง 0 ถึง 59",
     "bookedCount": "จองไว้ ({count})",
-    "bookedHelp": "ยังไม่ได้เช็คอิน ระบบจะเช็คอินและหักเครดิตเมื่อคลาสเริ่ม",
+    "bookedHelp": "ยังไม่ได้เช็คอิน เช็คอินแต่ละคนเมื่อคลาสเริ่ม",
     "bookingProblem": "เช็คอินไม่สำเร็จเมื่อคลาสเริ่ม: {reason}",
     "checkInSelected": "เช็คอิน {count} คน",
     "bookSelected": "จองให้ {count} คน"

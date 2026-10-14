@@ -1007,6 +1007,7 @@ function ViewClass({ def: opened, onClose }: { def: ClassDef; onClose: () => voi
           booked={def.booked ?? []}
           sessionId={def.id ?? ""}
           editable={editable}
+          canCheckIn={shownStatus === "Ongoing"}
         />
       )}
 
@@ -1200,20 +1201,25 @@ export function SessionPanel({ state, onClose }: { state: PanelState; onClose: (
 
 
 /**
- * Who is booked on a class that has not started. Not checked in and not
- * charged: the server checks each one in at the start. A booking it could not
- * check in — the credits had expired, say — stays here with the reason.
+ * Who is booked on a scheduled class: the students expected. Not checked in
+ * and not charged. Once the class is running each has a Check in, pressed when
+ * they arrive — charged from then, as any check-in — and the booking is used
+ * up. A booked student who never comes is not charged.
  */
-function BookedList({ booked, sessionId, editable }: { booked: string[]; sessionId: string; editable: boolean }) {
+function BookedList({
+  booked, sessionId, editable, canCheckIn,
+}: { booked: string[]; sessionId: string; editable: boolean; canCheckIn: boolean }) {
   const t = useTranslations("session");
-  const { students, raw, remove } = useData();
+  const { students, raw, remove, create } = useData();
+  const { showError } = useErrorToast();
+  const [checking, setChecking] = useState("");
   return (
     <div style={{ marginTop: 18 }}>
       <h3 style={{ margin: "0 0 4px", fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text }}>
         {t("bookedCount", { count: booked.length })}
       </h3>
       <p style={{ margin: "0 0 12px", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-        {t("bookedHelp")}
+        {t(canCheckIn ? "bookedHelpRunning" : "bookedHelp")}
       </p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 9 }}>
         {booked.map((name) => {
@@ -1243,6 +1249,41 @@ function BookedList({ booked, sessionId, editable }: { booked: string[]; session
                   </span>
                 )}
               </span>
+              {canCheckIn && student && (
+                <ActionButton
+                  className="jt-btn-primary"
+                  disabled={checking === student.id}
+                  onClick={async () => {
+                    setChecking(student.id);
+                    try {
+                      await create("attendance", {
+                        student_id: student.id,
+                        session_id: sessionId,
+                        check_in_time: new Date().toISOString(),
+                      });
+                    } catch (e) {
+                      showError(t("checkInFailed", { name }), e);
+                    } finally {
+                      setChecking("");
+                    }
+                  }}
+                  ariaLabel={t("checkInBooked", { name })}
+                  style={{
+                    padding: "5px 10px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: COLORS.blue,
+                    color: "#fff",
+                    fontFamily: FONT,
+                    fontSize: 12.5,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {t("checkIn")}
+                </ActionButton>
+              )}
               {editable && row && (
                 <ActionButton
                   onClick={async () => {
