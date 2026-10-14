@@ -29,6 +29,8 @@ export function MoreMenu({
   items: MoreMenuItem[];
   /** A worded button ("Password ⌄") instead of the row's quiet "⋯". */
   text?: string;
+  /** With `text`, shown before it; without, the button is this icon alone
+      (boxed like a row's other actions, `label` its tooltip). */
   icon?: IconName;
 }) {
   const [open, setOpen] = useState(false);
@@ -75,6 +77,8 @@ export function MoreMenu({
         type="button"
         className="jt-btn-ghost"
         aria-label={text ? undefined : label}
+        /* An icon alone says what it is on hover. */
+        title={!text && icon ? label : undefined}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
@@ -86,10 +90,13 @@ export function MoreMenu({
           width: 30,
           height: 30,
           borderRadius: 8,
-          border: `1px solid ${open ? COLORS.border : "transparent"}`,
-          background: open ? COLORS.light : "transparent",
+          /* An icon of its own sits with a row's other action buttons, boxed
+             like them; the quiet "⋯" shows its box only while open. */
+          border: `1px solid ${icon || open ? COLORS.border : "transparent"}`,
+          background: open ? COLORS.light : icon ? COLORS.surface : "transparent",
           color: COLORS.textSecondary,
           cursor: "pointer",
+          flexShrink: 0,
         }}
       >
         {text ? (
@@ -100,6 +107,8 @@ export function MoreMenu({
               <Icon name="chevronDown" size={14} />
             </span>
           </>
+        ) : icon ? (
+          <Icon name={icon} size={14} color={COLORS.blue} />
         ) : (
           <Icon name="moreHorizontal" size={17} />
         )}
