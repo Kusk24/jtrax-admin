@@ -33,6 +33,7 @@ import {
   errorText,
   type CrudField,
   type CrudValues,
+  RowActions,
 } from "../crud";
 import {
   EmptyRow,
@@ -78,7 +79,8 @@ import { LineChatLink, useLineChat, useLineChats } from "../messages/LineChatLin
 import { chatFor } from "@/lib/line";
 import { ContactMenu } from "../ContactMenu";
 
-const TEMPLATE = equalTemplate(6, 90);
+/* The last column holds Contact, Edit and Archive. */
+const TEMPLATE = `${equalTemplate(5, 90)} minmax(130px, 1fr)`;
 const VIEWS = ["list", "card"] as const;
 const ATTENDANCE_TEMPLATE = "minmax(90px, 0.8fr) minmax(130px, 1.1fr) minmax(140px, 1.4fr) minmax(90px, 0.7fr)";
 
@@ -237,8 +239,24 @@ type View =
   /* `edit` / `remove` are set when the card's own buttons were used: the card
      has no room for a form, so it opens the student on the state that button
      asked for. */
-  | { kind: "detail"; id: string; edit?: boolean; remove?: boolean }
+  | { kind: "detail"; id: string; edit?: boolean; remove?: boolean; archive?: boolean }
   | { kind: "wizard" };
+
+/** Back with their guardian: one archived with this student signs in again.
+    Shared by Restore on the student's page and in the list. */
+async function restoreGuardiansOf(
+  raw: { studentParents: Record<string, unknown>[]; parents: Record<string, unknown>[] },
+  update: (path: string, id: string, body: Record<string, unknown>) => Promise<unknown>,
+  studentId: string,
+) {
+  const archived = raw.studentParents
+    .filter((sp) => String(sp["student_id"]) === studentId)
+    .map((sp) => raw.parents.find((p) => String(p["parent_id"]) === String(sp["parent_id"])))
+    .filter((p) => p && p["archived_at"]);
+  for (const p of archived) {
+    await update("parents", String(p!["parent_id"]), { archived_at: null });
+  }
+}
 
 /* ---------------------------------------------------------------- detail --- */
 
@@ -251,6 +269,7 @@ function StudentDetail({
   student,
   startEditing = false,
   startDeleting = false,
+  startArchiving = false,
   guardianOptions,
   onBack,
   onSave,
@@ -261,6 +280,8 @@ function StudentDetail({
   student: Student;
   startEditing?: boolean;
   startDeleting?: boolean;
+  /* The row's Archive: open on the archive box (reason, guardian). */
+  startArchiving?: boolean;
   /* Every guardian on file. A child has one, so this is a picker rather than
      a create form — making a new guardian is the Parents screen's job. */
   guardianOptions: Array<{ id: string; name: string }>;
@@ -302,7 +323,7 @@ function StudentDetail({
   /* Records are kept: only a student with nothing on record can be deleted. */
   const hasRecords = studentHasRecords(raw, student.id);
   /* Left the academy: archived, records kept, restorable. */
-  const [archiving, setArchiving] = useState(false);
+  const [archiving, setArchiving] = useState(startArchiving);
   const [archiveReason, setArchiveReason] = useState("");
   const [archiveBusy, setArchiveBusy] = useState(false);
   /* The guardians the office chose to archive with this student. */
@@ -332,14 +353,7 @@ function StudentDetail({
           await update("parents", parentId, { archived_at: todayISO() });
         }
       } else {
-        /* Back with their guardian: one archived with them signs in again. */
-        const archivedGuardians = raw.studentParents
-          .filter((sp) => String(sp["student_id"]) === student.id)
-          .map((sp) => raw.parents.find((p) => String(p["parent_id"]) === String(sp["parent_id"])))
-          .filter((p) => p && p["archived_at"]);
-        for (const p of archivedGuardians) {
-          await update("parents", String(p!["parent_id"]), { archived_at: null });
-        }
+        await restoreGuardiansOf(raw, update, student.id);
       }
       setArchiving(false);
       setArchiveReason("");
@@ -3080,6 +3094,15 @@ export function StudentsPage({
   /* Archived ones too: their own page and the Archived filter. */
   const allStudents = everyone ?? students;
   const archived = useMemo(() => allStudents.filter((s) => s.archivedAt), [allStudents]);
+  /* The row's Restore: the student, and a guardian archived with them. */
+  async function restoreFromList(studentId: string) {
+    try {
+      await update("students", studentId, { archived_at: null, archived_reason: null });
+      await restoreGuardiansOf(raw, update, studentId);
+    } catch (e) {
+      showError(tCommon("saveFailed"), e);
+    }
+  }
   const [view, setView] = useState<View>(
     opensCreate(startWizard)
       ? { kind: "wizard" }
@@ -3408,6 +3431,7 @@ export function StudentsPage({
           student={student}
           startEditing={view.edit}
           startDeleting={view.remove}
+          startArchiving={view.archive}
           guardianOptions={parentOptions}
           onLinkGuardian={(parentId, relation) =>
             create("student-parents", {
@@ -3724,8 +3748,20 @@ export function StudentsPage({
                   <Badge color={chip.color} bg={chip.bg} style={{ justifySelf: "start" }}>
                     {s.archivedAt ? t("archived") : tStatus(s.status)}
                   </Badge>
-                  <span style={{ justifySelf: "start" }}>
+                  <span style={{ justifySelf: "start", display: "flex", alignItems: "center", gap: 7 }}>
                     <ContactMenu student={s} chat={chatFor(lineChats, { studentId: s.id, parentId: s.parentId })} />
+                    {/* Edit and Archive open the student's page on that step:
+                        the form, or the archive box with its reason and the
+                        guardian question. Restore is done here. */}
+                    <RowActions
+                      label={s.name}
+                      onEdit={() => setView({ kind: "detail", id: s.id, edit: true })}
+                      onArchive={() =>
+                        s.archivedAt ? void restoreFromList(s.id) : setView({ kind: "detail", id: s.id, archive: true })
+                      }
+                      archiveLabel={s.archivedAt ? t("restoreThing", { name: s.name }) : t("archiveThing", { name: s.name })}
+                      archived={Boolean(s.archivedAt)}
+                    />
                   </span>
                 </TableRow>
               );
