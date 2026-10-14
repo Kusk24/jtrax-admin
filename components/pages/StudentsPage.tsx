@@ -690,10 +690,14 @@ function StudentDetail({
   const [moveExpiry, setMoveExpiry] = useState("");
 
   /** What is left on one enrolment. */
+  /* To the hundredth: a course whose credits were all moved or used sums to
+     1e-15, not 0, and would offer to move "0 credits". */
   function balanceOf(enrolmentId: string): number {
-    return raw.creditTransactions
-      .filter((tx) => String(tx["enrollment_id"]) === enrolmentId)
-      .reduce((sum, tx) => sum + Number(tx["amount"] ?? 0), 0);
+    return roundCredits(
+      raw.creditTransactions
+        .filter((tx) => String(tx["enrollment_id"]) === enrolmentId)
+        .reduce((sum, tx) => sum + Number(tx["amount"] ?? 0), 0),
+    );
   }
 
   /**
@@ -712,7 +716,9 @@ function StudentDetail({
       ),
     [raw.creditTransactions, student.id],
   );
-  const looseBalance = looseCredits.reduce((sum, tx) => sum + Number(tx["amount"] ?? 0), 0);
+  /* To the hundredth: credits moved out leave sums like 1e-15, which read as
+     "0 credits unassigned — move them" when nothing is left to move. */
+  const looseBalance = roundCredits(looseCredits.reduce((sum, tx) => sum + Number(tx["amount"] ?? 0), 0));
 
   /**
    * What the loose hours are worth, each entry priced in its own course.
@@ -1872,6 +1878,9 @@ function StudentDetail({
 
       {deletingEnrolment && (() => {
         const { credits, payments } = enrolmentDependants(deletingEnrolment.id);
+        /* Credits "ready to be moved" only when some are left: a course whose
+           credits were all used or moved has history, not credits. */
+        const creditsLeft = balanceOf(deletingEnrolment.id) > 0 ? credits.length : 0;
         return (
           <ConfirmDeleteModal
             what={t("enrolmentIn", { className: deletingEnrolment.className })}
@@ -1881,10 +1890,12 @@ function StudentDetail({
             note={
               credits.length === 0 && payments.length === 0
                 ? t("enrolmentDeleteNote")
-                : t("enrolmentDeleteWithLedger", {
-                    credits: credits.length,
-                    payments: payments.length,
-                  })
+                : creditsLeft === 0 && payments.length === 0
+                  ? undefined
+                  : t("enrolmentDeleteWithLedger", {
+                      credits: creditsLeft,
+                      payments: payments.length,
+                    })
             }
             onClose={() => setDeletingEnrolment(null)}
             onConfirm={() => deleteEnrolment(deletingEnrolment.id)}

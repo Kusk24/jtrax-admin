@@ -104,7 +104,9 @@ export function creditsByClass(
       };
     })
     .filter((row) => row.className);
-  const loose = balanceOf((t) => !s(t, "enrollment_id") && s(t, "student_id") === studentId);
+  /* To the hundredth, so credits all moved out leave no "Unassigned 0" row
+     behind from float leftovers. */
+  const loose = Math.round(balanceOf((t) => !s(t, "enrollment_id") && s(t, "student_id") === studentId) * 100) / 100;
   return loose !== 0 || courses.length === 0 ? [...courses, { className: "", balance: loose }] : courses;
 }
 
