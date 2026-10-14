@@ -32,6 +32,9 @@ export type ScanSettings = {
   defaultModel: string;
   /** Saved in Settings. Empty when the server's default is in use. */
   savedModel: string;
+  /** Who last chose the model here, and when (RFC 3339). Empty before anyone has. */
+  savedBy?: string;
+  savedAt?: string;
   usage?: ScanUsage;
 };
 
