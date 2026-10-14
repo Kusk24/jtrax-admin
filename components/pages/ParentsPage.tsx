@@ -53,8 +53,8 @@ import { LineChatLink, useLineChat, useLineChats } from "../messages/LineChatLin
 import { chatFor } from "@/lib/line";
 import { ContactMenu } from "../ContactMenu";
 
-/* The action column holds Contact beside Edit and Archive. */
-const TEMPLATE = `${equalTemplate(4, 90)} minmax(200px, 1.2fr)`;
+/* The action column holds three icon buttons: Contact, Edit, Archive. */
+const TEMPLATE = `${equalTemplate(4, 90)} minmax(120px, 0.7fr)`;
 const VIEWS = ["list", "card"] as const;
 
 type View = { kind: "list" } | { kind: "detail"; id: string };
