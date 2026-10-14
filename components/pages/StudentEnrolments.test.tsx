@@ -1814,6 +1814,70 @@ describe("archiving a student who left", () => {
   });
 });
 
+describe("archiving a student's guardian with them", () => {
+  /* Moni is Chai's guardian; Sandy has Chai and Boon. */
+  function family(withSibling: boolean) {
+    const saved = { sp: raw.studentParents, p: raw.parents };
+    raw.parents = [
+      { parent_id: "par_moni", name: "Moni" },
+      { parent_id: "par_sandy", name: "Sandy" },
+    ] as never;
+    raw.studentParents = [
+      { student_id: "chai", parent_id: withSibling ? "par_sandy" : "par_moni" },
+      ...(withSibling ? [{ student_id: "boon", parent_id: "par_sandy" }] : []),
+    ] as never;
+    return () => {
+      raw.studentParents = saved.sp;
+      raw.parents = saved.p;
+    };
+  }
+
+  it("offers a guardian with no other child, and archives them when ticked", async () => {
+    const restore = family(false);
+    try {
+      const user = renderList();
+      await openStudent(user, "Chai");
+      await user.click(screen.getByRole("button", { name: en.students.archiveStudent }));
+      await user.click(screen.getByRole("checkbox", { name: /Also archive their guardian, Moni/ }));
+      await user.click(screen.getByRole("button", { name: en.students.archiveConfirm }));
+      expect(update).toHaveBeenCalledWith("parents", "par_moni", { archived_at: expect.any(String) });
+    } finally {
+      restore();
+    }
+  });
+
+  it("does not ask about a guardian who has another child here", async () => {
+    const restore = family(true);
+    try {
+      const user = renderList();
+      await openStudent(user, "Chai");
+      await user.click(screen.getByRole("button", { name: en.students.archiveStudent }));
+      expect(screen.queryByRole("checkbox", { name: /Also archive their guardian/ })).toBeNull();
+      await user.click(screen.getByRole("button", { name: en.students.archiveConfirm }));
+      expect(update.mock.calls.some((c) => c[0] === "parents")).toBe(false);
+    } finally {
+      restore();
+    }
+  });
+
+  it("restores an archived guardian with the student", async () => {
+    const restore = family(false);
+    (raw.parents as Row[])[0].archived_at = "2026-10-14";
+    const chai = STUDENTS.find((s) => s.id === "chai")! as (typeof STUDENTS)[number] & { archivedAt?: string };
+    chai.archivedAt = "2026-10-14";
+    try {
+      const user = renderList();
+      await user.selectOptions(screen.getByRole("combobox", { name: en.common.status }), "Archived");
+      await openStudent(user, "Chai");
+      await user.click(screen.getByRole("button", { name: en.students.restoreStudent }));
+      expect(update).toHaveBeenCalledWith("parents", "par_moni", { archived_at: null });
+    } finally {
+      delete chai.archivedAt;
+      restore();
+    }
+  });
+});
+
 describe("deleting a student", () => {
   it("is not offered once they have anything on record", async () => {
     const saved = { e: raw.enrollments, c: raw.creditTransactions };

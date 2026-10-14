@@ -68,6 +68,8 @@ export type ParentPerson = {
   loginEmail: string;
   /** Their `user_account_id`, so the office can reset the password. */
   accountId?: string;
+  /** The day they were archived with their last child, or "" when active. */
+  archivedAt?: string;
   phone: string;
   email: string;
   lineId: string;

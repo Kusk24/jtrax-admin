@@ -145,10 +145,25 @@ function ParentDetail({
                 <Icon name="mail" size={12} /> {t("emailAction")}
               </a>
             )}
+            {parent.archivedAt && (
+              <Badge color={COLORS.textSecondary} bg={COLORS.neutralBg}>{t("archived")}</Badge>
+            )}
           </>
         }
         actions={
           <>
+            {/* Archived with their last child: Restore lets them sign in again. */}
+            {parent.archivedAt && (
+              <button
+                type="button"
+                className="jt-btn-ghost"
+                disabled={busy}
+                onClick={() => void run(() => update("parents", parent.id, { archived_at: null }).then(() => undefined))}
+                style={{ ...secondaryButtonStyle, display: "inline-flex", alignItems: "center", gap: 6 }}
+              >
+                <Icon name="userCheck" size={15} /> {t("restoreParent")}
+              </button>
+            )}
             {/* A link to choose their own password, or a new one read out —
                 some rows still carry an invented address a link cannot reach. */}
             <PasswordMenu
@@ -733,7 +748,7 @@ export function ParentsPage({ detailId }: { detailId?: string }) {
                 onClick={() => setView({ kind: "detail", id: p.id })}
                 avatar={<Avatar initials={initialsOf(p.name)} size={44} />}
                 title={p.name}
-                subtitle={t("childCount", { count: p.children.length })}
+                subtitle={p.archivedAt ? `${t("archived")} · ${t("childCount", { count: p.children.length })}` : t("childCount", { count: p.children.length })}
                 actions={<RowActions label={p.name} onEdit={() => openEdit(p)} onDelete={() => openDelete(p)} />}
                 rows={[
                   { label: tCommon("email"), value: p.loginEmail || p.email || "—" },
@@ -805,6 +820,9 @@ export function ParentsPage({ detailId }: { detailId?: string }) {
                 >
                   {p.name}
                 </span>
+                {p.archivedAt && (
+                  <Badge color={COLORS.textSecondary} bg={COLORS.neutralBg}>{t("archived")}</Badge>
+                )}
               </span>
               <span
                 style={{
