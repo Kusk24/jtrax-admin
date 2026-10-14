@@ -29,6 +29,8 @@ export function MoreMenu({
   items: MoreMenuItem[];
   /** A worded button ("Password ⌄") instead of the row's quiet "⋯". */
   text?: string;
+  /** With `text`, shown before it; without, the button is this icon and a
+      small arrow (boxed like a row's other actions, `label` its tooltip). */
   icon?: IconName;
 }) {
   const [open, setOpen] = useState(false);
@@ -75,6 +77,8 @@ export function MoreMenu({
         type="button"
         className="jt-btn-ghost"
         aria-label={text ? undefined : label}
+        /* An icon alone says what it is on hover. */
+        title={!text && icon ? label : undefined}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
@@ -83,13 +87,19 @@ export function MoreMenu({
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
-          width: 30,
+          gap: 2,
+          /* An icon of its own carries a small arrow, so it reads as a menu. */
+          width: icon ? "auto" : 30,
+          padding: icon ? "0 5px 0 7px" : 0,
           height: 30,
           borderRadius: 8,
-          border: `1px solid ${open ? COLORS.border : "transparent"}`,
-          background: open ? COLORS.light : "transparent",
+          /* An icon of its own sits with a row's other action buttons, boxed
+             like them; the quiet "⋯" shows its box only while open. */
+          border: `1px solid ${icon || open ? COLORS.border : "transparent"}`,
+          background: open ? COLORS.light : icon ? COLORS.surface : "transparent",
           color: COLORS.textSecondary,
           cursor: "pointer",
+          flexShrink: 0,
         }}
       >
         {text ? (
@@ -98,6 +108,13 @@ export function MoreMenu({
             {text}
             <span aria-hidden style={{ display: "inline-flex", transform: open ? "rotate(180deg)" : undefined }}>
               <Icon name="chevronDown" size={14} />
+            </span>
+          </>
+        ) : icon ? (
+          <>
+            <Icon name={icon} size={14} color={COLORS.blue} />
+            <span aria-hidden style={{ display: "inline-flex", transform: open ? "rotate(180deg)" : undefined }}>
+              <Icon name="chevronDown" size={12} color={COLORS.textSecondary} />
             </span>
           </>
         ) : (

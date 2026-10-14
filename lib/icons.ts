@@ -136,6 +136,16 @@ const ICON_DATA = {
     ["line", { "x1": 17, "y1": 8, "x2": 21, "y2": 12 }],
     ["line", { "x1": 21, "y1": 8, "x2": 17, "y2": 12 }],
   ],
+  /* A contact card — an address-book entry: the card, its two rings, and the
+     person on it. For the Contact menu (phone, email, LINE), which is more
+     than any one of those icons says. */
+  "contact": [
+    ["rect", { "x": 3, "y": 4, "width": 18, "height": 17, "rx": 2 }],
+    ["line", { "x1": 8, "y1": 2, "x2": 8, "y2": 5.5 }],
+    ["line", { "x1": 16, "y1": 2, "x2": 16, "y2": 5.5 }],
+    ["circle", { "cx": 12, "cy": 11, "r": 3 }],
+    ["path", { "d": "M7 21a5 5 0 0 1 10 0" }],
+  ],
   "wallet": [
     ["path", { "d": "M3.5 7.5A1.5 1.5 0 0 1 5 6h13.5A1.5 1.5 0 0 1 20 7.5v10a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 17.5Z" }],
     ["path", { "d": "M3.5 10.5h16" }],

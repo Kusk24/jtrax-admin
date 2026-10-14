@@ -10,14 +10,23 @@ import { MoreMenu, type MoreMenuItem } from "./MoreMenu";
     value: phone (calls), email (a Gmail draft), LINE (their chat, opened in
     Messages — so only once a chat is linked). Nothing given, no menu. Its
     clicks never reach the row behind it. */
-export function ContactMenu({ student, chat }: { student: Student; chat: LineConversation | null }) {
+export function ContactMenu({
+  student, phone: phoneGiven, email: emailGiven, chat,
+}: {
+  /** A student's row: the guardian's phone and email are read from it. */
+  student?: Student;
+  /** Or given outright — a guardian's own row on the Parents page. */
+  phone?: string;
+  email?: string;
+  chat: LineConversation | null;
+}) {
   const t = useTranslations("students");
   const tCommon = useTranslations("common");
   const tMsg = useTranslations("messages");
   const router = useRouter();
   const items: MoreMenuItem[] = [];
-  const phone = (student.parentPhone ?? "").trim();
-  const email = (student.parentEmail ?? "").trim();
+  const phone = (phoneGiven ?? student?.parentPhone ?? "").trim();
+  const email = (emailGiven ?? student?.parentEmail ?? "").trim();
   if (phone) {
     items.push({
       label: phone,
@@ -48,5 +57,6 @@ export function ContactMenu({ student, chat }: { student: Student; chat: LineCon
     });
   }
   if (items.length === 0) return null;
-  return <MoreMenu label={t("contact")} text={t("contact")} items={items} />;
+  /* An icon, not a worded button: it sits in a busy action column. */
+  return <MoreMenu label={t("contact")} icon="contact" items={items} />;
 }

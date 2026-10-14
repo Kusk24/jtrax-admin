@@ -49,9 +49,12 @@ import { InviteOutcomeNote, inviteOutcome, type InviteOutcome } from "../InviteB
 import { PasswordMenu } from "../PasswordMenu";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
-import { LineChatLink, useLineChat } from "../messages/LineChatLink";
+import { LineChatLink, useLineChat, useLineChats } from "../messages/LineChatLink";
+import { chatFor } from "@/lib/line";
+import { ContactMenu } from "../ContactMenu";
 
-const TEMPLATE = equalTemplate(5, 90);
+/* The action column holds three icon buttons: Contact, Edit, Archive. */
+const TEMPLATE = `${equalTemplate(4, 90)} minmax(130px, 0.7fr)`;
 const VIEWS = ["list", "card"] as const;
 
 type View = { kind: "list" } | { kind: "detail"; id: string };
@@ -412,6 +415,8 @@ export function ParentsPage({ detailId }: { detailId?: string }) {
   const tCommon = useTranslations("common");
   const { parents, students, raw, loading, error, batch, create, update, remove, removePerson } = useData();
   const { showError } = useErrorToast();
+  /* For the Contact menu's LINE item: the chats the office has linked. */
+  const lineChats = useLineChats();
   const [view, setView] = useState<View>(detailId ? { kind: "detail", id: detailId } : { kind: "list" });
   const [mode, setMode] = useViewMode("parents", VIEWS);
   const [search, setSearch] = useState("");
@@ -851,7 +856,16 @@ export function ParentsPage({ detailId }: { detailId?: string }) {
                 avatar={<Avatar initials={initialsOf(p.name)} size={44} />}
                 title={p.name}
                 subtitle={p.archivedAt ? `${t("archived")} · ${t("childCount", { count: p.children.length })}` : t("childCount", { count: p.children.length })}
-                actions={<RowActions label={p.name} onEdit={() => openEdit(p)} {...archiveAction(p)} />}
+                actions={
+                  <span style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                    <ContactMenu
+                      phone={p.phone}
+                      email={p.loginEmail || p.email}
+                      chat={chatFor(lineChats, { parentId: p.id })}
+                    />
+                    <RowActions label={p.name} onEdit={() => openEdit(p)} {...archiveAction(p)} />
+                  </span>
+                }
                 rows={[
                   { label: tCommon("email"), value: p.loginEmail || p.email || "—" },
                   { label: tCommon("phone"), value: p.phone || "—" },
@@ -951,19 +965,18 @@ export function ParentsPage({ detailId }: { detailId?: string }) {
                   ))
                 )}
               </span>
-              {p.phone ? (
-                <a
-                  href={`tel:${p.phone.replace(/\s/g, "")}`}
-                  onClick={(e) => e.stopPropagation()}
-                  className="jt-qa-call"
-                  style={{ ...contactPillStyle, justifySelf: "start" }}
-                >
-                  <Icon name="phone" size={12} /> {t("call")}
-                </a>
-              ) : (
-                <span style={{ color: COLORS.textSecondary }}>—</span>
-              )}
-              <RowActions label={p.name} onEdit={() => openEdit(p)} {...archiveAction(p)} />
+              {/* The number itself; calling, mailing and LINE are in Contact. */}
+              <span style={{ color: p.phone ? COLORS.text : COLORS.textSecondary, fontVariantNumeric: "tabular-nums" }}>
+                {p.phone || "—"}
+              </span>
+              <span style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+                <ContactMenu
+                  phone={p.phone}
+                  email={p.loginEmail || p.email}
+                  chat={chatFor(lineChats, { parentId: p.id })}
+                />
+                <RowActions label={p.name} onEdit={() => openEdit(p)} {...archiveAction(p)} />
+              </span>
             </TableRow>
           ))}
         </Table>
