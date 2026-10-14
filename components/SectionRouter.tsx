@@ -70,14 +70,15 @@ export function SectionRouter({
 
   switch (section) {
     case "students":
-      /* Keyed so arriving from a different follow-up card resets the filter
-         rather than keeping the state of the previous visit. */
+      /* Not keyed by the filter or the open student: both live in the address
+         (lib/url-state) and follow it, Back included, without a remount. */
       return (
         <StudentsPage
-          key={`${newKey}|${status ?? ""}|${detailId ?? ""}`}
+          key={newKey}
           startWizard={startNew}
           startStatus={status}
           startDetailId={detailId}
+          query={query}
         />
       );
     case "parents":
