@@ -53,6 +53,12 @@ const raw: { enrollments: Row[]; [key: string]: unknown } = {
   creditTransactions: [] as Row[],
 };
 
+/* The ledger keeps its filters in the address (lib/url-state). */
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => "/payment",
+}));
+
 vi.mock("@/components/DataProvider", () => ({
   useData: () => ({
     students: STUDENTS,
