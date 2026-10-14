@@ -58,5 +58,5 @@ export function ContactMenu({
   }
   if (items.length === 0) return null;
   /* An icon, not a worded button: it sits in a busy action column. */
-  return <MoreMenu label={t("contact")} icon="send" items={items} />;
+  return <MoreMenu label={t("contact")} icon="contact" items={items} />;
 }
