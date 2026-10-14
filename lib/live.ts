@@ -274,6 +274,7 @@ export function toParents(c: LiveCollections): ParentPerson[] {
       name: s(p, "name"),
       loginEmail: s(p, "email"),
       accountId: s(p, "user_account_id"),
+      archivedAt: s(p, "archived_at"),
       phone: contact("phone"),
       email: contact("email"),
       lineId: contact("line_id"),

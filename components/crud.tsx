@@ -460,10 +460,18 @@ export function RowActions({
   emailLabel,
   onVoid,
   voidLabel,
+  onArchive,
+  archiveLabel,
+  archived = false,
   label,
 }: {
   onEdit?: () => void;
   onDelete?: () => void;
+  /* Archiving someone who has left (records kept), in place of Delete; for
+     one already archived, `archived` turns it into Restore. */
+  onArchive?: () => void;
+  archiveLabel?: string;
+  archived?: boolean;
   /* Voiding a record that is kept rather than deleted (a payment). */
   onVoid?: () => void;
   voidLabel?: string;
@@ -514,6 +522,18 @@ export function RowActions({
           style={iconButtonStyle}
         >
           <Icon name="x" size={14} color={COLORS.danger} />
+        </button>
+      )}
+      {onArchive && (
+        <button
+          type="button"
+          className="jt-btn-ghost"
+          aria-label={archiveLabel}
+          title={archiveLabel}
+          onClick={(e) => stop(e, onArchive)}
+          style={iconButtonStyle}
+        >
+          <Icon name={archived ? "userCheck" : "userX"} size={14} color={archived ? COLORS.blue : COLORS.textSecondary} />
         </button>
       )}
       {onDelete && (

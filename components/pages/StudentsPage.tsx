@@ -305,14 +305,45 @@ function StudentDetail({
   const [archiving, setArchiving] = useState(false);
   const [archiveReason, setArchiveReason] = useState("");
   const [archiveBusy, setArchiveBusy] = useState(false);
+  /* The guardians the office chose to archive with this student. */
+  const [archiveGuardians, setArchiveGuardians] = useState<string[]>([]);
+  /* This student's guardians who have no other child here, and are not
+     archived already: the ones archiving can offer to take too. A guardian
+     with another child stays, and is not asked about. */
+  const soleGuardians = useMemo(() => {
+    const mine = raw.studentParents.filter((sp) => String(sp["student_id"]) === student.id);
+    return mine.flatMap((link) => {
+      const parentId = String(link["parent_id"]);
+      const others = raw.studentParents.some(
+        (sp) => String(sp["parent_id"]) === parentId && String(sp["student_id"]) !== student.id,
+      );
+      const parent = raw.parents.find((p) => String(p["parent_id"]) === parentId);
+      return !others && parent && !parent["archived_at"] ? [{ id: parentId, name: String(parent["name"] ?? "") }] : [];
+    });
+  }, [raw.studentParents, raw.parents, student.id]);
   async function setArchived(on: boolean) {
     setArchiveBusy(true);
     try {
       await update("students", student.id, on
         ? { archived_at: todayISO(), archived_reason: archiveReason.trim() || null }
         : { archived_at: null, archived_reason: null });
+      if (on) {
+        for (const parentId of archiveGuardians) {
+          await update("parents", parentId, { archived_at: todayISO() });
+        }
+      } else {
+        /* Back with their guardian: one archived with them signs in again. */
+        const archivedGuardians = raw.studentParents
+          .filter((sp) => String(sp["student_id"]) === student.id)
+          .map((sp) => raw.parents.find((p) => String(p["parent_id"]) === String(sp["parent_id"])))
+          .filter((p) => p && p["archived_at"]);
+        for (const p of archivedGuardians) {
+          await update("parents", String(p!["parent_id"]), { archived_at: null });
+        }
+      }
       setArchiving(false);
       setArchiveReason("");
+      setArchiveGuardians([]);
     } catch (e) {
       showError(tCommon("saveFailed"), e);
     } finally {
@@ -1198,6 +1229,23 @@ function StudentDetail({
             {t("archiveReason")}
             <input value={archiveReason} onChange={(e) => setArchiveReason(e.target.value)} maxLength={200} style={fieldStyle} />
           </label>
+          {/* Only a guardian with no other child here is offered. */}
+          {soleGuardians.map((g) => (
+            <label
+              key={g.id}
+              style={{ display: "flex", alignItems: "center", gap: 9, fontFamily: FONT, fontSize: 13.5, color: COLORS.text, cursor: "pointer" }}
+            >
+              <input
+                type="checkbox"
+                checked={archiveGuardians.includes(g.id)}
+                onChange={(e) =>
+                  setArchiveGuardians((list) => (e.target.checked ? [...list, g.id] : list.filter((id) => id !== g.id)))
+                }
+                style={{ width: 16, height: 16, cursor: "pointer" }}
+              />
+              {t("alsoArchiveParent", { name: g.name })}
+            </label>
+          ))}
           <div style={{ display: "flex", gap: 9 }}>
             <button type="button" style={secondaryButtonStyle} onClick={() => setArchiving(false)}>{tCommon("cancel")}</button>
             <button type="button" className="jt-btn-primary" style={primaryButtonStyle} disabled={archiveBusy} onClick={() => void setArchived(true)}>
