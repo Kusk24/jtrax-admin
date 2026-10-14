@@ -1,13 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { classTypeOf } from "@/lib/class-face";
 import { useCourseLabel } from "../CourseName";
 import { useData } from "@/components/DataProvider";
 import type { Announcement, AnnouncementAudience } from "@/lib/data";
 import { Icon } from "@/lib/icons";
-import { fmtDate, liveClasses } from "@/lib/live";
+import { liveClasses } from "@/lib/live";
 import { COLORS, FONT } from "@/lib/theme";
 import {
   AddButton, ConfirmDeleteModal, CrudFormModal, RowActions,
@@ -52,15 +52,129 @@ function nowMinute(): string {
 }
 
 /** "12 Oct 2026, 09:00". */
-function fmtWhen(v: string): string {
-  const [day, time] = v.split("T");
-  return `${fmtDate(day)}, ${time}`;
+/** A window's end, "YYYY-MM-DDTHH:MM", as "14 Oct, 10:00 AM": the year
+    only when it is not this one, the time as the reader's language says it. */
+function fmtWhen(v: string, locale: string, thisYear: string): string {
+  const [day, time = "00:00"] = v.split("T");
+  const d = new Date(`${day}T${time}:00`);
+  if (Number.isNaN(d.getTime())) return v;
+  const tag = locale === "th" ? "th-TH" : "en-GB";
+  const date = d.toLocaleDateString(tag, {
+    day: "numeric",
+    month: "short",
+    ...(day.slice(0, 4) !== thisYear ? { year: "numeric" } : {}),
+  });
+  return `${date}, ${fmtClock(d, locale)}`;
+}
+
+/** "10:00 AM" in English, as Thai readers write it in Thai. */
+function fmtClock(d: Date, locale: string): string {
+  return d.toLocaleTimeString(locale === "th" ? "th-TH" : "en-US", { hour: "numeric", minute: "2-digit" });
 }
 
 /** The end of a window: its time alone when it ends the day it starts, so
-    the day is not written twice ("14 Oct 2026, 22:55 – 22:59"). */
-function fmtUntil(from: string, until: string): string {
-  return from && from.slice(0, 10) === until.slice(0, 10) ? until.split("T")[1] ?? until : fmtWhen(until);
+    the day is not written twice ("14 Oct, 10:55 PM – 10:59 PM"). */
+function fmtUntil(from: string, until: string, locale: string, thisYear: string): string {
+  if (from && from.slice(0, 10) === until.slice(0, 10)) {
+    const d = new Date(`${until.slice(0, 10)}T${until.split("T")[1] ?? "00:00"}:00`);
+    return Number.isNaN(d.getTime()) ? until : fmtClock(d, locale);
+  }
+  return fmtWhen(until, locale, thisYear);
+}
+
+/**
+ * One announcement: a megaphone tile; the title with whether it is showing;
+ * one line of who it is to and when; a rule; and the text, long text folded
+ * to three lines behind Read more.
+ */
+function AnnouncementCard({
+  a, audience, now, actions,
+}: {
+  a: Announcement;
+  audience: string;
+  now: string;
+  actions: React.ReactNode;
+}) {
+  const t = useTranslations("announcement");
+  const locale = useLocale();
+  const [open, setOpen] = useState(false);
+  const thisYear = now.slice(0, 4);
+  const when =
+    a.showFrom && a.showUntil
+      ? t("windowBoth", { from: fmtWhen(a.showFrom, locale, thisYear), until: fmtUntil(a.showFrom, a.showUntil, locale, thisYear) })
+      : a.showFrom
+        ? t("windowFrom", { from: fmtWhen(a.showFrom, locale, thisYear) })
+        : a.showUntil
+          ? t("windowUntil", { until: fmtWhen(a.showUntil, locale, thisYear) })
+          : a.date;
+  /* Folded only when there is more than three lines' worth to fold. */
+  const long = a.body.length > 220 || a.body.split("\n").length > 3;
+  return (
+    <Card style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 13, minWidth: 0 }}>
+          <span
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 44,
+              height: 44,
+              borderRadius: 11,
+              background: COLORS.light,
+              flexShrink: 0,
+            }}
+          >
+            <Icon name="announcement" size={20} color={COLORS.blue} />
+          </span>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
+              <span style={{ fontFamily: FONT, fontSize: 16, fontWeight: 700, color: COLORS.text }}>{a.title}</span>
+              <WindowBadge state={windowState(a, now)} />
+            </div>
+            {/* Who it is to, and when it shows (else the day posted). */}
+            <div
+              title={t("toAudience", { audience })}
+              style={{ marginTop: 3, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}
+            >
+              {audience} · {when}
+            </div>
+          </div>
+        </div>
+        {actions}
+      </div>
+      {a.body && (
+        <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 14 }}>
+          <p
+            style={{
+              margin: 0,
+              fontFamily: FONT,
+              fontSize: 14.5,
+              lineHeight: 1.6,
+              color: COLORS.text,
+              whiteSpace: "pre-line",
+              ...(long && !open
+                ? { display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }
+                : {}),
+            }}
+          >
+            {a.body}
+          </p>
+          {long && (
+            <button
+              type="button"
+              className="jt-btn-ghost"
+              aria-expanded={open}
+              onClick={() => setOpen((v) => !v)}
+              style={{ marginTop: 8, padding: 0, border: "none", background: "none", fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.blue, cursor: "pointer" }}
+            >
+              {open ? t("showLess") : t("readMore")}
+            </button>
+          )}
+        </div>
+      )}
+    </Card>
+  );
 }
 
 type Editing = { mode: "create" } | { mode: "edit"; id: string };
@@ -259,75 +373,21 @@ export function AnnouncementPage({
           </Card>
         )}
         {rows.map((a, i) => (
-          <Card key={a.id ?? `${a.title}-${i}`} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 11, minWidth: 0 }}>
-                <span
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: 34,
-                    height: 34,
-                    borderRadius: "50%",
-                    background: COLORS.light,
-                    flexShrink: 0,
-                  }}
-                >
-                  <Icon name="announcement" size={17} color={COLORS.blue} />
-                </span>
-                {/* Title with whether it is showing; then who it is to; then
-                    when — the day posted and, if it has one, its window. */}
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <span style={{ fontFamily: FONT, fontSize: 15.5, fontWeight: 700, color: COLORS.text }}>
-                      {a.title}
-                    </span>
-                    {(a.showFrom || a.showUntil) && <WindowBadge state={windowState(a, now)} />}
-                  </div>
-                  {/* Who it is to: the people icon says "to", so the line is the
-                      audience alone; "To: …" stays as its tooltip. */}
-                  <div
-                    title={t("toAudience", { audience: audienceLabel(a) })}
-                    style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 6, fontFamily: FONT, fontSize: 13, color: COLORS.text }}
-                  >
-                    <Icon name="parents" size={14} color={COLORS.textSecondary} />
-                    {audienceLabel(a)}
-                  </div>
-                  {/* The window when it has one (when it shows), else the day
-                      it was posted — never both, which wrote the day twice. */}
-                  <div style={{ marginTop: 3, display: "flex", alignItems: "center", gap: 6, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-                    <Icon name="clockSmall" size={14} color={COLORS.textSecondary} />
-                    {a.showFrom && a.showUntil
-                      ? t("windowBoth", { from: fmtWhen(a.showFrom), until: fmtUntil(a.showFrom, a.showUntil) })
-                      : a.showFrom
-                        ? t("windowFrom", { from: fmtWhen(a.showFrom) })
-                        : a.showUntil
-                          ? t("windowUntil", { until: fmtWhen(a.showUntil) })
-                          : a.date}
-                  </div>
-                </div>
-              </div>
-              {a.id && (
+          <AnnouncementCard
+            key={a.id ?? `${a.title}-${i}`}
+            a={a}
+            audience={audienceLabel(a)}
+            now={now}
+            actions={
+              a.id ? (
                 <RowActions
                   label={a.title}
                   onEdit={() => openEdit(a)}
                   onDelete={() => setDeleting({ id: a.id!, title: a.title })}
                 />
-              )}
-            </div>
-            <p
-              style={{
-                margin: 0,
-                fontFamily: FONT,
-                fontSize: 14,
-                lineHeight: 1.55,
-                color: COLORS.textSecondary,
-              }}
-            >
-              {a.body}
-            </p>
-          </Card>
+              ) : null
+            }
+          />
         ))}
       </div>
     </div>

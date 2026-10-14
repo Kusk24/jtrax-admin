@@ -1156,6 +1156,8 @@
     "selectToAsk": "Select {name}"
   },
   "announcement": {
+    "readMore": "Read more",
+    "showLess": "Show less",
     "title": "Announcement",
     "sub": "Messages to parents — all of them, some classes, or particular parents",
     "new": "New Announcement",
