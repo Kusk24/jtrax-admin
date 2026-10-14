@@ -112,7 +112,9 @@ export function SectionRouter({
     case "academy":
       return <AcademyPage />;
     case "chat":
-      return <MessagesPage key={detailId ?? "inbox"} detailId={detailId} />;
+      /* Not keyed by the chat: remounting would reconnect the live stream, and
+         the page follows the address itself. */
+      return <MessagesPage detailId={detailId} query={query} />;
     case "tournament":
       return (
         <TournamentPage
