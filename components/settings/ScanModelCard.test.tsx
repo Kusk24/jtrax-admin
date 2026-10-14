@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
-import type { ScanSettings, ScanTestResult } from "@/lib/ocr";
+import type { ScanModelList, ScanSettings, ScanTestResult } from "@/lib/ocr";
 import { starred } from "@/lib/starred-label";
 
 const state: ScanSettings = { configured: true, model: "gemini-2.5-flash", defaultModel: "gemini-2.5-flash", savedModel: "" };
@@ -22,9 +22,24 @@ const testScanModel = vi.fn(async (model?: string): Promise<ScanTestResult> =>
     : { ok: true, model: model, millis: 840 },
 );
 
+/* Google's list for the key, as the server passes it on. */
+const googleList: ScanModelList = {
+  models: [
+    { name: "gemini-3.8-flash", displayName: "Gemini 3.8 Flash",
+      price: { inputPerMillion: 0.75, outputPerMillion: 3.75 },
+      nextPrice: { from: "2027-01-01", inputPerMillion: 1.5, outputPerMillion: 7.5 } },
+    { name: "gemini-3.7-flash", displayName: "Gemini 3.7 Flash" },
+    { name: "gemini-2.5-flash", displayName: "Gemini 2.5 Flash", price: { inputPerMillion: 0.3, outputPerMillion: 2.5 } },
+  ],
+  pricesAsOf: "2026-10-13",
+  pricesSource: "https://ai.google.dev/gemini-api/docs/pricing",
+};
+const listScanModels = vi.fn(async (): Promise<ScanModelList> => googleList);
+
 vi.mock("@/lib/ocr", async (actual) => ({
   ...(await actual<typeof import("@/lib/ocr")>()),
   getScanSettings: () => getScanSettings(),
+  listScanModels: () => listScanModels(),
   saveScanModel: (m: string) => saveScanModel(m),
   testScanModel: (m?: string) => testScanModel(m),
 }));
@@ -70,10 +85,11 @@ describe("the scanning card", () => {
   it("tests the model again by itself after saving", async () => {
     renderCard();
     await waitFor(() => expect(picker().disabled).toBe(false));
-    fireEvent.change(picker(), { target: { value: "gemini-3.5-flash-lite" } });
+    await waitFor(() => expect(picker().options.length).toBeGreaterThan(2));
+    fireEvent.change(picker(), { target: { value: "gemini-3.8-flash" } });
     // Saved without pressing Test first.
     fireEvent.click(screen.getByRole("button", { name: en.settings.scanSave }));
-    await waitFor(() => expect(saveScanModel).toHaveBeenCalledWith("gemini-3.5-flash-lite"));
+    await waitFor(() => expect(saveScanModel).toHaveBeenCalledWith("gemini-3.8-flash"));
     // No model named: the check is of what scans now use.
     await waitFor(() => expect(testScanModel).toHaveBeenCalledWith(undefined));
     const status = await screen.findByRole("status");
@@ -95,5 +111,32 @@ describe("the scanning card", () => {
     renderCard();
     expect(await screen.findByText(en.settings.scanNoKeyHelp)).toBeDefined();
     expect((screen.getByRole("button", { name: en.settings.scanTest }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("offers Google's own list, each with its price", async () => {
+    renderCard();
+    await waitFor(() => expect(picker().disabled).toBe(false));
+    await waitFor(() => expect(picker().options.length).toBe(1 + googleList.models.length + 1));
+    const labels = Array.from(picker().options).map((o) => o.textContent);
+    expect(labels).toContain("gemini-3.8-flash · $0.75 / $3.75 per 1M tokens");
+    // No price from Google: no number made up.
+    expect(labels).toContain("gemini-3.7-flash");
+
+    fireEvent.change(picker(), { target: { value: "gemini-3.8-flash" } });
+    expect(await screen.findByText(/Price: \$0\.75 per million input tokens/)).toBeDefined();
+    // The rise Google announced, with its date.
+    expect(screen.getByText(/From Jan 1, 2027: \$1\.50 \/ \$7\.50/)).toBeDefined();
+    expect(screen.getByText(/Prices from Google's pricing page, Oct 13, 2026/)).toBeDefined();
+
+    fireEvent.change(picker(), { target: { value: "gemini-3.7-flash" } });
+    expect(await screen.findByText("Google doesn't publish a price for gemini-3.7-flash.")).toBeDefined();
+  });
+
+  it("keeps the built-in list, and says why, when Google refuses", async () => {
+    listScanModels.mockResolvedValueOnce({ ...googleList, models: [], reason: "key_rejected", status: 403 });
+    renderCard();
+    expect(await screen.findByText(`${en.settings.scanListFailed} (key_rejected 403)`)).toBeDefined();
+    const labels = Array.from(picker().options).map((o) => o.value);
+    expect(labels).toContain("gemini-3.8-flash");
   });
 });

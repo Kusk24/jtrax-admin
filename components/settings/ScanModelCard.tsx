@@ -3,7 +3,8 @@
 /* Which Gemini model reads the photographed registration forms and ID cards.
  *
  * Google withdraws models and limits new keys often enough that the model has
- * to be changeable here, not only in the server's environment. The Test button
+ * to be changeable here, not only in the server's environment. The list is
+ * Google's own for the server's key, each with its price. The Test button
  * checks a model against the server's key before it is saved, and every save is
  * tested again straight after, so a model saved untested still shows whether
  * it works.
@@ -11,14 +12,18 @@
  * The key itself never reaches this screen. It stays on the server.
  */
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Icon } from "@/lib/icons";
 import {
+  formatUSD,
   getScanSettings,
   isValidModelName,
+  listScanModels,
   saveScanModel,
   SCAN_MODELS,
   testScanModel,
+  type ScanModelList,
+  type ScanPrice,
   type ScanSettings,
   type ScanTestResult,
 } from "@/lib/ocr";
@@ -31,16 +36,21 @@ import { Badge, Card } from "../ui";
 const DEFAULT = "";
 const OTHER = "__other__";
 
-function choiceFor(saved: string): string {
+function choiceFor(saved: string, known: readonly string[]): string {
   if (saved === "") return DEFAULT;
-  return (SCAN_MODELS as readonly string[]).includes(saved) ? saved : OTHER;
+  return known.includes(saved) ? saved : OTHER;
 }
 
 export function ScanModelCard() {
   const t = useTranslations("settings");
   const tCommon = useTranslations("common");
+  const locale = useLocale();
 
   const [settings, setSettings] = useState<ScanSettings | null>(null);
+  /* Google's list with prices. null while loading or when it could not be
+     asked; the built-in list stands in. */
+  const [list, setList] = useState<ScanModelList | null>(null);
+  const [listFailed, setListFailed] = useState(false);
   /* null until the admin touches the picker, so the saved model shows through
      without copying it into state in an effect. */
   const [picked, setPicked] = useState<string | null>(null);
@@ -62,14 +72,37 @@ export function ScanModelCard() {
         if (!cancelled) setError(errorText(e, tCommon("loadFailed")));
       }
     })();
+    /* Separately: Google being slow or refusing must not hold up the card. */
+    (async () => {
+      try {
+        const next = await listScanModels();
+        if (cancelled) return;
+        setList(next);
+        setListFailed(next.models.length === 0);
+      } catch {
+        if (!cancelled) setListFailed(true);
+      }
+    })();
     return () => {
       cancelled = true;
     };
   }, [tCommon]);
 
+  const known: readonly string[] = list && list.models.length > 0 ? list.models.map((m) => m.name) : SCAN_MODELS;
+  const priceOf = (name: string) => list?.models.find((m) => m.name === name);
+  const usd = (amount: number) => formatUSD(amount, locale);
+  const day = (iso: string) =>
+    new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" }).format(new Date(`${iso}T00:00:00`));
+  /* "$0.75 / $3.75", for a picker line. */
+  const shortPrice = (p: ScanPrice) => t("scanPriceShort", { input: usd(p.inputPerMillion), output: usd(p.outputPerMillion) });
+  const optionLabel = (name: string) => {
+    const price = priceOf(name)?.price;
+    return price ? `${name} · ${shortPrice(price)}` : name;
+  };
+
   const saved = settings?.savedModel ?? "";
-  const choice = picked ?? choiceFor(saved);
-  const other = typed ?? (choiceFor(saved) === OTHER ? saved : "");
+  const choice = picked ?? choiceFor(saved, known);
+  const other = typed ?? (choiceFor(saved, known) === OTHER ? saved : "");
   /* The model name the choice stands for. Empty means the server's default. */
   const model = choice === OTHER ? other.trim() : choice;
   const nameOk = choice !== OTHER || isValidModelName(model);
@@ -205,11 +238,11 @@ export function ScanModelCard() {
             style={selectStyle}
           >
             <option value={DEFAULT}>
-              {t("scanServerDefault", { model: settings?.defaultModel ?? "" })}
+              {t("scanServerDefault", { model: optionLabel(settings?.defaultModel ?? "") })}
             </option>
-            {SCAN_MODELS.map((m) => (
+            {known.map((m) => (
               <option key={m} value={m}>
-                {m}
+                {optionLabel(m)}
               </option>
             ))}
             <option value={OTHER}>{t("scanOther")}</option>
@@ -242,6 +275,17 @@ export function ScanModelCard() {
           </div>
         )}
       </div>
+
+      {/* What the chosen model costs, and where the price comes from. */}
+      {settings && (model || settings.defaultModel) && (
+        <ScanPriceNote
+          name={model || settings.defaultModel}
+          list={list}
+          listFailed={listFailed}
+          usd={usd}
+          day={day}
+        />
+      )}
 
       {/* The outcome of the last test, right under what was tested. */}
       {(busy !== null || result) && (
@@ -291,5 +335,55 @@ export function ScanModelCard() {
         </button>
       </div>
     </Card>
+  );
+}
+
+/* The price of the model the picker stands on, the price Google has announced
+   next, and the date the prices were copied. Said plainly when there is no
+   price, or when Google's list could not be loaded. */
+function ScanPriceNote({
+  name, list, listFailed, usd, day,
+}: {
+  name: string;
+  list: ScanModelList | null;
+  listFailed: boolean;
+  usd: (amount: number) => string;
+  day: (iso: string) => string;
+}) {
+  const t = useTranslations("settings");
+  const entry = list?.models.find((m) => m.name === name);
+  const lines: string[] = [];
+  if (listFailed) {
+    const code = list?.reason ? ` (${[list.reason, list.status || ""].join(" ").trim()})` : "";
+    lines.push(t("scanListFailed") + code);
+  } else if (list) {
+    if (entry?.price) {
+      lines.push(t("scanPrice", { input: usd(entry.price.inputPerMillion), output: usd(entry.price.outputPerMillion) }));
+      if (entry.nextPrice?.from) {
+        lines.push(t("scanPriceNext", {
+          date: day(entry.nextPrice.from),
+          input: usd(entry.nextPrice.inputPerMillion),
+          output: usd(entry.nextPrice.outputPerMillion),
+        }));
+      }
+    } else {
+      lines.push(t("scanPriceUnknown", { model: name }));
+    }
+  }
+  if (lines.length === 0) return null;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 3, fontFamily: FONT, fontSize: 12.5, lineHeight: 1.5, color: COLORS.textSecondary }}>
+      {lines.map((line) => (
+        <span key={line}>{line}</span>
+      ))}
+      {list && !listFailed && (
+        <span>
+          {t("scanPricesFrom", { date: day(list.pricesAsOf) })}{" "}
+          <a href={list.pricesSource} target="_blank" rel="noreferrer" style={{ color: COLORS.blue }}>
+            {t("scanPricesLink")}
+          </a>
+        </span>
+      )}
+    </div>
   );
 }
