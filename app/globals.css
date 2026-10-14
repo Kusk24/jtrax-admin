@@ -1269,6 +1269,26 @@ textarea {
     box-shadow: 0 4px 12px rgb(26 43 74 / 0.14);
     cursor: pointer;
     transition: background 160ms ease, border-color 160ms ease;
+    /* Clicking the sidebar's empty space toggles it now; the button is kept
+       for the keyboard and shows only when tabbed to. */
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .jt-sidebar-toggle:focus-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* The empty space is the control: say so with the pointer. */
+  .jt-sidebar {
+    cursor: pointer;
+  }
+
+  /* The logo takes only its own width, so the space beside it is the
+     sidebar's (a click there collapses it) rather than a link home. */
+  .jt-sidebar.is-expanded > a:first-child {
+    align-self: flex-start;
   }
 
   .jt-sidebar-toggle:hover {

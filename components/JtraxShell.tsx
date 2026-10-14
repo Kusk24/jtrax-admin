@@ -58,9 +58,19 @@ function Sidebar({
     /* Layout lives in `.jt-sidebar` in globals.css, not here: it changes with
        the viewport, and an inline style cannot carry a media query — nor be
        overridden by one, which is the trap. Only the colours stay inline. */
+    /* A click on the sidebar's empty space — beside the logo, between or
+       under the links — opens or closes it, on the desktop rail only (the
+       phone strip has nothing to collapse). Links, buttons and the logout
+       form keep their own clicks. The toggle button stays for the keyboard,
+       shown only when focused. */
     <aside
       className={`jt-sidebar${expanded ? " is-expanded" : ""}`}
       style={{ background: COLORS.surface, zIndex: 20 }}
+      onClick={(e) => {
+        if ((e.target as HTMLElement).closest("a, button, input, select, textarea, label, form")) return;
+        if (window.matchMedia && !window.matchMedia("(width >= 1024px)").matches) return;
+        onToggle();
+      }}
     >
       <Link
         href="/"
