@@ -285,9 +285,14 @@ export function AnnouncementPage({
                     </span>
                     {(a.showFrom || a.showUntil) && <WindowBadge state={windowState(a, now)} />}
                   </div>
-                  <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 6, fontFamily: FONT, fontSize: 13, color: COLORS.text }}>
+                  {/* Who it is to: the people icon says "to", so the line is the
+                      audience alone; "To: …" stays as its tooltip. */}
+                  <div
+                    title={t("toAudience", { audience: audienceLabel(a) })}
+                    style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 6, fontFamily: FONT, fontSize: 13, color: COLORS.text }}
+                  >
                     <Icon name="parents" size={14} color={COLORS.textSecondary} />
-                    {t("toAudience", { audience: audienceLabel(a) })}
+                    {audienceLabel(a)}
                   </div>
                   {/* The window when it has one (when it shows), else the day
                       it was posted — never both, which wrote the day twice. */}

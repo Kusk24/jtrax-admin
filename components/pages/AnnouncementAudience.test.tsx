@@ -144,9 +144,11 @@ describe("the announcement list", () => {
         <AnnouncementPage />
       </NextIntlClientProvider>,
     );
-    expect(screen.getByText(/To: All parents/)).toBeTruthy();
+    /* The audience by the people icon; "To: …" is its tooltip. */
+    expect(screen.getByText("All parents")).toBeTruthy();
+    expect(screen.getByTitle("To: All parents")).toBeTruthy();
     /* Each course with how it is taught. */
-    expect(screen.getByText(/To: Master · Group, King Slayer · Group/)).toBeTruthy();
+    expect(screen.getByText("Master · Group, King Slayer · Group")).toBeTruthy();
   });
 });
 
@@ -188,7 +190,7 @@ describe("when parents see it", () => {
     /* The window in place of the day posted, so no day is written twice. */
     expect(screen.getByText("From 1 Jan 2099, 09:00")).toBeTruthy();
     expect(screen.queryByText(/1 Sep 2026/)).toBeNull();
-    expect(screen.getAllByText("To: All parents")).toHaveLength(3);
+    expect(screen.getAllByTitle("To: All parents")).toHaveLength(3);
   });
 
   it("writes a window that starts and ends on one day with the day once", () => {
