@@ -3,8 +3,8 @@
  *
  * It shipped collapsed to the icon rail, which made the first act of every
  * session decoding eleven icons. The labels are the navigation, so the shell
- * opens expanded; the rail is a choice made with the chevron, and it still
- * works both ways.
+ * opens expanded; the rail is a choice — a click in the sidebar's empty space,
+ * or the chevron from the keyboard — and it works both ways.
  */
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
@@ -46,6 +46,21 @@ describe("the sidebar", () => {
     expect(container.querySelector(".jt-sidebar")?.classList.contains("is-expanded")).toBe(false);
     await user.click(screen.getByRole("button", { name: en.nav.expandNav }));
     expect(container.querySelector(".jt-sidebar")?.classList.contains("is-expanded")).toBe(true);
+  });
+
+  it("collapses and opens on a click in its empty space, not on a link", async () => {
+    const user = userEvent.setup();
+    const { container } = renderShell();
+    const aside = container.querySelector(".jt-sidebar") as HTMLElement;
+    const nav = aside.querySelector("nav") as HTMLElement;
+
+    await user.click(screen.getByRole("link", { name: en.nav.students }));
+    expect(aside.classList.contains("is-expanded")).toBe(true);
+
+    await user.click(nav); // the space under the links
+    expect(aside.classList.contains("is-expanded")).toBe(false);
+    await user.click(aside);
+    expect(aside.classList.contains("is-expanded")).toBe(true);
   });
 });
 
