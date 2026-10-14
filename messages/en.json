@@ -744,6 +744,8 @@
     "studentEmail": "Student email (optional)",
     "studentEmailHelp": "For a student who signs in with their own email",
     "studentEmailInvalid": "Enter a valid email address",
+    "emailIsArchivedStudent": "This email belongs to {name}, who is archived. Restore them instead.",
+    "openArchivedStudent": "Open {name}",
     "studentEmailTaken": "This email already has an account",
     "studentOwnEmailHint": "They sign in with their own email, and can reset the password themselves with Forgot password.",
     "hoursShort": "{hours} h",

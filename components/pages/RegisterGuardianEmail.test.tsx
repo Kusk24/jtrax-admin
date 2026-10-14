@@ -15,8 +15,9 @@ import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
 
 vi.mock("@/components/JtraxContext", () => ({ useJtrax: () => ({ role: "Admin" }) }));
+const push = vi.fn();
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push, replace: vi.fn() }),
   usePathname: () => "/students",
 }));
 
@@ -31,12 +32,15 @@ const COLLECTIONS = [
 const raw: Record<string, Row[]> = Object.fromEntries(COLLECTIONS.map((k) => [k, []]));
 
 const create = vi.fn<(path: string, body: Row) => Promise<Row>>(async () => ({}));
+/* Everyone, the archived included: who an email might belong to. */
+let allStudents: Array<{ id: string; name: string; accountId?: string; archivedAt?: string }> = [];
 
 vi.mock("@/components/DataProvider", () => ({
   useData: () => ({
     raw,
     creditRules: { lowCredit: 3, expiringDays: 7, inactiveDays: 30, certHours: 50, maxNegativeCredit: 0, checkoutRoundMinutes: 15 },
     students: [],
+    allStudents,
     loading: false,
     error: null,
     batch: async (job: () => Promise<unknown>) => job(),
@@ -62,6 +66,8 @@ beforeEach(() => {
   create.mockImplementation(async () => ({}));
   raw.accounts = [];
   raw.parents = [];
+  allStudents = [];
+  push.mockReset();
 });
 
 function renderForm() {
@@ -210,5 +216,29 @@ describe("the date of birth", () => {
     expect(screen.getByText("Date of birth must be at least 1 year ago.")).toBeDefined();
     expect(submit().disabled).toBe(true);
     void user;
+  });
+});
+
+describe("an email that belongs to an archived student", () => {
+  it("says whose it is, blocks saving, and opens them to restore", async () => {
+    raw.accounts = [{ user_account_id: "usr_sunny", email: "u6612128@au.edu", role: "Student", display_name: "Sunny" }];
+    allStudents = [{ id: "stu_sunny", name: "Sunny", accountId: "usr_sunny", archivedAt: "2026-10-01" }];
+    const user = renderForm();
+    await fillGuardian(user, "moni@example.com");
+    await user.type(screen.getByLabelText(/^Student email/), "u6612128@au.edu");
+
+    expect(screen.getByText("This email belongs to Sunny, who is archived. Restore them instead.")).toBeDefined();
+    expect(submit().disabled).toBe(true);
+    await user.click(screen.getByRole("button", { name: "Open Sunny" }));
+    expect(push).toHaveBeenCalledWith("/students?id=stu_sunny");
+  });
+
+  it("says the same in the guardian's email", async () => {
+    raw.accounts = [{ user_account_id: "usr_sunny", email: "u6612128@au.edu", role: "Student", display_name: "Sunny" }];
+    allStudents = [{ id: "stu_sunny", name: "Sunny", accountId: "usr_sunny", archivedAt: "2026-10-01" }];
+    const user = renderForm();
+    await fillGuardian(user, "u6612128@au.edu");
+    expect(screen.getByText("This email belongs to Sunny, who is archived. Restore them instead.")).toBeDefined();
+    expect(screen.getByRole("button", { name: "Open Sunny" })).toBeDefined();
   });
 });
