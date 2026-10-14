@@ -120,6 +120,7 @@ export function SectionRouter({
           detailId={detailId}
           detailTab={detailTab}
           startNew={opensCreate(startNew)}
+          query={query}
         />
       );
     default:

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { Participant } from "./data";
-import { filterParticipants, nextSort, NO_FILTERS, paymentOf } from "./participant-filters";
+import {
+  ATTENDING_FILTERS, filterParticipants, nextSort, NO_FILTERS, PAYMENT_FILTERS, paymentOf, pick, sortFrom,
+} from "./participant-filters";
 
 const base = {
   rating: 0, score: "", rank: 0, prize: "", guardian: "", contact: "", wins: 0, losses: 0, draws: 0,
@@ -47,5 +49,20 @@ describe("participant filters", () => {
     expect([a, d, nextSort(d, "age"), nextSort(d, "amount")]).toEqual([
       { key: "age", dir: "asc" }, { key: "age", dir: "desc" }, null, { key: "amount", dir: "asc" },
     ]);
+  });
+});
+
+describe("reading filters back from the address", () => {
+  it("knows a sort it wrote and refuses anything else", () => {
+    expect(sortFrom("age.desc")).toEqual({ key: "age", dir: "desc" });
+    expect(sortFrom("amount.asc")).toEqual({ key: "amount", dir: "asc" });
+    expect(sortFrom("name.asc")).toBeNull();
+    expect(sortFrom("")).toBeNull();
+  });
+  it("reads an unknown payment or attending value as no filter", () => {
+    expect(pick("Paid", PAYMENT_FILTERS, "")).toBe("Paid");
+    expect(pick("Refunded", PAYMENT_FILTERS, "")).toBe("");
+    expect(pick("attending", ATTENDING_FILTERS, "")).toBe("attending");
+    expect(pick("maybe", ATTENDING_FILTERS, "")).toBe("");
   });
 });

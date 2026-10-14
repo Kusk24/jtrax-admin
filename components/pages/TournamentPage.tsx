@@ -19,6 +19,7 @@ import { mapEmbedUrl } from "@/lib/maps";
 import {
   filterParticipants, nextSort, NO_FILTERS,
   type ParticipantFilters, type PaymentFilter, type SortKey,
+  ATTENDING_FILTERS, PAYMENT_FILTERS, pick, sortFrom,
 } from "@/lib/participant-filters";
 import { useNewParticipants } from "@/lib/seen-participants";
 import { duplicateEntry } from "@/lib/duplicate-entry";
@@ -65,7 +66,7 @@ import { BackLink, DeleteButton, EditButton } from "../detail";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
 import { useErrorToast } from "../ErrorToast";
-import { useUrlBackedState } from "@/lib/url-state";
+import { pageFrom, pageParam, useSessionText, useUrlBackedState } from "@/lib/url-state";
 import { ApiError } from "@/lib/api";
 import { refreshLinkedResults } from "@/lib/chess-results";
 import { ArrivalEmailButton } from "../tournament/ArrivalEmailButton";
@@ -131,12 +132,15 @@ function draftFromRow(row: Record<string, unknown> | undefined): Record<string, 
 function TournamentDetail({
   tournament,
   initialTab,
+  query = {},
   startInEditing,
   onBack,
   onDelete,
 }: {
   /* Which tab the address bar asked for. */
   initialTab?: string;
+  /* The rest of the address: the Participants filters and page. */
+  query?: Record<string, string>;
   tournament: Tournament;
   /* The list's own "Edit" shortcut skips straight past the read-only view —
      it exists to get here, not to look around first. */
@@ -441,10 +445,40 @@ function TournamentDetail({
     );
   }
 
-  const [filters, setFilters] = useState<ParticipantFilters>(NO_FILTERS);
-  const setFilter = (patch: Partial<ParticipantFilters>) => { setFilters((f) => ({ ...f, ...patch })); setPage(0); };
+  /* The Participants filters and page live in the address, one key each, so
+     a reload or Back keeps the table as it was; the search box is kept for
+     the tab. */
+  const [search, setSearch] = useSessionText(`tournament.${tournament.id}.participants`);
+  const [category, setCategory] = useUrlBackedState("category", query.category ?? "");
+  const [payment, setPayment] = useUrlBackedState("payment", query.payment ?? "");
+  const [attending, setAttending] = useUrlBackedState("attending", query.attending ?? "");
+  const [from, setFrom] = useUrlBackedState("from", query.from ?? "");
+  const [to, setTo] = useUrlBackedState("to", query.to ?? "");
+  const [sortRaw, setSortRaw] = useUrlBackedState("sort", query.sort ?? "");
+  const filters = useMemo<ParticipantFilters>(() => ({
+    ...NO_FILTERS,
+    search,
+    category,
+    payment: pick(payment, PAYMENT_FILTERS, ""),
+    attending: pick(attending, ATTENDING_FILTERS, ""),
+    from,
+    to,
+    sort: sortFrom(sortRaw),
+  }), [search, category, payment, attending, from, to, sortRaw]);
+  const setFilter = (patch: Partial<ParticipantFilters>) => {
+    if (patch.search !== undefined) setSearch(patch.search);
+    if (patch.category !== undefined) setCategory(patch.category);
+    if (patch.payment !== undefined) setPayment(patch.payment);
+    if (patch.attending !== undefined) setAttending(patch.attending);
+    if (patch.from !== undefined) setFrom(patch.from);
+    if (patch.to !== undefined) setTo(patch.to);
+    if (patch.sort !== undefined) setSortRaw(patch.sort ? `${patch.sort.key}.${patch.sort.dir}` : "");
+    setPage(0);
+  };
   const sortDir = (key: SortKey) => (filters.sort?.key === key ? filters.sort.dir : null);
-  const [page, setPage] = useState(0);
+  const [pageRaw, setPageRaw] = useUrlBackedState("page", query.page ?? "");
+  const page = pageFrom(pageRaw);
+  const setPage = (n: number) => { if (n !== page) setPageRaw(pageParam(n)); };
   const [mode, setMode] = useViewMode("participants", LIST_FIRST);
   const [drawer, setDrawer] = useState<Participant | null>(null);
   /* Which chess-results player an entry is, when staff picked one because the
@@ -1417,7 +1451,9 @@ function ChessResultsJump({ id, name, compact }: { id: number; name: string; com
 }
 
 /* Stable identity: a fresh array each render would re-make the setter. */
-const TAB_PARAM = ["tab"];
+/* Closing a tournament clears what only meant something inside it: its tab and
+   the Participants filters and page. */
+const TAB_PARAM = ["tab", "category", "payment", "attending", "from", "to", "sort", "page"];
 
 
 
@@ -1452,7 +1488,10 @@ export function TournamentPage({
   detailId,
   detailTab,
   startNew,
+  query = {},
 }: {
+  /* The rest of the address, for the open tournament's Participants filters. */
+  query?: Record<string, string>;
   /* Threaded from the route's searchParams so a reload keeps the open row. */
   detailId?: string;
   detailTab?: string;
@@ -1469,7 +1508,7 @@ export function TournamentPage({
   const [selectedId, setSelectedId] = useUrlBackedState<string>("id", detailId ?? "", TAB_PARAM, "push");
   const [wizardOpen, setWizardOpen] = useState(Boolean(startNew));
   const [mode, setMode] = useViewMode("tournaments", CARD_FIRST);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useSessionText("tournaments.search");
   /* One view at a time. Stacked "Ongoing / Past / External" sections made the
      page a scroll through three unrelated lists; the tabs match the detail
      page's own idiom. */
@@ -1557,6 +1596,7 @@ export function TournamentPage({
         <TournamentDetail
           tournament={selected}
           initialTab={detailTab}
+          query={query}
           startInEditing={editFromList}
           onBack={() => setSelectedId("")}
           onDelete={billed.has(selected.id) ? undefined : () => setDeleting(selected)}
