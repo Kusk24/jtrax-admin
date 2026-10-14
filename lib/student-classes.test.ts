@@ -116,6 +116,20 @@ describe("the Credit column", () => {
     expect(creditsByClass(WITH_TXS, "boon")).toMatchObject([{ className: "Intermediate", balance: 4 }]);
   });
 
+  it("shows no unassigned row when the credits outside a course come to nothing", () => {
+    /* All moved out: what is left sums to 1e-15, which is nothing. */
+    const moved = {
+      ...RAW,
+      creditTransactions: [
+        { enrollment_id: "e4", student_id: "boon", amount: 4 },
+        { enrollment_id: "", student_id: "boon", amount: 0.1 },
+        { enrollment_id: "", student_id: "boon", amount: 0.2 },
+        { enrollment_id: "", student_id: "boon", amount: -0.3 },
+      ],
+    };
+    expect(creditsByClass(moved, "boon")).toMatchObject([{ className: "Intermediate", balance: 4 }]);
+  });
+
   it("shows hours held outside any course, unnamed", () => {
     expect(creditsByClass(WITH_TXS, "chai")).toMatchObject([{ className: "", balance: 2 }]);
   });
