@@ -19,6 +19,30 @@
 import { useCallback, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
+/* The query string the last write asked for, until the address catches up.
+   router.replace lands after the click handler returns, so a handler that
+   sets a filter and then resets the page would build the second address from
+   the stale one and drop the filter. Forgotten once the address matches, and
+   on Back/Forward, which make the address the truth again. */
+let pending: { path: string; search: string } | null = null;
+if (typeof window !== "undefined") {
+  window.addEventListener("popstate", () => {
+    pending = null;
+  });
+}
+
+/** The query string to build the next address from. Exported for tests. */
+export function liveSearch(path: string, current: string): string {
+  if (pending && pending.path === path && pending.search !== current) return pending.search;
+  pending = null;
+  return current;
+}
+
+/** Records the query string a write just asked for. Exported for tests. */
+export function rememberWrite(path: string, search: string) {
+  pending = { path, search };
+}
+
 export function useUrlBackedState<T extends string>(
   key: string,
   initial: T,
@@ -52,13 +76,14 @@ export function useUrlBackedState<T extends string>(
     (next: T, how: "push" | "replace" = history) => {
       setValue(next);
       const q = new URLSearchParams(
-        typeof window === "undefined" ? "" : window.location.search,
+        typeof window === "undefined" ? "" : liveSearch(pathname, window.location.search),
       );
       if (!next) {
         q.delete(key);
         for (const k of clearWith) q.delete(k);
       } else q.set(key, next);
       const qs = q.toString();
+      rememberWrite(pathname, qs ? `?${qs}` : "");
       const url = qs ? `${pathname}?${qs}` : pathname;
       if (how === "push") router.push(url, { scroll: false });
       else router.replace(url, { scroll: false });
