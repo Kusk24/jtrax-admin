@@ -64,7 +64,12 @@ export function hoursJoined(
   let used = 0;
   for (const tx of raw.creditTransactions ?? []) {
     if (s(tx, "transaction_type") !== "consumption" || s(tx, "attendance_id") === "") continue;
-    if (!enrolments.has(s(tx, "enrollment_id"))) continue;
+    /* A course deleted from the child detaches its entries rather than
+       removing them (StudentsPage's deleteEnrolment): no enrolment, but still
+       their student and class, so the hours stay with the course. */
+    const detachedHere =
+      s(tx, "enrollment_id") === "" && s(tx, "student_id") === studentId && s(tx, "class_id") === classId;
+    if (!enrolments.has(s(tx, "enrollment_id")) && !detachedHere) continue;
     used -= Number(tx.amount ?? 0);
   }
   return Math.max(0, Math.round(used * 100) / 100);
