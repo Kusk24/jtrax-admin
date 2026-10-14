@@ -185,6 +185,8 @@ describe("when parents see it", () => {
     expect(screen.getByText(en.announcement.window_scheduled)).toBeTruthy();
     expect(screen.getByText(en.announcement.window_ended)).toBeTruthy();
     expect(screen.getByText(en.announcement.window_showing)).toBeTruthy();
-    expect(screen.getByText("From 1 Jan 2099, 09:00")).toBeTruthy();
+    /* The window sits on the date line, after the day it was posted. */
+    expect(screen.getByText("1 Sep 2026 · From 1 Jan 2099, 09:00")).toBeTruthy();
+    expect(screen.getAllByText("To: All parents")).toHaveLength(3);
   });
 });

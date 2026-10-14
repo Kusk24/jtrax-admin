@@ -270,25 +270,31 @@ export function AnnouncementPage({
                 >
                   <Icon name="announcement" size={17} color={COLORS.blue} />
                 </span>
+                {/* Title with whether it is showing; then who it is to; then
+                    when — the day posted and, if it has one, its window. */}
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontFamily: FONT, fontSize: 15.5, fontWeight: 700, color: COLORS.text }}>
-                    {a.title}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ fontFamily: FONT, fontSize: 15.5, fontWeight: 700, color: COLORS.text }}>
+                      {a.title}
+                    </span>
+                    {(a.showFrom || a.showUntil) && <WindowBadge state={windowState(a, now)} />}
                   </div>
-                  <div style={{ marginTop: 2, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
-                    {t("toAudience", { audience: audienceLabel(a) })} · {a.date}
+                  <div style={{ marginTop: 3, fontFamily: FONT, fontSize: 13, color: COLORS.text }}>
+                    {t("toAudience", { audience: audienceLabel(a) })}
                   </div>
-                  {(a.showFrom || a.showUntil) && (
-                    <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-                      <WindowBadge state={windowState(a, now)} />
-                      <span>
+                  <div style={{ marginTop: 2, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+                    {a.date}
+                    {(a.showFrom || a.showUntil) && (
+                      <>
+                        {" · "}
                         {a.showFrom && a.showUntil
                           ? t("windowBoth", { from: fmtWhen(a.showFrom), until: fmtWhen(a.showUntil) })
                           : a.showFrom
                             ? t("windowFrom", { from: fmtWhen(a.showFrom) })
                             : t("windowUntil", { until: fmtWhen(a.showUntil) })}
-                      </span>
-                    </div>
-                  )}
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
               {a.id && (
