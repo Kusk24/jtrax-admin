@@ -49,6 +49,7 @@ import { InviteOutcomeNote, inviteOutcome, type InviteOutcome } from "../InviteB
 import { PasswordMenu } from "../PasswordMenu";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
+import { pageFrom, pageParam, useSessionText, useUrlBackedState } from "@/lib/url-state";
 import { LineChatLink, useLineChat, useLineChats } from "../messages/LineChatLink";
 import { chatFor } from "@/lib/line";
 import { ContactMenu } from "../ContactMenu";
@@ -408,7 +409,14 @@ const contactPillStyle = {
    here to change a guardian's own details — a parent is their own record, and
    editing one through a child's page edits a person nobody is looking at — so
    the link has to land on them rather than on a list to search again. */
-export function ParentsPage({ detailId }: { detailId?: string }) {
+export function ParentsPage({
+  detailId,
+  query = {},
+}: {
+  detailId?: string;
+  /* The rest of the address: the list's filter and page (lib/url-state). */
+  query?: Record<string, string>;
+}) {
   const t = useTranslations("parents");
   /* The temporary-password modal reuses the students namespace, which is where
      that string already lives. */
@@ -417,12 +425,18 @@ export function ParentsPage({ detailId }: { detailId?: string }) {
   const { showError } = useErrorToast();
   /* For the Contact menu's LINE item: the chats the office has linked. */
   const lineChats = useLineChats();
-  const [view, setView] = useState<View>(detailId ? { kind: "detail", id: detailId } : { kind: "list" });
+  /* The open guardian, the filter and the page live in the address, so a
+     reload, a pasted link and Back all land where the office was. */
+  const [openId, setOpenId] = useUrlBackedState<string>("id", detailId ?? "", [], "push");
+  const view: View = openId ? { kind: "detail", id: openId } : { kind: "list" };
+  const setView = (next: View) => setOpenId(next.kind === "detail" ? next.id : "");
   const [mode, setMode] = useViewMode("parents", VIEWS);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useSessionText("parents.search");
   /* "" is "all", so the label can be localised without changing the compare. */
-  const [linked, setLinked] = useState("");
-  const [page, setPage] = useState(0);
+  const [linked, setLinked] = useUrlBackedState("linked", query.linked ?? "");
+  const [pageRaw, setPageRaw] = useUrlBackedState("page", query.page ?? "");
+  const page = pageFrom(pageRaw);
+  const setPage = (n: number) => setPageRaw(pageParam(n));
 
   const fields = parentFields(t, tCommon);
   /* A guardian created from this screen can be attached to a child straight
