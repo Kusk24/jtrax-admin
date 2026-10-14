@@ -50,6 +50,7 @@ import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
 import { DetailHeader, EditButton } from "../detail";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
+import { pageFrom, pageParam, useSessionText, useUrlBackedState } from "@/lib/url-state";
 import { useErrorToast } from "../ErrorToast";
 import { useJtrax } from "../JtraxContext";
 import { VoidPaymentModal } from "../payments/VoidPaymentModal";
@@ -835,12 +836,16 @@ export function PaymentPage({
   startStudentId,
   startClassId,
   startNew,
+  query = {},
 }: {
   startStudentId?: string;
   startClassId?: string;
   /* The dashboard's "Record Payment" pill, which means the form and not the
      ledger it is filed into. */
   startNew?: boolean;
+  /* The rest of the address: the ledger's filters, page and open payment
+     (lib/url-state). */
+  query?: Record<string, string>;
 }) {
   const t = useTranslations("payment");
   const tCommon = useTranslations("common");
@@ -855,17 +860,30 @@ export function PaymentPage({
      thing the desk does is take their money. */
   const [formOpen, setFormOpen] = useState(Boolean(startStudentId) || Boolean(startNew));
   const [mode, setMode] = useViewMode("payments", VIEWS);
-  const [search, setSearch] = useState("");
-  const [method, setMethod] = useState("");
+  /* Filters, page and the open payment live in the address, so a reload or
+     Back keeps the ledger as it was; the search box is kept for the tab. */
+  const [search, setSearch] = useSessionText("payments.search");
+  const [method, setMethod] = useUrlBackedState("method", query.method ?? "");
   /* Tournament fees or course credits; "" is both. */
-  const [kind, setKind] = useState("");
+  const [kind, setKind] = useUrlBackedState("kind", query.kind ?? "");
   /* A payment list is read by period far more often than by name — "what did
      we take in March" — so it filters by date the way class history does. */
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [page, setPage] = useState(0);
+  const [from, setFrom] = useUrlBackedState("from", query.from ?? "");
+  const [to, setTo] = useUrlBackedState("to", query.to ?? "");
+  const [pageRaw, setPageRaw] = useUrlBackedState("page", query.page ?? "");
+  const page = pageFrom(pageRaw);
+  const setPage = (n: number) => setPageRaw(pageParam(n));
 
-  const [detail, setDetail] = useState<Payment | null>(null);
+  /* The open payment by id, pushed so Back closes it. A row without an id
+     (not yet saved) opens on screen only. */
+  const [detailId, setDetailId] = useUrlBackedState<string>("id", query.id ?? "", [], "push");
+  const [unsaved, setUnsaved] = useState<Payment | null>(null);
+  const detail = (detailId ? payments.find((p) => p.id === detailId) : undefined) ?? unsaved;
+  const setDetail = (p: Payment | null) => {
+    setUnsaved(p && !p.id ? p : null);
+    const id = p?.id ?? "";
+    if (id !== detailId) setDetailId(id);
+  };
   const [editingId, setEditingId] = useState<string | null>(null);
   const [values, setValues] = useState<CrudValues>({});
 

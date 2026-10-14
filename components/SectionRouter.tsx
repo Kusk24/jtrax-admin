@@ -94,6 +94,7 @@ export function SectionRouter({
           startStudentId={studentId}
           startClassId={classId}
           startNew={opensCreate(startNew)}
+          query={query}
         />
       );
     case "classhistory":
