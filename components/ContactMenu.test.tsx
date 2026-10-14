@@ -33,11 +33,11 @@ describe("the Contact menu", () => {
   it("lists phone, email and LINE as an icon and the value", async () => {
     const { items } = await open(student({ parentPhone: "081 234 5678", parentEmail: "polly@mail.com" }), chat);
     expect(items).toEqual(["081 234 5678", "polly@mail.com", "Polly"]);
-    /* An icon alone, the size of the row's other actions; "Contact" on hover. */
+    /* The contact icon and a small arrow, no words; "Contact" on hover. */
     const button = screen.getByRole("button", { name: "Contact" });
     expect(button.textContent).toBe("");
     expect(button.getAttribute("title")).toBe("Contact");
-    expect(button.querySelectorAll("svg")).toHaveLength(1);
+    expect(button.querySelectorAll("svg")).toHaveLength(2);
   });
 
   it("leaves out what was not given", async () => {

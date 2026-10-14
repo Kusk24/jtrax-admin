@@ -54,7 +54,7 @@ import { chatFor } from "@/lib/line";
 import { ContactMenu } from "../ContactMenu";
 
 /* The action column holds three icon buttons: Contact, Edit, Archive. */
-const TEMPLATE = `${equalTemplate(4, 90)} minmax(120px, 0.7fr)`;
+const TEMPLATE = `${equalTemplate(4, 90)} minmax(130px, 0.7fr)`;
 const VIEWS = ["list", "card"] as const;
 
 type View = { kind: "list" } | { kind: "detail"; id: string };
