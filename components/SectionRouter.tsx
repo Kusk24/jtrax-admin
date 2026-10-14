@@ -104,7 +104,7 @@ export function SectionRouter({
     case "games":
       /* Not keyed by the game: stepping from one board to the next must keep
          the list's filters and its poll, not remount the page. */
-      return <GamesPage detailId={detailId} />;
+      return <GamesPage detailId={detailId} query={query} />;
     case "announcement":
       return <AnnouncementPage key={newKey} startNew={opensCreate(startNew)} />;
     case "settings":
