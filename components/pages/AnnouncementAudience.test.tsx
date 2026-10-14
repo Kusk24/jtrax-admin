@@ -144,9 +144,11 @@ describe("the announcement list", () => {
         <AnnouncementPage />
       </NextIntlClientProvider>,
     );
-    expect(screen.getByText(/To: All parents/)).toBeTruthy();
+    /* Who it is to, first on the line under the title; "To: …" its tooltip. */
+    expect(screen.getByText(/^All parents · /)).toBeTruthy();
+    expect(screen.getByTitle("To: All parents")).toBeTruthy();
     /* Each course with how it is taught. */
-    expect(screen.getByText(/To: Master · Group, King Slayer · Group/)).toBeTruthy();
+    expect(screen.getByText(/^Master · Group, King Slayer · Group · /)).toBeTruthy();
   });
 });
 
@@ -185,6 +187,42 @@ describe("when parents see it", () => {
     expect(screen.getByText(en.announcement.window_scheduled)).toBeTruthy();
     expect(screen.getByText(en.announcement.window_ended)).toBeTruthy();
     expect(screen.getByText(en.announcement.window_showing)).toBeTruthy();
-    expect(screen.getByText("From 1 Jan 2099, 09:00")).toBeTruthy();
+    /* The window in place of the day posted, so no day is written twice;
+       the year written because it is not this one. */
+    expect(screen.getByText("All parents · From 1 Jan 2099, 9:00 AM")).toBeTruthy();
+    expect(screen.queryByText(/1 Sep 2026/)).toBeNull();
+    expect(screen.getAllByTitle("To: All parents")).toHaveLength(3);
+  });
+
+  it("writes a window that starts and ends on one day with the day once", () => {
+    announcements.rows = [
+      { id: "a1", title: "dd", audienceKind: "all", audienceIds: [], date: "14 Oct 2099", body: "",
+        showFrom: "2099-10-14T22:55", showUntil: "2099-10-14T22:59" },
+      { id: "a2", title: "No window", audienceKind: "all", audienceIds: [], date: "13 Oct 2026", body: "" },
+    ];
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <AnnouncementPage />
+      </NextIntlClientProvider>,
+    );
+    expect(screen.getByText("All parents · 14 Oct 2099, 10:55 PM – 10:59 PM")).toBeTruthy();
+    /* No window: the day it was posted, and Showing. */
+    expect(screen.getByText("All parents · 13 Oct 2026")).toBeTruthy();
+  });
+
+  it("folds a long text behind Read more", async () => {
+    announcements.rows = [
+      { id: "a1", title: "Long", audienceKind: "all", audienceIds: [], date: "13 Oct 2026", body: "word ".repeat(80) },
+      { id: "a2", title: "Short", audienceKind: "all", audienceIds: [], date: "13 Oct 2026", body: "A short note." },
+    ];
+    const user = (await import("@testing-library/user-event")).default.setup();
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <AnnouncementPage />
+      </NextIntlClientProvider>,
+    );
+    expect(screen.getAllByRole("button", { name: "Read more" })).toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: "Read more" }));
+    expect(screen.getByRole("button", { name: "Show less" })).toBeTruthy();
   });
 });
