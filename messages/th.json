@@ -526,6 +526,8 @@
     "checkOut": "เช็คเอาท์"
   },
   "students": {
+    "archiveThing": "เก็บถาวร {name}",
+    "restoreThing": "กู้คืน {name}",
     "alsoArchiveParent": "เก็บถาวรผู้ปกครอง {name} ด้วย (ไม่มีบุตรคนอื่นที่นี่)",
     "title": "นักเรียน",
     "sub": "นักเรียนที่ลงทะเบียนและข้อมูลส่วนตัว",

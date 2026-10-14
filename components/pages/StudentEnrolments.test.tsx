@@ -13,7 +13,7 @@
  * calls it.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
@@ -1807,6 +1807,33 @@ describe("archiving a student who left", () => {
       await openStudent(user, "Chai");
       expect(screen.getByText(/Archived on/)).toBeDefined();
       await user.click(screen.getByRole("button", { name: en.students.restoreStudent }));
+      expect(update).toHaveBeenCalledWith("students", "chai", { archived_at: null, archived_reason: null });
+    } finally {
+      delete chai.archivedAt;
+    }
+  });
+});
+
+describe("the student table's Edit and Archive", () => {
+  it("opens the student's page on the form, or on the archive box", async () => {
+    let user = renderList();
+    await user.click(screen.getByRole("button", { name: "Edit Chai" }));
+    expect(screen.getByRole("button", { name: en.common.save })).toBeDefined();
+
+    cleanup();
+    user = renderList();
+    await user.click(screen.getByRole("button", { name: "Archive Chai" }));
+    expect(screen.getByRole("button", { name: en.students.archiveConfirm })).toBeDefined();
+    expect(screen.getByLabelText(en.students.archiveReason)).toBeDefined();
+  });
+
+  it("restores an archived student from the Archived list", async () => {
+    const chai = STUDENTS.find((s) => s.id === "chai")! as (typeof STUDENTS)[number] & { archivedAt?: string };
+    chai.archivedAt = "2026-10-14";
+    try {
+      const user = renderList();
+      await user.selectOptions(screen.getByRole("combobox", { name: en.common.status }), "Archived");
+      await user.click(screen.getByRole("button", { name: "Restore Chai" }));
       expect(update).toHaveBeenCalledWith("students", "chai", { archived_at: null, archived_reason: null });
     } finally {
       delete chai.archivedAt;

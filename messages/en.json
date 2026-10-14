@@ -526,6 +526,8 @@
     "checkOut": "Check Out"
   },
   "students": {
+    "archiveThing": "Archive {name}",
+    "restoreThing": "Restore {name}",
     "alsoArchiveParent": "Also archive their guardian, {name} (no other children here)",
     "title": "Students",
     "sub": "Enrolled students and profiles",
