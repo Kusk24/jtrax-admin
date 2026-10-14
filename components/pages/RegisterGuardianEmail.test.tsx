@@ -153,6 +153,43 @@ describe("a new guardian's invite", () => {
   });
 });
 
+describe("registering with a brand-new guardian email", () => {
+  it("never calls that email taken, and shows the logins before the invite has gone", async () => {
+    /* As the live data does: the accounts this save writes show up in the
+       data while the invite email is still being sent. */
+    create.mockImplementation(async (path: string, body: Row) => {
+      if (path === "user-accounts") {
+        const row = { user_account_id: body.role === "Parent" ? "usr_aye" : "usr_kid", ...body };
+        raw.accounts = [...raw.accounts, row];
+        return row;
+      }
+      if (path === "students") return { student_id: "stu_kid" };
+      if (path === "parents") {
+        raw.parents = [...raw.parents, { parent_id: "par_aye", user_account_id: "usr_aye", name: "aye" }];
+        return { parent_id: "par_aye" };
+      }
+      return {};
+    });
+    let sent: (v: unknown) => void = () => {};
+    post.mockImplementationOnce(() => new Promise((resolve) => { sent = resolve; }) as never);
+
+    const user = renderForm();
+    await user.type(screen.getByLabelText(/^Name( \*)?$/), "aye");
+    await user.type(screen.getByLabelText(/^Phone( \*)?$/), "0812345678");
+    await user.type(screen.getByLabelText(/^Email( \*)?$/), "aye@gmail.com");
+    await user.click(submit());
+
+    /* The logins at once, the invite still on its way — and never "taken". */
+    expect(await screen.findByText("Sending the invite email…")).toBeDefined();
+    expect(screen.queryByText(/already belongs to aye/)).toBeNull();
+    expect(screen.queryByText(/already used by another account/)).toBeNull();
+
+    sent({ email: "aye@gmail.com", delivered: true });
+    expect(await screen.findByText(/with Uri Tan's student login/)).toBeDefined();
+    expect(screen.queryByText("Sending the invite email…")).toBeNull();
+  });
+});
+
 describe("the course a new student joins", () => {
   it("is the one picked, even when two courses share a name", async () => {
     raw.classes = [

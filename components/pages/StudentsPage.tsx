@@ -2560,7 +2560,9 @@ function AddStudentWizard({
      happened. */
   /* A new guardian's email that someone already signs in with. Caught here,
      before anything is written. */
-  const owner = draft.parentId ? null : emailOwner(draft.parentEmail);
+  /* Not while saving: the account this form just made is in the data by then,
+     and would read as somebody else's. */
+  const owner = draft.parentId || saving ? null : emailOwner(draft.parentEmail);
   const emailTaken =
     owner !== null ||
     (takenOnServer !== "" && takenOnServer === draft.parentEmail.trim().toLowerCase());
@@ -2573,7 +2575,9 @@ function AddStudentWizard({
       ? null
       : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(studentEmail)
         ? t("studentEmailInvalid")
-        : emailOwner(studentEmail)?.archivedStudentId
+        : saving
+          ? null
+          : emailOwner(studentEmail)?.archivedStudentId
           ? t("emailIsArchivedStudent", { name: emailOwner(studentEmail)!.name })
           : emailOwner(studentEmail) !== null ||
             studentEmail === draft.parentEmail.trim().toLowerCase() ||
@@ -2794,7 +2798,7 @@ function AddStudentWizard({
                 >
                   {studentEmailProblem ?? t("studentEmailHelp")}
                 </span>
-                <ArchivedOwnerLink owner={studentEmail ? emailOwner(studentEmail) : null} />
+                <ArchivedOwnerLink owner={studentEmail && !saving ? emailOwner(studentEmail) : null} />
               </div>
               <div>
                 <label style={labelStyle} htmlFor="w-level">{t("level")}</label>
@@ -3045,8 +3049,9 @@ export function StudentsPage({
     studentId: string;
     student: { email: string; password: string };
     studentName: string;
-    /* A new guardian: not a password, the invite they were emailed. */
-    parent: { email: string; outcome: InviteOutcome } | null;
+    /* A new guardian: not a password, the invite they were emailed —
+       outcome null while it is still being sent. */
+    parent: { email: string; outcome: InviteOutcome | null } | null;
   } | null>(null);
   const [search, setSearch] = useState("");
   /* One control for the student's condition. There used to be two — a raw
@@ -3337,10 +3342,6 @@ export function StudentsPage({
           parent: null,
         });
       });
-      if (parentAccountId) {
-        const outcome = await inviteOutcome(parentAccountId, childLogin ? [childLogin] : []);
-        setCreatedLogins((c) => (c ? { ...c, parent: { email: parentEmail, outcome } } : c));
-      }
     } catch (e) {
       /* Handed back to the form, which says what to do about it. */
       if (e instanceof GuardianEmailTaken) throw e;
@@ -3348,7 +3349,15 @@ export function StudentsPage({
       /* Stay on the form: what was typed is still there to try again. */
       return;
     }
+    /* Saved: the logins at once. The guardian's invite is an email, which
+       takes a moment, so it fills in when it has gone — the form is not left
+       on screen meanwhile, where the account just made read as "taken". */
     setView({ kind: "list" });
+    if (parentAccountId) {
+      setCreatedLogins((c) => (c ? { ...c, parent: { email: parentEmail, outcome: null } } : c));
+      const outcome = await inviteOutcome(parentAccountId, childLogin ? [childLogin] : []);
+      setCreatedLogins((c) => (c ? { ...c, parent: { email: parentEmail, outcome } } : c));
+    }
   }
 
   if (view.kind === "detail") {
@@ -3472,11 +3481,17 @@ export function StudentsPage({
                 <SectionTitle>{t("parentLogin")}</SectionTitle>
                 <InfoGrid rows={[{ label: tCommon("email"), value: createdLogins.parent.email }]} />
                 <div style={{ marginTop: 8 }}>
-                  <InviteOutcomeNote
-                    outcome={createdLogins.parent.outcome}
-                    email={createdLogins.parent.email}
-                    withLoginOf={createdLogins.studentName}
-                  />
+                  {createdLogins.parent.outcome === null ? (
+                    <p role="status" style={{ margin: 0, fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
+                      {t("sendingInvite")}
+                    </p>
+                  ) : (
+                    <InviteOutcomeNote
+                      outcome={createdLogins.parent.outcome}
+                      email={createdLogins.parent.email}
+                      withLoginOf={createdLogins.studentName}
+                    />
+                  )}
                 </div>
               </div>
             )}
