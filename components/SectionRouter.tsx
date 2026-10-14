@@ -98,7 +98,7 @@ export function SectionRouter({
         />
       );
     case "classhistory":
-      return <ClassHistoryPage />;
+      return <ClassHistoryPage query={query} />;
     /* Lichess and the console's own boards share this one; /lichess redirects
        here. Staff accounts live under Settings the same way. */
     case "games":
