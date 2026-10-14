@@ -16,7 +16,7 @@
  */
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 /* The query string the last write asked for, until the address catches up.
@@ -91,5 +91,64 @@ export function useUrlBackedState<T extends string>(
     [router, pathname, key, clearWith, history],
   );
 
+  return [value, set];
+}
+
+/** A page number from the address — 1-based there, 0-based on screen; junk
+    reads as the first page. */
+export function pageFrom(raw: string): number {
+  const n = Number(raw);
+  return Number.isInteger(n) && n > 1 ? n - 1 : 0;
+}
+
+/** The address form of a page: "" for the first, so the plain address stays
+    plain. */
+export function pageParam(page: number): string {
+  return page > 0 ? String(page + 1) : "";
+}
+
+/* What is typed into a list's search box, kept for this tab across a reload.
+   Never the address: it is usually a child's name, and addresses end up in
+   server logs and browser history. Read through useSyncExternalStore, as
+   view-mode reads its preferences, because the console's lint rules reject an
+   effect copying storage into state. */
+const TYPED = "jtrax.typed.";
+const typedListeners = new Set<() => void>();
+const typedCache = new Map<string, string>();
+
+function subscribeTyped(onChange: () => void): () => void {
+  typedListeners.add(onChange);
+  return () => typedListeners.delete(onChange);
+}
+
+function typedSnapshot(key: string): string {
+  const hit = typedCache.get(key);
+  if (hit !== undefined) return hit;
+  let stored = "";
+  try {
+    stored = window.sessionStorage.getItem(TYPED + key) ?? "";
+  } catch {
+    /* Storage refused: the box starts empty, as it always did. */
+  }
+  typedCache.set(key, stored);
+  return stored;
+}
+
+/** A search box's text, kept for this tab. */
+export function useSessionText(key: string): [string, (next: string) => void] {
+  const value = useSyncExternalStore(subscribeTyped, () => typedSnapshot(key), () => "");
+  const set = useCallback(
+    (next: string) => {
+      typedCache.set(key, next);
+      try {
+        if (next) window.sessionStorage.setItem(TYPED + key, next);
+        else window.sessionStorage.removeItem(TYPED + key);
+      } catch {
+        /* Not persisting is survivable; not updating the box is not. */
+      }
+      for (const listener of typedListeners) listener();
+    },
+    [key],
+  );
   return [value, set];
 }
