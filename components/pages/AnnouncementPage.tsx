@@ -57,6 +57,12 @@ function fmtWhen(v: string): string {
   return `${fmtDate(day)}, ${time}`;
 }
 
+/** The end of a window: its time alone when it ends the day it starts, so
+    the day is not written twice ("14 Oct 2026, 22:55 – 22:59"). */
+function fmtUntil(from: string, until: string): string {
+  return from && from.slice(0, 10) === until.slice(0, 10) ? until.split("T")[1] ?? until : fmtWhen(until);
+}
+
 type Editing = { mode: "create" } | { mode: "edit"; id: string };
 
 export function AnnouncementPage({
@@ -282,18 +288,16 @@ export function AnnouncementPage({
                   <div style={{ marginTop: 3, fontFamily: FONT, fontSize: 13, color: COLORS.text }}>
                     {t("toAudience", { audience: audienceLabel(a) })}
                   </div>
+                  {/* The window when it has one (when it shows), else the day
+                      it was posted — never both, which wrote the day twice. */}
                   <div style={{ marginTop: 2, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
-                    {a.date}
-                    {(a.showFrom || a.showUntil) && (
-                      <>
-                        {" · "}
-                        {a.showFrom && a.showUntil
-                          ? t("windowBoth", { from: fmtWhen(a.showFrom), until: fmtWhen(a.showUntil) })
-                          : a.showFrom
-                            ? t("windowFrom", { from: fmtWhen(a.showFrom) })
-                            : t("windowUntil", { until: fmtWhen(a.showUntil) })}
-                      </>
-                    )}
+                    {a.showFrom && a.showUntil
+                      ? t("windowBoth", { from: fmtWhen(a.showFrom), until: fmtUntil(a.showFrom, a.showUntil) })
+                      : a.showFrom
+                        ? t("windowFrom", { from: fmtWhen(a.showFrom) })
+                        : a.showUntil
+                          ? t("windowUntil", { until: fmtWhen(a.showUntil) })
+                          : a.date}
                   </div>
                 </div>
               </div>
