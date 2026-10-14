@@ -285,12 +285,14 @@ export function AnnouncementPage({
                     </span>
                     {(a.showFrom || a.showUntil) && <WindowBadge state={windowState(a, now)} />}
                   </div>
-                  <div style={{ marginTop: 3, fontFamily: FONT, fontSize: 13, color: COLORS.text }}>
+                  <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 6, fontFamily: FONT, fontSize: 13, color: COLORS.text }}>
+                    <Icon name="parents" size={14} color={COLORS.textSecondary} />
                     {t("toAudience", { audience: audienceLabel(a) })}
                   </div>
                   {/* The window when it has one (when it shows), else the day
                       it was posted — never both, which wrote the day twice. */}
-                  <div style={{ marginTop: 2, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+                  <div style={{ marginTop: 3, display: "flex", alignItems: "center", gap: 6, fontFamily: FONT, fontSize: 12.5, color: COLORS.textSecondary }}>
+                    <Icon name="clockSmall" size={14} color={COLORS.textSecondary} />
                     {a.showFrom && a.showUntil
                       ? t("windowBoth", { from: fmtWhen(a.showFrom), until: fmtUntil(a.showFrom, a.showUntil) })
                       : a.showFrom
