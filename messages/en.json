@@ -1357,6 +1357,8 @@
     "scanKeyMissing": "No key",
     "scanNoKeyHelp": "This server has no Gemini key, so scanning is off. Set OCR_PROVIDER=gemini and OCR_API_KEY on the API service and redeploy.",
     "scanInUse": "Scans use",
+    "scanForEveryone": "Every scan in the academy uses this model: the public entry form, the parent portal and the front desk. Saving here changes it for everyone.",
+    "scanChosenBy": "Chosen by {name}, {when}.",
     "scanModelLabel": "Model",
     "scanServerDefault": "Server default ({model})",
     "scanOther": "Other…",

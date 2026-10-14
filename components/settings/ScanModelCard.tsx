@@ -222,9 +222,21 @@ export function ScanModelCard() {
       )}
 
       {settings?.model && (
-        <div style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textSecondary }}>
-          {t("scanInUse")}{" "}
-          <code style={{ fontSize: 12.5, color: COLORS.text }}>{settings.model}</code>
+        <div style={{ display: "flex", flexDirection: "column", gap: 3, fontFamily: FONT, fontSize: 13, lineHeight: 1.5, color: COLORS.textSecondary }}>
+          <span>
+            {t("scanInUse")}{" "}
+            <code style={{ fontSize: 12.5, color: COLORS.text }}>{settings.model}</code>
+          </span>
+          {/* One choice for the whole academy, so it is said whose it is. */}
+          <span>{t("scanForEveryone")}</span>
+          {settings.savedBy && settings.savedAt && (
+            <span>
+              {t("scanChosenBy", {
+                name: settings.savedBy,
+                when: new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(settings.savedAt)),
+              })}
+            </span>
+          )}
         </div>
       )}
 

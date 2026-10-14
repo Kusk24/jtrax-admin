@@ -158,5 +158,13 @@ describe("the scanning card", () => {
     fireEvent.change(picker(), { target: { value: "gemini-3.8-flash" } });
     expect(await screen.findByText(/About \$3\.25 per 1,000 scans, at this academy's average scan of 1,347 input/)).toBeDefined();
   });
+
+  it("says the choice is everyone's, and whose it is", async () => {
+    getScanSettings.mockResolvedValueOnce({ ...state, savedModel: "gemini-3.8-flash", model: "gemini-3.8-flash",
+      savedBy: "JCA Head Office", savedAt: "2026-10-14T09:30:00Z" });
+    renderCard();
+    expect(await screen.findByText(en.settings.scanForEveryone)).toBeDefined();
+    expect(screen.getByText(/^Chosen by JCA Head Office, Oct 14, 2026/)).toBeDefined();
+  });
 });
 
