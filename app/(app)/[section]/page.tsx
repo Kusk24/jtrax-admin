@@ -16,7 +16,7 @@ export default async function SectionPage({
   searchParams,
 }: {
   params: Promise<{ section: string }>;
-  searchParams: Promise<{ new?: string; status?: string; student?: string; class?: string; id?: string; tab?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { section } = await params;
   /* Checked before the nav, because a merged id is deliberately no longer in
@@ -38,7 +38,15 @@ export default async function SectionPage({
      than with useSearchParams in the client component, which would bail the
      whole route out of server rendering. */
   /* ?class= goes with ?student=: a top-up for one of the child's courses. */
-  const { new: startNew, status, student, class: classId, id, tab } = await searchParams;
+  /* Everything else in the address — a list's page and filters — goes down
+     as `query` for the screens that keep their state there (lib/url-state). */
+  const all = await searchParams;
+  const query: Record<string, string> = {};
+  for (const [k, v] of Object.entries(all)) {
+    const one = Array.isArray(v) ? v[0] : v;
+    if (one !== undefined) query[k] = one;
+  }
+  const { new: startNew, status, student, class: classId, id, tab } = query;
 
   return (
     <SectionRouter
@@ -49,6 +57,7 @@ export default async function SectionPage({
       classId={classId}
       detailId={id}
       detailTab={tab}
+      query={query}
     />
   );
 }

@@ -28,6 +28,7 @@ export function SectionRouter({
   classId,
   detailId,
   detailTab,
+  query = {},
 }: {
   section: string;
   /* A Quick Action asking this section to open its create form; the value
@@ -46,6 +47,9 @@ export function SectionRouter({
      the Back button all land where the person was. */
   detailId?: string;
   detailTab?: string;
+  /* The whole query string, for screens that keep a list's page and filters
+     in the address too. */
+  query?: Record<string, string>;
 }) {
   const { role } = useJtrax();
 
