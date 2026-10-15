@@ -10,6 +10,7 @@ import { LanguageToggle } from "./LanguageToggle";
 import { signOut } from "@/app/actions/auth";
 import { Icon } from "@/lib/icons";
 import { navItemsForRole } from "@/lib/nav";
+import { useErasureRequests } from "./parents/useErasureRequests";
 import { COLORS, FONT, FONT_DISPLAY, ROLE_COLORS } from "@/lib/theme";
 import { useDashboardDate } from "./DashboardDate";
 import { useJtrax } from "./JtraxContext";
@@ -35,6 +36,12 @@ function Sidebar({
   const t = useTranslations("nav");
   const items = navItemsForRole(role);
   const unread = useLineUnread(items.some((item) => item.id === "chat"));
+  /* Families waiting to be erased: on Parents, so a request is seen without
+     opening every guardian (PDPA s.33 asks for an answer without delay). */
+  const erasures = useErasureRequests(items.some((item) => item.id === "parents")).size;
+  const countFor = (id: string) => (id === "chat" ? unread : id === "parents" ? erasures : 0);
+  const countLabel = (id: string, count: number) =>
+    id === "chat" ? t("unreadMessages", { count }) : t("deletionRequests", { count });
   const [tip, setTip] = useState<{ label: string; top: number } | null>(null);
 
   /**
@@ -152,11 +159,12 @@ function Sidebar({
             >
               <span style={{ position: "relative", display: "flex", width: 18, height: 18 }}>
                 <Icon name={item.icon} size={18} color={active ? COLORS.blue : COLORS.text} />
-                {/* Unread LINE messages, on the icon so it shows collapsed too. */}
-                {item.id === "chat" && unread > 0 && (
+                {/* Unread LINE messages, and families asking to be erased — on the
+                    icon so they show collapsed too. */}
+                {countFor(item.id) > 0 && (
                   <span
                     role="status"
-                    aria-label={t("unreadMessages", { count: unread })}
+                    aria-label={countLabel(item.id, countFor(item.id))}
                     style={{
                       position: "absolute",
                       top: -7,
@@ -175,7 +183,7 @@ function Sidebar({
                       boxSizing: "border-box",
                     }}
                   >
-                    {unread > 99 ? "99+" : unread}
+                    {countFor(item.id) > 99 ? "99+" : countFor(item.id)}
                   </span>
                 )}
               </span>

@@ -20,7 +20,8 @@
     "themeDark": "Dark",
     "expandNav": "Expand navigation",
     "collapseNav": "Collapse navigation",
-    "unreadMessages": "{count, plural, one {# unread message} other {# unread messages}}"
+    "unreadMessages": "{count, plural, one {# unread message} other {# unread messages}}",
+    "deletionRequests": "{count, plural, one {# family asked to be deleted} other {# families asked to be deleted}}"
   },
   "roles": {
     "Admin": "Admin",
@@ -821,7 +822,8 @@
     "erasureConfirmNote": "Payments stay on record, detached from the family.",
     "erasureDeclinePrompt": "Say why the request is declined. The family is owed a reason.",
     "erasureDeclineReason": "Reason",
-    "erasureFailed": "That did not work. Nothing was changed."
+    "erasureFailed": "That did not work. Nothing was changed.",
+    "deletionRequested": "Deletion requested"
   },
   "payment": {
     "title": "Payment",

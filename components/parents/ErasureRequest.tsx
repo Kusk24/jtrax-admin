@@ -10,7 +10,7 @@
 import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { api } from "@/lib/api";
-import { openRequestFor, type DataRequest } from "@/lib/data-requests";
+import { announceDataRequestsChanged, openRequestFor, type DataRequest } from "@/lib/data-requests";
 import { COLORS, FONT } from "@/lib/theme";
 import { useJtrax } from "../JtraxContext";
 import { ConfirmModal } from "../crud";
@@ -78,7 +78,10 @@ export function ErasureRequest({
           confirmLabel={t("erasureErase")}
           failedText={t("erasureFailed")}
           onClose={() => setErasing(false)}
-          onConfirm={onErase}
+          onConfirm={async () => {
+            await onErase();
+            announceDataRequestsChanged();
+          }}
         />
       )}
       {declining && (
@@ -103,6 +106,7 @@ export function ErasureRequest({
             await api.post(`data-requests/${request.data_request_id}/resolve`, { status: "Declined", note: reason.trim() });
             setRequest(undefined);
             setDeclining(false);
+            announceDataRequestsChanged();
           }}
         />
       )}
