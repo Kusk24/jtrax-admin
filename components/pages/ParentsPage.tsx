@@ -43,6 +43,7 @@ import {
 } from "../page-kit";
 import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
 import { BackLink, DeleteButton, DetailHeader, EditButton } from "../detail";
+import { ErasureRequest } from "../parents/ErasureRequest";
 import { useErrorToast } from "../ErrorToast";
 import { todayISO } from "@/lib/live";
 import { InviteOutcomeNote, inviteOutcome, type InviteOutcome } from "../InviteButton";
@@ -80,6 +81,7 @@ function ParentDetail({
   onBack,
   onEdit,
   onDelete,
+  onErase,
   onArchive,
   unlinkedStudents,
   onLinkChild,
@@ -89,6 +91,9 @@ function ParentDetail({
   onBack: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  /* Carries out the family's erasure request: the guardian, their children
+     and their accounts (ErasureRequest). */
+  onErase: () => Promise<void>;
   onArchive: () => void;
   /* Students with no parent yet — linking one that already has a parent would
      silently move them, so they are not offered. */
@@ -135,6 +140,8 @@ function ParentDetail({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <BackLink label={t("backToParents")} onClick={onBack} />
+
+      <ErasureRequest parentId={parent.id} onErase={onErase} />
 
       <DetailHeader
         avatar={<Avatar initials={initialsOf(parent.name)} size={54} />}
@@ -783,6 +790,10 @@ export function ParentsPage({ detailId }: { detailId?: string }) {
             onBack={() => setView({ kind: "list" })}
             onEdit={() => openEdit(parent)}
             onDelete={() => openDelete(parent)}
+            onErase={async () => {
+              await removePerson("parents", parent.id, { children: true });
+              setView({ kind: "list" });
+            }}
             onArchive={() => openArchive(parent)}
             unlinkedStudents={unlinkedStudents}
             onLinkChild={(studentId, relation) =>

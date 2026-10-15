@@ -811,7 +811,17 @@
     "alsoDeleteChildren": "{count, plural, one {Also delete their child, {names}} other {Also delete their # children: {names}}}",
     "linkChildOnCreate": "Link a child (optional)",
     "openChild": "Open {name}'s profile",
-    "emailHelp": "Used to sign in and to receive password-reset emails."
+    "emailHelp": "Used to sign in and to receive password-reset emails.",
+    "erasureRequested": "This family asked to have their data deleted on {date}.",
+    "erasureHint": "Erasing deletes this guardian, their children and their accounts. Payments are kept, detached and named, as accounting law requires. The request closes itself.",
+    "erasureErase": "Erase family",
+    "erasureDecline": "Decline request",
+    "erasureAdminOnly": "An admin carries this out.",
+    "erasureConfirm": "Delete this guardian, their children and their accounts? This cannot be undone.",
+    "erasureConfirmNote": "Payments stay on record, detached from the family.",
+    "erasureDeclinePrompt": "Say why the request is declined. The family is owed a reason.",
+    "erasureDeclineReason": "Reason",
+    "erasureFailed": "That did not work. Nothing was changed."
   },
   "payment": {
     "title": "Payment",
