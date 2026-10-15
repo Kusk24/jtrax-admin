@@ -20,7 +20,7 @@ import { Fragment, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Icon } from "@/lib/icons";
 import { COLORS, FONT, initialsOf } from "@/lib/theme";
-import { useUrlBackedState } from "@/lib/url-state";
+import { pageFrom, pageParam, useSessionText, useUrlBackedState } from "@/lib/url-state";
 import type { ViewMode } from "@/lib/view-mode";
 import {
   cancelRoom,
@@ -379,19 +379,30 @@ const dateTime = new Intl.DateTimeFormat("en-GB", {
 
 /* `detailId` is the game in the address bar (?id=), so a refresh or a shared
    link lands on the same board. */
-export function GamesPage({ detailId }: { detailId?: string } = {}) {
+export function GamesPage({
+  detailId,
+  query: address = {},
+}: {
+  detailId?: string;
+  /* The rest of the address: the list's filters and page (lib/url-state). */
+  query?: Record<string, string>;
+} = {}) {
   const t = useTranslations("games");
   const tc = useTranslations("common");
   const tLichess = useTranslations("lichessAdmin");
   const { raw } = useData();
 
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<StatusTab>("all");
+  /* The filters and page live in the address, so a reload or Back keeps the
+     list as it was; the search box is kept for the tab. */
+  const [query, setQuery] = useSessionText("games.search");
+  const [statusRaw, setStatusRaw] = useUrlBackedState("status", address.status ?? "");
+  const status = (STATUS_TABS as readonly string[]).includes(statusRaw) ? (statusRaw as StatusTab) : "all";
+  const setStatus = (v: StatusTab) => setStatusRaw(v === "all" ? "" : v);
   /* Every game by default — the record, not just today's class. The date
      field narrows to one day when that's what's being asked for. */
-  const [day, setDay] = useState("");
-  const [classId, setClassId] = useState("");
-  const [result, setResult] = useState("");
+  const [day, setDay] = useUrlBackedState("day", address.day ?? "");
+  const [classId, setClassId] = useUrlBackedState("class", address.class ?? "");
+  const [result, setResult] = useUrlBackedState("result", address.result ?? "");
   /* Always opens on the grid: it is what a class is watched on. The list is
      a switch away for reviewing, and is not remembered between visits. */
   const [mode, setMode] = useState<ViewMode>("boards");
@@ -403,7 +414,9 @@ export function GamesPage({ detailId }: { detailId?: string } = {}) {
   );
   /* 0-indexed, like every other list here — starting at 1 opened the list on
      page two and hid the first twelve rooms. */
-  const [page, setPage] = useState(0);
+  const [pageRaw, setPageRaw] = useUrlBackedState("page", address.page ?? "");
+  const page = pageFrom(pageRaw);
+  const setPage = (n: number) => setPageRaw(pageParam(n));
   /* Opening a game is a push, so Back returns to the list; stepping between
      games replaces, or Back would walk through every board glanced at. */
   const [openId, setOpenId] = useUrlBackedState<string>("id", detailId ?? "", [], "push");

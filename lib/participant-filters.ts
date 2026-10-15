@@ -25,6 +25,25 @@ export const NO_FILTERS: ParticipantFilters = {
   search: "", category: "", payment: "", attending: "", from: "", to: "", sort: null,
 };
 
+/* The values each filter can take, for reading them back out of the address —
+   anything else there (an old link, a typo) reads as "no filter". */
+export const PAYMENT_FILTERS: readonly PaymentFilter[] = ["", "Paid", "Unpaid", "Cancelled"];
+export const ATTENDING_FILTERS: readonly ("" | ArrivalState)[] = [
+  "", "notSent", "sent", "attending", "notAttending", "noResponse",
+];
+
+/** `raw` if it is one of `allowed`, otherwise `fallback`. */
+export function pick<T extends string>(raw: string, allowed: readonly T[], fallback: T): T {
+  return (allowed as readonly string[]).includes(raw) ? (raw as T) : fallback;
+}
+
+/** "age.desc" from the address → the sort it names, or null. */
+export function sortFrom(raw: string): ParticipantFilters["sort"] {
+  const [key, dir] = raw.split(".");
+  if ((key === "age" || key === "amount") && (dir === "asc" || dir === "desc")) return { key, dir };
+  return null;
+}
+
 /** The payment badge a row shows: Paid, Cancelled, Unpaid, or "" for no fee. */
 export function paymentOf(p: Participant): PaymentFilter {
   if ((p.feeCharged ?? 0) <= 0) return "";

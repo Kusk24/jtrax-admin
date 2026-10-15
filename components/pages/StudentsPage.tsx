@@ -74,6 +74,7 @@ import {
 import { byLatestEvent, creditMoves, enrolmentEvents } from "@/lib/course-history";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
+import { pageFrom, pageParam, useSessionText, useUrlBackedState } from "@/lib/url-state";
 import { useErrorToast } from "../ErrorToast";
 import { LineChatLink, useLineChat, useLineChats } from "../messages/LineChatLink";
 import { chatFor } from "@/lib/line";
@@ -270,6 +271,7 @@ function StudentDetail({
   startEditing = false,
   startDeleting = false,
   startArchiving = false,
+  startTab,
   guardianOptions,
   onBack,
   onSave,
@@ -282,6 +284,8 @@ function StudentDetail({
   startDeleting?: boolean;
   /* The row's Archive: open on the archive box (reason, guardian). */
   startArchiving?: boolean;
+  /* The tab the address names (?tab=), so a reload stays on it. */
+  startTab?: string;
   /* Every guardian on file. A child has one, so this is a picker rather than
      a create form — making a new guardian is the Parents screen's job. */
   guardianOptions: Array<{ id: string; name: string }>;
@@ -297,7 +301,13 @@ function StudentDetail({
 }) {
   const t = useTranslations("students");
   const tCommon = useTranslations("common");
-  const [tab, setTab] = useState<DetailTab>("Overview");
+  /* In the address too: a reload while reading Attendance should not land
+     back on Overview. Replace, not push — Back leaves the student, it does
+     not walk back through every tab glanced at. */
+  const [tab, setTab] = useUrlBackedState<DetailTab>(
+    "tab",
+    (DETAIL_TABS as readonly string[]).includes(startTab ?? "") ? (startTab as DetailTab) : "Overview",
+  );
   const [editing, setEditing] = useState(startEditing);
   const [draft, setDraft] = useState<Student>(student);
   /* Their own email, which is what they sign in with when they have one; a
@@ -3095,6 +3105,7 @@ export function StudentsPage({
   startWizard,
   startStatus,
   startDetailId,
+  query = {},
 }: {
   /* Present means the registration wizard opens; its value prefills the name.
      Present-and-empty is the dashboard's "Register Student" pill — nothing
@@ -3106,6 +3117,8 @@ export function StudentsPage({
   /* The student the header search picked: `/students?id=…` lands on their
      detail. An id the roster doesn't know falls through to the list. */
   startDetailId?: string;
+  /* The rest of the address: the list's filters and page (lib/url-state). */
+  query?: Record<string, string>;
 }) {
   const t = useTranslations("students");
   const tCommon = useTranslations("common");
@@ -3128,13 +3141,20 @@ export function StudentsPage({
       showError(tCommon("saveFailed"), e);
     }
   }
-  const [view, setView] = useState<View>(
-    opensCreate(startWizard)
-      ? { kind: "wizard" }
-      : startDetailId
-        ? { kind: "detail", id: startDetailId }
-        : { kind: "list" },
-  );
+  /* Which student is open lives in the address, so a refresh, a pasted link
+     and Back all land on them; how it was opened (Edit, Archive) and the
+     wizard stay on screen only. */
+  const [openId, setOpenId] = useUrlBackedState<string>("id", startDetailId ?? "", ["tab"], "push");
+  const [local, setLocal] = useState<View>(opensCreate(startWizard) ? { kind: "wizard" } : { kind: "list" });
+  const view: View =
+    local.kind === "wizard" ? local
+      : openId ? (local.kind === "detail" && local.id === openId ? local : { kind: "detail", id: openId })
+        : { kind: "list" };
+  const setView = (next: View) => {
+    setLocal(next);
+    const id = next.kind === "detail" ? next.id : "";
+    if (id !== openId) setOpenId(id);
+  };
   const [mode, setMode] = useViewMode("students", VIEWS);
   const router = useRouter();
   const [createdLogins, setCreatedLogins] = useState<{
@@ -3145,20 +3165,26 @@ export function StudentsPage({
        outcome null while it is still being sent. */
     parent: { email: string; outcome: InviteOutcome | null } | null;
   } | null>(null);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useSessionText("students.search");
   /* One control for the student's condition. There used to be two — a raw
      status picker and a follow-up bucket picker — which offered the same
      thing twice under different names. The dashboard links here with
      `?status=`; anything the list does not know is ignored rather than
      silently emptying the screen. */
-  const [status, setStatus] = useState(
+  /* The filters and the page are in the address, so a reload or Back keeps
+     the list as it was. Replaced, not pushed: Back leaves the list rather
+     than undoing chips. */
+  const [status, setStatus] = useUrlBackedState(
+    "status",
     STATUS_VALUES.includes(startStatus as (typeof STATUS_VALUES)[number]) || startStatus === ARCHIVED ? startStatus! : "",
   );
-  const [branch, setBranch] = useState("");
+  const [branch, setBranch] = useUrlBackedState("branch", query.branch ?? "");
   /* By class id, not by name: two classes can share a name, and the id is what
      the enrolments are actually keyed on. */
-  const [classId, setClassId] = useState("");
-  const [page, setPage] = useState(0);
+  const [classId, setClassId] = useUrlBackedState("class", query.class ?? "");
+  const [pageRaw, setPageRaw] = useUrlBackedState("page", query.page ?? "");
+  const page = pageFrom(pageRaw);
+  const setPage = (n: number) => setPageRaw(pageParam(n));
   /* Rows showing every course. A student in several courses opens on the
      first one and a "+N more" marker, so one busy child does not stretch
      their row to four times everyone else's. */
@@ -3462,6 +3488,7 @@ export function StudentsPage({
           startEditing={view.edit}
           startDeleting={view.remove}
           startArchiving={view.archive}
+          startTab={query.tab}
           guardianOptions={parentOptions}
           onLinkGuardian={(parentId, relation) =>
             create("student-parents", {

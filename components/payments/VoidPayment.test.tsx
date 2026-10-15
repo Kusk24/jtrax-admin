@@ -13,6 +13,12 @@ const { post, get, refresh } = vi.hoisted(() => ({
   get: vi.fn(async (_path: string) => [] as unknown[]),
   refresh: vi.fn(async () => undefined),
 }));
+/* The ledger keeps its filters in the address (lib/url-state). */
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => "/payment",
+}));
+
 vi.mock("@/lib/api", () => ({ api: { post, get }, ApiError: class extends Error {} }));
 
 const payments = [

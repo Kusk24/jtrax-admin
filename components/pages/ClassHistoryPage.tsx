@@ -43,6 +43,7 @@ import { MonthCalendar, type CalendarEntry } from "../calendar";
 import { DeleteButton, DetailHeader, EditButton } from "../detail";
 import { CardGrid, EmptyCards, EntityCard, ViewToggle } from "../view-mode";
 import { useViewMode } from "@/lib/view-mode";
+import { pageFrom, pageParam, useSessionText, useUrlBackedState } from "@/lib/url-state";
 import { SessionPanel, type PanelState } from "../dashboard/SessionPanel";
 
 /* The chevron is the one column that is not data, so it keeps a fixed
@@ -533,7 +534,18 @@ function SessionDetail({
   );
 }
 
-export function ClassHistoryPage() {
+/** "2026-10" → the first of that month, or null for anything else. */
+function monthFrom(raw: string): Date | null {
+  const m = /^(\d{4})-(\d{2})$/.exec(raw);
+  if (!m) return null;
+  const month = Number(m[2]);
+  return month >= 1 && month <= 12 ? new Date(Number(m[1]), month - 1, 1) : null;
+}
+
+export function ClassHistoryPage({ query = {} }: {
+  /* The address: month, day, filters, page and open session (lib/url-state). */
+  query?: Record<string, string>;
+} = {}) {
   const t = useTranslations("classHistory");
   const tCommon = useTranslations("common");
   const courseLabel = useCourseLabel();
@@ -544,19 +556,33 @@ export function ClassHistoryPage() {
   const [mode, setMode] = useViewMode("classhistory", VIEWS);
   /* The calendar opens on the current month; `weekendOnly` starts on because
      the timetable is a weekend one. */
-  const [month, setMonth] = useState(() => {
+  /* Everything that says where the office is looking lives in the address —
+     a reload or Back keeps the month, the day picked, the filters, the page
+     and the open session. The search box is kept for the tab. */
+  const [monthRaw, setMonthRaw] = useUrlBackedState("month", query.month ?? "");
+  const month = monthFrom(monthRaw) ?? (() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
-  });
-  const [weekendOnly, setWeekendOnly] = useState(true);
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [classFilter, setClassFilter] = useState("");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [page, setPage] = useState(0);
+  })();
+  const setMonth = (next: Date) =>
+    setMonthRaw(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`);
+  const [daysRaw, setDaysRaw] = useUrlBackedState("days", query.days ?? "");
+  const weekendOnly = daysRaw !== "all";
+  const setWeekendOnly = (on: boolean) => setDaysRaw(on ? "" : "all");
+  const [dayRaw, setDayRaw] = useUrlBackedState("day", query.day ?? "");
+  const selectedDay = /^\d{4}-\d{2}-\d{2}$/.test(dayRaw) ? dayRaw : null;
+  const setSelectedDay = (day: string | null) => setDayRaw(day ?? "");
+  const [search, setSearch] = useSessionText("classhistory.search");
+  const [classFilter, setClassFilter] = useUrlBackedState("class", query.class ?? "");
+  const [from, setFrom] = useUrlBackedState("from", query.from ?? "");
+  const [to, setTo] = useUrlBackedState("to", query.to ?? "");
+  const [pageRaw, setPageRaw] = useUrlBackedState("page", query.page ?? "");
+  const page = pageFrom(pageRaw);
+  const setPage = (n: number) => setPageRaw(pageParam(n));
   const [attendee, setAttendee] = useState<{ name: string; session: HistoryRow } | null>(null);
-  const [sessionDetail, setSessionDetail] = useState<HistoryRow | null>(null);
+  /* The open session by key, pushed so Back closes it. */
+  const [sessionKey, setSessionKey] = useUrlBackedState<string>("session", query.session ?? "", [], "push");
+  const setSessionDetail = (row: HistoryRow | null) => setSessionKey(row?.key ?? "");
   const [deletingSession, setDeletingSession] = useState<HistoryRow | null>(null);
   const [addingTo, setAddingTo] = useState<HistoryRow | null>(null);
   const [addStudentId, setAddStudentId] = useState("");
@@ -698,6 +724,8 @@ export function ClassHistoryPage() {
       await remove("class-sessions", row.id);
     });
   }
+
+  const sessionDetail = sessionKey ? (all.find((row) => row.key === sessionKey) ?? null) : null;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();

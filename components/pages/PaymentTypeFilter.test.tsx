@@ -11,6 +11,12 @@ const payments = [
   { id: "p2", name: "Uri", className: "Wellington Open", credits: "—", amount: "500", date: "2 Sep", isoDate: "2026-09-02", method: "Cash", status: "Paid", kind: "tournament" },
 ];
 
+/* The ledger keeps its filters in the address (lib/url-state). */
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => "/payment",
+}));
+
 vi.mock("@/components/DataProvider", () => ({
   useData: () => ({
     students: [],

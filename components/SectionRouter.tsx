@@ -28,6 +28,7 @@ export function SectionRouter({
   classId,
   detailId,
   detailTab,
+  query = {},
 }: {
   section: string;
   /* A Quick Action asking this section to open its create form; the value
@@ -46,6 +47,9 @@ export function SectionRouter({
      the Back button all land where the person was. */
   detailId?: string;
   detailTab?: string;
+  /* The whole query string, for screens that keep a list's page and filters
+     in the address too. */
+  query?: Record<string, string>;
 }) {
   const { role } = useJtrax();
 
@@ -66,20 +70,21 @@ export function SectionRouter({
 
   switch (section) {
     case "students":
-      /* Keyed so arriving from a different follow-up card resets the filter
-         rather than keeping the state of the previous visit. */
+      /* Not keyed by the filter or the open student: both live in the address
+         (lib/url-state) and follow it, Back included, without a remount. */
       return (
         <StudentsPage
-          key={`${newKey}|${status ?? ""}|${detailId ?? ""}`}
+          key={newKey}
           startWizard={startNew}
           startStatus={status}
           startDetailId={detailId}
+          query={query}
         />
       );
     case "parents":
-      /* Keyed so arriving from a second child's page opens *their* guardian
-         rather than keeping the first one on screen. */
-      return <ParentsPage key={detailId ?? "list"} detailId={detailId} />;
+      /* Not keyed by the guardian: the open one lives in the address and
+         follows it — arriving from a second child's page included. */
+      return <ParentsPage detailId={detailId} query={query} />;
     case "payment":
       /* Keyed so arriving for a second student opens the form for them rather
          than keeping the first one's draft. */
@@ -89,16 +94,17 @@ export function SectionRouter({
           startStudentId={studentId}
           startClassId={classId}
           startNew={opensCreate(startNew)}
+          query={query}
         />
       );
     case "classhistory":
-      return <ClassHistoryPage />;
+      return <ClassHistoryPage query={query} />;
     /* Lichess and the console's own boards share this one; /lichess redirects
        here. Staff accounts live under Settings the same way. */
     case "games":
       /* Not keyed by the game: stepping from one board to the next must keep
          the list's filters and its poll, not remount the page. */
-      return <GamesPage detailId={detailId} />;
+      return <GamesPage detailId={detailId} query={query} />;
     case "announcement":
       return <AnnouncementPage key={newKey} startNew={opensCreate(startNew)} />;
     case "settings":
@@ -106,7 +112,9 @@ export function SectionRouter({
     case "academy":
       return <AcademyPage />;
     case "chat":
-      return <MessagesPage key={detailId ?? "inbox"} detailId={detailId} />;
+      /* Not keyed by the chat: remounting would reconnect the live stream, and
+         the page follows the address itself. */
+      return <MessagesPage detailId={detailId} query={query} />;
     case "tournament":
       return (
         <TournamentPage
@@ -114,6 +122,7 @@ export function SectionRouter({
           detailId={detailId}
           detailTab={detailTab}
           startNew={opensCreate(startNew)}
+          query={query}
         />
       );
     default:

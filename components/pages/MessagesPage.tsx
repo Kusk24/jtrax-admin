@@ -11,7 +11,7 @@
  * row — the `line_id` the ER model carries is a display handle and cannot be
  * used to send, so the right-hand panel shows the contact rather than a family.
  */
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { chatTime, dayKey, type LineConversation, type LineMessage } from "@/lib/line";
 import { Icon } from "@/lib/icons";
@@ -20,6 +20,7 @@ import { SearchInput } from "../page-kit";
 import { Avatar, Badge, Card, SectionTitle } from "../ui";
 import { ContactPanel } from "../messages/ContactPanel";
 import { useInbox, type SendResult } from "../messages/useInbox";
+import { useSessionText, useUrlBackedState } from "@/lib/url-state";
 
 const FILTERS = [
   { key: "all", labelKey: "filterAll" },
@@ -54,14 +55,40 @@ function ContactAvatar({ contact, size }: { contact: LineConversation; size: num
 }
 
 /** `detailId` opens that chat — how a parent's or student's page sends you here. */
-export function MessagesPage({ detailId }: { detailId?: string } = {}) {
+export function MessagesPage({
+  detailId,
+  query = {},
+}: {
+  detailId?: string;
+  /* The rest of the address: the list's filter (lib/url-state). */
+  query?: Record<string, string>;
+} = {}) {
   const t = useTranslations("messages");
   const tCommon = useTranslations("common");
   /* Arriving with ?id= opens that chat. */
-  const { conversations, selectedId, thread, loading, error, connection, unreadTotal, open, send, relinked } = useInbox(detailId);
+  const { conversations, selectedId, thread, loading, error, connection, unreadTotal, open: openThread, send, relinked } = useInbox(detailId);
 
-  const [filter, setFilter] = useState<Filter>("all");
-  const [search, setSearch] = useState("");
+  /* The open chat is in the address too, so a reload stays on it. Replaced,
+     not pushed: Back leaves the inbox rather than walking through every chat
+     read. The page is not remounted per chat (that would reconnect the live
+     stream), so a change arriving from outside — Back, or a record's link —
+     is followed here instead. */
+  const [chatId, setChatId] = useUrlBackedState<string>("id", detailId ?? "");
+  const open = (id: string) => {
+    openThread(id);
+    setChatId(id);
+  };
+  const followed = useRef(detailId ?? "");
+  useEffect(() => {
+    if (chatId === followed.current) return;
+    followed.current = chatId;
+    if (chatId && chatId !== selectedId) openThread(chatId);
+  }, [chatId, selectedId, openThread]);
+
+  const [filterRaw, setFilterRaw] = useUrlBackedState("filter", query.filter ?? "");
+  const filter: Filter = filterRaw === "unread" ? "unread" : "all";
+  const setFilter = (f: Filter) => setFilterRaw(f === "all" ? "" : f);
+  const [search, setSearch] = useSessionText("messages.search");
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<SendResult>("");
