@@ -10,24 +10,11 @@
 import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { api } from "@/lib/api";
+import { announceDataRequestsChanged, openRequestFor, type DataRequest } from "@/lib/data-requests";
 import { COLORS, FONT } from "@/lib/theme";
 import { useJtrax } from "../JtraxContext";
 import { ConfirmModal } from "../crud";
 import { dangerButtonStyle, fieldStyle, secondaryButtonStyle } from "../page-kit";
-
-export type DataRequest = {
-  data_request_id: string;
-  status: "Open" | "Done" | "Declined";
-  parent_id: string | null;
-  requested_by_name: string;
-  note: string;
-  requested_at: string;
-};
-
-/** The open request for this guardian, if any. */
-export function openRequestFor(requests: DataRequest[], parentId: string): DataRequest | undefined {
-  return requests.find((r) => r.parent_id === parentId && r.status === "Open");
-}
 
 export function ErasureRequest({
   parentId,
@@ -91,7 +78,10 @@ export function ErasureRequest({
           confirmLabel={t("erasureErase")}
           failedText={t("erasureFailed")}
           onClose={() => setErasing(false)}
-          onConfirm={onErase}
+          onConfirm={async () => {
+            await onErase();
+            announceDataRequestsChanged();
+          }}
         />
       )}
       {declining && (
@@ -116,6 +106,7 @@ export function ErasureRequest({
             await api.post(`data-requests/${request.data_request_id}/resolve`, { status: "Declined", note: reason.trim() });
             setRequest(undefined);
             setDeclining(false);
+            announceDataRequestsChanged();
           }}
         />
       )}

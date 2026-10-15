@@ -20,7 +20,8 @@
     "themeDark": "มืด",
     "expandNav": "ขยายเมนูนำทาง",
     "collapseNav": "ย่อเมนูนำทาง",
-    "unreadMessages": "ข้อความที่ยังไม่ได้อ่าน {count} ข้อความ"
+    "unreadMessages": "ข้อความที่ยังไม่ได้อ่าน {count} ข้อความ",
+    "deletionRequests": "ครอบครัวขอให้ลบข้อมูล {count} ครอบครัว"
   },
   "roles": {
     "Admin": "ผู้ดูแล",
@@ -821,7 +822,8 @@
     "erasureConfirmNote": "บันทึกการชำระเงินยังคงอยู่ โดยแยกออกจากครอบครัว",
     "erasureDeclinePrompt": "โปรดระบุเหตุผลที่ปฏิเสธ ครอบครัวควรได้รับคำอธิบาย",
     "erasureDeclineReason": "เหตุผล",
-    "erasureFailed": "ดำเนินการไม่สำเร็จ ไม่มีการเปลี่ยนแปลงใด ๆ"
+    "erasureFailed": "ดำเนินการไม่สำเร็จ ไม่มีการเปลี่ยนแปลงใด ๆ",
+    "deletionRequested": "ขอให้ลบข้อมูล"
   },
   "payment": {
     "title": "การชำระเงิน",

@@ -44,6 +44,7 @@ import {
 import { Avatar, Badge, Card, ClassDot, SectionTitle } from "../ui";
 import { BackLink, DeleteButton, DetailHeader, EditButton } from "../detail";
 import { ErasureRequest } from "../parents/ErasureRequest";
+import { useErasureRequests } from "../parents/useErasureRequests";
 import { useErrorToast } from "../ErrorToast";
 import { todayISO } from "@/lib/live";
 import { InviteOutcomeNote, inviteOutcome, type InviteOutcome } from "../InviteButton";
@@ -629,12 +630,17 @@ export function ParentsPage({
     setEditing({ mode: "edit", parent });
   }
 
+  /* Families that asked to be erased and are still waiting: marked in the
+     list and offered as a filter, so the office finds them from here. */
+  const erasures = useErasureRequests();
+
   const linkedOptions = useMemo(
     () => [
       { value: "", label: t("allParents") },
       { value: "linked", label: t("withChildren") },
       { value: "unlinked", label: t("withoutChildren") },
       { value: "archived", label: t("archived") },
+      { value: "deletion", label: t("deletionRequested") },
     ],
     [t],
   );
@@ -644,6 +650,7 @@ export function ParentsPage({
     return parents.filter((p) => {
       /* Archived guardians are out of the list unless asked for. */
       if (linked === "archived") return Boolean(p.archivedAt);
+      if (linked === "deletion" && !erasures.has(p.id)) return false;
       if (p.archivedAt) return false;
       if (linked === "linked" && p.children.length === 0) return false;
       if (linked === "unlinked" && p.children.length > 0) return false;
@@ -656,7 +663,7 @@ export function ParentsPage({
         p.children.some((c) => c.name.toLowerCase().includes(q))
       );
     });
-  }, [parents, search, linked]);
+  }, [parents, search, linked, erasures]);
 
   const { pageRows, totalPages, page: current } = paginate(filtered, page);
 
@@ -881,6 +888,9 @@ export function ParentsPage({
                 avatar={<Avatar initials={initialsOf(p.name)} size={44} />}
                 title={p.name}
                 subtitle={p.archivedAt ? `${t("archived")} · ${t("childCount", { count: p.children.length })}` : t("childCount", { count: p.children.length })}
+                badges={erasures.has(p.id) ? (
+                  <Badge color={COLORS.danger} bg={COLORS.dangerBg}>{t("deletionRequested")}</Badge>
+                ) : undefined}
                 actions={
                   <span style={{ display: "flex", alignItems: "center", gap: 7 }}>
                     <ContactMenu
@@ -956,14 +966,24 @@ export function ParentsPage({
             <TableRow key={p.id} template={TEMPLATE} onClick={() => setView({ kind: "detail", id: p.id })}>
               <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                 <Avatar initials={initialsOf(p.name)} size={30} />
-                <span
-                  style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                >
-                  {p.name}
+                {/* A deletion request sits under the name, not beside it: the
+                    column is narrow, and beside it the badge squeezed the
+                    guardian's name down to an initial. */}
+                <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 3, minWidth: 0 }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, maxWidth: "100%" }}>
+                    <span
+                      style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                    >
+                      {p.name}
+                    </span>
+                    {p.archivedAt && (
+                      <Badge color={COLORS.textSecondary} bg={COLORS.neutralBg}>{t("archived")}</Badge>
+                    )}
+                  </span>
+                  {erasures.has(p.id) && (
+                    <Badge color={COLORS.danger} bg={COLORS.dangerBg}>{t("deletionRequested")}</Badge>
+                  )}
                 </span>
-                {p.archivedAt && (
-                  <Badge color={COLORS.textSecondary} bg={COLORS.neutralBg}>{t("archived")}</Badge>
-                )}
               </span>
               <span
                 style={{

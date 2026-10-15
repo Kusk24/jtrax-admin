@@ -4,7 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
-import { ErasureRequest, openRequestFor, type DataRequest } from "./ErasureRequest";
+import { openRequestFor, type DataRequest } from "@/lib/data-requests";
+import { ErasureRequest } from "./ErasureRequest";
 
 let role = "Admin";
 vi.mock("../JtraxContext", () => ({ useJtrax: () => ({ role }) }));
