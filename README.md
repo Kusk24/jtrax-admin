@@ -1,93 +1,30 @@
-# JTRAX Admin — JCA Chess School
+# JTrax admin console
 
-Admin dashboard for JCA Chess School, built from the `JTRAX Dashboard` design mockup.
+The academy's staff console manages students and families, class attendance, payments and credits, tournaments, and communications. Admin and Receptionist accounts sign in against the JTrax API. The backend enforces each account's permissions.
 
-Live: https://jtrax-admin.vercel.app
+## Run locally
 
-## Stack
+1. Start the [Go backend](https://github.com/Kusk24/jtrax-backend#run-locally) on port 8790.
+2. From this repository root, use the Node version in [.nvmrc](.nvmrc) and the pnpm version pinned in [package.json](package.json).
 
-Next.js 16 (App Router) · React 19 · TypeScript. No CSS framework — components style
-themselves inline from the tokens in `lib/theme.ts`, with `app/globals.css` carrying the
-base reset, hover/focus states, keyframes and responsive breakpoints.
-
-```bash
-nvm use         # Node 22 — see .nvmrc
+```sh
 pnpm install
-pnpm dev        # http://localhost:3000
-pnpm build
-pnpm test
+pnpm dev --port 3001
 ```
 
-**Node 22 or newer.** On Node 20 the app itself runs, but `pnpm test` dies
-before the first test with `webidl.util.markAsUncloneable is not a function` —
-jsdom 30 pulls undici 8, which needs a newer Node than 20.x provides.
+Open `http://localhost:3001/login`. Use the local admin account described in the backend quickstart. This port lets the family portal run alongside the console on port 3000.
 
-`pnpm dev` expects the backend on `http://localhost:8790`; start it with
-`PORT=8790 go run ./cmd/server` in `jtrax-backend` (its own default is 8080).
-Set `JTRAX_API_URL` to point somewhere else — see `.env.example`.
+| Setting | Purpose |
+| --- | --- |
+| `JTRAX_API_URL` | Server-side backend base URL. Leave unset to use `http://localhost:8790`. |
+| `NEXT_PUBLIC_PORTAL_URL` | Public URL of the family portal, used for shareable tournament links and QR codes. For the local portal, set it to `http://localhost:3000`. |
 
-## Screens
+Set overrides in `.env.local`. Production hosting and operations are described in the [Lightsail runbook](https://github.com/Kusk24/jtrax-docs/blob/main/ops/jtrax-on-lightsail.md).
 
-`/` is the dashboard; every other nav item is `/<section>`, served by `app/[section]/page.tsx`.
+## Where to make changes
 
-| Route | Screen |
-|---|---|
-| `/login` | Sign in — the only screen outside the app shell |
-| `/` | Dashboard — role-dependent (see below) |
-| `/admins` | Admin accounts, detail drawer, create-admin flow *(Super Admin only)* |
-| `/academy` | Courses and teachers |
-| `/classhistory` | Past sessions with attendee lists |
-| `/students` | Student list, profile tabs, registration wizard |
-| `/payment` | Payment records and the record-payment form |
-| `/tournament` | Tournament list, detail, participants, create wizard |
-| `/announcement` | Broadcasts to students and parents |
-| `/chat` | LINE-style messaging with parents |
-| `/settings` | Credit warning rules *(Super Admin only)* |
+- [Routes](app) contain the sign-in, password recovery, dashboard, and section pages. [Components](components) render the screens, tables, and forms.
+- [Authentication](lib/auth.ts) resolves the backend identity from the console's HTTP-only session cookie. The [API proxy](app/api/%5B...path%5D/route.ts) attaches the bearer token on requests to the backend.
+- [Navigation](lib/nav.ts) defines which sections each staff role sees. [Theme tokens](lib/theme.ts) and [translations](messages) are shared across the console.
 
-## Sign in
-
-`/login` is the way in; everything else lives in the `app/(app)` route group, whose layout
-redirects there when the `jtrax_admin_session` cookie is missing. Signing in sets that cookie to
-the admin's id, so the app opens as whoever signed in, and the sidebar's Logout clears it.
-
-Authentication is **mocked to match the mock data**: the four seed admins in `lib/data.ts`
-are the whole account list and they share one demo password (`jca2026`), printed on the
-screen along with quick-fill chips for each account. When the backend lands, only
-`verifyCredentials` in `lib/auth.ts` has to change — the cookie session and the route guard
-above it stay as they are.
-
-## Roles
-
-Three roles — **Super Admin**, **Admin**, **Receptionist** — switched from the chip in the
-top bar. The role changes both the nav (Admins and Settings are Super Admin only; Academy
-is additionally hidden from Receptionists) and the dashboard itself: Receptionists get the
-front-desk view (Find a Student, check in, assign class, add credits), everyone else gets
-the management view (quick actions, Needs Follow-up, revenue trend, KPIs).
-
-Switching to a role that can't see the current page redirects home; deep-linking to a
-blocked page shows a no-access notice.
-
-## Layout
-
-```
-app/            routes + global stylesheet
-components/     JtraxShell (sidebar/topbar/role switcher), page-kit (table,
-                modal, drawer, pagination), dashboard/*, pages/*
-lib/            theme tokens, icon set, seed data, nav config, view-model helpers
-```
-
-## Data
-
-Everything is mock data in `lib/data.ts`, seeded from the design. There is no backend yet,
-so edits live in React state and reset on reload. `lib/theme.ts` pins `TODAY_REF` to
-23 Jul 2026 so relative dates stay deterministic.
-
-Some helpers in `lib/derive.ts` are marked `RECONSTRUCTED` — the design export was
-truncated, so those were rebuilt from the seed data rather than ported verbatim.
-
-## Not yet done
-
-- **Real auth.** Sign-in checks the seed list against one shared demo password — no
-  backend, no per-account passwords, no reset flow (Forgot password just tells you to ask
-  a Super Admin). The role switcher still lets you become any admin after signing in.
-- **Tournament photos** use generated gradient art rather than real images.
+Run `pnpm test` for Vitest, `pnpm lint` for ESLint, and `pnpm build` for the production build.
